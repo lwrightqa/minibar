@@ -41,6 +41,11 @@ The running record of what has been decided, and why. The product manager keeps 
 - Setup by QR code: the bar shows a QR code that joins the phone to its own `TinyBar-Setup` network, where a page lets the user choose the office Wi-Fi.
 - Supports password and work-login (username plus password) networks. Guest networks with a sign-in web page are not supported; the setup page says so.
 - Skip uses the bar offline: statuses and the Pomodoro still work; the calendar and Remote don't.
+  - *(2026-10-04, firmware, lead developer):* the skip is **remembered**: after Restart or power-on an offline bar
+    starts offline, with its radio off and no open TinyBar-Setup network, as the mock-up's `powerOn()` keeps offline
+    mode. Before this fix it came back on the QR code with the open setup network up, where anyone nearby could set its
+    Wi-Fi and calendar address. Set up (hold, Wi-Fi, Set up) and a join that works end it. If a network was saved and
+    you chose Set up again and then Skip, the bar stays offline too, rather than quietly rejoining the old network.
 
 ## Remote
 
@@ -272,11 +277,20 @@ These fill in what `docs/api.md` 4.8 and 14.3 left open. They're built into the 
   - the flip
   - the Connect your Mac copy
   - "Phone" as the label for the `remote` kind when no name is sent
+
+  *(2026-10-04: 4.8 done, with the alarm, the 2 minutes from when the code shows, USB pairing over a code, and the
+  Devices tile. 14.3's Connect your Mac copy is still to do.)*
 - **Firmware:** follow the mock-up once these are confirmed. A read-only check on 2026-10-04 found two differences in core:
   - a flip leaves the pairing screen up
   - the Devices tile is hidden when nothing is paired
 
-  It also has no rule yet for an alarm or a phase ending during pairing.
+  It also has no rule yet for an alarm or a phase ending during pairing. *(Done 2026-10-04 in the firmware's review
+  round, still Proposed: the firmware now follows every item above as the mock-up draws it: the flip, the alarm and a
+  phase ending under a code, the 2 minutes from when the code appears, a touch that began before the code is ignored,
+  Wi-Fi setup ending a pairing, the pairing screen's label, foot, sub line and progress bar, the Connected screen's
+  name, the Wi-Fi menu's tiles and five-column layout, and Forget all's three tiles with its 600 ms guard. The
+  Remote checks a message's characters as you type with the copy above. Pairing the Mac over USB while another
+  device's code is on the bar leaves that code up and valid; "Paired · Mac · over USB" shows once that pairing ends.)*
 - **Mac app spec:** `docs/mac-app.md` still describes a Pair a Mac button on the Remote and a 5-minute code. `docs/api.md` 14.5 and `docs/mac-app-ux.md` already supersede both.
 - **The user's OK** on pairing as a whole, and on the items above.
 
@@ -307,20 +321,21 @@ The UX designer's spec for Direction A. Positions are on the 640 × 172 screen.
   - The muted color is used **only** on the tinted info column and on dark surfaces (Clock, menus). On a status field it would drop to about 3.9:1.
   - So Bold Signal meets the 4.5:1 rule for directions (see Mock-up-only tools): the lowest is white on Focus at 4.91:1.
 - **Layout:** the main field runs from x 0 to 448, with text inset 24 px on the left and 20 px on the right (404 px wide). The info column runs from x 448 to 640 (192 px), in the solid tint, with a 16 px inset. Baselines are fixed, so the lines don't move when the headline changes size.
+  - *(Corrected 2026-10-04, Proposed: the baselines below are the mock-up as drawn, which the user approved and the firmware matches line for line. The designer's list said 152, 113 and 107; the browser floors a fractional half-leading, so it draws 151, 112 and 108.)*
 - **Kicker:** Barlow 700, 15 px, capitals, 1.5 px letter-spacing, baseline y 30.
 - **Headline:** Barlow Condensed **700** (not 800, which closes the counters of A, B and E at a distance; 800 stays in the Style panel only to try), white, capitals (meeting titles and messages in mixed case). Each headline takes the largest size that fits 404 px:
   - **112 px** (cap height 78, baseline y 125): the timer, the clock and BUSY.
   - **100 px** (cap 70, baseline 121): AVAILABLE and ON A CALL.
-  - **78 px** (cap 55, baseline 113): IN A MEETING and BACK AT 1:30.
-  - **62 px** (baseline 107): meeting titles and the message marquee.
+  - **78 px** (cap 55, baseline 112): IN A MEETING and BACK AT 1:30.
+  - **62 px** (baseline 108): meeting titles and the message marquee.
   - The cap centers all sit near y 86.
   - **Tabular digits:** the timer and clock use Barlow Condensed's tabular figures, so they keep the same width every second ("18:42" is about 254 px at 112 px).
-- **Sub line:** Barlow 500, 19 px, white, baseline y 152.
+- **Sub line:** Barlow 500, 19 px, white, baseline y 151.
 - **Info column:**
   - **Status row:** the time in Barlow 600, 15 px, baseline y 30 (level with the kicker), and 16 px icons on the right, 8 px apart: **Wi-Fi** (crossed out when offline) and a **Mac icon while a Mac is connected**. **No battery icon**, since the bar runs on USB with no battery (see Product).
   - **Label:** Barlow 700, 12 px, capitals, 1.2 px letter-spacing, muted, baseline y 92.
-  - **Value:** Barlow Condensed 700, 46 px, baseline y 130, with AM or PM at 17 px. Values that are words ("Design review") are 28 px. Durations fit without an hours-only rule: "10h 20m" is about 152 px of the column's 160.
-  - **Foot:** Barlow 500, 14 px, muted, baseline y 152 (level with the sub line).
+  - **Value:** Barlow Condensed 700, 46 px, baseline y 130, with AM or PM at 17 px. Values that are words ("Design review") are 28 px, baseline y 129. Durations fit without an hours-only rule: "10h 20m" is about 152 px of the column's 160.
+  - **Foot:** Barlow 500, 14 px, muted, baseline y 151 (level with the sub line).
 - **Tomatoes:** 32 × 32 px at 1:1 (the sprites' own size, so they stay sharp) with 8 px gaps; four fit exactly in 160 px. The end screen's tomato is 64 px (2x).
 - **Progress bar:** 6 px high at y 166 to 172, a white fill on a track of `lv_color_darken(status, 90)`.
 - **Corners:** tiles, the corner pill and toasts have an 8 px radius.
@@ -344,7 +359,7 @@ The UX designer's spec for Direction A. Positions are on the 640 × 172 screen.
   - Measure the flash they take once converted.
 - **Tabular digits baked into the fonts:** lv_font_conv ignores OpenType features, so before converting, freeze the tabular figures into the default digits with fonttools' `pyftfeatfreeze -f tnum` (from the opentype-feature-freezer package). Barlow's default digits are proportional: in Barlow Condensed Bold the 1 is 284 units wide against 498 for every tabular digit. The product manager checked Barlow Condensed Bold and Barlow SemiBold on 2026-10-04: the tabular digits and the colon have no kerning with each other, so unlike Bitcount no kerning needs removing. Check again in the converted fonts (every digit the same width, no digit kerning pairs).
 - **Font names:** **Proposed:** like the Bitcount copies, the frozen Barlow files get a TinyBar family name and a modification note in their name tables, keeping the Barlow Project's copyright and the OFL text (in `tools/fonts/licenses/`). Barlow's copyright notice names no Reserved Font Name.
-- **Sizes not in the designer's list yet:** AM or PM on the clock (about 36 px in the mock-up) and in the info column (17 px), menu tiles, toasts, the corner pill, the source chips (MAC, CALENDAR), the Wi-Fi setup screens and the hold screen. Measure them from the mock-up once it's switched, and convert extra sizes or reuse the ones above.
+- **Sizes not in the designer's list yet:** AM or PM on the clock (about 36 px in the mock-up) and in the info column (17 px), menu tiles, toasts, the corner pill, the source chips (MAC, CALENDAR), the Wi-Fi setup screens and the hold screen. Measure them from the mock-up once it's switched, and convert extra sizes or reuse the ones above. *(Done 2026-10-04, measured from the mock-up and built into the firmware: the clock's AM/PM 36 px with 2 px tracking; tile values Barlow Condensed 700 28 px; tile labels and the source chips Barlow 700 12 px; tile feet 14 px; toasts and the pill Barlow 600 15 px; the setup steps Barlow 500 16 px, the network's name 700; the hold screen's title 46 px and its line 14 px.)*
 - **Icons:** 16 px Wi-Fi, Wi-Fi crossed out and Mac icons for the status row.
 - **Font tools README:** `tools/fonts/README.md` still introduces option G as the user's pick. It needs a note that the current look is Bold Signal and these tools are kept for reference, and a place for the Barlow build steps.
 
@@ -421,6 +436,26 @@ These applied only to Bitcount and Handjet. **Superseded on 2026-10-04 by the sw
     - A wrong code is any other 6 digits.
     - The demo speed (60× faster) makes the 2-minute code and the back-off waits quick to see, and it can be reached even while the Remote is unpaired.
     - The code itself only ever shows on the simulated bar.
+
+## Firmware (decided while building, 2026-10-04 review round, lead developer)
+
+Where the mock-up has no answer, the firmware picked one. The ones marked **Proposed** wait for the user's or the product manager's OK; change any and the firmware follows.
+
+- **Proposed: Message with nothing set.** On a new bar the Message status shows the mock-up's "Hello". The first time Message is shown by a tap, swipe or BOOT, the bar stores "Hello" as the message, so the API and the Remote report what the bar shows (`POST /status` "message" then works too). The other choice, leaving Message out of the cycle until a message is set, is a product decision.
+- **Proposed: a dropped office Wi-Fi.** When the link drops after setup (not skipped), the quick menu's Calendar tile reads "Offline" with when it last synced ("synced 5m ago"), since Sync now can't run ("No Wi-Fi, can't sync") but the bar keeps following its saved copy; the Wi-Fi tile's foot says "reconnecting"; the Wi-Fi menu's Network tile says "not connected" under the bar's name.
+- **Proposed: new copy.** A brightness change from the API says "Light 70%", like the Light tile. The Wi-Fi failure screen for a network that gives no address says "No IP address" (was "No address").
+- **Decided: the setup menu closes once setup is over.** A setup menu left open on Connecting goes when the join works and setup moves on, so its Skip can't undo a join that worked ("Connected is the end of setup").
+- **Decided (api.md 9.1):** a Pomodoro action from the API silences a ringing alarm first, even "pause" when nothing runs (it still answers `409 not_running`).
+- **Open, for the product manager: two rules the mock-up has that don't fit "every control does something".**
+  - A swipe on an open menu is ignored (the mock-up's own rule: "Only taps act on a menu", so a swipe can't run the tile the finger lifts on). **Proposed:** keep it and record it here as the one exception. The other choice is a swipe that closes the menu.
+  - Skip (the timer menu's tile, and the Remote's) shows no toast, unlike Stop ("Pomodoro stopped") and +5 ("+5 min"). **Proposed:** add "Skipped to Short break" (or "to Focus", "to Long break") to the mock-up's `skip()`; the firmware will follow.
+- **Open, waiting for the user: encrypting stored secrets.** The office Wi-Fi password, a work login's username and password (often the person's company sign-in) and the secret calendar address sit in the bar's flash as plain text. **Anyone in the open office with a laptop and a USB-C cable can read them in about a minute:** the flashing tool resets the chip into download mode through the same USB-C port, with no button press and without opening the case. The choices, all of them **irreversible** on that board:
+  - **NVS encryption** (an HMAC key burned into the chip): stops a plain read of the flash, but not someone who flashes their own firmware to read the secrets with the chip's own key, then flashes TinyBar back.
+  - **Flash encryption with secure boot**, or **turning off USB download mode and JTAG**: full protection, but the bar then only takes signed updates, and the web flasher at 0x0 no longer works as it does now.
+  - **Neither**, and don't use a work login on the bar (use a password network).
+
+  This should be decided before the bar joins an office network with work-login credentials.
+- **Hardware (lead):** if the picture is upside down on the real panel, `CONFIG_TINYBAR_LCD_TURN_180` turns it (the "upright" rotation comes from a path in Waveshare's example that never ran as shipped). The boot no longer tests the whole PSRAM and the bootloader logs only warnings, so the power hold comes on sooner; on a battery, a PWR press still has to last until the power hold (to be timed on the board).
 
 ## Hardware notes for the firmware (V2)
 
