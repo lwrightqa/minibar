@@ -237,9 +237,9 @@ h1 .dot { color: var(--state); transition: color .3s; }
 }
 .ctx-value.small { font-size: 3.6cqw; line-height: 1.05; }
 .ctx-foot { font-size: 2cqw; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dots { display: flex; gap: 1.1cqw; margin-top: .8cqw; }
-.dots i { width: 2.4cqw; height: 2.4cqw; border-radius: 50%; border: .35cqw solid currentColor; opacity: .9; }
-.dots i.on { background: currentColor; }
+.tomatoes { display: flex; gap: 1cqw; margin-top: .8cqw; }
+.tomatoes .tomato { flex: 0 1 4.7cqw; min-width: 0; aspect-ratio: 1; display: block; }
+.tomato .gh { fill: rgba(0,0,0,.22); }
 
 .bar {
   position: absolute;
@@ -406,7 +406,10 @@ h1 .dot { color: var(--state); transition: color .3s; }
 }
 .word.blink { animation: blink 1.1s steps(2, jump-none) infinite; }
 @keyframes blink { 50% { opacity: .35; } }
-.dots i.now { background: linear-gradient(90deg, currentColor 50%, transparent 50%); }
+.endrow { display: flex; align-items: center; gap: 2.4cqw; min-width: 0; }
+.endrow .tomato { width: 12cqw; height: 12cqw; flex: none; }
+.endrow .word { min-width: 0; }
+.pill .tomato { width: 2.1cqw; height: 2.1cqw; display: inline-block; vertical-align: -.35cqw; margin-right: .5cqw; }
 .lcd.alert::after {
   content: "";
   position: absolute;
@@ -436,6 +439,9 @@ h1 .dot { color: var(--state); transition: color .3s; }
   color: var(--pc);
 }
 .pomo-read span { font-size: 13px; color: var(--muted); text-align: right; }
+.pomo-tomatoes { display: flex; gap: 6px; }
+.pomo-tomatoes .tomato { width: 30px; height: 30px; display: block; }
+.pomo-tomatoes .tomato .gh { fill: var(--line); }
 .row.fill > * { flex: 1; }
 .setting { display: grid; grid-template-columns: 88px minmax(0, 1fr); align-items: center; gap: 10px; }
 .setting > span { font-size: 13px; color: var(--muted); font-weight: 600; }
@@ -491,6 +497,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
             <b id="pTime">18:42</b>
             <span id="pRead">Focus 2 of 4</span>
           </div>
+          <div class="pomo-tomatoes" id="pTomatoes" aria-hidden="true"></div>
           <div class="row fill">
             <button class="btn" id="pStart" type="button">Pause</button>
             <button class="btn ghost" id="pSkip" type="button">Skip</button>
@@ -553,7 +560,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
         <h2>How you'd control it</h2>
         <dl class="kv">
           <dt>Touch</dt><dd>Tap cycles status, a swipe steps back or forward, and holding opens a quick menu with brightness, Wi-Fi, calendar and battery. On the Pomodoro screen, a tap starts or pauses the timer and holding opens timer options.</dd>
-          <dt>Pomodoro</dt><dd>25-minute focus sessions, 5-minute breaks and a 15-minute break after every fourth session, all adjustable. Focus shows in orange so people know not to interrupt; breaks turn the bar teal or blue to say it's a good moment. The timer keeps running when you switch to another status, with a small countdown in the corner, and the bar jumps back to it when a phase ends.</dd>
+          <dt>Pomodoro</dt><dd>25-minute focus sessions, 5-minute breaks and a 15-minute break after every fourth session, all adjustable. Focus shows in orange so people know not to interrupt; breaks turn the bar teal or blue to say it's a good moment. Each finished session earns a ripe tomato, and the one in progress ripens from green to red as you focus. The timer keeps running when you switch to another status, with a small countdown in the corner, and the bar jumps back to it when a phase ends.</dd>
           <dt>Side buttons</dt><dd>BOOT jumps to the next status without looking. PWR turns the screen off and on, and holding it powers down.</dd>
           <dt>Phone remote</dt><dd>The device serves a small page at tinybar.local on your Wi-Fi, like the Remote panel on this page.</dd>
           <dt>Automations</dt><dd>An HTTP endpoint (and optionally MQTT for Home Assistant) so a calendar, Slack, Zoom or a shortcut can set the status.</dd>
@@ -595,6 +602,62 @@ h1 .dot { color: var(--state); transition: color .3s; }
   ];
   const POMO = STATES.findIndex(x => x.id === 'pomodoro');
   const PHASE_NAME = { focus: 'Focus', short: 'Short break', long: 'Long break' };
+
+  // 15 x 15 pixel tomato. On the device this becomes a 2x LVGL image (30 x 30 px).
+  const TOMATO = [
+    '......gg.......',
+    '.......g.......',
+    '...gggGGGggg...',
+    '..KgGGgGgGGgK..',
+    '.KRRgRRgRRgRRK.',
+    'KRWHRRRRRRRRRRK',
+    'KRWRRRRRRRRRRDK',
+    'KHRRRRRRRRRRRDK',
+    'KRRRRRRRRRRRRDK',
+    'KRRRRRRRRRRRDDK',
+    '.KRRRRRRRRRRDK.',
+    '.KDRRRRRRRRDDK.',
+    '..KDDRRRRDDDK..',
+    '...KKDDDDDKK...',
+    '.....KKKKK.....',
+  ];
+  const RIPE   = { K: '#3a0f0b', R: '#e5432c', D: '#b02a1b', H: '#ff8c6e', W: '#ffe1d6', G: '#4caf50', g: '#2e7d32' };
+  const UNRIPE = { R: '#8cc65c', D: '#5b9a3d', H: '#bde59f', W: '#eef9e2' };
+  const mix = (a, b, t) => '#' + [1, 3, 5].map(i => {
+    const x = parseInt(a.substr(i, 2), 16), y = parseInt(b.substr(i, 2), 16);
+    return Math.round(x + (y - x) * t).toString(16).padStart(2, '0');
+  }).join('');
+
+  // kind: 'ripe' (session done), 'ripening' (in progress, p = 0..1), 'ghost' (still to come)
+  function tomato(kind, p = 1) {
+    const pal = { ...RIPE };
+    if (kind === 'ripening') for (const k in UNRIPE) pal[k] = mix(UNRIPE[k], RIPE[k], Math.max(0, Math.min(1, p)));
+    let rects = '';
+    TOMATO.forEach((row, y) => {
+      for (let x = 0; x < row.length;) {
+        const c = row[x];
+        let w = 1;
+        while (row[x + w] === c) w++;
+        if (c !== '.') rects += kind === 'ghost'
+          ? `<rect class="gh" x="${x}" y="${y}" width="${w}" height="1"/>`
+          : `<rect x="${x}" y="${y}" width="${w}" height="1" fill="${pal[c]}"/>`;
+        x += w;
+      }
+    });
+    return `<svg class="tomato" viewBox="0 0 15 15" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
+  }
+
+  function tomatoRow() {
+    const { phase, round, set } = pomo;
+    const p = 1 - pomo.remaining / phaseLen('focus');
+    let out = '';
+    for (let k = 1; k <= set.every; k++) {
+      if (k < round || (k === round && phase !== 'focus')) out += tomato('ripe');
+      else if (k === round) out += tomato('ripening', pomo.waiting ? 0 : p);
+      else out += tomato('ghost');
+    }
+    return out;
+  }
 
   const now = () => new Date();
   const addMin = (d, m) => new Date(d.getTime() + m * 60000);
@@ -725,6 +788,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
     say(`${how}: timer reset`);
   }
 
+  const battery = `<svg viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="2" y="6" width="21" height="12" rx="2.5"/><rect x="5" y="9" width="12" height="6" rx="1" fill="currentColor" stroke="none"/><path d="M25.5 10v4" stroke-linecap="round"/></svg>`;
   const icons = `
     <span class="icons">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5.5 12.5a10 10 0 0 1 13 0"/><path d="M9 16a5 5 0 0 1 6 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/></svg>
@@ -736,9 +800,10 @@ h1 .dot { color: var(--state); transition: color .3s; }
     let pill = '';
     if (STATES[s.idx].id !== 'pomodoro' && pomoActive()) {
       const label = pomo.waiting ? 'Done' : !pomo.running ? 'Paused' : mmss(remSec());
-      pill = `<span class="pill" style="--pc:${col(pomo.phase)}">${label}</span>`;
+      pill = `<span class="pill" style="--pc:${col(pomo.phase)}">${tomato(pomo.phase === 'focus' ? 'ripening' : 'ripe', 1 - pomo.remaining / phaseLen('focus'))}${label}</span>`;
     }
-    return `<div class="sys"><span>${fmt(now())}</span>${pill}${icons}</div>`;
+    if (!pill) return `<div class="sys"><span>${fmt(now())}</span>${icons}</div>`;
+    return `<div class="sys"><span>${fmtShort(now())}</span>${pill}<span class="icons">${battery}</span></div>`;
   }
 
   const side = (label, value, foot = '', valueClass = '') => `
@@ -755,26 +820,20 @@ h1 .dot { color: var(--state); transition: color .3s; }
     const { phase, round, set } = pomo;
     const total = phaseLen(phase);
     const nextRound = phase === 'long' ? 1 : round + 1;
-    let dots = '';
-    for (let k = 1; k <= set.every; k++) {
-      const on = k < round || (k === round && phase !== 'focus');
-      const cur = k === round && phase === 'focus';
-      dots += `<i class="${on ? 'on' : cur ? 'now' : ''}"></i>`;
-    }
     const sideHtml = `
       <aside class="side">
         ${sysRow()}
         <div>
           <div class="ctx-label">Today</div>
-          <div class="dots">${dots}</div>
+          <div class="tomatoes">${tomatoRow()}</div>
           <div class="ctx-foot" style="margin-top:1cqw">${pomo.doneToday} done · ${hm(Math.round(pomo.focusedMs / 60000))} focused</div>
         </div>
       </aside>`;
 
     if (pomo.waiting) {
       const main = pomo.justEnded === 'focus'
-        ? `<div class="kicker">Focus ${round} of ${set.every} done</div><div class="word" style="font-size:12cqw">Break time</div><div class="sub">Tap to start a ${set[phase]} min ${phase === 'long' ? 'long' : 'short'} break</div>`
-        : `<div class="kicker">Break over</div><div class="word" style="font-size:12cqw">Back to it</div><div class="sub">Tap to start focus ${round} of ${set.every}</div>`;
+        ? `<div class="kicker">Focus ${round} of ${set.every} done</div><div class="endrow">${tomato('ripe')}<div class="word" style="font-size:9.5cqw">Break time</div></div><div class="sub">Tap to start a ${set[phase]} min ${phase === 'long' ? 'long' : 'short'} break</div>`
+        : `<div class="kicker">Break over</div><div class="endrow">${tomato('ripening', 0)}<div class="word" style="font-size:9.5cqw">Back to it</div></div><div class="sub">Tap to start focus ${round} of ${set.every}</div>`;
       return { main, side: sideHtml };
     }
 
@@ -867,6 +926,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
     const box = $('pomoBox');
     box.style.setProperty('--pc', pc);
     $('pTime').textContent = mmss(remSec());
+    $('pTomatoes').innerHTML = tomatoRow();
     const where = pomo.phase === 'focus' ? `Focus ${pomo.round} of ${pomo.set.every}` : PHASE_NAME[pomo.phase];
     const state = pomo.waiting ? 'waiting for you' : isReady() ? 'ready' : pomo.running ? 'running' : 'paused';
     $('pRead').textContent = `${where} · ${state}`;
