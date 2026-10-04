@@ -53,7 +53,7 @@ extern "C" {
 #define CAL_OVERRIDES_MAX   256     /* RECURRENCE-ID keys remembered (only those near the window) */
 #define CAL_EXDATES_MAX     64      /* per event (only those near the window are kept) */
 #define CAL_VTIMEZONES_MAX  8       /* VTIMEZONE blocks remembered per feed */
-#define CAL_RRULE_STEPS_EVENT 100000u   /* periods one RRULE may examine */
+#define CAL_RRULE_STEPS_EVENT 100000u   /* days one RRULE may examine (cal_rrule_expand's budget) */
 #define CAL_RRULE_STEPS_FEED  2000000u  /* ...and all of a feed's RRULEs together */
 
 typedef enum {
@@ -90,6 +90,9 @@ typedef struct cal_feed cal_feed_t;
  */
 cal_feed_t *cal_feed_new(tb_epoch_t window_start, tb_epoch_t window_end, const cal_tz_t *device_tz, const char *self_email);
 void cal_feed_free(cal_feed_t *f);
+/* Have tick called every CAL_TICK_BYTES bytes taken and every CAL_TICK_DAYS days a recurrence walk examines (inside
+ * one cal_feed_write(), whose RRULE expansion can otherwise run for seconds on a hostile feed). NULL: none. */
+void cal_feed_set_tick(cal_feed_t *f, cal_tick_fn tick, void *ctx);
 
 /* Feed the next chunk of the body (any size, any split, even mid-character). CAL_ERR_NOT_A_CALENDAR as soon as 4 KB
  * have gone by without BEGIN:VCALENDAR (and for every later call). */

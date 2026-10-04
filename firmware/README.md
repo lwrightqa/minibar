@@ -12,8 +12,9 @@ What it must do is decided elsewhere, and those documents win over anything here
 How the code is organized, and why, is in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 > **Status: integrated and reviewed, not yet run on a board.** Every module is built and wired together, and the
-> 2026-10-04 review round's findings are fixed (or answered in decisions.md). The firmware compiles with no warnings,
-> 370 host tests pass, and every screen the mock-up can show matches it line for line. Nothing has been flashed, so
+> 2026-10-04 review round's findings are fixed (or answered in decisions.md), as are the defensive security review's
+> (ARCHITECTURE.md sections 10 and 14). The firmware compiles with no warnings, 402 host tests pass, and every screen
+> the mock-up can show matches it line for line. Nothing has been flashed, so
 > everything that touches the hardware or the radio is unverified until the first runs on the bar. See "What's
 > verified" at the end, and the bring-up checklists in `components/board/README.md`, `components/net/README.md` and
 > `components/calendar/README.md`.
@@ -108,7 +109,7 @@ Flash **one merged image at address 0x0, at 115200 baud**. A faster write once l
    ```
 
    The version is `PROJECT_VER` in `CMakeLists.txt` (also what `GET /api/v1/info` reports as `fw`). The image in
-   `dist/` today is the 2026-10-04 review round's release build (2.31 MB; the app 2.02 MB).
+   `dist/` today is the 2026-10-04 security review's release build (2.31 MB; the app 2.02 MB).
 2. Plug the bar into the computer with a USB-C **data** cable (a charge-only cable shows no port). If the Mac app is
    running, choose **Pause USB** in its menu first, so it lets go of the serial port.
 3. Open the Espressif web flasher in Chrome or Edge (<https://espressif.github.io/esptool-js/>), set the baud rate to
@@ -198,18 +199,19 @@ alarm and start what the Pomodoro is waiting for.
 
 ## What's verified
 
-As of 2026-10-04, after the review round (details in ARCHITECTURE.md section 14):
+As of 2026-10-04, after the review round and the security review (details in ARCHITECTURE.md section 14):
 
 - **Compiled:** the whole firmware with `idf.py build` from a clean configuration (a fresh `build-lead/` generated
   from `sdkconfig.defaults`; ESP-IDF v5.4.2, esp32s3), with **no warnings**, in TinyBar's code or the managed
   components. The app is 2.02 MB in a 6 MB slot (66% free). 141 KB of internal RAM is used statically, leaving 201 KB
-  for the heap (178 KB before the round: the core model, LVGL's allocations and three task stacks moved to PSRAM).
+  for the heap (178 KB before the review round: the core model, LVGL's allocations and three task stacks moved to
+  PSRAM; the security review's fixes changed neither).
   The merged image `dist/tinybar-1.0.0.bin` was made with `esptool.py merge_bin @flash_args` and checked: the
   bootloader and the app byte for byte where they belong, the partition table's entries, and the app's checksum and
   SHA-256 valid.
-- **Tested on the host:** 370 tests in 5 runners under AddressSanitizer and UBSan (core 150, calendar 59, net 97,
+- **Tested on the host:** 402 tests in 5 runners under AddressSanitizer and UBSan (core 150, calendar 67, net 121,
   ui 29, board 35), with no compiler warnings; the ui's touch test through LVGL's input path (straight and flipped)
-  and its layout test (screens drawn one after another; the longest real copy in each slot); the Remote (64 checks)
+  and its layout test (screens drawn one after another; the longest real copy in each slot); the Remote (67 checks)
   and setup page (20) in Playwright against a fake bar running the real router and core; and 79 screen snapshots,
   76 of them compared with the mock-up rendered in Chromium: every text line on the mock-up's baseline, under 8% of
   pixels different in any scene (glyph edges, RGB565, and the QR code's pattern).
@@ -219,4 +221,6 @@ As of 2026-10-04, after the review round (details in ARCHITECTURE.md section 14)
   and pops, I2C during flash writes, Wi-Fi (WPA2/3, work login, the setup network and captive-portal sheets, a skipped
   Wi-Fi staying off after a restart), mDNS, SNTP behind an office firewall, TLS to the calendar, whether opening the
   USB port resets the bar, heap and stack headroom (now logged per task), task stacks in PSRAM, and timing under load.
+  From the security review: the HTTP server's 3 s request deadline and closing after a 413 (esp_http_server's receive
+  override), the page's 421, the time a hostile calendar feed takes on the S3, and log escaping on the real port.
   The bring-up checklists say what to look for.

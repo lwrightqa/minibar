@@ -86,7 +86,7 @@ bar → mac  @tb {"id": 2, "ok": true, "device_id": "f412fa3f2a1c", "showing": "
 - A body is one JSON object, UTF-8, with no byte-order mark. `GET` and `DELETE` have no body.
 - Every API response has `Content-Type: application/json; charset=utf-8`, `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`. The bar sends **no CORS headers**, so pages on other sites can't read its answers.
 - Everything outside `/api/` is the Remote web page (HTML, CSS, scripts). It's served without a token and holds no data of its own; it reads everything through the API.
-- **Host check.** The bar answers only when the `Host` header is its current mDNS name (`tinybar.local`, or the name it got after a conflict, section 3), its IPv4 address, or `192.168.4.1` while it's in setup mode, each with or without `:80`. Anything else gets `421 wrong_host`. This stops a web page from reaching the bar through a DNS-rebinding trick.
+- **Host check.** The bar answers only when the `Host` header is its current mDNS name (`tinybar.local`, or the name it got after a conflict, section 3), its IPv4 address, or `192.168.4.1` while it's in setup mode, each with or without `:80`. Anything else gets `421 wrong_host`. This stops a web page from reaching the bar through a DNS-rebinding trick. *(2026-10-04, security review:)* the Remote page and everything else outside `/api/` get the same check, answered with a plain-text `421`. The one exception is the setup network, where any other name gets a `302` to `http://192.168.4.1/` so phones open the setup page (section 13).
 
 ### 2.3 JSON
 
@@ -98,6 +98,7 @@ bar → mac  @tb {"id": 2, "ok": true, "device_id": "f412fa3f2a1c", "showing": "
 - **Times of day** that a person types (Away's "back at") are `"HH:MM"`, 24-hour, in the bar's local time: `"13:30"`.
 - **Durations** are whole seconds in fields ending `_s`. Settings in minutes end `_min`.
 - **Text** is UTF-8. Before using any text, the bar removes control characters and maps typographic punctuation to the plain characters its fonts have (’ ‘ to `'`, “ ” to `"`, – — to `-`, … to `...`), because Macs and phones type curly apostrophes by default ("Don’t interrupt"). What happens to characters the fonts still can't draw depends on the field, and is said next to each one.
+  - **Proposed (2026-10-04, pairing fix round): characters nobody can see** are mapped too, so pasted text never fails over something invisible. Tab, line breaks, U+2028 and U+2029, and the spaces U+2000 to U+200A, U+202F (the narrow no-break space Apple's and ICU's time formats put before AM and PM), U+205F and U+3000 become a space. The zero-width characters and marks U+200B to U+200F, U+202A to U+202E, U+2060 to U+2064, U+2066 to U+206F, U+FEFF (byte-order mark) and the variation selectors U+FE0E and U+FE0F are dropped. A letter followed by a combining accent (U+0300, U+0301, U+0302, U+0303, U+0308, U+030A or U+0327) becomes the precomposed Latin-1 letter when there is one ("e" + U+0301 to "é"), since macOS file names and some pasted text are decomposed; this is NFC limited to Latin-1, a table of about 60 pairs. The Remote's check (8.2) uses the same mapping.
 
 ### 2.4 Errors
 
@@ -119,7 +120,9 @@ Some errors add a field: `retry_after_s` (with `429 rate_limited` and `409 pairi
 
 | What | Limit | Over the limit |
 |---|---|---|
-| HTTP request body | 2,048 bytes | `413 too_large` |
+| HTTP request body | 2,048 bytes | `413 too_large`, and the bar closes the connection rather than read the rest |
+| JSON nesting (a body or a USB line) | 16 levels of objects and arrays; the deepest real request has 3 | `400 bad_json` |
+| Time to send a request's headers and body | 3 seconds from its first byte | The bar closes the connection (`408` if it can still answer) |
 | HTTP request headers, all together | 2,048 bytes (the firmware raises esp_http_server's 512-byte default, section 15) | `431`, from the HTTP server, possibly without a JSON body |
 | Request path and query | 512 bytes | `414`, from the HTTP server |
 | USB line, Mac to bar | 2,048 bytes including the `@tb ` marker, not counting the line ending | `too_large` reply (section 6) |
@@ -127,7 +130,7 @@ Some errors add a field: `retry_after_s` (with `429 rate_limited` and `409 pairi
 | Requests from one IP address | 10 a second on average, bursts up to 20 | `429 rate_limited` |
 | Requests without a valid token, from one IP address | 5 a second | `429 rate_limited` |
 | Open HTTP connections | 7 at once; the bar closes the least recently used | Clients keep at most one open |
-| Paired tokens | 10 | `409 token_limit` |
+| Paired tokens | 10; a code on the screen holds a place (4.3) | `409 token_limit` |
 | Macs the bar keeps call state for | 4; the least recently heard is dropped | — |
 | `app` (call) | 1 to 64 bytes; the bar shows up to 24 characters | `400 bad_value` |
 | Message text | 1 to 80 characters (the Remote's field allows 80) | `400 bad_value` |
@@ -204,6 +207,7 @@ The `pairing_id` ties the code to the client that asked for it, so someone who r
 - **The bar keeps only a SHA-256 hash** of each token, with a public `token_id` (8 hex digits), the client's name, kind, scope and `client` ID, when and how it was paired, and when and from which address it was last used. It never shows a token again after the pairing reply.
 - **Tokens don't expire.** A token stops working when it's revoked (section 12), when the same `client` pairs again (the new token replaces the old one), or after a factory reset. Setting up Wi-Fi again keeps them.
 - **At most 10 tokens.** Pairing an eleventh is refused (`409 token_limit`) until one is revoked.
+  - **Proposed (2026-10-04, pairing fix round): a code on the screen holds a place.** While a code shows for a device that isn't paired yet, it counts as one of the 10, so the code can always work. Meanwhile pairing another new device over USB (`pair`, 6.6) is refused with `token_limit` if it would take that place; the cable still works without a token. A device that's paired already replaces its own token, so it always has room. Before this, a USB pairing made while another device's code showed could take the last place and leave 11 tokens.
 
 ### 4.4 Scopes
 
@@ -217,7 +221,7 @@ The Mac app pairs with the `call` scope. If its token ever leaked, the most anyo
 ### 4.5 Sending the token
 
 - **Apps and scripts:** the header `Authorization: Bearer tb1_…`.
-- **The Remote page:** a cookie the bar sets when the page pairs with `"cookie": true`: `tb_token=<token>; HttpOnly; SameSite=Strict; Path=/api/; Max-Age=31536000` (no `Secure` flag, since the bar serves plain HTTP). Scripts on the page can't read it, and Safari keeps a cookie the server sets much longer than storage a page sets for itself, so a phone doesn't have to pair again every week. When a request authenticated by the cookie has an `Origin` header, it must be `http://` plus one of the accepted hosts (2.2); otherwise `403 bad_origin`.
+- **The Remote page:** a cookie the bar sets when the page pairs with `"cookie": true`: `tb_token=<token>; HttpOnly; SameSite=Strict; Path=/api/; Max-Age=31536000` (no `Secure` flag, since the bar serves plain HTTP). Scripts on the page can't read it, and Safari keeps a cookie the server sets much longer than storage a page sets for itself, so a phone doesn't have to pair again every week. When a request authenticated by the cookie has an `Origin` header, it must be `http://` plus one of the accepted hosts (2.2); otherwise `403 bad_origin`. An `Origin` header the bar can't read (over 255 bytes) or that's empty counts as another origin, never as none.
 - A missing, unknown or revoked token gets `401 unauthorized` with `WWW-Authenticate: Bearer realm="TinyBar"`. The client's answer is to pair again.
 
 ```json
@@ -233,7 +237,7 @@ No token needed.
 | `name` | string, 1 to 32 characters | no | A label for the pairing screen and the paired-devices list, such as "iPhone", or a name the user gave the Mac. Left out, or if its characters can't all be drawn, the bar uses "Mac", "Phone" or "Script" (from `kind`). The Mac app sends none unless the user names it, since it never sends the computer's name (`docs/mac-app.md`). |
 | `kind` | `"mac"`, `"remote"` or `"automation"` | yes | What the client is, for the list and the screen. *Open:* clients send one of these; the bar labels unknown future kinds "Device". |
 | `scope` | `"call"` or `"full"` | yes | See 4.4. |
-| `client` | string, 8 to 64 of `A-Z a-z 0-9 -` | no | The client's stable ID (the Mac app's install ID). When pairing succeeds, an older token with the same `client` is revoked, so re-pairing doesn't pile up tokens. |
+| `client` | string, 8 to 64 of `A-Z a-z 0-9 -` | no | The client's stable ID (the Mac app's install ID). When pairing succeeds, an older token with the same `client` is revoked, so re-pairing doesn't pile up tokens. A token paired with a `client` reports calls only for that client (5.2). |
 
 ```http
 POST /api/v1/pair/start HTTP/1.1
@@ -258,7 +262,7 @@ HTTP/1.1 202 Accepted
 | Error | When |
 |---|---|
 | `409 pairing_busy` | Another code is on the screen. `retry_after_s` says when it expires. |
-| `409 token_limit` | 10 tokens already exist. Revoke one first (section 12). Checked here, so no one is shown a code that can't work. |
+| `409 token_limit` | 10 tokens already exist. Revoke one first (section 12). Checked here, and the code then holds a place until it ends (4.3), so no one is shown a code that can't work. |
 | `429 rate_limited` | Too many pairings ended without success (4.9). `retry_after_s` says when to try again. |
 | `409 in_setup` | The bar is on its Wi-Fi setup screens (only reachable over USB then). |
 
@@ -300,11 +304,27 @@ With `"cookie": true` the body has `"token": null` and the response carries `Set
 |---|---|
 | `403 wrong_code` | The code doesn't match. `attempts_left` says how many tries this code has left; at 0 the pairing ends. |
 | `409 not_pairing` | No code is on the screen for this `pairing_id`: it expired, was canceled on the bar, was already used, or ran out of tries. Start again. |
+| `409 token_limit` | A safeguard only, since the code holds a place (4.3): the bar has no room for this device. The pairing ends ("Pairing canceled" on the bar) without counting as a failed pairing. |
 | `429 rate_limited` | More than one `pair` request a second. |
 
 ```json
 {"ok": false, "error": "wrong_code", "message": "That code doesn't match. 2 tries left.", "field": "code", "attempts_left": 2}
 ```
+
+**Canceling: `POST /api/v1/pair/cancel`** (**Proposed**, 2026-10-04, pairing fix round). No token needed. The device that asked takes its code off the bar, so a person who changes their mind doesn't hold up every other device for 2 minutes. The Remote's Cancel and the Mac app's Back or Cancel on its Wi-Fi page call it. Only the `pairing_id` from `pair/start` works, so no one else can cancel your code. The bar ends the pairing as a tap would ("Pairing canceled"), and it **counts as a failed pairing** (4.9), so canceling and asking again can't be used to get more guesses. Safe to repeat.
+
+| Field | Type | Required | Meaning |
+|---|---|---|---|
+| `pairing_id` | string | yes | From `pair/start`. |
+
+```json
+{"ok": true}
+```
+
+| Error | When |
+|---|---|
+| `409 not_pairing` | No code is on the screen for this `pairing_id` (it already ended). Nothing to do. |
+| `429 rate_limited` | Shares `pair`'s limit of one request a second. |
 
 ### 4.8 On the bar
 
@@ -313,16 +333,16 @@ These screens are drawn in the mock-up's pairing round and built into the firmwa
 - **Pairing screen:** on a dark surface (#0E1013, like the menus), since it isn't a status. Kicker "PAIRING · MAC" (the client's name, or its kind's word when none was sent or it can't be drawn: "Mac", "Phone" for `remote`, "Script" for `automation`), the code as the headline in tabular digits ("482 913"), and a sub line that names the device: "Type it on your Mac · tap to cancel", "Type it on your phone · tap to cancel", otherwise "Type this code on that device · tap to cancel". In the info column, "Code expires in" over an m:ss countdown, with the bar's name ("TinyBar 2A1C") as the foot; the progress bar fills as the 2 minutes run out.
 - **The 2 minutes count from when the code appears on the screen.** It waits for the power screens to finish (the splash, Keep holding), and the countdown and `retry_after_s` wait with it. It never appears on the Wi-Fi setup screens, Connected included (`409 in_setup`).
 - It **wakes a dark screen** (someone is pairing right now), **replaces an open menu** and the toast, and **holds a ringing alarm**: the Pomodoro keeps waiting, and when pairing ends the waiting screen chimes and flashes once. A phase that ends while the code shows waits the same way. A change made underneath (a call, a meeting, the Remote) shows after the pairing's own confirmation.
-- **No dead ends:** a tap, swipe, hold or BOOT cancels it ("Pairing canceled"); a PWR press cancels it and turns the screen off as usual; a flip cancels it and does what a flip always does ("Pairing canceled · Focus started"). A touch that began before the code appeared is ignored. It also ends on success ("Paired · Mac"), after 2 minutes ("Pairing timed out"), after 3 wrong codes ("Pairing canceled · wrong code"), when Wi-Fi setup starts, and at Power off or Restart.
+- **No dead ends:** a tap, swipe, hold or BOOT cancels it ("Pairing canceled"); a PWR press cancels it and turns the screen off as usual; a flip cancels it and does what a flip always does ("Pairing canceled · Focus started"). A touch that began before the code appeared is ignored. It also ends on success ("Paired · Mac"), after 2 minutes ("Pairing timed out"), after 3 wrong codes ("Pairing canceled · wrong code"), when the device that asked cancels (`pair/cancel`, "Pairing canceled"), when Wi-Fi setup starts, and at Power off or Restart.
 - **USB pairing** (section 6.6) has no code screen. If another device's code is on the bar, that code stays up and valid, `info.pairing` stays `"showing"`, and "Paired · Mac · over USB" shows once that pairing ends.
-- **Forgetting devices on the bar:** the Wi-Fi menu is Network, **Devices**, Set up again, Back. Devices reads "3 paired" ("Full" at 10) and opens a confirmation: the paired devices' names, **Forget all** (a second, deliberate tap: one in its first 600 ms is ignored), and Keep, which goes back. With nothing paired the tile stays, reads "None" and is read-only. The Remote lists each device with a Remove button (section 12). Neither affects USB.
+- **Forgetting devices on the bar:** the Wi-Fi menu is Network, **Devices**, Set up again, Back. Devices reads "3 paired" ("Full" at 10) and opens a confirmation: the paired devices' names, **Forget all** (a second, deliberate tap: one in its first 600 ms is ignored), and Keep, which goes back. With nothing paired the tile stays, reads "None" with where to pair as its foot ("pair at" over the bar's `host`, for example `tinybar.local`; "set up Wi-Fi" over "to pair" when it's offline), and is read-only. The Remote lists each device with a Remove button (section 12). Neither affects USB.
 
 ### 4.9 Rate limits
 
 - **One code at a time.** `pair/start` while a code is showing gets `409 pairing_busy`.
 - **A code lasts 2 minutes, works once, and allows 3 tries.** The third wrong code ends it.
-- **Back-off:** after **two** pairings in a row end without success (timed out, canceled on the bar, or out of tries), `pair/start` is refused for 30 seconds; each further failure doubles the wait (1, 2, 4 minutes…) up to **1 hour**. A successful pairing resets it. The first failure costs nothing, so a typo doesn't make you wait. This state is kept in memory; a restart clears it.
-- **`POST /api/v1/pair`** is limited to one request a second in total.
+- **Back-off:** after **two** pairings in a row end without success (timed out, canceled on the bar or by the device with `pair/cancel`, or out of tries), `pair/start` is refused for 30 seconds; each further failure doubles the wait (1, 2, 4 minutes…) up to **1 hour**. A successful pairing resets it. The first failure costs nothing, so a typo doesn't make you wait. This state is kept in memory; a restart clears it.
+- **`POST /api/v1/pair`** and **`POST /api/v1/pair/cancel`** are limited to one request a second in total.
 - **Why that's enough:** each guess has a 1 in 1,000,000 chance. With 3 tries per code and at most one code an hour once the back-off tops out, someone guessing gets 72 tries a day, about a 1 in 14,000 chance a day, and every code they ask for **lights up a pairing screen on your bar**, which you'd notice the same day.
 
 ### 4.10 What pairing doesn't protect against
@@ -363,7 +383,12 @@ These screens are drawn in the mock-up's pairing round and built into the firmwa
 - **Calls from your Mac turned off** on the Remote: the bar still records each Mac's state and heartbeat, so the Remote shows the Mac as connected, and turning the switch back on during a call shows the call at once. The reply is a normal `200` with `"sources": {"mac": false}` and `showing` other than `"call"`. *(The mock-up answered `403 calls_off`; see section 14.)*
 - **Screens that a call doesn't interrupt** (Wi-Fi setup, power screens, an open menu) and a **dark screen**: the bar records the call and shows it once they close or the screen is woken, as `decisions.md` says. The reply says so through `showing` and `screen`.
 - **Order:** the bar ignores a message from a `client` whose `session` matches the last one it accepted and whose `seq` is not higher. It still replies `200`, with `"stale": true` and nothing changed. A new `session` is always accepted. This stops a late Wi-Fi request from undoing a newer USB one. Messages without `session` and `seq` (scripts) are always accepted.
-- **Several Macs:** the bar keeps each Mac's state separately, by `client`, for up to 4 Macs. The bar's call is on while any Mac reports one. The app name and `via` shown are those of the call that started most recently. Set aside and Show again apply to the bar's call as a whole.
+- **Several Macs:** the bar keeps each Mac's state separately, by `client`, for up to 4 Macs. The bar's call is on while any Mac reports one. The app name and `via` shown are those of the call that started most recently. Set aside and Show again apply to the bar's call as a whole. When the 4 are taken, a Mac without a call is dropped first.
+- **Who may report for a `client`** *(2026-10-04, security review)*: a call over Wi-Fi is tied to the token it came with, so one device can't end or restart another's call.
+  - A token paired with a `client` (the Mac app's always is) reports only for that `client`.
+  - A token paired without one (a script) reports for one `client` at a time, and only one that no other paired device holds and that isn't the latest from the Mac on USB. Reporting for a new `client` drops its previous one, and that call ends.
+  - Anything else gets `403 wrong_client`, with `field` `"client"`, and changes nothing.
+  - USB needs no token: a USB message is accepted for any `client`, and that Mac's call then belongs to the cable until its token reports for it again over Wi-Fi.
 - **Links:** the app uses USB when the bar answers on it and Wi-Fi otherwise, one link at a time. Switching needs nothing special: same `client`, next `seq`. `via` follows the link of the Mac's latest message.
 - **After the bar restarts** it has forgotten every Mac (this state isn't saved). The next heartbeat brings the call back within 30 seconds, at once over USB thanks to the `ready` event (6.7), with its duration from `elapsed_s`. That's how "after a restart or power-on, the bar picks up a call that's still going" works for calls.
 - **The app name on the bar:** up to 24 characters show ("From your Mac · Slack"); a longer name is cut to 23 characters and "…". If the name has characters the bar's fonts can't draw, the bar shows "From your Mac" without it, but still reports the name in `status`.
@@ -575,7 +600,7 @@ mac → bar  @tb {"cmd": "pair", "id": 4, "client": "6F1C2A9E-5B7D-4E0A-9C3B-2D8
 bar → mac  @tb {"id": 4, "ok": true, "token": "tb1_w1rV1lN4jm2ohruSAozMZxVlcceAL7yS8r45__-ref4", "token_id": "74d8a526", "scope": "call", "device_id": "f412fa3f2a1c", "name": "TinyBar 2A1C", "host": "tinybar.local"}
 ```
 
-It can fail with `token_limit` (10 tokens already):
+It can fail with `token_limit` (10 tokens already, or 9 while another new device's code on the screen holds the tenth place, 4.3). USB keeps working without the token:
 
 ```text
 bar → mac  @tb {"id": 4, "ok": false, "error": "token_limit", "message": "TinyBar already has 10 paired devices. Remove one on the Remote.", "field": null}
@@ -768,6 +793,8 @@ The reply is the full status object (7.3) with `"own": {"status": "message", …
 {"ok": false, "error": "unsupported_chars", "message": "TinyBar can't show some of these characters.", "field": "text", "chars": ["🍕"]}
 ```
 
+The Remote runs the same check as you type (decisions.md, Remote) and names the characters before anything is sent: "TinyBar can't show 🍕. Remove it to show this message." A character with no ink of its own that the mapping in 2.3 doesn't cover can't be quoted, so the Remote names it by where it is: "a hidden character after "Busy"" (**Proposed**, 2026-10-04).
+
 ### 8.3 `POST /api/v1/aside`: set aside, or Show again
 
 The Remote's banner button ("Set aside" / "Show again") and its Show again button.
@@ -940,12 +967,12 @@ All scope `full`. The secret address is **write-only**: once saved, no screen, p
 | Field | Meaning |
 |---|---|
 | `saved` | An address is saved. When `false`, `address`, `last_sync`, `today` and `left_today` are `null`. |
-| `address` | The masked form the Remote shows ("calendar.google.com/…/basic.ics · ending 3f2a"): the host, the file name, and the last four characters of the private token in the path. Never the full address. |
+| `address` | The masked form the Remote shows ("calendar.google.com/…/basic.ics · ending 3f2a"): the host, the file name, and the last four characters of the private token in the path. Never the full address. *(2026-10-04, security review:)* some feeds use the private token as the file name (".../8c1d5e2a…3f2a.ics"). When the file name is long or looks random, `file` is just `"….ics"` and `ending` comes from it, so the token never shows. Short word-like names ("basic.ics", "calendar.ics", "team-standup.ics") still show. |
 | `last_sync`, `syncing` | The last successful sync, and whether one is running. |
 | `error` | The last sync's problem, or `null`: `{"error": code, "message": text, "at": time}` with a code from the table in 11.2. While it's set, the bar keeps following the last good copy. |
 | `check` | The result of the last `PUT` (11.2): `null`, or `{"state": "checking" \| "saved" \| "failed", "error": code or null, "message": text or null}`. Kept for 10 minutes. |
-| `today` | Today's meetings that count (timed, shown as busy, not declined; `decisions.md`), still to come or in progress, in order. `title` and `location` follow Show meeting titles and Private, as in 7.3. |
-| `left_today` | How many there are. |
+| `today` | Today's meetings that count (timed, shown as busy, not declined; `decisions.md`), still to come or in progress, in order. `title` and `location` follow Show meeting titles and Private, as in 7.3. *(2026-10-04, security review:)* the list stops before the reply would pass 8,192 bytes (2.5). Usually every meeting fits; on a very busy day with long titles shown, it holds the earliest ones (about 24 at the longest titles). |
+| `left_today` | How many there are, always all of them, so a `today` shorter than `left_today` was cut. |
 
 ### 11.2 `PUT /api/v1/calendar`: add or replace the address
 
@@ -1042,7 +1069,7 @@ Scope `full`. The Remote's "Paired devices" list.
 
 ### 12.2 `DELETE /api/v1/clients/{token_id}`
 
-Scope `full`. Revokes that token at once: its next request gets `401`. Any call reported over Wi-Fi by that device ends too. The bar toasts "Removed" and the device's name ("Removed Mac").
+Scope `full`. Revokes that token at once: its next request gets `401`. Any call reported over Wi-Fi with that token ends too, whatever `client` it named, and so does a Wi-Fi call from the `client` it was paired with. A call that Mac reports over USB carries on. The bar toasts "Removed" and the device's name ("Removed Mac").
 
 ```json
 {"ok": true, "revoked": "74d8a526"}
@@ -1066,7 +1093,7 @@ Forgetting all devices is on the bar only (the Devices tile, 4.8), so no single 
 
 While the bar shows its Wi-Fi setup screens, it runs its own network, **`TinyBar-Setup`**, and the setup page at `http://192.168.4.1/`. These endpoints exist **only then**, need no token, and are gone once the bar joins the office Wi-Fi. On the setup network the bar serves only them and `info`.
 
-Over USB the whole API keeps working during setup: calls are recorded and show once setup closes, as `decisions.md` says. Picking a status, a message, a Pomodoro action and set aside or Show again (sections 8 and 9) answer `409 in_setup` meanwhile, as the bar's own controls do ("Finish setup, or hold to skip"); so do `pair/start` and `pair`. The USB `pair` command still works.
+Over USB the whole API keeps working during setup: calls are recorded and show once setup closes, as `decisions.md` says. Picking a status, a message, a Pomodoro action and set aside or Show again (sections 8 and 9) answer `409 in_setup` meanwhile, as the bar's own controls do ("Finish setup, or hold to skip"); so do `pair/start` and `pair` (`pair/cancel` answers `409 not_pairing`, since starting setup ends any pairing). The USB `pair` command still works.
 
 *Open, not proposed here:* whether `TinyBar-Setup` has a password. The QR code can carry one (`WIFI:T:WPA;S:TinyBar-Setup;P:…;;`), which would keep passers-by off the setup page.
 
@@ -1092,8 +1119,8 @@ The networks the bar can see, strongest first.
 
 | Field | Type | Required | Meaning |
 |---|---|---|---|
-| `ssid` | string | yes | |
-| `password` | string | for `password` and `work_login` | |
+| `ssid` | string | yes | 1 to 32 bytes, with no control characters (a line break, say): `400 bad_value` otherwise. |
+| `password` | string | for `password` and `work_login` | For a `password` network, 8 to 63 characters, or the key itself as 64 hex digits (WPA2 accepts both). |
 | `username` | string | for `work_login` | |
 | `calendar_url` | string | no | The secret iCal address, checked as in 11.2 once connected. A failure shows "Calendar address didn't work · add it on the Remote" on the bar, and nothing is saved. |
 | `time_zone` | IANA name | no | The page sends the phone's (`Intl.DateTimeFormat().resolvedOptions().timeZone`). |
@@ -1219,6 +1246,7 @@ The mock-up's "How the Mac app talks to TinyBar" and `decisions.md` need these b
 | `GET /api/v1/info` | none | `hello` | 7.1 |
 | `POST /api/v1/pair/start` | none | `request` (pointless: use `pair`) | 4.6 |
 | `POST /api/v1/pair` | none | `request` (likewise) | 4.7 |
+| `POST /api/v1/pair/cancel` (**Proposed**) | none | `request` (likewise) | 4.7 |
 | — | — | `pair` (**Proposed**) | 6.6 |
 | `GET /api/v1/status` | `call`, `full` | `status` | 7.3 |
 | `POST /api/v1/call` | `call`, `full` | `call` | 5 |
@@ -1239,7 +1267,7 @@ The mock-up's "How the Mac app talks to TinyBar" and `decisions.md` need these b
 | `POST /api/v1/setup/wifi` | none, setup network only | `request` | 13.2 |
 | `GET /api/v1/setup/state` | none, setup network only | `request` | 13.3 |
 
-A method a path doesn't support gets `405 method_not_allowed` with an `Allow` header; an unknown path under `/api/v1/` gets `404 not_found`.
+A method a path doesn't support gets `405 method_not_allowed` with an `Allow` header, `OPTIONS` and `HEAD` included (a reply to `HEAD` has no body); an unknown path under `/api/v1/` gets `404 not_found`.
 
 ## Appendix B: error codes
 
@@ -1254,11 +1282,12 @@ A method a path doesn't support gets `405 method_not_allowed` with an `Allow` he
 | 403 | `wrong_scope` | The token's scope doesn't allow this endpoint. |
 | 403 | `bad_origin` | A cookie-authenticated request from another origin. |
 | 403 | `wrong_code` | Pairing code doesn't match; `attempts_left`. |
+| 403 | `wrong_client` | A call's `client` isn't one this token may report for (5.2). |
 | 404 | `not_found` | Unknown path or `token_id`. |
 | 405 | `method_not_allowed` | See the `Allow` header. |
 | 409 | `pairing_busy` | Another code is on screen; `retry_after_s`. |
 | 409 | `not_pairing` | No pairing in progress for that `pairing_id`. |
-| 409 | `token_limit` | 10 tokens already. |
+| 409 | `token_limit` | 10 tokens already, counting a code on the screen (4.3). |
 | 409 | `in_setup` | The bar is on its Wi-Fi setup screens. |
 | 409 | `no_message` | No message was ever set. |
 | 409 | `nothing_to_set_aside`, `nothing_set_aside` | 8.3. |

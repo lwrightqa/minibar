@@ -20,6 +20,12 @@
 #include "tb_fmt.h"
 #include "tb_text.h"
 
+/* cJSON's own nesting limit (1000 by default) must be the build's (CMakeLists.txt sets it for every component, the
+ * json one included; test/host/CMakeLists.txt for the host build): a 1000-level parse or cJSON_Delete would run the
+ * app task's 12 KB stack out. net_json_depth_ok() checks the same limit before cJSON sees a request. */
+_Static_assert(CJSON_NESTING_LIMIT == NET_JSON_DEPTH_MAX,
+               "CJSON_NESTING_LIMIT must be NET_JSON_DEPTH_MAX for the whole build (CMakeLists.txt)");
+
 static tb_app_t *s_app;
 static net_macs_t s_macs;
 static net_pair_t s_pair;
@@ -137,6 +143,15 @@ static void add_time(cJSON *o, const char *k, tb_epoch_t t)
 static void add_now(rt_t *r, cJSON *o, const char *k)
 {
     add_time(o, k, r->now.valid ? r->now.wall : 0);
+}
+
+/* How many bytes j takes as the reply prints it (0 if out of memory, which the reply's own print then reports). */
+static size_t printed_len(const cJSON *j)
+{
+    char *s = cJSON_PrintUnformatted(j);
+    size_t n = s ? strlen(s) : 0;
+    cJSON_free(s);
+    return n;
 }
 
 /* Remove what a handler added after the prefix (before an error replaces it). */
@@ -693,15 +708,30 @@ static void add_calendar(rt_t *r, int status, int max_today)
         cJSON_AddNullToObject(c, "check");
     }
     if (cs.saved) {
-        /* today's meetings that count, still to come or in progress, in order (the list is sorted by start) */
+        /* Today's meetings that count, still to come or in progress, in order (the list is sorted by start). The
+         * reply stays within NET_REPLY_MAX (api.md 2.5): with long titles and locations shown, 32 meetings can pass
+         * 8 KB, so the list stops at the first one that wouldn't fit. left_today still counts them all, so a shorter
+         * today says the list was cut (api.md 11.1). */
         cJSON *t = cJSON_AddArrayToObject(c, "today");
         int n = 0;
+        size_t used = printed_len(r->o) + 24;      /* everything so far, plus "left_today" and its number */
+        bool full = false;
         if (r->now.valid) {
             tb_epoch_t mid = tb_local_midnight(r->now.wall), next = tb_local_midnight(mid + 26 * 3600);
             for (int i = 0; i < s_app->n_meetings; i++) {
                 const tb_meeting_t *m = &s_app->meetings[i];
                 if (m->end <= r->now.wall || m->start < mid || m->start >= next) continue;
-                if (n < max_today) cJSON_AddItemToArray(t, meeting_obj(m));
+                if (n < max_today && !full) {
+                    cJSON *mo = meeting_obj(m);
+                    size_t add = printed_len(mo) + 1;      /* and its comma */
+                    full = used + add > NET_REPLY_MAX;
+                    if (full) {
+                        cJSON_Delete(mo);
+                    } else {
+                        cJSON_AddItemToArray(t, mo);
+                        used += add;
+                    }
+                }
                 n++;
             }
         }
@@ -842,11 +872,27 @@ static void h_call(rt_t *r, cJSON *b)
     f = get_bool(b, "leaving", &m.leaving);
     if (f == F_TYPE) { bad_request(r, "leaving", "\"leaving\" must be true or false."); return; }
     if (m.leaving && m.active) { bad_value(r, "leaving", "\"leaving\" needs \"active\": false."); return; }
-    /* A Mac that paired over Wi-Fi is labeled with its pairing's name until a hello names it. */
-    if (r->tok && r->tok->kind == NET_KIND_MAC && !strcmp(r->tok->client, m.client)) m.name = r->tok->name;
+    /* Who may report for this client (api.md 5.1): a token paired with a client ID, only for that client; a token
+     * paired without one, only for a Mac no other device holds, one Mac at a time. So no token can end or restart
+     * another device's call (the Mac on USB's included). USB needs no token: the cable is the proof. */
+    bool released = false;
+    if (r->tok) {
+        const net_token_t *t = r->tok;
+        bool mine = t->client[0] ? !strcmp(t->client, m.client)
+                                 : !net_pair_find_client(&s_pair, m.client) &&
+                                       net_macs_may_report(&s_macs, m.client, t->token_id);
+        if (!mine) {
+            fail(r, 403, "wrong_client", "This device's token can't report calls for that client.", "client");
+            return;
+        }
+        m.token_id = t->token_id;
+        if (!t->client[0]) released = net_macs_release_token(&s_macs, t->token_id, m.client);
+        /* A Mac that paired over Wi-Fi is labeled with its pairing's name until a hello names it. */
+        if (t->kind == NET_KIND_MAC && t->client[0]) m.name = t->name;
+    }
 
     bool fresh = net_macs_on_call(&s_macs, &m, &r->now);
-    if (fresh) push_macs(NULL, &r->now);
+    if (fresh || released) push_macs(NULL, &r->now);
     add_call_reply(r, !fresh);
 }
 
@@ -1282,7 +1328,8 @@ static void h_clients(rt_t *r, cJSON *b)
     }
 }
 
-/* Revoke one token: its next request gets 401, and a call its device reported over Wi-Fi ends (api.md 12.2). */
+/* Revoke one token: its next request gets 401, and a call it reported over Wi-Fi ends (api.md 12.2), whatever
+ * client it named. A call its Mac reports over USB carries on. */
 static void revoke(rt_t *r, const net_token_t *t)
 {
     char id[9], name[TB_CLIENT_NAME_BYTES], client[65];
@@ -1292,7 +1339,7 @@ static void revoke(rt_t *r, const net_token_t *t)
     net_pair_revoke(&s_pair, id);
     if (r->tok == t) r->tok = NULL;
     paired_changed();
-    if (net_macs_forget_wifi(&s_macs, client)) push_macs(NULL, &r->now);
+    if (net_macs_forget_token(&s_macs, id, client)) push_macs(NULL, &r->now);
     char toast[TB_TOAST_BYTES];
     snprintf(toast, sizeof toast, "Removed %s", name);
     tb_app_notify(s_app, toast, &r->now);
@@ -1341,6 +1388,25 @@ static void h_setup_networks(rt_t *r, cJSON *b)
     }
 }
 
+/* C0 controls, DEL, and C1 controls (U+0080 to U+009F as UTF-8). */
+static bool has_control_chars(const char *s)
+{
+    for (const unsigned char *p = (const unsigned char *)s; *p; p++)
+        if (*p < 0x20 || *p == 0x7F || (*p == 0xC2 && p[1] >= 0x80 && p[1] <= 0x9F)) return true;
+    return false;
+}
+
+static bool wpa_password_ok(const char *p)
+{
+    size_t n = strlen(p);
+    if (n >= 8 && n <= 63) return true;
+    if (n != 64) return false;
+    for (size_t i = 0; i < n; i++)
+        if (!((p[i] >= '0' && p[i] <= '9') || (p[i] >= 'a' && p[i] <= 'f') || (p[i] >= 'A' && p[i] <= 'F')))
+            return false;
+    return true;
+}
+
 static void h_setup_wifi(rt_t *r, cJSON *b)
 {
     if (!need_body(r, b)) return;
@@ -1354,6 +1420,12 @@ static void h_setup_wifi(rt_t *r, cJSON *b)
         return;
     }
     if (!ssid[0] || strlen(ssid) > 32) { bad_value(r, "ssid", "\"ssid\" must be 1 to 32 bytes."); return; }
+    /* The bar logs and shows the network's name: a line break or other control character could fake a protocol
+     * line on the USB port or garble the screen. */
+    if (has_control_chars(ssid)) {
+        bad_value(r, "ssid", "TinyBar can't join a network whose name has control characters, such as a line break.");
+        return;
+    }
     if (get_str(b, "password", &pass) == F_TYPE) {
         bad_request(r, "password", "\"password\" must be a string.");
         return;
@@ -1383,8 +1455,9 @@ static void h_setup_wifi(rt_t *r, cJSON *b)
         return;
     }
     if (sec != NET_SEC_OPEN && !pass) { bad_request(r, "password", "This network needs a password."); return; }
-    if (sec == NET_SEC_PASSWORD && (strlen(pass) < 8 || strlen(pass) > 64))
-        { bad_value(r, "password", "Wi-Fi passwords are 8 to 63 characters."); return; }
+    /* WPA2 and WPA3 Personal: a passphrase of 8 to 63 characters, or the key itself as 64 hex digits */
+    if (sec == NET_SEC_PASSWORD && !wpa_password_ok(pass))
+        { bad_value(r, "password", "Wi-Fi passwords are 8 to 63 characters, or 64 hex digits."); return; }
     if (sec == NET_SEC_WORK_LOGIN && (strlen(pass) > 128 || strlen(user) > 128))
         {
            bad_value(r, user && strlen(user) > 128 ? "username" : "password", "That's longer than TinyBar can send.");
@@ -1546,7 +1619,8 @@ static const route_t *find_route(rt_t *r, const char *method, const char *raw_pa
             r->resp->www_authenticate = true;
             return NULL;
         }
-        if (r->from_cookie && r->req->origin && !origin_ok(r->req->origin)) {
+        /* An Origin that came but couldn't be read is another origin, never "none" (it would fail open). */
+        if (r->from_cookie && (r->req->origin_unreadable || (r->req->origin && !origin_ok(r->req->origin)))) {
             fail(r, 403, "bad_origin", "That page isn't allowed to use this TinyBar.", NULL);
             return NULL;
         }
@@ -1643,9 +1717,11 @@ void net_api_handle(const net_req_t *req, net_resp_t *resp)
                 return finish(&r);
             }
             const char *end = NULL;
-            /* cJSON skips a byte-order mark; api.md 2.2 says a body has none */
+            /* cJSON skips a byte-order mark; api.md 2.2 says a body has none. Nothing deeper than
+             * NET_JSON_DEPTH_MAX reaches cJSON, which recurses on this task's stack. */
             bool bom = req->body_len >= 3 && !memcmp(req->body, "\xEF\xBB\xBF", 3);
-            body = bom ? NULL : cJSON_ParseWithLengthOpts(req->body, req->body_len, &end, false);
+            bool shallow = net_json_depth_ok(req->body, req->body_len, NET_JSON_DEPTH_MAX);
+            body = bom || !shallow ? NULL : cJSON_ParseWithLengthOpts(req->body, req->body_len, &end, false);
             bool trailing = false;
             if (body && end)
                 for (const char *c = end; c < req->body + req->body_len; c++)
@@ -1780,8 +1856,9 @@ bool net_api_usb_line(const char *line, size_t len, bool too_long, char *out, si
     cJSON *j = NULL;
     if (too_long) {
         fail(&r, 413, "too_large", "Lines can be up to 2048 bytes.", NULL);
-    } else if ((len >= 7 && !memcmp(line + 4, "\xEF\xBB\xBF", 3)) || !(j = cJSON_ParseWithLength(line + 4, len - 4)) ||
-               !cJSON_IsObject(j)) {
+    } else if ((len >= 7 && !memcmp(line + 4, "\xEF\xBB\xBF", 3)) ||
+               !net_json_depth_ok(line + 4, len - 4, NET_JSON_DEPTH_MAX) ||
+               !(j = cJSON_ParseWithLength(line + 4, len - 4)) || !cJSON_IsObject(j)) {
         fail(&r, 400, "bad_json", "That line isn't a JSON object.", NULL);
     } else {
         int64_t v;
@@ -1838,7 +1915,8 @@ void net_api_forget_devices(const tb_clock_t *now)
      * mock-up's lead: "Forgot 3 devices · back to Busy". */
     int n = net_pair_count(&s_pair);
     for (int i = 0; i < NET_TOKENS_MAX; i++)
-        if (s_pair.tokens[i].used) net_macs_forget_wifi(&s_macs, s_pair.tokens[i].client);
+        if (s_pair.tokens[i].used) net_macs_forget_token(&s_macs, s_pair.tokens[i].token_id, s_pair.tokens[i].client);
+    net_macs_forget_token(&s_macs, NULL, NULL);     /* and any Wi-Fi call that came with a token at all */
     net_pair_forget_all(&s_pair);
     paired_changed();
     char lead[40];

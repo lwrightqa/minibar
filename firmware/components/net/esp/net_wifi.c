@@ -114,6 +114,15 @@ static int64_t s_last_ntp_ms = -1;
 #define LOCK() xSemaphoreTake(s_lock, portMAX_DELAY)
 #define UNLOCK() xSemaphoreGive(s_lock)
 
+/* The setup page's calendar address is a secret: zeroed before it's freed. The caller holds s_lock. */
+static void drop_pending_cal_locked(void)
+{
+    if (!s_pending_cal) return;
+    memset(s_pending_cal, 0, strlen(s_pending_cal));
+    free(s_pending_cal);
+    s_pending_cal = NULL;
+}
+
 static void job(job_t j)
 {
     if (s_jobs) xQueueSend(s_jobs, &j, 0);
@@ -250,8 +259,7 @@ static void join_failed(net_join_err_t e)
     s_js.message = net_join_err_message(e);
     tb_strlcpy(ssid, s_join.ssid, sizeof ssid);
     memset(s_join.pass, 0, sizeof s_join.pass);
-    free(s_pending_cal);
-    s_pending_cal = NULL;
+    drop_pending_cal_locked();
     UNLOCK();
     esp_timer_stop(s_join_timer);
     esp_timer_stop(s_addr_timer);
@@ -714,8 +722,7 @@ void net_wifi_setup_begin(void)
     s_mode = M_SETUP;
     s_joining = false;
     memset(&s_js, 0, sizeof s_js);
-    free(s_pending_cal);
-    s_pending_cal = NULL;
+    drop_pending_cal_locked();
     bool ap_up = s_ap_up;
     s_ap_up = true;
     UNLOCK();
@@ -756,8 +763,7 @@ void net_wifi_setup_skip(void)
     s_joining = false;
     s_sta_up = false;
     s_ap_up = false;
-    free(s_pending_cal);
-    s_pending_cal = NULL;
+    drop_pending_cal_locked();
     UNLOCK();
     esp_timer_stop(s_linger_timer);
     esp_timer_stop(s_join_timer);
@@ -846,7 +852,7 @@ bool net_port_setup_join(const char *ssid, const char *username, const char *pas
     s_sta_up = false;
     memset(&s_js, 0, sizeof s_js);
     s_js.state = NET_JOIN_CONNECTING;
-    free(s_pending_cal);
+    drop_pending_cal_locked();
     s_pending_cal = cal;
     s_scanning = false;
     UNLOCK();

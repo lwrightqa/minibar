@@ -192,6 +192,7 @@ bool cal_rrule_parse(const char *value, cal_rrule_t *out)
 typedef struct {
     int32_t d[SET_MAX];
     int n;
+    int examined;       /* days looked at for this period (what the step budget is charged) */
 } dayset_t;
 
 static int wd_of(int32_t day)
@@ -239,6 +240,7 @@ static void month_days(const cal_rrule_t *r, int y, int m, int dt_day, dayset_t 
 {
     int dim = cal_days_in_month(y, m);
     int32_t first = cal_days_from_civil(y, m, 1);
+    s->examined += r->n_bymonthday || r->n_byday ? dim : 1;
     if (r->n_bymonthday || r->n_byday) {
         for (int d = 1; d <= dim; d++)
             if (monthday_ok(r, d, dim) && byday_ok(r, wd_of(first + d - 1), d, dim)) add(s, first + d - 1);
@@ -257,10 +259,12 @@ static void year_days(const cal_rrule_t *r, int y, int dt_month, int dt_day, day
     } else if (r->n_byday) {
         int len = cal_is_leap(y) ? 366 : 365;
         int32_t first = cal_days_from_civil(y, 1, 1);
+        s->examined += len;
         for (int i = 1; i <= len; i++)
             if (byday_ok(r, wd_of(first + i - 1), i, len)) add(s, first + i - 1);
-    } else if (dt_day <= cal_days_in_month(y, dt_month)) {
-        add(s, cal_days_from_civil(y, dt_month, dt_day));
+    } else {
+        s->examined += 1;
+        if (dt_day <= cal_days_in_month(y, dt_month)) add(s, cal_days_from_civil(y, dt_month, dt_day));
     }
 }
 
@@ -324,6 +328,13 @@ static int32_t floor_div32(int64_t a, int64_t b)
 int cal_rrule_expand(const cal_rrule_t *r, const cal_civil_t *dtstart, const cal_tz_t *tz, int32_t duration_s,
                      tb_epoch_t window_start, tb_epoch_t window_end, uint32_t *steps, cal_occ_fn fn, void *ctx)
 {
+    return cal_rrule_expand_ex(r, dtstart, tz, duration_s, window_start, window_end, steps, NULL, NULL, fn, ctx);
+}
+
+int cal_rrule_expand_ex(const cal_rrule_t *r, const cal_civil_t *dtstart, const cal_tz_t *tz, int32_t duration_s,
+                        tb_epoch_t window_start, tb_epoch_t window_end, uint32_t *steps, cal_tick_fn tick,
+                        void *tick_ctx, cal_occ_fn fn, void *ctx)
+{
     if (!r || !dtstart || !tz || !fn || r->freq == CAL_FREQ_NONE || !cal_civil_valid(dtstart)) return 0;
     walk_t w = {.r = r, .tz = tz, .dur = duration_s > 0 ? duration_s : 0, .ws = window_start, .we = window_end,
                 .fn = fn, .ctx = ctx};
@@ -361,17 +372,17 @@ int cal_rrule_expand(const cal_rrule_t *r, const cal_civil_t *dtstart, const cal
     if (!skip_first && !emit(&w, dtstart)) return w.passed;
 
     dayset_t set;
+    uint32_t since_tick = 0;
     for (;; k++) {
-        if (steps) {
-            if (!*steps) return -1;
-            (*steps)--;
-        }
+        if (steps && !*steps) return -1;
         set.n = 0;
+        set.examined = 0;
         int32_t period_first;
         switch (r->freq) {
         case CAL_FREQ_DAILY: {
             int32_t day = d0 + (int32_t)(k * interval);
             period_first = day;
+            set.examined = 1;
             int y, m, d;
             cal_civil_from_days(day, &y, &m, &d);
             if (month_ok(r, m) && monthday_ok(r, d, cal_days_in_month(y, m)) && byday_ok(r, wd_of(day), 1, 1))
@@ -381,6 +392,7 @@ int cal_rrule_expand(const cal_rrule_t *r, const cal_civil_t *dtstart, const cal
         case CAL_FREQ_WEEKLY: {
             int32_t ws = w0 + (int32_t)(k * 7 * interval);
             period_first = ws;
+            set.examined = 7;
             for (int i = 0; i < 7; i++) {
                 int32_t day = ws + i;
                 int wd = wd_of(day);
@@ -409,6 +421,15 @@ int cal_rrule_expand(const cal_rrule_t *r, const cal_civil_t *dtstart, const cal
         }
         default:
             return w.passed;
+        }
+        /* The budget is charged by the days looked at, so a YEARLY rule with BYDAY (a whole year a period) can't
+         * run 366 times longer than a DAILY one on the same budget. */
+        uint32_t cost = set.examined > 0 ? (uint32_t)set.examined : 1;
+        if (steps) *steps -= cost < *steps ? cost : *steps;
+        since_tick += cost;
+        if (tick && since_tick >= CAL_TICK_DAYS) {
+            since_tick = 0;
+            tick(tick_ctx);
         }
         if (period_first > last_day) return w.passed;
         apply_setpos(r, &set);

@@ -111,6 +111,9 @@ struct cal_feed {
     tz_cache_t tzc[4];
     int tzc_n, tzc_next;
     uint32_t steps_left;
+    cal_tick_fn tick;               /* cal_feed_set_tick: the device's chance to yield */
+    void *tick_ctx;
+    uint32_t since_tick;            /* bytes taken since the last tick */
 
     /* results */
     cand_t cand[CAL_CANDIDATES_MAX];
@@ -689,8 +692,8 @@ static void finish_event(cal_feed_t *f)
             uint32_t budget = f->steps_left < CAL_RRULE_STEPS_EVENT ? f->steps_left : CAL_RRULE_STEPS_EVENT;
             uint32_t steps = budget;
             occ_ctx_t ctx = {.f = f, .dur = dur};
-            int r = cal_rrule_expand(&e->rrule, &e->start.c, &e->start.tz, dur, f->ws, f->we, &steps, on_occurrence,
-                                     &ctx);
+            int r = cal_rrule_expand_ex(&e->rrule, &e->start.c, &e->start.tz, dur, f->ws, f->we, &steps, f->tick,
+                                        f->tick_ctx, on_occurrence, &ctx);
             f->steps_left -= budget - steps;
             if (r < 0) f->stats.rrule_budget_hit++;
             return;
@@ -877,6 +880,13 @@ void cal_feed_free(cal_feed_t *f)
     free(f);
 }
 
+void cal_feed_set_tick(cal_feed_t *f, cal_tick_fn tick, void *ctx)
+{
+    if (!f) return;
+    f->tick = tick;
+    f->tick_ctx = ctx;
+}
+
 cal_err_t cal_feed_write(cal_feed_t *f, const char *data, size_t len)
 {
     if (!f) return CAL_ERR_NO_MEMORY;
@@ -885,6 +895,10 @@ cal_err_t cal_feed_write(cal_feed_t *f, const char *data, size_t len)
     for (size_t i = 0; i < len; i++) {
         char c = data[i];
         f->stats.bytes++;
+        if (f->tick && ++f->since_tick >= CAL_TICK_BYTES) {
+            f->since_tick = 0;
+            f->tick(f->tick_ctx);
+        }
         if (!f->seen_vcalendar && f->stats.bytes > NOT_CAL_AFTER) {
             f->not_cal = true;
             return CAL_ERR_NOT_A_CALENDAR;

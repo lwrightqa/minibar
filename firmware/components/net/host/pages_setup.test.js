@@ -36,7 +36,7 @@ const check = (c, what) => { if (!c) { fails++; console.log('FAIL', what); } els
   await p.fill('#wPass', 'short');
   await p.click('#wConnect');
   await sleep(300);
-  check((await p.textContent('#setupMsg')) === 'Wi-Fi passwords are 8 to 63 characters.', 'short password refused: ' + await p.textContent('#setupMsg'));
+  check((await p.textContent('#setupMsg')) === 'Wi-Fi passwords are 8 to 63 characters, or 64 hex digits.', 'short password refused: ' + await p.textContent('#setupMsg'));
   await p.fill('#wCal', 'https://calendar.google.com/calendar/ical/x/public/basic.ics');
   await p.click('#wConnect');
   check((await p.textContent('#wCalErr')).includes("public address"), 'public calendar address flagged at the field');

@@ -97,6 +97,26 @@ void net_lines_feed(net_lines_t *l, const uint8_t *data, size_t n, net_line_cb c
 /* The text of an IPv4 address in network byte order ("10.0.4.42"). */
 char *net_ip_str(uint32_t ip, char out[16]);
 
+/* ---------- JSON nesting ---------- */
+/* How deep objects and arrays may nest in a request (an HTTP body or a USB line). The deepest real request is 3
+ * levels (a USB request, its body, a settings section). cJSON recurses once per level on the app task's 12 KB stack
+ * (about 64 bytes each on the S3), and so does cJSON_Delete, so a hostile body mustn't go deep. The same limit is
+ * CJSON_NESTING_LIMIT inside cJSON, set for the whole build (CMakeLists.txt, test/host/CMakeLists.txt). */
+#define NET_JSON_DEPTH_MAX 16
+/* Whether the JSON text s[0..n) nests objects and arrays at most max deep. Brackets inside strings don't count;
+ * nothing else is checked (cJSON does that). The router runs it before cJSON. */
+bool net_json_depth_ok(const char *s, size_t n, int max);
+
+/* ---------- the port's log output (api.md 6.4) ---------- */
+/* Where the log output is in its current line: at its start, inside the ANSI color codes at its start (which the
+ * Mac app strips before it looks for the marker), or past them. */
+typedef enum { NET_LOG_LINE_START = 0, NET_LOG_ESC, NET_LOG_CSI, NET_LOG_MID } net_log_state_t;
+/* A log line never starts with the "@tb " marker, whatever it prints (an SSID with a line break in it, say), so log
+ * output can't pass for a protocol line. Scans buf from *st and returns how many bytes can go out as they are. If
+ * that's less than len, buf[ret] is an '@' that would start a line (after any color codes): write a space, set *st
+ * to NET_LOG_MID, and go on from buf[ret]. *st is the state after the bytes counted. */
+size_t net_log_scan(net_log_state_t *st, const char *buf, size_t len);
+
 #ifdef __cplusplus
 }
 #endif

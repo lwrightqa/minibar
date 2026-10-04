@@ -11,14 +11,22 @@
  *   captive-portal check opens the setup page (ARCHITECTURE.md 10).
  * esp_http_server runs every handler in one task, so handlers stay short; slow work answers 202 (the router's job).
  * Seven sockets at most, the least recently used one is closed for a new client (lru_purge_enable).
+ *
+ * One client mustn't hold that task: every request has REQ_DEADLINE_US from its first byte to read its headers and
+ * body (a receive override on each socket, so it covers esp_http_server's own header parsing too); a request that
+ * runs over gets 408 from the server, or is dropped, and its socket closes. A body that isn't read (over 2 KB, or on
+ * a page request) closes the socket after the reply, rather than being drained.
  */
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <sys/time.h>
 
 #include "esp_heap_caps.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "lwip/sockets.h"
 #include "sdkconfig.h"
 
@@ -28,6 +36,8 @@
 #include "tb_bus.h"
 
 static const char *TAG = "net.http";
+
+#define REQ_DEADLINE_US (3 * 1000 * 1000LL)     /* a request's headers and body, from its first byte */
 
 extern const uint8_t remote_html_gz_start[] asm("_binary_remote_html_gz_start");
 extern const uint8_t remote_html_gz_end[] asm("_binary_remote_html_gz_end");
@@ -91,17 +101,81 @@ static uint32_t setup_ip(void)
     return ip;
 }
 
-/* A request header as a heap string, or NULL. */
-static char *header(httpd_req_t *r, const char *name, size_t max)
+/* A request header as a heap string, or NULL. *unreadable (optional) tells "absent" (false) from "it came, but is
+ * over max bytes or there was no memory for it" (true): for Origin, the second must never pass as the first. */
+static char *header_ex(httpd_req_t *r, const char *name, size_t max, bool *unreadable)
 {
+    if (unreadable) *unreadable = false;
     size_t n = httpd_req_get_hdr_value_len(r, name);
-    if (!n || n > max) return NULL;
-    char *s = malloc(n + 1);
+    if (!n) {
+        /* 0 is both "absent" and "present but empty": the value accessor tells them apart */
+        char c;
+        if (httpd_req_get_hdr_value_str(r, name, &c, 1) != ESP_OK) return NULL;
+        char *e = calloc(1, 1);
+        if (!e && unreadable) *unreadable = true;
+        return e;
+    }
+    char *s = n <= max ? malloc(n + 1) : NULL;
     if (s && httpd_req_get_hdr_value_str(r, name, s, n + 1) != ESP_OK) {
         free(s);
         s = NULL;
     }
+    if (!s && unreadable) *unreadable = true;
     return s;
+}
+
+static char *header(httpd_req_t *r, const char *name, size_t max)
+{
+    return header_ex(r, name, max, NULL);
+}
+
+/* ---------- the per-request deadline ---------- */
+
+typedef struct {
+    int64_t deadline;       /* esp_timer µs; 0 = no request in progress on this socket */
+} sess_t;
+
+/* Every read of a request (esp_http_server's header parsing, httpd_req_recv) goes through here: the first one starts
+ * the request's deadline, and each waits at most what's left of it. */
+static int recv_with_deadline(httpd_handle_t hd, int fd, char *buf, size_t len, int flags)
+{
+    if (!buf) return HTTPD_SOCK_ERR_INVALID;
+    sess_t *s = httpd_sess_get_ctx(hd, fd);
+    if (s) {
+        int64_t now = esp_timer_get_time();
+        if (!s->deadline) s->deadline = now + REQ_DEADLINE_US;
+        int64_t left_ms = (s->deadline - now + 999) / 1000;
+        if (left_ms <= 0) return HTTPD_SOCK_ERR_TIMEOUT;
+        /* lwIP reads a time-out of 0 as "wait forever", so at least 1 ms */
+        struct timeval tv = {.tv_sec = (time_t)(left_ms / 1000), .tv_usec = (suseconds_t)(left_ms % 1000) * 1000};
+        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
+    }
+    int n = recv(fd, buf, len, flags);
+    if (n < 0) return errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR ? HTTPD_SOCK_ERR_TIMEOUT : HTTPD_SOCK_ERR_FAIL;
+    return n;
+}
+
+static esp_err_t on_open(httpd_handle_t hd, int fd)
+{
+    sess_t *s = calloc(1, sizeof *s);
+    if (!s) return ESP_ERR_NO_MEM;      /* refused: the server closes it */
+    httpd_sess_set_ctx(hd, fd, s, free);
+    return httpd_sess_set_recv_override(hd, fd, recv_with_deadline);
+}
+
+/* The request was answered: the socket's next request gets a deadline of its own. */
+static void request_done(httpd_req_t *r)
+{
+    sess_t *s = r->sess_ctx;
+    if (s) s->deadline = 0;
+}
+
+/* After the reply to a request whose body wasn't read: ESP_FAIL makes the server close the socket instead of
+ * draining what's left (a 413's gigabyte, say) on its one task. */
+static esp_err_t close_after(httpd_req_t *r)
+{
+    request_done(r);
+    return ESP_FAIL;
 }
 
 static bool is_json_type(const char *ct)
@@ -126,6 +200,8 @@ static void api_job(void *ctx)
     net_api_handle(j->req, j->resp);
 }
 
+/* Every method reaches the router, which answers the ones a path doesn't take with the JSON 405 and Allow
+ * (api.md Appendix A). */
 static const char *method_name(int m)
 {
     switch (m) {
@@ -134,7 +210,9 @@ static const char *method_name(int m)
     case HTTP_PUT: return "PUT";
     case HTTP_PATCH: return "PATCH";
     case HTTP_DELETE: return "DELETE";
-    default: return "OPTIONS";
+    case HTTP_HEAD: return "HEAD";
+    case HTTP_OPTIONS: return "OPTIONS";
+    default: return m >= 0 ? http_method_str((enum http_method)m) : "UNKNOWN";
     }
 }
 
@@ -148,7 +226,7 @@ static esp_err_t api_handler(httpd_req_t *r)
     q.method = method_name(r->method);
     q.path = r->uri;
     char *host = header(r, "Host", 255);
-    char *origin = header(r, "Origin", 255);
+    char *origin = header_ex(r, "Origin", 255, &q.origin_unreadable);
     char *auth = header(r, "Authorization", 255);
     char *ctype = header(r, "Content-Type", 255);
     char *inm = header(r, "If-None-Match", 255);
@@ -167,22 +245,21 @@ static esp_err_t api_handler(httpd_req_t *r)
 
     char *body = NULL;
     if (r->content_len > NET_BODY_MAX) {
-        q.body_too_large = true;   /* not read; the server throws the rest away */
+        q.body_too_large = true;   /* not read: the reply closes the socket (close_after) */
     } else if (r->content_len > 0) {
         body = heap_caps_malloc(r->content_len + 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
         if (!body) body = malloc(r->content_len + 1);
         size_t got = 0;
-        int timeouts = 0;
         while (body && got < r->content_len) {
+            /* each read waits only for what's left of the request's deadline (recv_with_deadline) */
             int n = httpd_req_recv(r, body + got, r->content_len - got);
-            if (n == HTTPD_SOCK_ERR_TIMEOUT && ++timeouts < 3) continue;
             if (n <= 0) break;
             got += (size_t)n;
         }
         if (!body || got < r->content_len) {
             free(body);
             free(host); free(origin); free(auth); free(ctype); free(inm);
-            return ESP_FAIL;    /* the client went away: close the socket */
+            return ESP_FAIL;    /* too slow, or the client went away: close the socket */
         }
         body[got] = '\0';
         q.body = body;
@@ -212,12 +289,16 @@ static esp_err_t api_handler(httpd_req_t *r)
         snprintf(retry, sizeof retry, "%d", resp.retry_after_s);
         httpd_resp_set_hdr(r, "Retry-After", retry);
     }
-    esp_err_t err = httpd_resp_send(r, resp.status == 304 ? NULL : resp.body, resp.status == 304 ? 0 : (ssize_t)resp.len);
+    if (q.body_too_large) httpd_resp_set_hdr(r, "Connection", "close");
+    bool no_body = resp.status == 304 || r->method == HTTP_HEAD;
+    esp_err_t err = httpd_resp_send(r, no_body ? NULL : resp.body, no_body ? 0 : (ssize_t)resp.len);
     memset(cookie, 0, sizeof cookie);
     if (auth) memset(auth, 0, strlen(auth));
     free(resp.body);
     free(body);
     free(host); free(origin); free(auth); free(ctype); free(inm);
+    if (q.body_too_large) return close_after(r);
+    request_done(r);
     return err;
 }
 
@@ -259,6 +340,14 @@ static esp_err_t not_found(httpd_req_t *r)
     return httpd_resp_sendstr(r, "Not found.");
 }
 
+static esp_err_t wrong_host(httpd_req_t *r)
+{
+    httpd_resp_set_status(r, "421 Misdirected Request");
+    httpd_resp_set_type(r, "text/plain; charset=utf-8");
+    httpd_resp_set_hdr(r, "Cache-Control", "no-store");
+    return httpd_resp_sendstr(r, "Use this TinyBar's own address, such as tinybar.local.");
+}
+
 static esp_err_t page_handler(httpd_req_t *r)
 {
     int fd = httpd_req_to_sockfd(r);
@@ -267,12 +356,16 @@ static esp_err_t page_handler(httpd_req_t *r)
     const char *uri = r->uri;
     size_t plen = strcspn(uri, "?#");
     bool root = (plen == 1 && uri[0] == '/') || (plen == 11 && !strncmp(uri, "/index.html", 11));
+    if (r->content_len) httpd_resp_set_hdr(r, "Connection", "close");     /* see the end */
     esp_err_t err;
     if (setup) {
         /* the captive portal: any other name is sent to the setup page */
         if (!host_is(host, NET_SETUP_IP)) err = redirect(r, "http://" NET_SETUP_IP "/");
         else if (root) err = send_page(r, setup_html_gz_start, setup_html_gz_end);
         else err = redirect(r, "/");
+    } else if (!net_api_host_ok(host)) {
+        /* api.md 2.2 for the page too: a DNS-rebinding page under another name gets nothing from the bar */
+        err = wrong_host(r);
     } else if (root) {
         err = send_page(r, remote_html_gz_start, remote_html_gz_end);
     } else if (plen == 12 && !strncmp(uri, "/favicon.ico", 12)) {
@@ -282,6 +375,9 @@ static esp_err_t page_handler(httpd_req_t *r)
         err = not_found(r);
     }
     free(host);
+    /* A page request carries no body; one that does is answered, then closed rather than drained. */
+    if (r->content_len) return close_after(r);
+    request_done(r);
     return err;
 }
 
@@ -302,15 +398,16 @@ esp_err_t net_http_start(void)
      * section 11). It never touches flash: the router runs on the app task (tb_bus_exec), and the pages are read
      * through the cache. */
     c.task_caps = MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT;
-    c.recv_wait_timeout = 5;
-    c.send_wait_timeout = 5;
+    /* Reads wait at most what's left of the request's REQ_DEADLINE_US (recv_with_deadline); a send that makes no
+     * progress for 3 s ends the reply and closes the socket. */
+    c.recv_wait_timeout = 3;
+    c.send_wait_timeout = 3;
+    c.open_fn = on_open;
     esp_err_t err = httpd_start(&s_server, &c);
     if (err != ESP_OK) return err;
-    static const httpd_method_t methods[] = {HTTP_GET, HTTP_POST, HTTP_PUT, HTTP_PATCH, HTTP_DELETE};
-    for (size_t i = 0; i < sizeof methods / sizeof methods[0]; i++) {
-        httpd_uri_t u = {.uri = "/api/*", .method = methods[i], .handler = api_handler};
-        httpd_register_uri_handler(s_server, &u);
-    }
+    /* Every method under /api/ goes to the router (OPTIONS and HEAD get its JSON 405 with Allow) */
+    httpd_uri_t api = {.uri = "/api/*", .method = HTTP_ANY, .handler = api_handler};
+    httpd_register_uri_handler(s_server, &api);
     httpd_uri_t page = {.uri = "/*", .method = HTTP_GET, .handler = page_handler};
     httpd_register_uri_handler(s_server, &page);
     ESP_LOGI(TAG, "listening on port 80 (Remote %u bytes, setup page %u bytes, gzipped)",

@@ -350,6 +350,14 @@ const net_token_t *net_pair_find(const net_pair_t *p, const char *token_id)
     return NULL;
 }
 
+const net_token_t *net_pair_find_client(const net_pair_t *p, const char *client)
+{
+    if (!client || !client[0]) return NULL;
+    for (int i = 0; i < NET_TOKENS_MAX; i++)
+        if (p->tokens[i].used && !strcmp(p->tokens[i].client, client)) return &p->tokens[i];
+    return NULL;
+}
+
 bool net_pair_revoke(net_pair_t *p, const char *token_id)
 {
     net_token_t *t = (net_token_t *)net_pair_find(p, token_id);

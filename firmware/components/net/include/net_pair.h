@@ -92,6 +92,8 @@ net_pair_err_t net_pair_usb(net_pair_t *p, const char *client, const char *name,
 /* Look a token up (constant-time hash compare); updates last_used and last_ip. NULL if unknown or revoked. */
 const net_token_t *net_pair_check(net_pair_t *p, const char *token, uint32_t peer_ip, const tb_clock_t *now);
 const net_token_t *net_pair_find(const net_pair_t *p, const char *token_id);
+/* The token paired with this client ID (pair/start's or the USB pair's `client`), or NULL. */
+const net_token_t *net_pair_find_client(const net_pair_t *p, const char *client);
 bool net_pair_revoke(net_pair_t *p, const char *token_id);
 void net_pair_forget_all(net_pair_t *p);
 int net_pair_count(const net_pair_t *p);

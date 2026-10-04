@@ -241,12 +241,13 @@ static void sim_tick(const tb_clock_t *now)
         } else {
             s_cal.check = CAL_CHECK_SAVED;
             s_cal.saved = true;
-            snprintf(s_cal.host, sizeof s_cal.host, "calendar.google.com");
-            snprintf(s_cal.file, sizeof s_cal.file, "basic.ics");
-            const char *tok = strstr(s_cal_url, "private-");
-            const char *end = strstr(s_cal_url, "/basic.ics");
-            if (tok && end && end - tok >= 12) memcpy(s_cal.ending, end - 4, 4), s_cal.ending[4] = '\0';
-            else snprintf(s_cal.ending, sizeof s_cal.ending, "3f2a");
+            /* the masked form the bar would show (calendar's cal_url_check) */
+            static cal_url_info_t info;
+            if (cal_url_check(s_cal_url, &info) == CAL_URL_OK) {
+                tb_strlcpy(s_cal.host, info.host, sizeof s_cal.host);
+                tb_strlcpy(s_cal.file, info.file, sizeof s_cal.file);
+                tb_strlcpy(s_cal.ending, info.ending, sizeof s_cal.ending);
+            }
             s_cal.last_sync = now->wall;
             int starts[] = {48, 108, 198};
             sample_meetings(starts, 3, now);

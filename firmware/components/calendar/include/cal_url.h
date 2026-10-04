@@ -11,6 +11,9 @@
  *   ending in .ics -> CAL_URL_NOT_ICS.
  * The normalized address is "https://" + host[:port] + path + ?query (webcal:// becomes https://, user:password@ is
  * dropped, spaces and other characters a URL can't carry are percent-encoded).
+ *
+ * The masked form (host, file, ending) is what the API and the Remote show of a saved address (decisions.md: it is
+ * never shown or logged in full), so it never carries the private token: only its last four characters.
  */
 #pragma once
 
@@ -35,8 +38,11 @@ typedef enum {
 typedef struct {
     char url[CAL_URL_MAX + 1];  /* normalized (see above) */
     char host[128];             /* "calendar.google.com" (the host name, without the port) */
-    char file[64];              /* "basic.ics" (the last path segment, cut on a character boundary) */
-    char ending[9];             /* last four characters of the private token ("3f2a"), or "····" (4 x U+00B7) */
+    char file[64];              /* "basic.ics" (the last path segment, cut on a character boundary), or "….ics" when
+                                 * that segment looks like the secret itself (long or random; see cal_url.c) */
+    char ending[9];             /* last four characters of the private token ("3f2a"): what follows "private-", else
+                                 * a file name that is the token, else the second-to-last path segment; or "····"
+                                 * (4 x U+00B7). The masked form is host, file and ending: never the whole token. */
     bool google;                /* the host is google.com or a subdomain */
     char self_email[128];       /* the calendar id from a Google path (/ical/<id>/private-...), URL-decoded, or "" */
 } cal_url_info_t;

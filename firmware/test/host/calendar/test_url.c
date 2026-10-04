@@ -68,7 +68,8 @@ TB_TEST(url_other_providers)
     /* iCloud's webcal address, with a port and a query */
     TB_EQ_INT(cal_url_check("webcal://p52-caldav.icloud.com:443/published/2/MTIzNDU2Nzg5MDEyMzQ1Nj.ics?x=1", &i), CAL_URL_OK);
     TB_EQ_STR(i.url, "https://p52-caldav.icloud.com:443/published/2/MTIzNDU2Nzg5MDEyMzQ1Nj.ics?x=1");
-    TB_EQ_STR(i.ending, "2");
+    TB_EQ_STR(i.file, "\xE2\x80\xA6.ics");   /* the file name is the token itself: never shown (sec review) */
+    TB_EQ_STR(i.ending, "Q1Nj");                /* ...but its last four characters are */
     /* https's default port is left out, user:password@ is dropped, spaces are encoded */
     TB_EQ_INT(cal_url_check("https://me:pw@cal.example.org:443/my cal/basic.ICS", &i), CAL_URL_OK);
     TB_EQ_STR(i.url, "https://cal.example.org/my%20cal/basic.ICS");

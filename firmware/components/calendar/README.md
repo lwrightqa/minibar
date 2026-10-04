@@ -10,10 +10,10 @@ turns the address into today's and tomorrow's meetings for the app task. Owner: 
 
 | File | What |
 |---|---|
-| `include/cal_url.h`, `src/cal_url.c` | The mock-up's `checkIcal()`: format checks in its order, the normalized `https://` address, the masked form (host, file, last four characters of the token), the Google calendar id (the owner's address, for PARTSTAT) |
+| `include/cal_url.h`, `src/cal_url.c` | The mock-up's `checkIcal()`: format checks in its order, the normalized `https://` address, the masked form (host, file, last four characters of the token; a file name that is itself the token, long or random-looking, shows as "….ics"), the Google calendar id (the owner's address, for PARTSTAT) |
 | `include/cal_tz.h`, `src/cal_tz.c` | Civil dates; POSIX TZ rules (`Mm.w.d`, `Jn`, `n`, times from -167 to 167 h, negative DST like Dublin's); offsets; local to UTC through gaps (moved forward) and overlaps (the earlier instant); local midnights |
 | `src/cal_tz_table.inc` | IANA name to POSIX rule, 597 names (links included), about 12 KB. **Generated** by `tools/gen_tz_table.py` from the `tzdata` Python package (2026e) |
-| `include/cal_rrule.h`, `src/cal_rrule.c` | RRULE: DAILY, WEEKLY, MONTHLY, YEARLY; INTERVAL, COUNT, UNTIL (date, local, UTC), WKST, BYDAY (with ordinals), BYMONTHDAY, BYMONTH, BYSETPOS. Expansion in local civil time, with old periods skipped arithmetically and a step budget |
+| `include/cal_rrule.h`, `src/cal_rrule.c` | RRULE: DAILY, WEEKLY, MONTHLY, YEARLY; INTERVAL, COUNT, UNTIL (date, local, UTC), WKST, BYDAY (with ordinals), BYMONTHDAY, BYMONTH, BYSETPOS. Expansion in local civil time, with old periods skipped arithmetically and a budget of days examined (100,000 an event, 2,000,000 a feed), so a hostile feed's CPU time is bounded; a tick hook (`cal_rrule_expand_ex`, `cal_feed_set_tick`) lets the device yield from inside the walk |
 | `include/cal_ics.h`, `src/cal_ics.c` | The streaming reader (`cal_feed_new/write/finish`): unfolding, parameters, escapes, VEVENT, VTIMEZONE (Outlook's Windows zone names), EXDATE, RECURRENCE-ID overrides in any order, what counts, about 28 KB of state and nothing else |
 | `include/cal_today.h`, `src/cal_today.c` | The sync window (local midnight today to local midnight after tomorrow), now / next / left today in an explicit zone, trimming to `TB_MEETINGS_MAX` |
 | `include/cal_store.h`, `src/cal_store.c` | The packed saved copy of the meetings for NVS (typically a few hundred bytes, at most 4.7 KB) |
@@ -108,4 +108,7 @@ Rebuild the fixtures with `python3 firmware/test/host/calendar/fixtures/make_fix
   unsupported RRULE keeps the first instance and is counted in the stats.
 - Dates before a zone's last rule change use today's rule (the bar only looks at today and tomorrow).
 - The task isn't on the task watchdog: a slow DNS lookup or TLS handshake can block longer than its 10 s, and the
-  fetch has its own time limits.
+  fetch has its own time limits. It does keep core 0's idle task (which the watchdog watches) running: `cal_sync`
+  blocks for a tick after every 50 ms of work, from the fetch loop and, through the reader's tick hook, from inside
+  one `cal_feed_write()` and its recurrence walks. The worst feed the budget allows takes about 0.1 s at -O2 on a
+  desktop (`test_sec_review.c`), so a few seconds on the S3 at most; to be timed on the board.

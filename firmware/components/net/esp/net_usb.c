@@ -4,7 +4,8 @@
  * One writer for everything that goes out of the port:
  *   - ESP-IDF's log (esp_log_set_vprintf) and stdout (printf, e.g. LVGL's warnings) go through log_write(): it never
  *     blocks. When no program reads the port the driver's buffer fills, and log output is dropped rather than stall
- *     the app task or the router. A log line never starts with the "@tb " marker.
+ *     the app task or the router. No line of log output starts with the "@tb " marker, not even after a line break
+ *     inside one write (an SSID can carry one) or after ANSI color codes (net_log_scan).
  *   - protocol lines go through net_usb_write_line(): whole (the writer's lock keeps log output out of them), always
  *     at the start of a line (a line break first if the last byte written wasn't one), with a short time-out.
  * The reader task assembles lines (net_lines_feed, 2,048 bytes at most), sends "@tb " lines to the router on the app
@@ -64,13 +65,30 @@ static size_t raw_write(const char *p, size_t n, TickType_t wait)
     return done;
 }
 
+/* Where the log output is in its line, for net_log_scan (under s_wlock). A protocol line always ends its line. */
+static net_log_state_t s_log_st = NET_LOG_LINE_START;
+
+/* Log output never starts a line with the marker: an '@' at the start of any line in it (after a line break inside
+ * a write too, and after the ANSI color codes the Mac app strips) gets a space before it. A write that's cut short
+ * drops the rest, so no later part of it can land at a line start the scan didn't expect; the state then assumes a
+ * line start, which can only cost a needless space. */
 static void log_write(const char *buf, size_t len)
 {
     if (!s_installed || !len || !usb_serial_jtag_is_connected()) return;    /* nobody there: drop */
     if (xSemaphoreGetMutexHolder(s_wlock) == xTaskGetCurrentTaskHandle()) return;  /* logged from inside the writer */
     if (xSemaphoreTake(s_wlock, pdMS_TO_TICKS(LOG_WAIT_MS)) != pdTRUE) return;
-    if (s_line_start && len >= 4 && !memcmp(buf, "@tb ", 4)) raw_write(" ", 1, 0);     /* never the marker */
-    raw_write(buf, len, 0);
+    net_log_state_t st = s_log_st;
+    size_t i = 0;
+    while (i < len) {
+        size_t k = net_log_scan(&st, buf + i, len - i);
+        if (k && raw_write(buf + i, k, 0) != k) break;
+        i += k;
+        if (i < len) {      /* an '@' would start a line: never the marker */
+            if (raw_write(" ", 1, 0) != 1) break;
+            st = NET_LOG_MID;
+        }
+    }
+    s_log_st = i < len ? NET_LOG_LINE_START : st;
     xSemaphoreGive(s_wlock);
 }
 
@@ -101,6 +119,7 @@ void net_usb_write_line(const char *line)
     size_t n = strlen(line);
     if (raw_write(line, n, wait) == n) raw_write("\n", 1, wait);
     else s_line_start = false;      /* cut short: whatever comes next starts on a new line */
+    s_log_st = NET_LOG_LINE_START;  /* either way, log output after it is checked as a line's start */
     xSemaphoreGive(s_wlock);
 }
 
@@ -162,7 +181,9 @@ static void on_line(const char *line, size_t len, bool too_long, void *ctx)
     if (!tb_bus_exec(line_job, &j, 900)) {
         /* the app task didn't get to it: still exactly one reply, with the request's id if it has one */
         char id[16] = "null";
-        cJSON *o = too_long ? NULL : cJSON_ParseWithLength(line + 4, len - 4);
+        /* This parse runs on this task's 4 KB stack: never a deeply nested line (NET_JSON_DEPTH_MAX) */
+        bool shallow = !too_long && net_json_depth_ok(line + 4, len - 4, NET_JSON_DEPTH_MAX);
+        cJSON *o = shallow ? cJSON_ParseWithLength(line + 4, len - 4) : NULL;
         const cJSON *jid = o ? cJSON_GetObjectItemCaseSensitive(o, "id") : NULL;
         if (cJSON_IsNumber(jid) && jid->valuedouble >= 1 && jid->valuedouble <= 2147483647 &&
             jid->valuedouble == (double)(int64_t)jid->valuedouble)

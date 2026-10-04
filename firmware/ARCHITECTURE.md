@@ -57,11 +57,11 @@ No cycles, and nothing depends on main. net doesn't call board: it posts `TB_EV_
 | esp_timer (IDF) | board | 0 | 22 | IDF | The 5 ms button poll (a timer callback, no task of its own) |
 | imu | board | 0 | 3 | 4 KB, internal | QMI8658 at about 25 Hz; posts `TB_EV_ORIENTATION` after 0.5 s of a steady new orientation |
 | audio | board | 1 | 6 | 4 KB, internal | Mixes the chime and tick PCM into I2S; one tick a second while ticking is on |
-| httpd (IDF) | net | 0 | 5 | 6 KB, **PSRAM** | HTTP handlers: parse, then `tb_bus_exec(router)`; serves the gzipped pages directly |
+| httpd (IDF) | net | 0 | 5 | 6 KB, **PSRAM** | HTTP handlers: parse, then `tb_bus_exec(router)`; serves the gzipped pages directly. A request has 3 s from its first byte to arrive (headers and body), so one client can't hold the task |
 | usb_rx | net | 0 | 4 | 4 KB, **PSRAM** | Reads "@tb " lines (2 KB max), `tb_bus_exec(net_api_usb_line)`, writes the reply |
 | net | net | 0 | 4 | 4 KB, internal | Wi-Fi worker: saves credentials and the Wi-Fi skip, scans, starts mDNS and SNTP once online, hands the setup page's calendar address over |
 | dns | net | 0 | 3 | 4 KB, **PSRAM** | Setup mode only: answers every name with 192.168.4.1 |
-| cal_sync | calendar | 0 | 2 | 10 KB, internal | HTTPS fetch streamed through the ICS reader; one at a time; blocks a tick every 32 KB read |
+| cal_sync | calendar | 0 | 2 | 10 KB, internal | HTTPS fetch streamed through the ICS reader; one at a time; blocks a tick after every 50 ms of work, from inside recurrence expansion too (the reader's tick hook) |
 | tiT (lwIP tcpip) | IDF | **0** (pinned) | 18 | 4 KB | |
 | sys_evt (event loop) | IDF | 0 | 20 | 5 KB | runs net's Wi-Fi and IP handlers |
 | wifi, mdns, sntp | IDF | 0 | IDF defaults | IDF | |
@@ -88,7 +88,10 @@ No cycles, and nothing depends on main. net doesn't call board: it posts `TB_EV_
 - Wi-Fi and the network stack stay on core 0, the screen on core 1, so a slow TLS handshake never stalls a frame
   (`CONFIG_LWIP_TCPIP_TASK_AFFINITY_CPU0`: lwIP's thread, at priority 18, would otherwise preempt the app task).
 - **Watchdog:** the task watchdog (10 s, panic and restart) watches both idle tasks, the app task, usb_rx, imu and
-  audio. cal_sync isn't subscribed; it relies on its own limits (20 s per network step, 3 minutes per fetch).
+  audio. cal_sync isn't subscribed; it relies on its own limits (20 s per network step, 3 minutes per fetch), and it
+  keeps core 0's idle task fed: it blocks for a tick after every 50 ms of work, and the ICS reader calls its tick from
+  inside a recurrence walk, whose budget is charged by the days examined (a hostile feed's whole expansion is about
+  0.1 s at -O2 on a desktop, a few seconds on the S3 at most; to be timed on the board).
   `board_power_off()` feeds the watchdog while it waits for PWR to be let go. A crash leaves a core dump in the
   `coredump` partition (`idf.py coredump-info`).
 - **Router latency:** `tb_bus_exec` waits up to 900 ms for the app task to start the job (api.md's 1 s reply rule);
@@ -177,16 +180,21 @@ when it changed, `ui_view_build()` produces the words and `ui.c` lays them out i
 toast, hold screen, flash, pairing) come from `ui_overlay_build()` and `tb_app_t.menu`.
 
 **API over HTTP.** esp_http_server → `net_http.c` parses headers (Host, Content-Type, Authorization, Cookie,
-Origin, If-None-Match) and the body (≤ 2 KB) into a `net_req_t` → `tb_bus_exec(net_api_handle)` on the app task →
-the router checks host, rate limits, token and scope, validates, calls `tb_app_remote_*` (or the calendar and Wi-Fi
-ports) and builds the JSON reply (≤ 8 KB) → `net_http.c` sends it with the headers api.md requires.
+Origin, If-None-Match) and the body (≤ 2 KB, within the request's 3 s) into a `net_req_t` → `tb_bus_exec(net_api_handle)`
+on the app task → the router checks host, rate limits, token and scope, checks the JSON's nesting (16 levels at most)
+before cJSON parses it, validates, calls `tb_app_remote_*` (or the calendar and Wi-Fi ports) and builds the JSON reply
+(≤ 8 KB) → `net_http.c` sends it with the headers api.md requires. A body that wasn't read (over 2 KB) closes the
+connection after the reply instead of being drained.
 
 **API over USB.** `usb_rx` assembles lines → `tb_bus_exec(net_api_usb_line)` → the same router (`hello`, `call`,
 `status`, `pair`, `request`) → one "@tb " reply line, written whole through the shared writer.
 
-**A Mac's call.** `POST /api/v1/call` or USB `call` → `net_macs_on_call()` (per-Mac state, staleness, call ids,
-elapsed time) → `net_macs_aggregate()` → `tb_app_set_call()` → core's `syncAuto()`: takeover, pause the Pomodoro,
-hold a ringing alarm, toasts. Every app loop `net_api_tick()` runs the 90 s time-outs ("Lost contact with your Mac").
+**A Mac's call.** `POST /api/v1/call` or USB `call` → the router checks the token may report for that `client`
+(api.md 5.2: a token paired with a client only for it; one paired without, for one Mac no one else holds; USB for
+any) → `net_macs_on_call()` (per-Mac state with the token it came with, staleness, call ids, elapsed time) →
+`net_macs_aggregate()` → `tb_app_set_call()` → core's `syncAuto()`: takeover, pause the Pomodoro, hold a ringing alarm,
+toasts. Every app loop `net_api_tick()` runs the 90 s time-outs ("Lost contact with your Mac"). Revoking a token, and
+Forget all, end the Wi-Fi calls that came with it; a call over USB carries on.
 
 **Calendar.** `cal_sync` task: HTTPS GET with the certificate bundle → each chunk into `cal_feed_write()` (line
 unfolding, VEVENTs, RRULE expansion in the window, EXDATE, overrides) → `cal_feed_finish()` → today's and tomorrow's
@@ -295,12 +303,27 @@ rendered at 640 × 172 in headless Chromium per `docs/testing.md`):
 - **mDNS:** host `tinybar` (or what it gets after a conflict), `_tinybar._tcp` and `_http._tcp` on port 80 with the
   TXT record of api.md section 3; instance name = `device.name`.
 - **HTTP:** `max_open_sockets` 7 with `lru_purge_enable`, header limit 2048 (sdkconfig), body limit 2048 (router),
-  replies ≤ 8 KB; every API response carries `Content-Type: application/json; charset=utf-8`,
-  `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, no CORS. Pages are served gzipped from flash.
+  replies ≤ 8 KB (GET calendar lists as many meetings as fit); every API response carries `Content-Type:
+  application/json; charset=utf-8`, `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, no CORS. Pages are
+  served gzipped from flash. Every method under `/api/` reaches the router (`HTTP_ANY`), so OPTIONS and HEAD get its
+  JSON 405 with Allow. The Remote page gets the API's Host check too (a plain-text 421); the setup network keeps its
+  captive-portal 302.
+- **One client can't hold the server task** (it runs every handler): each socket has a receive override that gives a
+  request 3 s from its first byte for its headers and body (esp_http_server's own header parsing included: a request
+  that runs over gets 408 or is dropped, and its socket closes), sends give up after 3 s without progress, and a body
+  the handler didn't read (over 2 KB, or on a page request) closes the socket after the reply rather than being
+  drained.
+- **JSON nesting:** cJSON's limit is 16 for the whole build (`CJSON_NESTING_LIMIT`, set in `CMakeLists.txt` with
+  `idf_build_set_property(COMPILE_DEFINITIONS)`; the compile commands show it on IDF's `cJSON.c`), and the router
+  checks the same depth before parsing (`net_json_depth_ok`), so neither the parse nor `cJSON_Delete` can recurse
+  deep on the app task's 12 KB stack (or usb_rx's 4 KB, whose busy-reply path parses for the `id`).
 - **USB:** the USB Serial/JTAG driver with one writer for logs and protocol lines (a mutex; tracks whether the last
-  byte was a line break; short write time-outs that drop log output rather than block when nobody reads). Release
-  builds log at Warning (`CONFIG_TINYBAR_RELEASE`). Never log tokens, the calendar address, Wi-Fi passwords or raw
-  protocol lines.
+  byte was a line break; short write time-outs that drop log output rather than block when nobody reads). No line of
+  log output starts with the `@tb ` marker: an `@` at the start of any line in it (after a line break inside one write,
+  and after the ANSI color codes the Mac app strips) gets a space first (`net_log_scan`), since a logged SSID can
+  carry a line break. The setup page's `setup/wifi` refuses an SSID with control characters too. Release builds log
+  at Warning (`CONFIG_TINYBAR_RELEASE`). Never log tokens, the calendar address, Wi-Fi passwords or raw protocol
+  lines.
 - **Pairing** (api.md section 4, **Proposed**): built behind `CONFIG_TINYBAR_API_AUTH_BEARER` (default) so
   `TINYBAR_API_AUTH_NONE` can ship it off if the user says no.
 - **Logging and secrets:** `cal_sync_init()` silences esp_http_client's own log tag (`HTTP_CLIENT`) for the whole
@@ -333,6 +356,22 @@ reads the flash. A work login is often the person's company sign-in.
 It's off in `sdkconfig.defaults` until the user decides; decisions.md asks the question, and it should be settled
 before the bar joins an office network with work-login credentials.
 
+In RAM, copies of the calendar address are zeroed before they're freed (the setup page's pending address in
+`net_wifi.c`, the fetch's and the check's copies and the saved one in `cal_sync.c`); esp_http_client's own copy of
+the URL is freed by IDF without that. The masked form the API returns (host, file, the token's last four
+characters) never holds the private token, even for feeds whose file name is the token (`cal_url.c`).
+
+**Certificate dates aren't checked** (`CONFIG_MBEDTLS_HAVE_TIME_DATE` off, the IDF default; security review,
+2026-10-04). With it on, mbedTLS would refuse a calendar server's certificate whenever the bar's clock reads outside
+its validity, and the bar can't guarantee a valid clock before every fetch: a PUT's check (and the setup page's
+address) runs as soon as the bar is online, before SNTP has answered, and the clock may then still be the 1970 of a
+cold start (the RTC forgets the time whenever the bar is unplugged, since there's no battery, and its time is used
+only with the oscillator-stop flag clear). SNTP is also unauthenticated, so anyone able to intercept the TLS
+connection could set the clock as well. Turning it on would trade a real failure mode (a calendar that won't check
+or sync until the clock is right) for little protection (only against an expired-but-compromised certificate). The
+chain, the host name and the bundle's roots are still checked. Revisit if a later fetch path waits for SNTP (or a
+trusted RTC) before connecting.
+
 ## 11. Memory plan
 
 Measured on the integrated build (`idf.py size`, 2026-10-04) where it says so; the rest is from the builders'
@@ -340,7 +379,7 @@ reports or estimated, and the real heap figures come from the health log line on
 
 | Where | What | Size |
 |---|---|---|
-| Internal SRAM, static (measured) | code that must run from RAM (IDF, Wi-Fi, the IRAM-safe I2C ISR), `.data`, `.bss` | **141 KB of 342 KB DIRAM, so 201 KB is left for the heap** (it was 164 KB and 178 KB before the review round), plus the 16 KB IRAM block |
+| Internal SRAM, static (measured) | code that must run from RAM (IDF, Wi-Fi, the IRAM-safe I2C ISR), `.data`, `.bss` | **141 KB of 342 KB DIRAM, so 201 KB is left for the heap** (141,159 bytes used, 200,601 free after the security review's fixes; it was 164 KB and 178 KB before the review round), plus the 16 KB IRAM block |
 | Internal heap (estimated) | app task stack | 12 KB |
 | | TinyBar's internal stacks: net 4, cal_sync 10, imu 4, audio 4 | 22 KB |
 | | IDF's task stacks: wifi about 6.5, sys_evt 5, mdns 4, esp_timer 3.5, tiT 4, two idle 1.5 each, two ipc 1.25 each, the timer task 2 | about 30 KB |
@@ -358,7 +397,7 @@ reports or estimated, and the real heap figures come from the health log line on
 | | ICS reader (`cal_feed_t`, fixed whatever the feed's size) and the last list (8 KB) | 28.3 KB during a fetch, 8 KB always |
 | | HTTP and USB replies (≤ 8 KB each), cJSON trees (net puts cJSON in PSRAM), the meetings handed over | under 30 KB at a time |
 | Flash (16 MB) | each app slot | 6 MB |
-| | **the app image (measured): 2.01 MB (0x2026a0 bytes), 67% of the 6 MB slot free.** Of it: LVGL 335 KB, ui 330 KB (fonts 184 KB, tomato images 124 KB, icons 5 KB, code 19 KB), Wi-Fi, lwIP, WPA and mDNS about 470 KB, mbedTLS 185 KB plus the certificate bundle 70 KB, net 62 KB (the gzipped pages 22 KB of it), calendar 40 KB (time-zone table 12 KB), core 23 KB, board 13 KB | 2.01 MB |
+| | **the app image (measured, after the security review): 2.02 MB (0x204bb0 bytes), 66% of the 6 MB slot free.** Of it: LVGL 335 KB, ui 330 KB (fonts 184 KB, tomato images 124 KB, icons 5 KB, code 19 KB), Wi-Fi, lwIP, WPA and mDNS about 470 KB, mbedTLS 185 KB plus the certificate bundle 70 KB, net 62 KB (the gzipped pages 22 KB of it), calendar 40 KB (time-zone table 12 KB), core 23 KB, board 13 KB | 2.01 MB |
 
 **LVGL runs from flash, not IRAM.** `CONFIG_LV_ATTRIBUTE_FAST_MEM_USE_IRAM` put 107 KB of LVGL's drawing code in
 internal RAM, which left only about 70 KB of internal heap for Wi-Fi, TLS, the task stacks and the display's DMA
@@ -459,19 +498,29 @@ an hour per token.
 
 ## 14. Testing
 
-What was run on 2026-10-04, after the review round's fixes:
+What was run on 2026-10-04, after the security review's fixes (the review round's figures are in brackets where
+they changed):
 
 - **Firmware build:** `idf.py build` from a clean configuration in a fresh `build-lead/` (its sdkconfig generated
   from `sdkconfig.defaults` alone): no warnings at all (TinyBar's code and the managed components). App 2.02 MB
-  (0x203db0 bytes), 66% of the slot free; DIRAM 141 KB used statically, 201 KB free. The merged image is
-  `dist/tinybar-<version>.bin` (README, "Flash"), checked byte for byte against the build and with a valid hash.
-- **Host tests** (`test/host/`, ctest, AddressSanitizer and UBSan, no compiler warnings): 5 runners, 370 tests, all
-  passing: core 150 (every cell of the controls table, Pomodoro and alarm scenarios, call and meeting priority,
-  ticking, menus, Remote operations, Wi-Fi and pairing screens, bookkeeping, and the review round's rules: the Wi-Fi
-  skip remembered, the setup menu after setup, the calendar tile with the link down, "Hello", pairing with a flip, an
-  alarm and a phase end, a touch from before the code, USB pairing over a code, Forget all, and QA's sweep of every
-  control in every state and a way back from every screen), calendar 59 (time zones against glibc, RRULE, DST,
-  overrides, streaming one byte at a time, garbage, a 9 MB feed; the runner also works outside ctest), net 97 (every
+  (0x204bb0 bytes; was 0x203db0), 66% of the slot free; DIRAM 141,159 bytes used statically, 200,601 free. The
+  compile commands show `-DCJSON_NESTING_LIMIT=16` on IDF's `cJSON.c`. The merged image is
+  `dist/tinybar-<version>.bin` (README, "Flash"), checked byte for byte against the build (bootloader, partition
+  table, OTA data and app, with 0xFF in the gaps), the partition table decoded, and the app's and bootloader's
+  checksums and SHA-256 valid.
+- **Host tests** (`test/host/`, ctest, AddressSanitizer and UBSan, no compiler warnings): 5 runners, 402 tests (370),
+  all passing. The security review's checks are `test_sec_review.c` in `net/` (24: JSON nesting over HTTP and USB and
+  its exact limit, cJSON's own limit in this build, which token may report which call, revoke and Forget all by
+  token with USB left alone, a full Mac table keeping calls, the cookie's unreadable or empty Origin, the 8 KB
+  calendar and status replies, the setup network's SSID and password rules, log output split at every byte never
+  showing the marker to the Mac app's parser, the Host check, the JSON 405 for OPTIONS, HEAD and others) and in
+  `calendar/` (8: the masked form for token-named files and seven providers' addresses, the per-day budget, ticks
+  from inside one `cal_feed_write()` on a hostile feed). By module: core 150 (every cell of the controls table,
+  Pomodoro and alarm scenarios, call and meeting priority, ticking, menus, Remote operations, Wi-Fi and pairing
+  screens, bookkeeping, and the review round's rules: the Wi-Fi skip remembered, the setup menu after setup, the
+  calendar tile with the link down, "Hello", pairing with a flip, an alarm and a phase end, a touch from before the code, USB pairing over a code, Forget all, and QA's sweep of every
+  control in every state and a way back from every screen), calendar 67 (time zones against glibc, RRULE, DST,
+  overrides, streaming one byte at a time, garbage, a 9 MB feed; the runner also works outside ctest), net 121 (every
   endpoint and error code of api.md, USB lines, the Mac table, pairing, empty names, the pairing clock, the paired
   names' order, Forget all), ui 29 (every screen's copy, overlays, the redraw key, the tomato frames against the
   mock-up's pixel for pixel, the fonts' character sets and tabular digits), board 35 (backlight curve, debouncing, flip
@@ -480,7 +529,8 @@ What was run on 2026-10-04, after the review round's fixes:
   after the QR screen on its baseline and inside its column; the longest real copy in each slot without "…") pass; the
   snapshot tool renders 79 scenes; `tools/compare.py` against the mock-up (`tools/ref_scenes.js`) finds every text
   line of 76 scenes on the mock-up's baseline.
-- **Pages:** the Playwright checks of the Remote (64, including the message's characters named as you type) and the
-  setup page (20) against the fake bar (`host/fakebar.c`: the real router and core on Linux, with simulated Wi-Fi and
-  calendar) pass at 390 px.
+- **Pages:** the Playwright checks of the Remote (67, including the message's characters named as you type and a
+  token-named feed's mask) and the setup page (20) against the fake bar (`host/fakebar.c`: the real router and core
+  on Linux, with simulated Wi-Fi and calendar, masking addresses with the real `cal_url_check`) pass at 390 px. The ui
+  host tools weren't run again in the security round (ui didn't change).
 - **Not yet:** anything on the board. Then an end-to-end run of the controls table on the bar (QA).

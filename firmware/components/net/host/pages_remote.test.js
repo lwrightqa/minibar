@@ -170,6 +170,14 @@ const check = (c, what) => { if (!c) { fails++; console.log('FAIL', what); } els
   check((await p.textContent('#calMsg')) === 'Calendar removed.', 'removed');
   check((await p.textContent('#calBadge')) === 'Not set up', 'not set up again');
   check(!(await p.isVisible('#autoBanner')), 'meeting gone');
+  // a feed whose file name is its private token: the mask never shows it (security review, api.md 11.1)
+  await p.fill('#calInput', 'https://cal.example.com/feeds/8c1d5e2a9b7f40c3a6e1d2b3c4f53f2a.ics');
+  await p.click('#calSave');
+  await sleep(2800);
+  check((await p.textContent('#calMsg')).startsWith('Saved.'), 'token-named feed saved: ' + await p.textContent('#calMsg'));
+  await sleep(2200);
+  check((await p.textContent('#calMask')) === 'cal.example.com/…/….ics · ending 3f2a', 'token-named mask: ' + await p.textContent('#calMask'));
+  check(!(await p.content()).includes('8c1d5e2a9b7f'), 'the token is nowhere on the page');
   // layout
   const sw = await p.evaluate(() => document.scrollingElement.scrollWidth);
   check(sw <= 390, 'no horizontal scroll at 390 px (' + sw + ')');

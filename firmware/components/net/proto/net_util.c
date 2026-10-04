@@ -277,3 +277,58 @@ char *net_ip_str(uint32_t ip, char out[16])
     snprintf(out, 16, "%u.%u.%u.%u", b[0], b[1], b[2], b[3]);
     return out;
 }
+
+/* ======================================================================================================== */
+/* JSON nesting                                                                                             */
+/* ======================================================================================================== */
+
+bool net_json_depth_ok(const char *s, size_t n, int max)
+{
+    int depth = 0;
+    bool in_str = false, esc = false;
+    for (size_t i = 0; i < n; i++) {
+        char c = s[i];
+        if (in_str) {
+            if (esc) esc = false;
+            else if (c == '\\') esc = true;
+            else if (c == '"') in_str = false;
+        } else if (c == '"') {
+            in_str = true;
+        } else if (c == '{' || c == '[') {
+            if (++depth > max) return false;
+        } else if ((c == '}' || c == ']') && depth > 0) {
+            depth--;
+        }
+    }
+    return true;
+}
+
+/* ======================================================================================================== */
+/* The port's log output                                                                                    */
+/* ======================================================================================================== */
+
+size_t net_log_scan(net_log_state_t *st, const char *buf, size_t len)
+{
+    for (size_t i = 0; i < len; i++) {
+        unsigned char c = (unsigned char)buf[i];
+        if (c == '\n') {
+            *st = NET_LOG_LINE_START;
+            continue;
+        }
+        switch (*st) {
+        case NET_LOG_LINE_START:
+            if (c == '@') return i;
+            *st = c == 0x1B ? NET_LOG_ESC : NET_LOG_MID;
+            break;
+        case NET_LOG_ESC:       /* the Mac app strips ESC [ ... final byte, so the line's start is after it */
+            *st = c == '[' ? NET_LOG_CSI : NET_LOG_MID;
+            break;
+        case NET_LOG_CSI:
+            if (c >= 0x40 && c <= 0x7E) *st = NET_LOG_LINE_START;
+            break;
+        case NET_LOG_MID:
+            break;
+        }
+    }
+    return len;
+}

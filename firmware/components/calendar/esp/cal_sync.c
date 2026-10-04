@@ -53,7 +53,7 @@ static const char *TAG = "cal";
 #define CAL_FETCH_MAX_BYTES  (16 * 1024 * 1024)     /* Google feeds of heavy calendars reach a few MB */
 #define CAL_MAX_REDIRECTS    5
 #define CAL_READ_CHUNK       2048
-#define CAL_YIELD_EVERY_BYTES (32 * 1024)          /* vTaskDelay(1) this often while reading, for IDLE0 */
+#define CAL_YIELD_AFTER_US   (50 * 1000)            /* block a tick after this much work without blocking, for IDLE0 */
 #define CAL_TASK_STACK       10240
 #define CAL_TASK_PRIO        2
 #define CAL_TASK_CORE        0
@@ -179,8 +179,9 @@ static char *load_url(void)
     size_t len = 0;
     char *url = NULL;
     if (nvs_get_str(h, NVS_SEC_KEY, NULL, &len) == ESP_OK && len > 1 && len <= CAL_URL_MAX + 1) {
-        url = malloc(len);
+        url = calloc(1, len);
         if (url && nvs_get_str(h, NVS_SEC_KEY, url, &len) != ESP_OK) {
+            memset(url, 0, len);
             free(url);
             url = NULL;
         }
@@ -279,6 +280,40 @@ static void erase_list(void)
 
 /* ---------- the fetch ---------- */
 
+/*
+ * The reader's tick (cal_feed_set_tick) and the fetch loop's: block for a tick once CAL_YIELD_AFTER_US of work has
+ * gone by without one. The fetch decrypts and parses back to back at priority 2, above core 0's idle task, which the
+ * task watchdog (10 s, panic) watches, and one cal_feed_write() can expand recurrences for seconds on a hostile feed:
+ * the reader calls this from inside the expansion too, so no stretch runs much past 50 ms.
+ */
+typedef struct {
+    int64_t since_us;   /* when the task last blocked */
+} yield_t;
+
+static void yield_tick(void *ctx)
+{
+    yield_t *y = ctx;
+    int64_t now = esp_timer_get_time();
+    if (now - y->since_us < CAL_YIELD_AFTER_US) return;
+    vTaskDelay(1);
+    y->since_us = esp_timer_get_time();
+}
+
+/* The address is a secret: copies are zeroed before they're freed. */
+static void free_secret(char *s)
+{
+    if (!s) return;
+    memset(s, 0, strlen(s));
+    free(s);
+}
+
+static void free_info(cal_url_info_t *info)
+{
+    if (!info) return;
+    memset(info, 0, sizeof(*info));
+    free(info);
+}
+
 typedef struct {
     tb_epoch_t ws, we, now;
     cal_tz_t tz;
@@ -313,13 +348,15 @@ static cal_sync_err_t fetch(const char *url, const fetch_args_t *a, tb_meeting_t
     cal_sync_err_t res = CAL_SYNC_UNREACHABLE;
     cal_feed_t *feed = cal_feed_new(a->ws, a->we, &a->tz, a->self_email);
     char *buf = malloc(CAL_READ_CHUNK);
-    char *where = malloc(CAL_URL_MAX + 1);
+    char *where = calloc(1, CAL_URL_MAX + 1);     /* a redirect's address: zeroed when freed */
     tb_meeting_t *all = malloc(sizeof(tb_meeting_t) * CAL_CANDIDATES_MAX);
     esp_http_client_handle_t c = NULL;
+    yield_t y = {.since_us = esp_timer_get_time()};
     if (!feed || !buf || !where || !all) {
         ESP_LOGE(TAG, "no memory for a fetch");
         goto done;
     }
+    cal_feed_set_tick(feed, yield_tick, &y);
     esp_http_client_config_t cfg = {
         .url = url,
         .method = HTTP_METHOD_GET,
@@ -381,7 +418,7 @@ static cal_sync_err_t fetch(const char *url, const fetch_args_t *a, tb_meeting_t
         goto done;
     }
     res = CAL_SYNC_UNREACHABLE;
-    uint64_t total = 0, yielded_at = 0;
+    uint64_t total = 0;
     for (;;) {
         if (canceled(a)) {
             *gone = true;
@@ -411,12 +448,7 @@ static cal_sync_err_t fetch(const char *url, const fetch_args_t *a, tb_meeting_t
             res = CAL_SYNC_NOT_A_CALENDAR;
             goto done;
         }
-        /* A feed that's already buffered is decrypted and parsed back to back at priority 2, above core 0's idle
-         * task, which the task watchdog watches: block for a tick every 32 KB so it can run. */
-        if (total - yielded_at >= CAL_YIELD_EVERY_BYTES) {
-            yielded_at = total;
-            vTaskDelay(1);
-        }
+        yield_tick(&y);     /* the decryption of a buffered feed counts too */
     }
     int k = 0;
     if (cal_feed_finish(feed, all, CAL_CANDIDATES_MAX, &k) != CAL_OK) {
@@ -442,7 +474,7 @@ done:
     }
     cal_feed_free(feed);
     free(buf);
-    free(where);
+    free_secret(where);
     free(all);
     if (res != CAL_SYNC_OK && !*gone) ESP_LOGW(TAG, "fetch failed: %s", cal_sync_err_code(res));
     return res;
@@ -520,7 +552,7 @@ static void run_check(char *url, bool from_setup)
     s.check_done_ms = mono_ms();
     bool google = info && info->google;
     if (res == CAL_SYNC_OK) {
-        free(s.saved);
+        free_info(s.saved);
         s.saved = info;
         info = NULL;
         s.st.saved = true;
@@ -559,9 +591,9 @@ static void run_check(char *url, bool from_setup)
         ESP_LOGW(TAG, "address check failed: %s", cal_sync_err_code(res));
     }
     post_status(saved, syncing, last);
-    free(info);
+    free_info(info);
     free(m);
-    free(url);
+    free_secret(url);
 }
 
 static void run_sync(bool *report_out)
@@ -589,7 +621,7 @@ static void run_sync(bool *report_out)
         fill_args(&a, email, true);
         res = fetch(url, &a, m, &n, &gone);
     }
-    free(url);
+    free_secret(url);
 
     lock();
     gone = gone || s.gen != gen;
@@ -701,10 +733,10 @@ esp_err_t cal_sync_init(void)
         info = calloc(1, sizeof(*info));
         if (info && cal_url_check(url, info) != CAL_URL_OK) {
             ESP_LOGW(TAG, "the saved address no longer passes the format check; ignoring it");
-            free(info);
+            free_info(info);
             info = NULL;
         }
-        free(url);
+        free_secret(url);
     }
     tb_meeting_t *m = malloc(sizeof(tb_meeting_t) * TB_MEETINGS_MAX);
     tb_epoch_t last_sync = 0;
@@ -714,7 +746,7 @@ esp_err_t cal_sync_init(void)
     lock();
     if (s.inited) {
         unlock();
-        free(info);
+        free_info(info);
         free(m);
         return ESP_OK;
     }
@@ -787,14 +819,14 @@ esp_err_t cal_sync_put(const char *url, bool from_setup, cal_url_err_t *fmt_err)
     cal_url_err_t e = cal_url_check(url, info);
     if (fmt_err) *fmt_err = e;
     if (e != CAL_URL_OK) {
-        free(info);
+        free_info(info);
         return ESP_ERR_INVALID_ARG;
     }
     char *copy = strdup(info->url);
-    free(info);
+    free_info(info);
     if (!copy) return ESP_ERR_NO_MEM;
     lock();
-    free(s.check_url);  /* a newer address replaces one still waiting */
+    free_secret(s.check_url);  /* a newer address replaces one still waiting */
     s.check_url = copy;
     s.check_from_setup = from_setup;
     s.st.check = CAL_CHECK_CHECKING;
@@ -816,7 +848,7 @@ esp_err_t cal_sync_remove(void)
         unlock();
         return ESP_ERR_NOT_FOUND;
     }
-    free(s.saved);
+    free_info(s.saved);
     s.saved = NULL;
     s.gen++;                    /* a running sync throws its result away */
     s.sync_now = false;

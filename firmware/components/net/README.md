@@ -6,15 +6,15 @@ Owner: net builder. The contract is `docs/api.md`; where this file and it disagr
 
 | Path | Builds on Linux | What |
 |---|---|---|
-| `proto/net_api.c` | yes | The one router for HTTP and USB: every endpoint of api.md Appendix A, the Host, rate-limit, token, scope, cookie, Origin, size, Content-Type and JSON checks, the status object and its `rev`/ETag, and the USB lines (`hello`, `call`, `status`, `pair`, `request`, `ready`). |
-| `proto/net_macs.c` | yes | The Mac table (api.md 5.2): per-Mac state, stale messages, call ids, `elapsed_s`, `leaving`, the 90 s time-out, and the bar's call as their sum. |
+| `proto/net_api.c` | yes | The one router for HTTP and USB: every endpoint of api.md Appendix A, the Host, rate-limit, token, scope, cookie, Origin, size, Content-Type, JSON nesting and JSON checks, which token may report which call (`403 wrong_client`), the status object and its `rev`/ETag, replies kept within 8 KB, and the USB lines (`hello`, `call`, `status`, `pair`, `request`, `ready`). |
+| `proto/net_macs.c` | yes | The Mac table (api.md 5.2): per-Mac state with the token of its latest message, stale messages, call ids, `elapsed_s`, `leaving`, the 90 s time-out, ending calls by token (revoke, Forget all), and the bar's call as their sum. |
 | `proto/net_pair.c` | yes | Pairing codes, tokens (SHA-256 hashes only), scopes, back-off, and the saved table. |
-| `proto/net_util.c` | yes | Rate limits, RFC 3339, the Mac's hello time rule, the DNS catch-all's answers, Wi-Fi join errors, the USB line reader. |
+| `proto/net_util.c` | yes | Rate limits, RFC 3339, the Mac's hello time rule, the DNS catch-all's answers, Wi-Fi join errors, the USB line reader, the JSON depth check, and the scan that keeps log output from starting a line with `@tb `. |
 | `esp/net_main.c` | no | Life cycle (`net.h`). |
 | `esp/net_wifi.c` | no | Station (WPA2/WPA3 Personal, open, WPA2-Enterprise PEAP/TTLS), the TinyBar-Setup access point and join flow, the scan, credentials in NVS `wifi`, a remembered Skip (`wifi/skipped`: the next start stays offline with the radio off; Set up and a working join clear it), mDNS, SNTP, the clock's source. |
 | `esp/net_dns.c` | no | The setup network's DNS catch-all. |
-| `esp/net_http.c` | no | esp_http_server: `/api/*` to the router on the app task (`tb_bus_exec`, 900 ms), the gzipped pages, the captive-portal 302. |
-| `esp/net_usb.c` | no | The USB Serial/JTAG driver, one non-blocking writer for logs, stdout and protocol lines, and the line reader. |
+| `esp/net_http.c` | no | esp_http_server: `/api/*` (every method) to the router on the app task (`tb_bus_exec`, 900 ms), the gzipped pages with the Host check (421), the captive-portal 302, a 3 s deadline per request (a receive override on each socket), and closing rather than draining a body it didn't read. |
+| `esp/net_usb.c` | no | The USB Serial/JTAG driver, one non-blocking writer for logs, stdout and protocol lines (no log line starts with the marker), and the line reader. |
 | `esp/net_port_esp.c` | no | `net_port.h` on the device: identity, time, randomness, SHA-256, the token table in `nvs_sec/tokens`, the calendar service. |
 | `web/remote.html`, `web/setup.html` | — | The Remote and the setup page (ports of the mock-up's), embedded gzipped (17 KB and 4 KB). No external resources. |
 | `host/fakebar.c` | yes | A bar on Linux (the real router and core, simulated Wi-Fi and calendar) for testing the pages in a browser. Not part of the firmware. |
@@ -50,9 +50,10 @@ Run the fake bar by hand with `build-host-net/net/tb_fakebar --port 8080` (add `
 7. **mDNS.** `dns-sd -B _tinybar._tcp` shows the bar with the TXT record of api.md 3; a second bar becomes `tinybar-2.local` and reports it as `host`; renaming the bar in settings changes the instance name.
 8. **SNTP.** The clock is set within a minute of joining; `time_source` says `ntp`; the RTC is written (main does that on `TB_EV_TIME_SET`). On a network that blocks public NTP, see open question 3.
 9. **The Mac's clock.** With Wi-Fi skipped and the RTC cleared, a `hello` with `time` sets the clock; `time_source` says `mac`.
-10. **HTTP.** Seven sockets: open eight connections and check the oldest is closed. A 3 KB body gets 413 without stalling. 2 KB of headers (a phone's) works.
+10. **HTTP.** Seven sockets: open eight connections and check the oldest is closed. A 3 KB body gets 413 with `Connection: close`, and the socket closes without the rest being read (send a 1 MB body: the bar answers at once). 2 KB of headers (a phone's) works. A client that sends one header byte a second, or a body slower than the 3 s deadline, is closed after 3 s while another phone's Remote keeps working. `OPTIONS /api/v1/status` gets the JSON 405 with `Allow: GET, POST`. `curl -H 'Host: evil.example' http://<ip>/` gets 421; on TinyBar-Setup the same gets the 302.
 11. **Pairing.** A Wi-Fi code pairing from a phone; USB `pair` with Wi-Fi skipped (the RNG then uses `bootloader_random_enable`); tokens survive a restart (`nvs_sec/tokens`).
 12. **Memory.** Free internal heap after Wi-Fi, mDNS, the HTTP server and a calendar fetch; stack high-water marks of `httpd`, `usb_rx`, `net`, `dns`.
+13. **Log escaping.** Now that `setup/wifi` refuses a name with control characters, no known input reaches the log with a line break in it, so the escaping is a second line of defense and the host test (`test_sec_review.c`) covers it. On the board, check that it leaves ordinary log lines as they were, and that `@tb` replies still arrive whole while logging at Debug (item 1).
 
 ## Open questions (for the lead and the user)
 

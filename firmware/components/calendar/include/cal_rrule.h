@@ -53,16 +53,30 @@ bool cal_rrule_parse(const char *value, cal_rrule_t *out);
 /* Called for each occurrence's local start (in the event's zone). Return false to stop early. */
 typedef bool (*cal_occ_fn)(void *ctx, const cal_civil_t *local_start);
 
+/* Called now and then while the calendar code works (about every CAL_TICK_DAYS days a walk examines, and every
+ * CAL_TICK_BYTES bytes the ICS reader takes), so the device can give the CPU away on elapsed time: cal_sync blocks
+ * for a tick after 50 ms of work, which keeps core 0's idle task (and the task watchdog) fed through a hostile feed.
+ * The pure code never blocks or reads a clock itself. */
+typedef void (*cal_tick_fn)(void *ctx);
+#define CAL_TICK_DAYS  512
+#define CAL_TICK_BYTES 1024
+
 /*
  * Walk the occurrences of r from dtstart (local civil time in tz), calling fn for each one whose UTC start is before
  * window_end and whose UTC end (start + duration_s) is after window_start. Occurrences before the window are still
  * counted toward COUNT. Without COUNT, whole periods before the window are skipped arithmetically, so a daily rule
- * from 1990 costs nothing. *steps (optional, in and out) is a budget of periods to examine, a safety net against
- * hostile feeds: it is decreased as periods are examined, and the walk stops when it reaches 0. Returns the number
- * of occurrences passed to fn, or -1 if the budget ran out first (occurrences found before that were passed).
+ * from 1990 costs nothing. *steps (optional, in and out) is a budget of days examined, a safety net against hostile
+ * feeds that bounds the CPU time: each period costs the days it looks at (a DAILY one 1, a WEEKLY one 7, a MONTHLY
+ * one with BYDAY or BYMONTHDAY the days of its month, a YEARLY one with BYDAY a whole year; at least 1), and the walk
+ * stops when it reaches 0. Returns the number of occurrences passed to fn, or -1 if the budget ran out first
+ * (occurrences found before that were passed).
  */
 int cal_rrule_expand(const cal_rrule_t *r, const cal_civil_t *dtstart, const cal_tz_t *tz, int32_t duration_s,
                      tb_epoch_t window_start, tb_epoch_t window_end, uint32_t *steps, cal_occ_fn fn, void *ctx);
+/* The same, calling tick (if not NULL) every CAL_TICK_DAYS days examined. */
+int cal_rrule_expand_ex(const cal_rrule_t *r, const cal_civil_t *dtstart, const cal_tz_t *tz, int32_t duration_s,
+                        tb_epoch_t window_start, tb_epoch_t window_end, uint32_t *steps, cal_tick_fn tick,
+                        void *tick_ctx, cal_occ_fn fn, void *ctx);
 
 #ifdef __cplusplus
 }

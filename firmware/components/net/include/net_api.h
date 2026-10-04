@@ -11,7 +11,10 @@
  * It implements every endpoint in api.md Appendix A, with:
  *   - the Host check (2.2) and 421 wrong_host; Content-Type check and 415; body size 413; bad JSON 400
  *   - tokens and scopes (section 4, Proposed): 401 with WWW-Authenticate, 403 wrong_scope, cookie + Origin check
- *     (403 bad_origin), auth "none" mode (CONFIG_TINYBAR_API_AUTH_NONE, net_api_set_auth) where tokens aren't needed
+ *     (403 bad_origin), auth "none" mode (CONFIG_TINYBAR_API_AUTH_NONE, net_api_set_auth) where tokens aren't needed;
+ *     a token reports calls only for its own client (403 wrong_client, api.md 5.1)
+ *   - JSON nested at most NET_JSON_DEPTH_MAX deep, checked before cJSON parses (400 bad_json)
+ *   - replies never over 8 KB: GET /api/v1/calendar lists as many of today's meetings as fit (api.md 11.1)
  *   - rate limits (2.5): 10/s average and bursts of 20 per IP, 5/s per IP without a valid token, 1/s for pair
  *   - the ETag / If-None-Match 304 on GET /api/v1/status (rev)
  *   - 405 with Allow, 404 not_found, the setup-only endpoints (13), 409 in_setup while the setup screens show
@@ -49,7 +52,9 @@ typedef struct {
     bool body_too_large;            /* HTTP: Content-Length was over NET_BODY_MAX (the body wasn't read) */
     bool content_type_json;         /* HTTP: Content-Type was application/json (USB: always true) */
     const char *host;               /* HTTP Host header, or NULL (USB) */
-    const char *origin;             /* HTTP Origin header, or NULL */
+    const char *origin;             /* HTTP Origin header, or NULL when there's none */
+    bool origin_unreadable;         /* HTTP: an Origin header came but couldn't be read (too long, no memory): it
+                                     * counts as another origin, never as none (api.md 4.5) */
     const char *bearer;             /* the token from "Authorization: Bearer", or NULL */
     const char *cookie_token;       /* the tb_token cookie, or NULL */
     const char *if_none_match;      /* or NULL */

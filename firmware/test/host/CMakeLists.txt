@@ -25,6 +25,9 @@ if(NOT DEFINED IDF_PATH)
 endif()
 
 set(FW ${CMAKE_CURRENT_LIST_DIR}/../..)
+# The firmware's cJSON nesting limit (firmware/CMakeLists.txt sets it for the whole ESP-IDF build): for every target
+# here, cJSON.c in tb_net_proto included, so the host tests run the parser the bar runs.
+add_compile_definitions(CJSON_NESTING_LIMIT=16)
 add_subdirectory(${FW}/components/core core)
 add_subdirectory(${FW}/components/calendar calendar)
 add_subdirectory(${FW}/components/net net)

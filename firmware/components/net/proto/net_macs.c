@@ -24,7 +24,14 @@ const net_mac_t *net_macs_find(const net_macs_t *t, const char *client)
     return find((net_macs_t *)t, client);
 }
 
-/* Find the Mac, or make room for it: a free slot, else the least recently heard one is dropped. */
+/* A Mac with a call on screen is kept over one without (so new clients can't push a call out). */
+static bool holds_call(const net_mac_t *m)
+{
+    return m->active && m->connected;
+}
+
+/* Find the Mac, or make room for it: a free slot, else the least recently heard one is dropped, a Mac without a call
+ * first. */
 static net_mac_t *find_or_add(net_macs_t *t, const char *client)
 {
     net_mac_t *m = find(t, client);
@@ -34,8 +41,11 @@ static net_mac_t *find_or_add(net_macs_t *t, const char *client)
         if (!t->m[i].used) slot = &t->m[i];
     if (!slot) {
         slot = &t->m[0];
-        for (int i = 1; i < NET_MACS_MAX; i++)
-            if (t->m[i].last_heard_ms < slot->last_heard_ms) slot = &t->m[i];
+        for (int i = 1; i < NET_MACS_MAX; i++) {
+            const net_mac_t *x = &t->m[i];
+            if (holds_call(x) != holds_call(slot) ? !holds_call(x) : x->last_heard_ms < slot->last_heard_ms)
+                slot = &t->m[i];
+        }
     }
     memset(slot, 0, sizeof(*slot));
     slot->used = true;
@@ -90,6 +100,7 @@ bool net_macs_on_call(net_macs_t *t, const net_call_msg_t *msg, const tb_clock_t
     }
     if (!m->name[0] && msg->name && msg->name[0]) tb_strlcpy(m->name, msg->name, sizeof(m->name));
     heard(m, msg->via, now);
+    tb_strlcpy(m->token_id, msg->token_id ? msg->token_id : "", sizeof(m->token_id));
 
     if (msg->leaving || !msg->active) {
         end_call(m);
@@ -119,6 +130,7 @@ void net_macs_on_hello(net_macs_t *t, const char *client, const char *name, cons
     net_mac_t *m = find_or_add(t, client);
     if (name && name[0]) tb_strlcpy(m->name, name, sizeof(m->name));
     heard(m, TB_LINK_USB, now);
+    m->token_id[0] = '\0';     /* over the cable: no token's to revoke */
     fill_since(m, now);
 }
 
@@ -147,6 +159,41 @@ bool net_macs_forget_wifi(net_macs_t *t, const char *client)
     end_call(m);
     m->connected = false;
     return true;
+}
+
+bool net_macs_forget_token(net_macs_t *t, const char *token_id, const char *client)
+{
+    bool changed = false;
+    for (int i = 0; i < NET_MACS_MAX; i++) {
+        net_mac_t *m = &t->m[i];
+        if (!m->used || m->via != TB_LINK_WIFI || !m->connected) continue;
+        bool by_token = token_id ? !strcmp(m->token_id, token_id) : m->token_id[0] != '\0';
+        bool by_client = client && client[0] && !strcmp(m->client, client);
+        if (!by_token && !by_client) continue;
+        end_call(m);
+        m->connected = false;
+        changed = true;
+    }
+    return changed;
+}
+
+bool net_macs_may_report(const net_macs_t *t, const char *client, const char *token_id)
+{
+    const net_mac_t *m = find((net_macs_t *)t, client);
+    return !m || !strcmp(m->token_id, token_id ? token_id : "");
+}
+
+bool net_macs_release_token(net_macs_t *t, const char *token_id, const char *keep_client)
+{
+    bool ended = false;
+    for (int i = 0; i < NET_MACS_MAX; i++) {
+        net_mac_t *m = &t->m[i];
+        if (!m->used || !token_id || !token_id[0] || strcmp(m->token_id, token_id) || !strcmp(m->client, keep_client))
+            continue;
+        ended |= holds_call(m);
+        memset(m, 0, sizeof(*m));
+    }
+    return ended;
 }
 
 void net_macs_aggregate(const net_macs_t *t, tb_call_t *out, tb_link_t *link, const net_mac_t **mac)

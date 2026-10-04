@@ -11,6 +11,12 @@
  * ended" when it was on screen). The bar's call is on while any connected Mac has one; its app and via are those of
  * the call that started most recently.
  *
+ * Who may report for a Mac (api.md 5.1, 12.2): each entry remembers the token its latest message came with
+ * (token_id, "" over USB, where the cable is the proof). The router lets a token report only for the client it was
+ * paired with, or, for a token paired without one, only for an entry that is free or already its own (and only one
+ * at a time), so no token can end or restart another device's call. Revoking a token ends the calls it reported
+ * over Wi-Fi; a USB call carries on. When the table is full, a Mac without a call is dropped first.
+ *
  * The bar's call id (tb_call_t.id, which set aside is keyed by) changes only when some Mac starts a new call, so
  * "Set aside and Show again apply to the bar's call as a whole": one Mac ending its call while another's goes on
  * keeps the id, and the call stays set aside. The next new call from any Mac takes over again.
@@ -50,6 +56,7 @@ typedef struct {
     int8_t inputs;                      /* -1 not sent, else NET_INPUT_* bits */
     tb_ms_t since_ms;
     tb_epoch_t since;                   /* 0 while the clock is unknown; filled in once it's known */
+    char token_id[9];                   /* the token of its latest message, "" over USB (or without a token) */
 } net_mac_t;
 
 typedef struct {
@@ -72,6 +79,7 @@ typedef struct {
     bool leaving;
     tb_link_t via;
     const char *name;           /* a label for a Mac not named yet (its pairing's name), or NULL */
+    const char *token_id;       /* the token it came with (Wi-Fi), or NULL (USB, or no token) */
 } net_call_msg_t;
 
 void net_macs_init(net_macs_t *t);
@@ -86,6 +94,16 @@ bool net_macs_tick(net_macs_t *t, const tb_clock_t *now);
 /* The device with this client stopped being trusted (its Wi-Fi token was revoked, api.md 12.2): a call it reported
  * over Wi-Fi ends and it's no longer connected over Wi-Fi. Returns true if anything changed. */
 bool net_macs_forget_wifi(net_macs_t *t, const char *client);
+/* A token was revoked (api.md 12.2): every Mac whose latest message came over Wi-Fi with that token, or (client not
+ * NULL or "") with that client, loses its call and its Wi-Fi connection. token_id NULL: every token (Forget all,
+ * api.md 4.8). A Mac on USB keeps its call. Returns true if anything changed. */
+bool net_macs_forget_token(net_macs_t *t, const char *token_id, const char *client);
+/* May a token paired without a client report for client? Yes if no Mac has that client or its latest message came
+ * with this token. */
+bool net_macs_may_report(const net_macs_t *t, const char *client, const char *token_id);
+/* A token paired without a client reports for one Mac at a time: drop the other Macs whose latest message came with
+ * it (their calls end). Returns true if a call ended. */
+bool net_macs_release_token(net_macs_t *t, const char *token_id, const char *keep_client);
 /* The bar's call (out->active false when none) and the link of the most recently heard connected Mac (the icon).
  * mac (optional): the Mac whose call is shown (for status.call.inputs), NULL when none. */
 void net_macs_aggregate(const net_macs_t *t, tb_call_t *out, tb_link_t *link, const net_mac_t **mac);

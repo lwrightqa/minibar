@@ -221,8 +221,11 @@ TB_TEST(call_two_macs)
     setup_paired();
     nf_resp_t r = call("{\"client\": \"" MAC "\", \"session\": \"a\", \"seq\": 1, \"active\": true, \"app\": \"Slack\"}");
     nf_free(&r);
-    /* a second, idle Mac doesn't end the first one's call */
-    r = call("{\"client\": \"22222222-0000\", \"session\": \"b\", \"seq\": 1, \"active\": false}");
+    /* a second, idle Mac (with its own token: one token reports for one Mac, api.md 5.1) doesn't end the first one's
+     * call */
+    char t2[NET_TOKEN_LEN + 1];
+    snprintf(t2, sizeof t2, "%s", nf_pair("mac", "call", "22222222-0000"));
+    r = nf_http("POST", "/api/v1/call", "{\"client\": \"22222222-0000\", \"session\": \"b\", \"seq\": 1, \"active\": false}", t2);
     TB_TRUE(nf_true(r.j, "call.active"));
     TB_EQ_STR(nf_str(r.j, "call.app"), "Slack");
     nf_free(&r);

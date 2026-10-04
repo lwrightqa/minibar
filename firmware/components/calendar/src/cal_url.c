@@ -53,6 +53,56 @@ static int hexval(char c)
     return -1;
 }
 
+static bool is_vowel(unsigned char c)
+{
+    c = (unsigned char)tolower(c);
+    return c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u' || c == 'y';
+}
+
+/*
+ * Whether a file name (without ".ics", already percent-encoded) looks like a secret rather than a name. Some feeds
+ * carry their private token as the file name (".../8c1d5e2a9b7f...3f2a.ics"), and the masked form must never show it.
+ * A name is short words: at most 16 bytes in all, words of letters (at most 10, with vowels, no five consonants in a
+ * row, at most one change from lower to upper case: "MyCalendar") or of digits (at most 4 digits in all), apart from
+ * "-", "_" or "." and never run together ("a1b2"). Anything else counts as a secret: hiding a name costs nothing,
+ * showing a secret would. Google's "basic", Outlook's "calendar" and Teamup's "0" are names.
+ */
+static bool looks_secret(const char *s, size_t n)
+{
+    if (n > 16) return true;
+    size_t digits = 0;
+    for (size_t i = 0; i < n;) {
+        unsigned char c = (unsigned char)s[i];
+        if (c == '-' || c == '_' || c == '.') {
+            i++;
+            continue;
+        }
+        size_t j = i;
+        if (isdigit(c)) {
+            while (j < n && isdigit((unsigned char)s[j])) j++;
+            digits += j - i;
+        } else if (isalpha(c)) {
+            int humps = 0, run = 0, vowels = 0;
+            for (; j < n && isalpha((unsigned char)s[j]); j++) {
+                unsigned char x = (unsigned char)s[j];
+                if (j > i && isupper(x) && islower((unsigned char)s[j - 1])) humps++;
+                if (is_vowel(x)) {
+                    vowels++;
+                    run = 0;
+                } else if (++run >= 5) {
+                    return true;
+                }
+            }
+            if (humps > 1 || j - i > 10 || (!vowels && j - i > 3)) return true;
+        } else {
+            return true;
+        }
+        if (j < n && isalnum((unsigned char)s[j])) return true;     /* letters and digits run together */
+        i = j;
+    }
+    return digits > 4;
+}
+
 static void url_decode(const char *s, size_t n, char *out, size_t cap)
 {
     size_t o = 0;
@@ -203,7 +253,14 @@ cal_url_err_t cal_url_check(const char *raw, cal_url_info_t *out)
     const char *last = pb + path_len;
     while (last > pb && *(last - 1) != '/') last--;
     last--;     /* at the last '/' (the path always starts with one) */
-    {
+    /* The file name, unless it is the secret itself (".../8c1d5e2a...3f2a.ics"): then only "….ics" shows, and the
+     * ending comes from it (decisions.md: the address is never shown in full). */
+    const char *stem = last + 1;
+    size_t stem_n = (size_t)(pb + path_len - stem) - 4;     /* without ".ics" */
+    bool secret_file = looks_secret(stem, stem_n);
+    if (secret_file) {
+        tb_strlcpy(out->file, "\xE2\x80\xA6.ics", sizeof(out->file));
+    } else {
         char file[sizeof(out->file)];
         size_t fn = (size_t)(pb + path_len - (last + 1));
         if (fn >= sizeof(file)) fn = sizeof(file) - 1;
@@ -212,7 +269,8 @@ cal_url_err_t cal_url_check(const char *raw, cal_url_info_t *out)
         tb_strlcpy(out->file, file, sizeof(out->file));
     }
 
-    /* The token: what follows "private-" (letters and digits), else the second-to-last path segment. */
+    /* The token: what follows "private-" (letters and digits), else a file name that is one, else the second-to-last
+     * path segment. */
     const char *tok = NULL;
     size_t tn = 0;
     for (const char *p = pb; (p = find_ci(p, (size_t)(pb + path_len - p), "private-")) != NULL; p++) {
@@ -223,6 +281,10 @@ cal_url_err_t cal_url_check(const char *raw, cal_url_info_t *out)
             tn = (size_t)(q - tok);
             break;
         }
+    }
+    if (!tok && secret_file && stem_n) {
+        tok = stem;
+        tn = stem_n;
     }
     if (!tok && last > pb) {
         const char *prev = last - 1;
