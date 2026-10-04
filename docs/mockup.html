@@ -448,6 +448,46 @@ h1 .dot { color: var(--state); transition: color .3s; }
 .device.flipped .bar { bottom: auto; top: 0; transform: rotate(180deg); }
 .lcd { filter: brightness(var(--bright, 1)); }
 
+/* Power: hold-to-power-off overlay, start-up splash, and the fully-off state. */
+.hold {
+  position: absolute;
+  inset: 0;
+  background: rgba(8,9,11,.94);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.4cqw;
+  font-family: var(--f-screen);
+  font-weight: 800;
+  font-size: 5cqw;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.hold[hidden] { display: none; }
+.hold small { font-family: var(--f-body); font-weight: 500; font-size: 2.4cqw; letter-spacing: 0; text-transform: none; color: #c9ced4; }
+.hold .track { width: 40cqw; height: 1.2cqw; border-radius: 1cqw; background: #2a2e36; overflow: hidden; }
+.hold .track i { display: block; height: 100%; width: 0; background: #fff; }
+.hold.go .track i { width: 100%; transition: width 2.6s linear; }
+.hold.done .track i { width: 100%; }
+.device.flipped .hold { transform: rotate(180deg); }
+.screen.dead .lcd, .screen.dead .bar, .screen.dead .toast { visibility: hidden; }
+.screen.dead { cursor: default; }
+.splash {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2.4cqw;
+  font-family: var(--f-screen);
+  font-weight: 800;
+  font-size: 9cqw;
+  text-transform: uppercase;
+}
+.splash .tomato { width: 10cqw; height: 10cqw; }
+.offnote { padding: 10px 12px; border-radius: 12px; border: 1px dashed var(--line); font-size: 13px; color: var(--muted); }
+
 /* Pomodoro on the remote */
 .pomo { display: grid; gap: 12px; padding: 14px; border-radius: 16px; border: 1px solid var(--line); }
 .pomo-read {
@@ -487,7 +527,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
   <header>
     <div class="eyebrow">Mock-up · Waveshare ESP32-S3-Touch-LCD-3.49</div>
     <h1>TinyBar<span class="dot">.</span></h1>
-    <p class="lede">A desk-side status bar that tells people whether to interrupt you. This page simulates the 640 × 172 screen so you can try the layouts and controls before any firmware gets written.</p>
+    <p class="lede">A status bar for your desk that tells the people around you whether it's a good time to interrupt. This page simulates the 640 × 172 screen so you can try the layouts and controls before any firmware gets written.</p>
   </header>
 
   <section class="bench" aria-label="Device simulator">
@@ -497,9 +537,10 @@ h1 .dot { color: var(--state); transition: color .3s; }
         <div class="bar" id="bar"><i id="barFill"></i></div>
         <div class="menu" id="menu" hidden></div>
         <div class="toast" id="toast" hidden></div>
+        <div class="hold" id="holdOv" hidden><span id="holdTitle">Keep holding</span><div class="track"><i></i></div><small id="holdSub">to power off</small></div>
       </div>
       <button class="hwbtn boot" id="btnBoot" aria-label="BOOT button: next status"></button>
-      <button class="hwbtn pwr" id="btnPwr" aria-label="PWR button: screen on or off"></button>
+      <button class="hwbtn pwr" id="btnPwr" aria-label="PWR button: press for screen on or off, hold 3 seconds to power off"></button>
     </div>
     <div class="caption">
       <span id="hint">Tap: next status · Swipe: back or forward · Hold: quick menu · Side buttons: BOOT and PWR</span>
@@ -513,6 +554,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
         <strong>Remote</strong>
         <span>tinybar.local</span>
       </div>
+      <div class="offnote" id="offNote" hidden>TinyBar is powered off, so this page can't reach it. Press PWR on the side of the bar to turn it on.</div>
       <div>
         <span class="field-label">Status</span>
         <div class="status-grid" id="statusGrid"></div>
@@ -569,7 +611,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
       <form id="msgForm">
         <label class="field-label" for="msgInput">Custom message</label>
         <div class="msg-row">
-          <input id="msgInput" type="text" maxlength="80" value="Recording a podcast, please knock gently">
+          <input id="msgInput" type="text" maxlength="80" value="On a deadline until 3 PM, message me instead">
           <button class="btn" type="submit">Show</button>
         </div>
       </form>
@@ -578,6 +620,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
         <div class="row">
           <button class="btn ghost" id="flipBtn" type="button">Flip the bar</button>
           <button class="btn ghost" id="menuBtn" type="button">Open quick menu</button>
+          <button class="btn ghost" id="pwrHoldBtn" type="button">Hold PWR 3 s</button>
         </div>
       </div>
     </div>
@@ -588,7 +631,8 @@ h1 .dot { color: var(--state); transition: color .3s; }
         <dl class="kv">
           <dt>Touch</dt><dd>Tap cycles status, a swipe steps back or forward, and holding opens a quick menu with brightness, Wi-Fi, calendar and battery. On the Pomodoro screen, a tap starts or pauses the timer and holding opens timer options. A dark screen wakes on the first tap, and every action shows a short confirmation.</dd>
           <dt>Pomodoro</dt><dd>25-minute focus sessions, 5-minute breaks and a 15-minute break after every fourth session, all adjustable. Focus shows in orange so people know not to interrupt; breaks turn the bar teal or blue to say it's a good moment. Each finished session earns a red tomato, upcoming sessions show as faded tomatoes, and the one in progress fills with red from the bottom up as you focus. The timer keeps running when you switch to another status, with a small countdown in the corner, and the bar jumps back to it when a phase ends.</dd>
-          <dt>Side buttons</dt><dd>BOOT jumps to the next status without looking. PWR turns the screen off and on, and holding it powers down. If the screen is dark or an alarm is ringing, the first press of either button only wakes the screen or silences the alarm.</dd>
+          <dt>Side buttons</dt><dd>BOOT jumps to the next status without looking. A press of PWR turns the screen off and on, holding it for 3 seconds powers the bar off, and a press turns it back on. If the screen is dark or an alarm is ringing, the first press of either button only wakes the screen or silences the alarm.</dd>
+          <dt>Power</dt><dd>On battery, the software is what keeps the bar switched on, so it also handles switching off: hold PWR for 3 seconds, or use Power in the quick menu, which also has Restart. A watchdog restarts the bar if the software ever freezes, so it can't get stuck on, and it shuts itself down before the battery runs flat. On USB the bar always has power, so powering off puts it into a deep sleep until you press PWR. While it's off, the Remote page can't reach it and says so.</dd>
           <dt>Phone remote</dt><dd>The device serves a small page at tinybar.local on your Wi-Fi, like the Remote panel on this page.</dd>
           <dt>Automations</dt><dd>An HTTP endpoint (and optionally MQTT for Home Assistant) so a calendar, Slack, Zoom or a shortcut can set the status.</dd>
           <dt>Calendar</dt><dd>Optionally reads a private calendar link and switches to "In a meeting" on its own.</dd>
@@ -605,7 +649,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
           <dt>Clock</dt><dd>PCF85063 RTC, synced over NTP</dd>
           <dt>Motion</dt><dd>QMI8658 6-axis IMU</dd>
           <dt>Audio</dt><dd>ES8311 codec + speaker</dd>
-          <dt>Power</dt><dd>USB-C or 3.7 V Li-ion</dd>
+          <dt>Power</dt><dd>USB-C, or 3.7 V Li-ion on MX1.25 (pin 2 +), charges at 1.2 A</dd>
         </dl>
         <p class="note-small">Meeting names, times, the battery level and today's Pomodoro count are sample data.</p>
       </div>
@@ -706,6 +750,8 @@ h1 .dot { color: var(--state); transition: color .3s; }
     ringUntil: 0,
     nextRing: 0,
     bright: 0.7,
+    powered: true,
+    booting: false,
   };
 
   const $ = id => document.getElementById(id);
@@ -878,7 +924,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
     if (ready) sub = `Flip or tap to start ${set.focus} min of focus`;
     else if (paused) sub = 'Flip or tap to resume';
     else if (phase === 'focus') sub = `Please don't interrupt · break at ${fmt(simEnd())}`;
-    else sub = `Come say hi · back to work at ${fmt(simEnd())}`;
+    else sub = `Free to chat · back to focus at ${fmt(simEnd())}`;
     return {
       main: `<div class="kicker">${kicker}</div><div class="word ${paused && !ready ? 'blink' : ''}" style="font-size:17cqw">${mmss(remSec())}</div><div class="sub">${sub}</div>`,
       side: sideHtml,
@@ -891,7 +937,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
     switch (id) {
       case 'available':
         return {
-          main: `<div class="kicker">Status</div><div class="word" style="font-size:14.5cqw">Available</div><div class="sub">Come on in</div>`,
+          main: `<div class="kicker">Status</div><div class="word" style="font-size:14.5cqw">Available</div><div class="sub">Happy to chat</div>`,
           side: side('Free until', fmtShort(sample.freeUntil), ampm(sample.freeUntil) + ' · then Design review'),
         };
       case 'busy': {
@@ -938,6 +984,15 @@ h1 .dot { color: var(--state); transition: color .3s; }
   const screenColor = id => id === 'pomodoro' ? col(pomo.phase) : col(id);
 
   function render() {
+    if (!s.powered) { updateHint(); updateRemote(); return; }
+    if (s.booting) {
+      lcd.style.setProperty('--sc', col('clock'));
+      lcd.innerHTML = `<div class="splash">${tomato('ripe')}TinyBar</div>`;
+      bar.hidden = true;
+      updateHint();
+      updateRemote();
+      return;
+    }
     const st = STATES[s.idx];
     const c = screenColor(st.id);
     const v = view(st.id);
@@ -947,10 +1002,16 @@ h1 .dot { color: var(--state); transition: color .3s; }
     if (v.bar == null) { bar.hidden = true; }
     else { bar.hidden = false; barFill.style.width = v.bar.toFixed(2) + '%'; }
     document.querySelectorAll('.sbtn').forEach(b => b.setAttribute('aria-pressed', b.dataset.id === st.id));
-    $('hint').textContent = st.id === 'pomodoro'
-      ? 'Tap: start or pause · Flip: start next phase · Swipe: change status · Hold: timer options'
-      : 'Tap: next status · Swipe: back or forward · Hold: quick menu · Side buttons: BOOT and PWR';
+    updateHint();
     updateRemote();
+  }
+
+  function updateHint() {
+    $('hint').textContent = !s.powered ? 'Powered off · Press PWR on the side to turn it on'
+      : s.booting ? 'Starting up'
+      : STATES[s.idx].id === 'pomodoro'
+        ? 'Tap: start or pause · Flip: start next phase · Swipe: change status · Hold: timer options'
+        : 'Tap: next status · Swipe: back or forward · Hold: quick menu · PWR: hold 3 s to power off';
   }
 
   function updateRemote() {
@@ -965,11 +1026,14 @@ h1 .dot { color: var(--state); transition: color .3s; }
     $('pStart').textContent = pomo.waiting ? `Start ${pomo.phase === 'focus' ? 'focus' : 'break'}` : pomo.running ? 'Pause' : isReady() ? 'Start' : 'Resume';
     const pb = document.querySelector('.sbtn[data-id="pomodoro"]');
     if (pb) pb.style.setProperty('--c', pc);
+    $('pwrHoldBtn').textContent = s.powered ? 'Hold PWR 3 s' : 'Press PWR';
+    $('offNote').hidden = s.powered;
   }
 
   // Redraw only when something visible changes, so the marquee keeps scrolling.
   let lastKey = '', lastTs = Date.now();
   function loop() {
+    if (!s.powered || s.booting) { lastTs = Date.now(); return; }
     const t = Date.now();
     if (s.ringing) {
       if (t > s.ringUntil) { s.ringing = false; say('alarm: stopped after a minute'); }
@@ -1081,14 +1145,25 @@ h1 .dot { color: var(--state); transition: color .3s; }
         ${done}`;
     } else {
       menu.innerHTML = `
-        <div class="tile" data-action="bright"><b>Brightness</b><span>${Math.round(s.bright * 100)}%</span><small>tap to change</small></div>
+        <div class="tile" data-action="bright"><b>Light</b><span>${Math.round(s.bright * 100)}%</span><small>tap to change</small></div>
         <div class="tile" data-action="sync"><b>Calendar</b><span>Sync</span><small>last synced 2 min ago</small></div>
         <div class="tile info"><b>Battery</b><span>82%</span><small>Wi-Fi: Home</small></div>
+        <div class="tile" data-action="power"><b>Power</b><span>Off</span><small>or restart</small></div>
         ${done}`;
     }
     menu.hidden = false;
+    $('toast').hidden = true;
     armMenuTimer();
     say(STATES[s.idx].id === 'pomodoro' ? 'hold: timer options' : 'hold: quick menu');
+  }
+  function showPowerMenu() {
+    menu.innerHTML = `
+      <div class="tile" data-action="restart"><b>Restart</b><span>Restart</span><small>back in a few seconds</small></div>
+      <div class="tile" data-action="poweroff"><b>Power off</b><span>Off</span><small>press PWR to turn on</small></div>
+      <div class="tile done" data-action="close"><b>Close</b><span>Back</span><small>or wait 8 s</small></div>`;
+    menu.hidden = false;
+    armMenuTimer();
+    say('menu: power options');
   }
   function armMenuTimer() {
     clearTimeout(menuTimer);
@@ -1105,8 +1180,11 @@ h1 .dot { color: var(--state); transition: color .3s; }
       say(`menu: brightness ${Math.round(s.bright * 100)}%`);
       return;
     }
+    if (a === 'power') { showPowerMenu(); return; }
     hideMenu();
     if (a === 'close') say('menu: closed');
+    else if (a === 'restart') restart('menu');
+    else if (a === 'poweroff') powerOff('menu');
     else if (a === 'sync') { toast('Calendar synced'); say('menu: calendar synced'); }
     else if (a === 'skip') skip('menu');
     else if (a === 'stop') stop('menu');
@@ -1117,7 +1195,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
   // Touch gestures on the screen
   let p = null, held = false, holdTimer = null;
   screen.addEventListener('pointerdown', e => {
-    if (s.off) { p = null; return; }
+    if (s.off || !s.powered || s.booting) { p = null; return; }
     p = { x: e.clientX, y: e.clientY };
     held = false;
     clearTimeout(holdTimer);
@@ -1129,6 +1207,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
   });
   screen.addEventListener('pointerup', e => {
     clearTimeout(holdTimer);
+    if (!s.powered || s.booting) { p = null; return; }
     if (s.off) { wake('tap'); p = null; return; }
     if (!p) return;
     let dx = e.clientX - p.x;
@@ -1149,6 +1228,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
   });
   screen.addEventListener('pointercancel', () => { clearTimeout(holdTimer); p = null; });
   screen.addEventListener('keydown', e => {
+    if (!s.powered || s.booting) return;
     if (e.key === 'ArrowRight') { e.preventDefault(); go(s.idx + 1, 'swipe'); }
     else if (e.key === 'ArrowLeft') { e.preventDefault(); go(s.idx - 1, 'swipe'); }
     else if (e.key === 'Enter' || e.key === ' ') {
@@ -1173,18 +1253,123 @@ h1 .dot { color: var(--state); transition: color .3s; }
     return true;
   }
   $('btnBoot').addEventListener('click', () => {
+    if (!s.powered || s.booting) { say('BOOT: TinyBar is off, press PWR to turn it on'); return; }
     if (wake('BOOT')) return;
     if (silence()) { say('BOOT: alarm off'); toast('Alarm off'); render(); return; }
     go(s.idx + 1, 'BOOT');
   });
-  $('btnPwr').addEventListener('click', () => {
+  // PWR: a press turns the screen off or on (or answers an alarm); holding it for 3 s powers the bar off.
+  // When the bar is off, a press turns it on. This matches the V2 board, where the software holds the
+  // power on through the SYS_EN line and reads the button on GPIO 16.
+  function pwrShort() {
     if (silence()) { say('PWR: alarm off'); toast('Alarm off'); render(); return; }
     togglePower();
+  }
+  function showHold() {
+    const el = $('holdOv');
+    el.classList.remove('go', 'done');
+    el.hidden = false;
+    void el.offsetWidth;
+    el.classList.add('go');
+  }
+  function hideHold() { const el = $('holdOv'); el.hidden = true; el.classList.remove('go', 'done'); }
+
+  function powerOff(how) {
+    silence();
+    hideMenu();
+    const el = $('holdOv');
+    $('holdTitle').textContent = 'Powering off';
+    $('holdSub').textContent = 'Press PWR to turn it back on';
+    el.classList.remove('go');
+    el.classList.add('done');
+    el.hidden = false;
+    say(`${how}: powering off`);
+    setTimeout(() => {
+      hideHold();
+      $('holdTitle').textContent = 'Keep holding';
+      $('holdSub').textContent = 'to power off';
+      s.powered = false;
+      s.off = false;
+      screen.classList.remove('off');
+      screen.classList.add('dead');
+      // A running Pomodoro stops when the power is cut; today's tomatoes are kept.
+      Object.assign(pomo, { phase: 'focus', round: 1, remaining: phaseLen('focus'), running: false, waiting: false, justEnded: null });
+      render();
+      say(`${how}: off`);
+    }, 1200);
+  }
+  function powerOn(how) {
+    s.powered = true;
+    s.booting = true;
+    screen.classList.remove('dead');
+    render();
+    say(`${how}: starting up`);
+    setTimeout(() => {
+      s.booting = false;
+      if (STATES[s.idx].id === 'pomodoro') s.idx = s.lastStatus;
+      lastKey = '';
+      render();
+      toast('Ready');
+    }, 1500);
+  }
+  function restart(how) {
+    silence();
+    hideMenu();
+    Object.assign(pomo, { phase: 'focus', round: 1, remaining: phaseLen('focus'), running: false, waiting: false, justEnded: null });
+    powerOn(`${how}: restart`);
+  }
+
+  let pwrDownAt = 0, pwrTimer = null, pwrShowTimer = null;
+  const btnPwr = $('btnPwr');
+  function pwrCancel() { clearTimeout(pwrTimer); clearTimeout(pwrShowTimer); hideHold(); }
+  btnPwr.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    pwrDownAt = Date.now();
+    if (!s.powered || s.booting) return;
+    pwrShowTimer = setTimeout(showHold, 400);
+    pwrTimer = setTimeout(() => { pwrDownAt = 0; powerOff('PWR held'); }, 3000);
   });
+  btnPwr.addEventListener('pointerup', () => {
+    if (!pwrDownAt) return;
+    const held = Date.now() - pwrDownAt;
+    pwrDownAt = 0;
+    pwrCancel();
+    if (s.booting) return;
+    if (!s.powered) { powerOn('PWR'); return; }
+    if (held < 400) pwrShort();
+    else say('PWR: released early, still on');
+  });
+  btnPwr.addEventListener('pointerleave', () => { if (pwrDownAt) { pwrDownAt = 0; pwrCancel(); } });
+  btnPwr.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    if (s.booting) return;
+    if (!s.powered) powerOn('PWR'); else pwrShort();
+  });
+
+  // The remote stands in for a 3-second hold, since the side button is small.
+  $('pwrHoldBtn').addEventListener('click', () => {
+    if (s.booting) return;
+    if (!s.powered) { powerOn('PWR'); return; }
+    showHold();
+    say('PWR: holding');
+    setTimeout(() => { if (s.powered) powerOff('PWR held'); }, 3000);
+  });
+
+  // While the bar is off its web page is unreachable, so the remote's controls do nothing but explain why.
+  const phone = document.querySelector('.phone');
+  phone.addEventListener('click', e => {
+    if (s.powered || !e.target.closest('button, input') || e.target.closest('#pwrHoldBtn')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    say('remote: TinyBar is off, press PWR to turn it on');
+  }, true);
+  phone.addEventListener('submit', e => { if (!s.powered) { e.preventDefault(); e.stopPropagation(); } }, true);
 
   // Flipping the bar over always does three things: turns the layout the right way up,
   // silences any alarm, and starts whatever the Pomodoro is waiting for. A running timer is left alone.
   $('flipBtn').addEventListener('click', () => {
+    if (s.booting) return;
     s.flipped = !s.flipped;
     device.classList.toggle('flipped', s.flipped);
     wake();
