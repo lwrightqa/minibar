@@ -238,14 +238,15 @@ The UX designer's spec for Direction A. Positions are on the 640 × 172 screen.
 
 ### Proposed for Bold Signal (2026-10-04, waiting for the user's OK)
 
-- **Proposed: call copy** (the designer's suggestion). Kicker "From your Mac · Slack" ("· Slack" left out when no app is sent), headline ON A CALL, sub line "Message me instead", and in the info column "On the call", the duration, and "since 2:04 PM", with the foot changing to "Meeting ends 2:30 PM" when a calendar meeting is also on. The designer's example writes the duration "12 min"; **Proposed:** "12m", like every other duration on the bar.
+- **Decided (2026-10-04): keep the current call wording.** The On a call screen keeps what the mock-up shows: a MAC chip followed by the app name when it's sent (for example "MAC · SLACK"), headline ON A CALL, and the sub line "Please keep voices low nearby", with durations written like every other one on the bar ("12m"). The designer's suggestion ("From your Mac · Slack", "Message me instead") was declined.
+- **Decided (2026-10-04): the tomato row shows the current set of four.** After Stop or a restart it starts a fresh set, while the foot under it ("1 done · 31m focused") keeps counting the whole day.
 - **Proposed: a paused timer holds still in white** at full opacity, with the kicker ("Paused · …") and the sub line ("Flip or tap to resume") saying it's paused. The solid look in the mock-up blinks it down to 35% opacity, which breaks the full-opacity rule (white at 35% on a status field is far below 4.5:1). Low Glare also held it still, so this is what the user last saw.
 - **Proposed: the Pomodoro corner pill's tomato** is a 16 px sprite drawn for that size, or a plain dot if that doesn't read well. A 15 px downscale of the 32 px sprite blurs.
 - **Proposed: check the smallest text** (the 12 px label and the 14 px foot) on the real bar before the firmware's screens are final.
 
 ### Follow-ups for Bold Signal (open)
 
-- **Mock-up (being switched in the 2026-10-04 round):** Bold Signal becomes the simulator's default (`DEFAULT_STYLE`) and what Reset to defaults brings back, its card carries the "pick" badge and comes first, the copy near "Your pick comes first" and "The simulator opens with your pick" describes it, and every screen follows the spec above (white at full opacity on the fields, weight 700, the fixed baselines, the status row without a battery icon and with the Mac icon). The Low Glare Pixel card stays, without the badge. Then the published Artifact needs updating.
+- **Done (2026-10-04), mock-up:** Bold Signal is the simulator's default and the published Artifact is updated. The original plan: Bold Signal becomes the simulator's default (`DEFAULT_STYLE`) and what Reset to defaults brings back, its card carries the "pick" badge and comes first, the copy near "Your pick comes first" and "The simulator opens with your pick" describes it, and every screen follows the spec above (white at full opacity on the fields, weight 700, the fixed baselines, the status row without a battery icon and with the Mac icon). The Low Glare Pixel card stays, without the badge. Then the published Artifact needs updating.
 - **Firmware fonts:** convert with lv_font_conv at 4 bpp:
   - Barlow Condensed Bold at **112, 100 and 78 px** (A to Z, 0 to 9, colon, space and middle dot), **62 px** (printable ASCII), and **46 and 28 px** for the info column.
   - Barlow Medium (500) at 19 and 14 px, SemiBold (600) at 15 px, and Bold (700) at 15 and 12 px.
