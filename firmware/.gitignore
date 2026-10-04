@@ -5,3 +5,6 @@ managed_components/
 sdkconfig
 sdkconfig.old
 # dependencies.lock is committed: it pins the exact component versions.
+# The merged image to flash (dist/tinybar-<version>.bin) is a build output: rebuild it from a tagged commit rather
+# than committing 2 MB binaries.
+dist/

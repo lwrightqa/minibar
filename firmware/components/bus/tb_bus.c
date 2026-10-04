@@ -149,13 +149,14 @@ static void run_job(job_t *j)
 
 bool tb_bus_receive(tb_event_t *ev, uint32_t wait_ms)
 {
-    TickType_t wait = pdMS_TO_TICKS(wait_ms);
-    for (;;) {
-        if (xQueueReceive(s_queue, ev, wait) != pdTRUE) return false;
-        if (ev->kind != TB_EV_EXEC) return true;
+    if (xQueueReceive(s_queue, ev, pdMS_TO_TICKS(wait_ms)) != pdTRUE) return false;
+    if (ev->kind == TB_EV_EXEC) {
+        /* Run the job here, and hand the caller an empty event, so each job counts against the caller's per-loop
+         * budget (a stream of requests can't keep the app task from drawing and feeding the watchdog). */
         run_job((job_t *)ev->u.exec.done);
-        wait = 0;   /* keep draining without waiting again */
+        ev->kind = TB_EV_NONE;
     }
+    return true;
 }
 
 uint32_t tb_bus_dropped(void)

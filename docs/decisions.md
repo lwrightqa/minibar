@@ -46,6 +46,8 @@ The running record of what has been decided, and why. The product manager keeps 
 
 - A web page served by the bar at `tinybar.local` on the office Wi-Fi.
 - Setting the status from outside the office network (an online relay) is **deferred**.
+- **Proposed (2026-10-04), waiting for the user's OK:** the Remote works only on a phone that has been **paired** with a code shown on the bar. It also lists the paired devices, each with Remove. See Pairing.
+- **Proposed (2026-10-04): characters a message can't show.** The Remote checks the custom message as you type. Before anything is sent, it names any characters the bar can't draw, right under the field: "TinyBar can't show X. Remove it to show this message.", where X is the character itself, for example an emoji. Show stays disabled until they're gone. The check uses exactly the bar's own character set (printable ASCII, Latin-1, the en and em dashes, and the ellipsis, after the curly-quote mapping in `docs/api.md` 2.3), which is the firmware's `tb_text_drawable()`. This is the Remote's side of the `unsupported_chars` error in api.md 8.2.
 
 ## Automatic status (decided 2026-10-04)
 
@@ -102,9 +104,20 @@ These are the product manager's suggested defaults for questions the user hasn't
   - **Wi-Fi:** `POST http://tinybar.local/api/call` with `{"active": true, "app": "Slack"}`, or `{"active": false}` when the call ends. The reply is `{"ok": true, "showing": "call"}`, or `{"ok": false, "error": "calls_off"}` when that source is turned off. `GET /api/status` returns what the bar is showing and which sources are on. It never returns the calendar address.
   - **USB serial:** the same JSON, one object per line, with `"cmd": "call"` added: `{"cmd": "call", "active": true, "app": "Slack"}`. A `{"cmd": "hello"}` line lets the app find the bar. The bar answers every line with one JSON line.
   - **Heartbeat:** the app repeats its current state every 30 seconds, and the bar ends a call after 90 seconds without a message.
-  - **Pairing:** an `Authorization: Bearer <token>` header is reserved for a later pairing step. It isn't checked yet. *(2026-10-04: the Mac app's spec proposes the pairing step; see Mac app.)*
+  - **Pairing:** an `Authorization: Bearer <token>` header is reserved for a later pairing step. It isn't checked yet. *(2026-10-04: the Mac app's spec proposes the pairing step; see Mac app. Later on 2026-10-04: `docs/api.md` section 4 proposes checking the token, with pairing codes shown on the bar. See Pairing.)*
+  - *(2026-10-04: superseded by `docs/api.md`, which is the contract and wins on the wire format; see Mac app. Its section 14.1 lists the changes:*
+    - *paths under `/api/v1/`*
+    - *a token that's checked, with the `call` and `full` scopes (Proposed)*
+    - *Calls from your Mac turned off answers `200` with `"sources": {"mac": false}` instead of `403 calls_off`*
+    - *a dark screen is `"screen": "dark"`, not `showing: off`*
+    - *USB lines carry the `@tb ` marker and an `id`*
+    - *call messages carry `client`, `session` and `seq`*
+    - *`meeting.next` is an object*
+    - *errors carry `message` and `field`*
+
+    *The mock-up's API section is brought in line in the pairing round, kept short, and points to `docs/api.md`.)*
 - **Conflict to resolve:** the user's example for this round sends the app name (`"app": "Slack"`), but the decision above says only "on a call: yes or no" leaves the Mac. **Proposed:** `app` is optional. The bar shows it if it's sent, and the Mac app can leave it out. *(2026-10-04: the Mac app job's brief says "only on/off and the app name ever leave the Mac", which fits this proposal. The Mac app's spec sends a name only for listed call apps, and has a switch to send none; see Mac app.)*
-- **Open, not proposed this round:** the Remote and the API have no PIN, so anyone on the office Wi-Fi can open `tinybar.local` and change the status. Worth deciding before the firmware.
+- **Open, not proposed this round:** the Remote and the API have no PIN, so anyone on the office Wi-Fi can open `tinybar.local` and change the status. Worth deciding before the firmware. *(2026-10-04: `docs/api.md` section 4 proposes pairing as the answer, and the mock-up now shows it so you can judge it. Still **Proposed, waiting for your OK**; see Pairing.)*
 
 ## Mac app
 
@@ -140,6 +153,7 @@ The menu-bar app that sets **On a call** (see Automatic status). The full spec, 
   - The bar issues a token, kept in the Mac's Keychain. No computer name, user name or serial number is sent.
   - Until the bar supports pairing, the app uses `tinybar.local` (or a typed address) with no token.
   - **Needs the API and firmware to add:** a bar ID in `hello` and `/api/status`, `{"cmd": "pair"}` over USB, `POST /api/pair` with the code, a Bonjour service (`_tinybar._tcp`) carrying the ID, and a `401` once tokens are checked.
+  - *(2026-10-04: changed by `docs/api.md` 14.5. The Wi-Fi code is shown on the **bar**, not on the Remote, lasts 2 minutes rather than 5, and is asked for with `pair/start`, then sent with `pair`. The Remote's planned Pair a Mac button becomes instructions instead. USB pairing without a code stays. See Pairing.)*
 - **Proposed: launch at login,** on by default, offered as a checked box in the first-run window (`SMAppService`).
 - **Proposed: privacy.**
   - Only `active`, the optional short `app` name, and the protocol (the commands, the pairing code, the bar's token) leave the Mac, and only to the bar.
@@ -168,15 +182,15 @@ The menu-bar app that sets **On a call** (see Automatic status). The full spec, 
 
 ### Open (2026-10-04)
 
-- **More than one TinyBar on a network:** they can't all be `tinybar.local`, which affects the Remote's address as well as the Mac app. **Proposed:** a bar keeps `tinybar.local` when it's free, advertises its ID over Bonjour and shows its real address on the Wi-Fi screen. The Mac app finds its bar by ID.
+- **More than one TinyBar on a network:** they can't all be `tinybar.local`, which affects the Remote's address as well as the Mac app. **Proposed:** a bar keeps `tinybar.local` when it's free, advertises its ID over Bonjour and shows its real address on the Wi-Fi screen. The Mac app finds its bar by ID. *(2026-10-04, pairing round: the mock-up now shows the bar's **name and real address**, for example "TinyBar 2A1C" and `tinybar.local` (or `tinybar-2.local` after a name clash). They appear on the Connected screen of Wi-Fi setup, the Wi-Fi menu's Network tile, and the Remote's pairing prompt. The pairing screen's foot shows the name too. The default name, "TinyBar" plus the last four characters of the bar's ID, is **Proposed** in `docs/api.md` section 3.)*
 - **Two Macs, one bar:** with "latest message wins", an idle second Mac's `active: false` heartbeat would end the first Mac's call. **Proposed for later:** the bar keeps each paired Mac's state by its token. v1 is one Mac per bar.
 - **Muted calls:** some apps may let go of the mic when you mute, so with the camera off, On a call would end. This is to be measured per app on a real Mac (the spec's criterion 34) before deciding whether v1 needs more.
 
 ### Follow-ups (open)
 
-- **API contract:** fold the pairing additions above into `docs/api.md`, or record that v1 ships without pairing.
+- **API contract:** fold the pairing additions above into `docs/api.md`, or record that v1 ships without pairing. *(Done 2026-10-04: `docs/api.md` section 4, Proposed. If you'd rather not have pairing, the bar ships with `"auth": "none"` and nothing else changes; see api.md 4.1.)*
 - **Mock-up:**
-  - Add Pair a Mac (the code) and a paired-Macs list with Forget to the Remote's Connect your Mac card.
+  - Add Pair a Mac (the code) and a paired-Macs list with Forget to the Remote's Connect your Mac card. *(Changed 2026-10-04 by `docs/api.md` 14.3 and 14.5. The code shows on the bar, so the card gets instructions instead of a button. A Paired devices list with Remove covers every device, not only Macs. Both are built in the pairing round; see Pairing.)*
   - Change the Simulate controls' "Meet" app button to "Chrome".
   - Drop the card's "Coming later" badge when the app ships.
   - Then republish the Artifact.
@@ -188,6 +202,83 @@ The menu-bar app that sets **On a call** (see Automatic status). The full spec, 
   - AirPods.
   - Muted calls.
   - Local Network permission and login items with ad-hoc signing.
+
+## Pairing (Proposed 2026-10-04, waiting for the user's OK)
+
+- **What it is:** `docs/api.md` section 4 proposes it, as the answer to "the Remote and the API have no PIN" (see Automatic status). Before a phone, a Mac or a script can control the bar over Wi-Fi, it pairs once with a **6-digit code shown only on the bar's screen**, so only someone who can see the bar can pair.
+  - The code lasts **2 minutes**, allows **3 tries**, and only one code is shown at a time.
+  - After two failed pairings in a row, the bar refuses new codes for 30 seconds. The wait doubles with each further failure, up to 1 hour.
+  - **USB needs no pairing:** the cable is the proof, and the Mac app pairs over it without a code.
+  - The Mac app's token can only report calls, while the Remote and scripts get full control.
+  - Tokens don't expire. A bar keeps at most 10.
+  - The Remote removes one device at a time. Forgetting them all is done on the bar, from the Wi-Fi menu's Devices tile.
+- **The mock-up now shows the proposed flow (pairing round, 2026-10-04), so you can judge it.** It's still **Proposed, waiting for your OK**:
+  - the bar's pairing screen
+  - the Devices tile
+  - the Remote's pairing prompt and Paired devices list
+  - the Connect your Mac instructions
+  - the Simulate panel's Pairing box
+
+  The notes say it's proposed; the screens themselves don't. If you'd rather not have pairing, the bar ships with `"auth": "none"`, and the pairing screen, the Devices tile and the Remote's prompt go away (api.md 4.1).
+
+### Proposed in the pairing round (2026-10-04, product manager)
+
+These fill in what `docs/api.md` 4.8 and 14.3 left open. They're built into the mock-up this round. Change any of them and the team will follow.
+
+- **Proposed: flip during pairing.** A flip cancels the pairing ("Pairing canceled"), like a tap, swipe, hold or BOOT. It then does what a flip always does: turns the layout, silences any alarm, and starts whatever the Pomodoro is waiting for. The toast adds that part, for example "Pairing canceled · Focus started". A flip is never swallowed anywhere else (on a menu, on a dark screen, during an alarm), and the decided rule says it always does those three things.
+- **Proposed: the pairing screen's details.**
+  - The surfaces are the Clock screen's.
+  - The info column's label is **"CODE EXPIRES IN"**, above an m:ss countdown, with the bar's name ("TinyBar 2A1C") as the foot. api.md says "Code expires" and the UX design says "Expires in"; "Code expires 1:52" could read as a time of day.
+  - The sub line names the device: "Type it on your Mac · tap to cancel", "Type it on your phone · tap to cancel", and otherwise "Type this code on that device · tap to cancel". All of them fit.
+  - The 2 minutes count from when the code appears on the screen.
+  - Once pairing ends, the screen stays on, even if the code woke it.
+- **Proposed: what pairing does to everything else.**
+  - **An alarm:**
+    - A code that arrives while the alarm rings stops the chime and flash. The Pomodoro keeps waiting.
+    - A phase that ends while a code is showing waits too.
+    - When pairing ends, the waiting screen shows with one chime and flash and no repeats, as after a call (flash only during a call or calendar meeting).
+    - A flip answers the alarm. A PWR press drops the chime, and the waiting screen shows silently when the screen is woken.
+  - **A call, a calendar meeting, or a change made on the Remote** while a code is showing is handled the way an open menu handles it. It happens underneath (the Pomodoro pauses for a call or meeting, with no sound, as decided), and it shows once pairing ends, after the pairing toast.
+  - A running Pomodoro keeps running, and ticking carries on.
+  - **Power:**
+    - PWR held all the way, Power off, or a restart ends the pairing. Paired devices stay paired, and the back-off is cleared, as api.md says.
+    - Letting PWR go early returns to the code.
+  - **Starting Wi-Fi setup** ends a pairing, which counts as canceled. A code is never shown during setup, including on the Connected screen.
+- **Proposed: the Devices tile.**
+  - The Wi-Fi menu's tiles are Network, Devices, Set up again and Back.
+  - The confirmation ("Forget all · 3 devices") has its own tile to go back without forgetting. The 8-second close also forgets nothing.
+  - After Forget all, the toast says "Forgot 3 devices". The Remote returns to its pairing prompt ("TinyBar forgot this phone. Pair it again to use the Remote."), a call the Mac reported over Wi-Fi ends, and USB keeps working.
+  - **With nothing paired, the tile stays** and reads "None", with how to pair. It's read-only like Network, so a tap on it closes the menu, as a tap on Network does.
+- **Proposed: the Remote's pairing prompt.**
+  - Until the phone is paired, the prompt replaces the Remote's controls (the bar answers nothing else without a token). It names the bar.
+  - The prompt says **"Type the code shown on your TinyBar"**. "Type the code on your TinyBar" could read as typing on the bar.
+  - The code field brings up a number pad, ignores spaces and dashes, and pairs as soon as the sixth digit is in, as the Mac app does.
+  - Cancel goes back to the start. Pressing Pair this phone again while its own code is still on the bar returns to the field, rather than showing a "busy" message for your own code.
+  - The prompt notices within about 2 seconds when the code runs out or is canceled on the bar.
+  - The error messages follow the Mac app's (`docs/mac-app-ux.md` 5.5), except busy: "Another device is pairing with this TinyBar. Try again in 74 seconds." "Someone else" is wrong when the other device is your own Mac.
+- **Proposed: the Remote's name.** The Remote sends a name for the kind of phone when the browser says what it is ("iPhone", "iPad", "Android phone"). Otherwise it sends none, and the bar says "Phone". The mock-up's phone pairs as "iPhone" ("PAIRING · IPHONE", "Paired · iPhone").
+- **Proposed: the Paired devices list.**
+  - Each device shows its name, kind (Mac app, Remote, Automation), scope (Calls only, Full control), when it was paired (and "over USB"), when it was last used, and a Remove button.
+  - Remove asks first, in place, as the calendar's Remove does. Removing This phone signs the Remote out, back to the pairing prompt.
+  - Removing a Mac ends a call it reported over Wi-Fi. Over USB, the call carries on.
+- **Proposed: Connect your Mac.** The instructions use the Mac app's real menu names from `docs/mac-app-ux.md` 5.4: "To pair your Mac, plug this TinyBar into it once. Or, in the TinyBar menu on your Mac, choose Connect…, then Pair Over Wi-Fi. This TinyBar shows the code." api.md 14.3 suggested "choose Pair with a code", but the app has no item by that name.
+- **Proposed: the mock-up starts paired.** This phone is already paired, along with two sample devices (a Mac paired over USB, and a script), so the Devices tile reads "3 paired" and everything that worked before works without pairing first. Removing This phone, or Forget all on the bar, shows the pairing prompt. An unpaired simulated Mac over Wi-Fi is refused, while over USB it always works.
+
+### Follow-ups for pairing (open)
+
+- **`docs/api.md` (lead developer):** bring 4.8 and 14.3 in line with the Proposed items above:
+  - the label "Code expires in"
+  - the kind-specific sub line
+  - the flip
+  - the Connect your Mac copy
+  - "Phone" as the label for the `remote` kind when no name is sent
+- **Firmware:** follow the mock-up once these are confirmed. A read-only check on 2026-10-04 found two differences in core:
+  - a flip leaves the pairing screen up
+  - the Devices tile is hidden when nothing is paired
+
+  It also has no rule yet for an alarm or a phase ending during pairing.
+- **Mac app spec:** `docs/mac-app.md` still describes a Pair a Mac button on the Remote and a 5-minute code. `docs/api.md` 14.5 and `docs/mac-app-ux.md` already supersede both.
+- **The user's OK** on pairing as a whole, and on the items above.
 
 ## Look
 
@@ -324,6 +415,12 @@ These applied only to Bitcount and Handjet. **Superseded on 2026-10-04 by the sw
   - **Updated 2026-10-04 (switch to Bold Signal):** the user switched to **Direction A, Bold Signal**. It becomes the simulator's default, carries the "pick" badge and comes first, and it's the direction that goes to the firmware. The Low Glare Pixel card stays and can still be applied, but it's no longer the default. See Look.
   - **Proposed:** every direction keeps all screen text at a contrast of 4.5:1 or better on every status color. It uses only what LVGL 9 can draw: solid fills, simple gradients, and Google Fonts under the OFL or Apache license. (The current default misses 4.5:1 with white text on Available, about 4.0:1; on Focus, about 3.2:1; and on Short break, about 4.2:1.) *Note 2026-10-04: those figures are for the original solid look. Bold Signal, the default now, meets the rule: white is 4.91:1 or better on every status field.*
 - **Simulate controls** (decided 2026-10-04): buttons that start and end a call or a meeting, so the automatic statuses can be tried before the Mac app exists. They're clearly labeled mock-up only, and they sit outside the Remote panel.
+  - **Updated 2026-10-04 (pairing round):** a Pairing box joins them.
+    - Mac app asks to pair shows a code on the bar.
+    - A field takes the code as the Mac app would, and shows the Mac app's answers.
+    - A wrong code is any other 6 digits.
+    - The demo speed (60× faster) makes the 2-minute code and the back-off waits quick to see, and it can be reached even while the Remote is unpaired.
+    - The code itself only ever shows on the simulated bar.
 
 ## Hardware notes for the firmware (V2)
 

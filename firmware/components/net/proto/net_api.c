@@ -1361,7 +1361,17 @@ static void h_setup_wifi(rt_t *r, cJSON *b)
     }
     if (!net_port_setup_join(ssid, sec == NET_SEC_WORK_LOGIN ? user : NULL, pass, cal))
         { fail_retry(r, 503, "busy", "TinyBar couldn't start joining. Try again in a second.", NULL, 1); return; }
-    if (tz && tz[0] && strlen(tz) < TB_TZ_NAME_BYTES && net_port_time_zone_known(tz)) tb_app_set_time_zone(s_app, tz, &r->now);
+    if (tz && tz[0] && strlen(tz) < TB_TZ_NAME_BYTES && net_port_time_zone_known(tz)) {
+        /* Lead decision: the setup page's zone (the phone of the person standing at the bar) always applies, so
+         * setting the bar up again after a move fixes its clock. Only the Mac's hello is limited to "if none is set
+         * yet" (api.md 6.6). Through the settings path, which shows no toast for a zone. */
+        tb_settings_patch_t p;
+        memset(&p, 0, sizeof p);
+        p.has_time_zone = true;
+        tb_strlcpy(p.v.device.time_zone, tz, sizeof p.v.device.time_zone);
+        const char *field = NULL;
+        if (tb_app_remote_settings(s_app, &p, &field, &r->now) != TB_OK) tb_app_set_time_zone(s_app, tz, &r->now);
+    }
     tb_app_wifi_connecting(s_app, ssid, &r->now);
     ok(r, 202);
     cJSON_AddStringToObject(r->o, "state", "connecting");

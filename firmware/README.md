@@ -11,8 +11,10 @@ What it must do is decided elsewhere, and those documents win over anything here
 
 How the code is organized, and why, is in [ARCHITECTURE.md](ARCHITECTURE.md).
 
-> **Status: skeleton.** The project builds and the host tests run, but most module bodies are stubs marked
-> `TODO(<module>)`. Nothing has run on a board yet. See "What's verified" at the end.
+> **Status: integrated, not yet run on a board.** Every module is built and wired together; the firmware compiles
+> with no warnings and 343 host tests pass. Nothing has been flashed, so everything that touches the hardware or the
+> radio is unverified until the first runs on the bar. See "What's verified" at the end, and the bring-up checklists
+> in `components/board/README.md`, `components/net/README.md` and `components/calendar/README.md`.
 
 ## Layout
 
@@ -36,6 +38,7 @@ firmware/
                         RTC, audio, watchdog
   fonts/                Barlow TTF sources and their OFL license                   (ui builder)
   test/host/            Linux test runner (CMake + ctest); one folder per module   (lead; folders: builders)
+  dist/                 the merged image to flash, tinybar-<version>.bin           (lead; not in git)
 ```
 
 ## Build
@@ -50,11 +53,15 @@ idf.py -B build-<name> -D SDKCONFIG=build-<name>/sdkconfig build
 ```
 
 - The first build downloads the registry components into `managed_components/` and pins them in `dependencies.lock`
-  (LVGL 9.5.0, esp_lcd_axs15231b 1.0.1, esp_io_expander_tca9554 2.0.3, esp_codec_dev 1.5.11, mdns 1.14.0).
+  (LVGL 9.5.0, esp_lcd_axs15231b 1.0.1, esp_codec_dev 1.5.11, mdns 1.14.0). The TCA9554 expander has its own small
+  driver in board (the registry one resets every pin when it starts, which would drop the power hold).
   Don't change a component manifest without the lead: the lock file and `managed_components/` are shared.
 - `sdkconfig.defaults` holds every setting we rely on. Your `build-<name>/sdkconfig` is generated from it; to pick up
   a change to the defaults, delete your `build-<name>/sdkconfig` (or the whole build directory).
-- TinyBar's own options are under `idf.py menuconfig` → TinyBar (API authorization, release logging, app task stack).
+- TinyBar's own options are under `idf.py menuconfig` → TinyBar (API authorization, release logging, app task stack)
+  and TinyBar board (IMU axis, backlight dark point, volume, amplifier gating, QSPI clock, the bring-up self-test).
+- **Release builds** (the image in `dist/`) are made by the lead in the default `build/` directory from a clean
+  `sdkconfig`: `rm -rf build sdkconfig && idf.py build`.
 
 ### Host tests
 
@@ -77,30 +84,40 @@ with the mock-up without hardware (needs `managed_components/` from any idf.py b
 ```sh
 cmake -S components/ui/host -B build-host-ui-<name>
 cmake --build build-host-ui-<name> -j
-build-host-ui-<name>/tinybar_snapshot <output-dir>
+build-host-ui-<name>/tinybar_snapshot <output-dir>        # 70 scenes; --list names them
+ctest --test-dir build-host-ui-<name>                       # the touch test, straight and flipped
 ```
+
+`components/ui/README.md` shows how to render the same scenes from the mock-up and compare them.
 
 ## Flash
 
 Flash **one merged image at address 0x0, at 115200 baud**. A faster write once left the screen showing noise
 (decisions.md, hardware notes).
 
-1. Make the merged image (bootloader, partition table, OTA data and the app in one file):
+1. Make the merged image (bootloader, partition table, OTA data and the app in one file), from the build directory:
 
    ```sh
-   idf.py -B build-<name> -D SDKCONFIG=build-<name>/sdkconfig merge-bin -o tinybar-merged.bin
+   cd build && mkdir -p ../dist
+   esptool.py --chip esp32s3 merge_bin -o ../dist/tinybar-1.0.0.bin @flash_args
    ```
 
-   It lands in `build-<name>/tinybar-merged.bin`.
+   The version is `PROJECT_VER` in `CMakeLists.txt` (also what `GET /api/v1/info` reports as `fw`).
 2. Plug the bar into the computer with a USB-C data cable. If the Mac app is running, choose **Pause USB** in its
    menu first, so it lets go of the serial port.
 3. Open the Espressif web flasher in Chrome or Edge (<https://espressif.github.io/esptool-js/>), set the baud rate to
    **115200**, click Connect and pick the "USB JTAG/serial debug unit" port.
-4. Add `tinybar-merged.bin` at flash address **0x0** and click Program. For a first install, or to wipe settings,
-   Wi-Fi and pairings, click Erase Flash first.
+4. Add `dist/tinybar-1.0.0.bin` at flash address **0x0** and click Program.
 5. Unplug and plug the bar back in (or press its reset), and it starts.
 
-With the command line instead: `idf.py -B build-<name> -p <port> -b 115200 flash`, then `idf.py -p <port> monitor`.
+**Flashing the merged image starts the bar from scratch.** The file covers the whole start of the flash, and the gaps
+between its parts are blank, so it also wipes the settings, the saved Wi-Fi, paired devices and the calendar address
+(the NVS partitions at 0x9000 and 0x12000). The bar comes up on the Wi-Fi setup QR code, as on a first start. To
+update while keeping all that, flash only the app instead: `build/tinybar.bin` at **0x30000** (the app slot), with the
+same flasher and baud rate. Erase Flash isn't needed in either case (the merged image already clears the crash dump
+too).
+
+With the command line instead: `idf.py -p <port> -b 115200 flash` (keeps NVS too), then `idf.py -p <port> monitor`.
 If the board doesn't enter download mode by itself, hold BOOT while plugging it in.
 
 ## First boot
@@ -128,10 +145,18 @@ alarm and start what the Pomodoro is waiting for.
 
 ## What's verified
 
-- **Compiled:** the whole firmware with `idf.py build` (ESP-IDF v5.4.2, esp32s3), with no warnings in TinyBar's code.
-  The merged image builds.
-- **Tested on the host:** the seed tests in `test/host/` (settings defaults and PATCH checks, the time formatters,
-  civil-date arithmetic, the router's `GET /api/v1/info`, the view model's color), and the snapshot tool renders.
-- **Unverified until it runs on the board:** everything that touches hardware or radio: power hold, the panel and
-  its rotation, touch coordinates after a flip, buttons, the IMU's axis, the RTC, audio levels, Wi-Fi and
-  WPA2-Enterprise, mDNS names, whether opening the USB port resets the bar, and timing under load.
+As of 2026-10-04 (details in ARCHITECTURE.md section 14):
+
+- **Compiled:** the whole firmware with `idf.py build` in the default `build/` directory from a clean `sdkconfig`
+  (ESP-IDF v5.4.2, esp32s3), with **no warnings**, in TinyBar's code or the managed components. The app is 2.01 MB in a
+  6 MB slot (67% free); 164 KB of internal RAM is used statically, leaving 178 KB for the heap. The merged image
+  `dist/tinybar-1.0.0.bin` was made with `esptool.py merge_bin @flash_args` and checked (bootloader, partition table
+  and app where they belong; the app's checksum and hash valid).
+- **Tested on the host:** 343 tests in 5 runners under AddressSanitizer and UBSan (core 129, calendar 59, net 91,
+  ui 29, board 35), the ui's touch test through LVGL's input path (straight and flipped), the Remote and setup pages
+  in Playwright against a fake bar running the real router and core, and the 70 screen snapshots.
+- **Unverified until it runs on the board:** everything that touches hardware or radio: power hold and power off,
+  the panel (colors, byte order, rotation, frame time), touch after a flip, buttons, the IMU's axis, the RTC, the
+  backlight's dark point, audio levels and pops, Wi-Fi (WPA2/3, work login, the setup network and captive-portal
+  sheets), mDNS, SNTP behind an office firewall, TLS to the calendar, whether opening the USB port resets the bar,
+  heap and stack headroom, and timing under load. The bring-up checklists say what to look for.

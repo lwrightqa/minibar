@@ -1,10 +1,10 @@
 ## Board support. Versions are pinned to what Waveshare's V2 examples were proven with, or the newest patch of it.
+## The TCA9554 expander has its own small driver (src/board_exio.c): esp_io_expander_tca9554 resets every pin to an
+## input when it starts, which would drop SYS_EN for a moment on each software restart.
 dependencies:
   idf: ">=5.4.2,<5.5"
   # AXS15231B QSPI panel driver (Waveshare 10_LVGL_V9_Test uses 1.0.1~1). 2.x changes the API; stay on 1.0.x.
   espressif/esp_lcd_axs15231b: "~1.0.1"
-  # TCA9554 I/O expander: power hold (SYS_EN), backlight enable, LCD reset, amplifier mode.
-  espressif/esp_io_expander_tca9554: "~2.0.3"
   # ES8311 codec over I2C + I2S (chime, alarm, soft tick).
   espressif/esp_codec_dev: "~1.5.11"
   # LVGL 9: the board creates the display and the touch input device.

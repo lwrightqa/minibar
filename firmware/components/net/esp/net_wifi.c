@@ -557,7 +557,12 @@ static void worker(void *arg)
                 /* The setup page's address is checked once the bar is online (api.md 13.2). */
                 cal_url_err_t fe = CAL_URL_OK;
                 cal_sync_set_online(true);
-                if (cal_sync_put(cal, true, &fe) != ESP_OK) ESP_LOGW(TAG, "setup's calendar address refused (%d)", (int)fe);
+                if (cal_sync_put(cal, true, &fe) != ESP_OK) {
+                    /* The check never started (bad format or no memory): the bar still owes the setup page's
+                     * address an answer, the same one a failed check gives. */
+                    ESP_LOGW(TAG, "setup's calendar address refused (%d)", (int)fe);
+                    tb_bus_post_kind(TB_EV_CAL_EVENT, TB_CALEV_SETUP_FAILED);
+                }
                 memset(cal, 0, strlen(cal));
                 free(cal);
             }

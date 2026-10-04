@@ -953,6 +953,22 @@ TB_TEST(setup_wifi_join)
     TB_EQ_INT(nf_app.wifi_mode, TB_WIFI_CONNECTING);
     TB_EQ_STR(nf_app.wifi_ssid, "Office-Corp");
     TB_EQ_STR(nf_app.set.device.time_zone, "America/Los_Angeles");
+    /* setting the bar up again (after a move) takes the phone's zone, unlike the Mac's hello (lead decision) */
+    nf_app.wifi_mode = TB_WIFI_SETUP;
+    nf_app.toast[0] = '\0';
+    r = setup_req("POST", "/api/v1/setup/wifi", "{\"ssid\": \"Office-Corp\", \"username\": \"lwright\", "
+                  "\"password\": \"correct horse battery staple\", \"time_zone\": \"Europe/Berlin\"}");
+    TB_EQ_INT(r.status, 202);
+    nf_free(&r);
+    TB_EQ_STR(nf_app.set.device.time_zone, "Europe/Berlin");
+    TB_EQ_STR(nf_app.toast, "");    /* a zone change shows no toast */
+    /* an unknown zone is ignored */
+    nf_app.wifi_mode = TB_WIFI_SETUP;
+    r = setup_req("POST", "/api/v1/setup/wifi", "{\"ssid\": \"Office-Corp\", \"username\": \"lwright\", "
+                  "\"password\": \"correct horse battery staple\", \"time_zone\": \"Mars/Olympus\"}");
+    TB_EQ_INT(r.status, 202);
+    nf_free(&r);
+    TB_EQ_STR(nf_app.set.device.time_zone, "Europe/Berlin");
     /* a password network with a calendar address checked at once */
     nf_app.wifi_mode = TB_WIFI_SETUP;
     r = setup_req("POST", "/api/v1/setup/wifi", "{\"ssid\": \"Office-WiFi\", \"password\": \"hunter2hunter2\", "

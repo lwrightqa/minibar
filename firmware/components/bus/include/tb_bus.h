@@ -105,8 +105,9 @@ bool tb_bus_notify(const char *text);
  */
 bool tb_bus_exec(tb_exec_fn fn, void *ctx, uint32_t timeout_ms);
 
-/* App task side: wait up to wait_ms for the next event. Returns false on time-out. EXEC events are run inside
- * (the caller never sees them). */
+/* App task side: wait up to wait_ms for the next event. Returns false on time-out. An EXEC event is run inside, and
+ * comes back as TB_EV_NONE (the caller ignores it), so the caller can bound how many events and jobs it handles per
+ * loop. */
 bool tb_bus_receive(tb_event_t *ev, uint32_t wait_ms);
 
 /* Mark the calling task as the app task (for tb_bus_exec's direct-call shortcut). */

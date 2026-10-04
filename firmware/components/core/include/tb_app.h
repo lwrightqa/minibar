@@ -272,8 +272,9 @@ tb_err_t tb_app_remote_aside(tb_app_t *a, bool aside, const tb_clock_t *now);
 /* minutes: for TB_POMO_EXTEND only, 1..60 (net passes 5 when the request leaves it out). */
 tb_err_t tb_app_remote_pomodoro(tb_app_t *a, tb_pomo_action_t act, int minutes, bool set_aside, const tb_clock_t *now);
 tb_err_t tb_app_remote_settings(tb_app_t *a, const tb_settings_patch_t *p, const char **field, const tb_clock_t *now);
-/* The time zone from the setup page or the Mac's hello (api.md 6.6: only if none is set yet; PATCH device.time_zone
- * changes it later). No toast; queues TB_FX_SAVE_SETTINGS (main then applies TZ). */
+/* The time zone from the Mac's hello (api.md 6.6: only if none is set yet; PATCH device.time_zone changes it later,
+ * and so does the setup page, which goes through tb_app_remote_settings). No toast; queues TB_FX_SAVE_SETTINGS (main
+ * then applies TZ). */
 void tb_app_set_time_zone(tb_app_t *a, const char *iana, const tb_clock_t *now);
 
 /* ---------- Automatic sources ---------- */

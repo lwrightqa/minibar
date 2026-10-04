@@ -338,9 +338,9 @@ h1 .dot { color: var(--state); transition: color .3s; }
   min-width: 0;
 }
 .tile b { font-family: var(--f-kick, var(--f-screen)); font-variation-settings: var(--fv-kick, normal); font-weight: var(--w-kick, 700); font-size: var(--z-label, 2cqw); letter-spacing: .1em; text-transform: uppercase; color: #9aa3ad; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tile span { font-family: var(--f-tv, var(--f-screen)); font-variation-settings: var(--fv-tv, normal); font-weight: var(--w-tv, 800); font-size: var(--z-tv, 4.4cqw); line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile > span { font-family: var(--f-tv, var(--f-screen)); font-variation-settings: var(--fv-tv, normal); font-weight: var(--w-tv, 800); font-size: var(--z-tv, 4.4cqw); line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tile small { font-size: var(--z-foot, 1.8cqw); line-height: 1.25; color: #9aa3ad; }
-.tile span.two { white-space: normal; font-size: var(--z-tv2, 3.6cqw); line-height: 1.05; }
+.tile > span.two { white-space: normal; font-size: var(--z-tv2, 3.6cqw); line-height: 1.05; }
 
 .caption {
   display: flex;
@@ -731,7 +731,7 @@ table.controls td.none { color: var(--muted); }
 .pomo-tomatoes .tomato.ghost img, .pomo-tomatoes .tomato img.faint { opacity: .3; }
 .row.fill > * { flex: 1; }
 .setting { display: grid; grid-template-columns: 88px minmax(0, 1fr); align-items: center; gap: 10px; }
-.setting > span { font-size: 13px; color: var(--muted); font-weight: 600; }
+.setting > :is(span, label) { font-size: 13px; color: var(--muted); font-weight: 600; }
 .setting .seg button { padding: 6px 0; font-size: 13px; }
 .checks { display: flex; flex-wrap: wrap; gap: 8px 18px; }
 .check { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
@@ -894,10 +894,10 @@ table.controls td.none { color: var(--muted); }
 .scr[data-layout="pixel"] .menu:has(> .tile:nth-child(4):last-child) { grid-template-columns: 22.34375cqw 22.1875cqw 22.1875cqw 22.34375cqw; }
 .scr[data-layout="pixel"] .menu:has(> .tile:nth-child(3):last-child) { grid-template-columns: 30.15625cqw 30.3125cqw 30.15625cqw; }
 .scr[data-layout="pixel"] .tile { padding: 1.5625cqw; justify-content: flex-start; }
-.scr[data-layout="pixel"] .tile span { margin-top: 1.875cqw; }
+.scr[data-layout="pixel"] .tile > span { margin-top: 1.875cqw; }
 .scr[data-layout="pixel"] .tile small { margin-top: auto; }
 .scr[data-layout="pixel"] .tile b { letter-spacing: var(--ls-kick); line-height: 1; }
-.scr[data-layout="pixel"] .tile span, .scr[data-layout="pixel"] .tile span.two { line-height: 1; }
+.scr[data-layout="pixel"] .tile > span, .scr[data-layout="pixel"] .tile > span.two { line-height: 1; }
 .scr[data-layout="pixel"] .tile small { line-height: 3.28125cqw; }
 /* Hold and power screens, and the splash: centered on whole pixels (round() where the browser has it). */
 .scr[data-layout="pixel"] .hold { letter-spacing: 0; text-transform: none; gap: 0; }
@@ -991,7 +991,7 @@ table.controls td.none { color: var(--muted); }
 .scr[data-layout="signal"] .tile.done { background: #e8ebee; }
 .scr[data-layout="signal"] .tile.done[data-action]:hover { background: #d5dade; }
 /* In a tile, the label is at the top, the value 12 px under it and the foot at the bottom, so values line up. */
-.scr[data-layout="signal"] .tile span { margin-top: 1.875cqw; }
+.scr[data-layout="signal"] .tile > span { margin-top: 1.875cqw; }
 .scr[data-layout="signal"] .tile small { margin-top: auto; }
 /* Small text uses only the Barlow weights the bar converts (500, 600 and 700; no Regular): tile feet and the setup
    foot are the foot's Barlow 500 at 14 px, the setup steps Barlow 500 at 16 px (the network name in them stays 700,
@@ -1015,6 +1015,21 @@ table.controls td.none { color: var(--muted); }
 .scr[data-layout="signal"] .wsetup .wfoot { top: 21.5625cqw; }
 .scr[data-layout="signal"] .splash { gap: 2.5cqw; }
 .scr[data-layout="signal"] .splash .tomato { width: 10cqw; height: 10cqw; }
+
+/* ---------- Pairing on the bar (Proposed, docs/api.md 4.8) ----------
+   The pairing screen is drawn as the Clock screen (#0E1013 with its #1B1E23 info column), so it needs no CSS of its
+   own. The Wi-Fi menu uses the quick menu's five columns (x 19.2, 112.13 px wide, 10.24 px gaps), with This TinyBar
+   across two of them; its two foot lines are each one line, cut with an ellipsis, so a long network name can't wrap
+   into a third (LVGL: two labels with LV_LABEL_LONG_DOT). The id outranks the pixel layout's column rules. Forget all
+   is a Busy-red tile with white text (5.38:1), the only filled tile that isn't Done. */
+#menu.five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.menu > .tile.wide { grid-column: span 2; }
+.tile.wide small span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#menu .tile.danger { background: #D01B3A; color: #fff; box-shadow: none; }
+#menu .tile.danger:hover { background: #9E152C; }
+#menu .tile.danger :is(b, small) { color: #fff; }
+/* Up to two lines of names on the Paired tile, then an ellipsis (LVGL: a label of fixed height, LV_LABEL_LONG_DOT). */
+.tile small.clamp2 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 
 /* ---------- Automatic status on the Remote ---------- */
 .auto-sec { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
@@ -1040,6 +1055,36 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
 .auto-banner small { font-size: 12px; color: var(--muted); }
 .auto-banner .btn { flex: none; }
 .link-btn { font: inherit; font-size: 13px; color: var(--ink); text-decoration: underline; }
+
+/* ---------- Pairing on the Remote (Proposed) ----------
+   The prompt that replaces the Remote's controls until this phone is paired, and the Paired devices list. */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+:is(#pairView, #remoteMain) .field-err { font-size: 13px; color: var(--ink); }
+.pair-step { display: grid; gap: 10px; min-width: 0; }
+.pair-label { font-size: 14px; color: var(--ink); }
+/* The code in the Remote's own big digits, like its Pomodoro readout. */
+.code-input { width: 100%; min-width: 0; height: 56px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+  font: 800 34px/1 var(--f-screen); letter-spacing: .08em; font-variant-numeric: tabular-nums; text-align: center; }
+.code-input::placeholder { color: var(--muted); opacity: .45; }
+.code-input:focus-visible { outline: 2px solid var(--state); outline-offset: 1px; }
+.code-input[aria-invalid="true"] { border-color: var(--s-busy); }
+.code-input:disabled { opacity: .6; }
+/* Proportional digits: Schibsted's tabular colon spaces out "1:52". */
+#pairView p.pair-line { font-size: 13px; }
+.dev-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.dev { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+.dev:first-child { border-top: 0; padding-top: 0; }
+.dev-name { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 14px; font-weight: 600; }
+.dev-name > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dev .meta { grid-column: 1 / -1; font-size: 13px; color: var(--muted); }
+/* "Paired …" and "used …" each stay whole, so a wrap moves the whole second part down rather than leaving "PM" alone. */
+.dev .meta span { white-space: nowrap; }
+.dev .setup-msg { grid-column: 1 / -1; margin-top: 6px; }
+.dev .setup-msg p { margin: 0 0 8px; font-size: 13px; color: var(--ink); }
+.btn.sm { padding: 6px 12px; font-size: 13px; }
+.setup-msg.ok { border-color: var(--s-available); }
+.sim-msg { margin: 0; font-size: 13px; }
+.sim-msg:empty { display: none; }
 
 /* ---------- Simulate panel and Design directions (mock-up only) ---------- */
 .sim-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
@@ -1118,7 +1163,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     <div class="style-head">
       <div class="eyebrow">Mock-up only · not on the device</div>
       <h2 id="simTitle">Simulate · mock-up only</h2>
-      <p>These buttons stand in for your calendar and the Mac app, which is built later, so you can watch automatic status take over and hand back. They send what the real calendar and Mac would send; the switches on the Remote still decide what the bar does with it.</p>
+      <p>These buttons stand in for your calendar and the Mac app, which is built later, so you can watch automatic status take over and hand back, and try pairing (proposed). They send what the real calendar and Mac would send; the switches on the Remote still decide what the bar does with it.</p>
     </div>
     <div class="sim-grid">
       <div class="sim-box" role="group" aria-labelledby="simCalTitle">
@@ -1149,6 +1194,42 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
           <button class="btn ghost" id="simCallEnd" type="button">Call ends</button>
           <button class="btn ghost" id="simQuiet" type="button">Mac goes quiet</button>
         </div>
+      </div>
+      <div class="sim-box" role="group" aria-labelledby="simPairTitle">
+        <span class="field-label" id="simPairTitle">Pairing · proposed, waiting for your OK</span>
+        <div class="row">
+          <button class="btn" id="simPairAsk" type="button">Mac app asks to pair</button>
+        </div>
+        <div class="setting">
+          <label for="simPairCode">Code</label>
+          <div class="msg-row">
+            <input id="simPairCode" type="text" inputmode="numeric" autocomplete="off" placeholder="000 000" aria-label="Code, as typed in the Mac app" aria-describedby="simPairMsg">
+            <button class="btn" id="simPairGo" type="button">Pair</button>
+          </div>
+        </div>
+        <p class="sim-msg" id="simPairMsg" aria-live="polite"></p>
+        <div class="row">
+          <button class="btn ghost" id="simPairWrong" type="button">Send a wrong code</button>
+          <button class="btn ghost" id="simPairJump" type="button">Jump to 0:05 left</button>
+        </div>
+        <div class="setting">
+          <label for="simMacName">Name</label>
+          <div class="msg-row"><input id="simMacName" type="text" maxlength="32" autocomplete="off" placeholder="Mac (optional)" aria-label="Name, the Mac app's optional name for this Mac"></div>
+        </div>
+        <div class="setting">
+          <span id="lSimPhone">Phone</span>
+          <div class="seg" id="simPhone" role="group" aria-labelledby="lSimPhone">
+            <button data-v="paired" aria-pressed="true">Paired</button><button data-v="unpaired" aria-pressed="false">Not paired</button>
+          </div>
+        </div>
+        <div class="setting">
+          <span id="lSimSpeed">Speed</span>
+          <div class="seg" id="simSpeed" role="group" aria-labelledby="lSimSpeed">
+            <button data-v="1" aria-pressed="true">Real time</button><button data-v="60" aria-pressed="false">60× faster</button>
+          </div>
+        </div>
+        <div class="row"><button class="btn ghost" id="simFill" type="button">Fill to 10 devices</button></div>
+        <p class="note-small" style="margin:0">Stands in for Pair Over Wi-Fi in the Mac app: ask, then type the code the bar shows, as you would on the Mac. With Link set to USB, the Mac pairs at once, with no code. A code lasts 2 minutes and allows 3 tries; Speed (the same as the Remote's Demo speed) runs it 60 times faster. After two failed pairings in a row, the bar waits 30 seconds before it shows another code, then 1, 2, 4 minutes. Phone switches the Remote between paired and its pairing prompt, without codes or toasts.</p>
       </div>
     </div>
     <p class="sim-state" id="simState" aria-live="polite"></p>
@@ -1200,9 +1281,35 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     <div class="phone" aria-label="Phone remote mock-up">
       <div class="phone-head">
         <strong id="phoneTitle">Remote</strong>
-        <span id="phoneAddr">tinybar.local</span>
+        <span id="phoneAddr">TinyBar 2A1C · tinybar.local</span>
       </div>
       <div class="offnote" id="offNote" hidden></div>
+      <span class="sr-only" id="phoneSay" aria-live="polite"></span>
+
+      <!-- Proposed: until this phone is paired, this prompt replaces the Remote's controls (the bar answers 401). -->
+      <div class="setup" id="pairView" hidden>
+        <div class="setup-msg" id="pairNote" role="status" hidden></div>
+        <div class="auto-card">
+          <div class="auto-head"><b id="pairTitle">Pair this phone</b></div>
+          <div class="pair-step" id="pairStart">
+            <p id="pairIntro">TinyBar 2A1C shows a 6-digit code on its screen. Type it here, and this phone becomes its Remote.</p>
+            <div><button class="btn" id="pairAsk" type="button" aria-describedby="pairAskErr">Pair this phone</button></div>
+            <p class="field-err" id="pairAskErr" hidden></p>
+            <p class="note-small">Only someone who can see the bar can pair, so nobody else on the office Wi-Fi can change your status.</p>
+          </div>
+          <div class="pair-step" id="pairCode" hidden>
+            <label class="pair-label" for="pairInput">Type the code shown on your TinyBar.</label>
+            <input class="code-input" id="pairInput" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="000 000" spellcheck="false" aria-describedby="pairLine pairErr">
+            <p class="pair-line" id="pairLine">The code works for 2 minutes.</p>
+            <p class="field-err" id="pairErr" hidden></p>
+            <div class="row">
+              <button class="btn" id="pairGo" type="button" disabled>Pair</button>
+              <button class="btn" id="pairNew" type="button" hidden>Show a new code</button>
+              <button class="btn ghost" id="pairCancel" type="button">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div class="setup" id="setupView" hidden>
         <p>You're on TinyBar's own network. Choose the Wi-Fi it should use.</p>
@@ -1231,6 +1338,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
       </div>
 
       <div id="remoteMain" class="setup">
+      <div class="setup-msg ok" id="pairedMsg" role="status" hidden>Paired. This phone is TinyBar 2A1C's Remote now.</div>
       <div>
         <span class="field-label">Status</span>
         <div class="auto-banner" id="autoBanner" hidden>
@@ -1298,9 +1406,10 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
       <form id="msgForm">
         <label class="field-label" for="msgInput">Custom message</label>
         <div class="msg-row">
-          <input id="msgInput" type="text" maxlength="80" value="On a deadline until 3 PM, message me instead">
-          <button class="btn" type="submit">Show</button>
+          <input id="msgInput" type="text" maxlength="80" value="On a deadline until 3 PM, message me instead" aria-describedby="msgErr" aria-invalid="false">
+          <button class="btn" type="submit" id="msgShow">Show</button>
         </div>
+        <div aria-live="polite"><p class="field-err" id="msgErr" style="margin-top:6px" hidden></p></div>
       </form>
       <div>
         <span class="field-label">Automatic status</span>
@@ -1358,7 +1467,15 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
             <label class="check" for="macOn"><input type="checkbox" id="macOn" checked> Calls from your Mac</label>
             <p class="auto-line" id="macLine"></p>
             <p class="note-small">A small menu-bar app will set On a call whenever your Mac's mic or camera is in use, so Slack huddles and Google Meet calls show up even when they aren't on your calendar. It talks to TinyBar over USB when the bar is powered from your Mac, otherwise over Wi-Fi. <a href="#api">How the Mac app talks to TinyBar</a></p>
+            <p class="note-small">To pair your Mac, plug this TinyBar into it once. Or, in the TinyBar menu on your Mac, choose Connect…, then Pair Over Wi-Fi. This TinyBar shows the code.</p>
           </div>
+        </div>
+      </div>
+      <div id="devSec">
+        <span class="field-label" id="devLabel" tabindex="-1">Paired devices</span>
+        <div class="auto-card">
+          <ul class="dev-list" id="devList" aria-labelledby="devLabel"></ul>
+          <p class="note-small" id="devFoot" style="margin:0"></p>
         </div>
       </div>
       </div>
@@ -1445,36 +1562,57 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
   </section>
 
   <section class="api" id="api" aria-labelledby="apiTitle">
-    <div class="eyebrow">Planned · the Mac app comes later</div>
+    <div class="eyebrow">Planned · the Mac app comes later · a summary of docs/api.md</div>
     <h2 id="apiTitle">How the Mac app talks to TinyBar</h2>
-    <p>The bar's side is ready now, so the Mac app can be added without changing the bar. The app sends one thing: whether you're on a call, and optionally the app's name. Over Wi-Fi it uses the bar's local web address; when the bar is powered from the Mac it uses the USB cable instead, which also works without Wi-Fi.</p>
-    <pre class="style-out">POST http://tinybar.local/api/call
+    <p>The bar's side is ready now, so the Mac app can be added without changing the bar. The app reports one thing, whether you're on a call, and optionally the app's name, with a random install ID so the bar can tell Macs apart. Over Wi-Fi it uses the bar's local web address and a token it got by pairing (proposed); when the bar is powered from the Mac it uses the USB cable instead, which needs no token and also works without Wi-Fi.</p>
+    <pre class="style-out">POST http://tinybar.local/api/v1/call
 Content-Type: application/json
-Authorization: Bearer &lt;token&gt;        (reserved for pairing, not checked yet)
+Authorization: Bearer tb1_…                 (proposed: checked; the Mac app's token has the call scope)
 
-{"active": true, "app": "Slack"}     →  200 {"ok": true, "showing": "call"}
-{"active": false}                    →  200 {"ok": true, "showing": "own"}
-                                        ("meeting" if a calendar meeting is on)
-When Calls from your Mac is off      →  403 {"ok": false, "error": "calls_off"}
-Not valid JSON, or no "active"       →  400 {"ok": false, "error": "bad_request"}
+{"client": "6F1C2A9E-…", "session": "q8Zr2Lx0", "seq": 41, "active": true, "app": "Slack"}
+  → 200 {"ok": true, "device_id": "f412fa3f2a1c", "showing": "call", "screen": "on", "stale": false,
+         "call": {"active": true, "app": "Slack", "via": "wifi", "since": "2026-10-04T14:12:00-07:00", "aside": false, …},
+         "sources": {"calendar": true, "mac": true}, "heartbeat_s": 30, "timeout_s": 90, "time": "…"}
+{"client": "6F1C2A9E-…", "session": "q8Zr2Lx0", "seq": 42, "active": false}
+  → 200 {"ok": true, "showing": "own", …}         ("meeting" if a calendar meeting is on)
+Calls from your Mac turned off on the Remote
+  → 200 {"ok": true, "showing": "own", "sources": {"calendar": true, "mac": false}, …}
+No token, or one that was removed
+  → 401 {"ok": false, "error": "unauthorized", "message": "Pair with this TinyBar first.", "field": null}
+No "active"
+  → 400 {"ok": false, "error": "bad_request", "message": "\"active\" is required and must be true or false.", "field": "active"}
 
-GET http://tinybar.local/api/status
-→ {"showing": "call", "own": "busy",
-   "call": {"active": true, "app": "Slack", "via": "usb", "since": "2026-10-04T14:12:00-07:00"},
-   "meeting": {"active": false, "next": "15:00"},
-   "sources": {"calendar": true, "mac": true}}
+GET http://tinybar.local/api/v1/status        (token scope call or full)
+  → {"ok": true, "showing": "call", "screen": "on", "own": {"status": "busy", …},
+     "call": {"active": true, "app": "Slack", "via": "usb", "since": "2026-10-04T14:12:00-07:00", "aside": false, …},
+     "meeting": {"active": false, "aside": false, "current": null,
+                 "next": {"start": "2026-10-04T15:00:00-07:00", "end": "2026-10-04T15:45:00-07:00", "title": null, "location": null}, …},
+     "sources": {"calendar": true, "mac": true}, …}
 
-USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each line with one line.
-→ {"cmd": "hello"}                              ← {"ok": true, "device": "TinyBar", "fw": "1.0.0"}
-→ {"cmd": "call", "active": true, "app": "Slack"}  ← {"ok": true, "showing": "call"}
-→ {"cmd": "status"}                             ← the same object as GET /api/status</pre>
+Pairing (proposed): the code shows only on the bar, for 2 minutes, with 3 tries
+POST /api/v1/pair/start  {"kind": "mac", "scope": "call", "client": "6F1C2A9E-…"}
+  → 202 {"ok": true, "pairing_id": "d407580a9215e992", "expires_in_s": 120, "code_length": 6, "attempts": 3}
+POST /api/v1/pair        {"pairing_id": "d407580a9215e992", "code": "482913"}
+  → 200 {"ok": true, "token": "tb1_…", "scope": "call", "device_id": "f412fa3f2a1c", "name": "TinyBar 2A1C", …}
+
+USB serial: one JSON object per line, each line starting "@tb ", with an "id" the reply repeats. No token.
+→ @tb {"cmd": "hello", "id": 1, "client": "6F1C2A9E-…", "api": "1.0"}
+← @tb {"id": 1, "ok": true, "device": "TinyBar", "device_id": "f412fa3f2a1c", "name": "TinyBar 2A1C", "api": "1.0", …}
+→ @tb {"cmd": "call", "id": 2, "client": "6F1C2A9E-…", "session": "q8Zr2Lx0", "seq": 1, "active": true, "app": "Slack"}
+← @tb {"id": 2, "ok": true, "showing": "call", …}
+→ @tb {"cmd": "pair", "id": 3, "client": "6F1C2A9E-…"}          (proposed: a Wi-Fi token, no code over the cable)
+← @tb {"id": 3, "ok": true, "token": "tb1_…", "scope": "call", …}
+→ @tb {"cmd": "status", "id": 4}                                  ← the same object as GET /api/v1/status</pre>
     <ul>
-      <li><code>active</code> is required. <code>app</code> is optional: the bar shows up to 24 characters of it, and the Mac app can leave it out.</li>
+      <li><code>active</code> and <code>client</code> are required. <code>client</code> is a random install ID the app makes once, not a hardware ID or the computer's name; with <code>session</code> and <code>seq</code> it keeps Macs and links apart and drops a late message (sending them is proposed). <code>app</code> is optional: the bar shows up to 24 characters of it.</li>
+      <li>Tokens (proposed): every Wi-Fi request carries one. The Mac app's has the <code>call</code> scope (report calls, read the status); the Remote's and scripts' have <code>full</code>. The Remote keeps its token in a cookie the bar sets. Remove one on the Remote's Paired devices, or all of them on the bar.</li>
       <li>The app sends its state on every change and repeats it every 30 seconds. After 90 seconds without a message, the bar ends On a call on its own, so it can't get stuck.</li>
-      <li><code>showing</code> is <code>call</code>, <code>meeting</code>, <code>own</code> (your own status, including a call or meeting you set aside), <code>setup</code> or <code>off</code>.</li>
+      <li><code>showing</code> is <code>call</code>, <code>meeting</code>, <code>own</code> (your own status, including a call or meeting you set aside) or <code>setup</code>. A dark screen is <code>"screen": "dark"</code>; a powered-off bar doesn't answer.</li>
+      <li>Every error is <code>{"ok": false, "error": "…", "message": "…", "field": …}</code>: <code>error</code> is a stable code to act on, <code>message</code> is for logs, and <code>field</code> names the field at fault.</li>
       <li>No reply ever contains the calendar's secret address. Meeting titles are left out when Show meeting titles is off.</li>
-      <li>If both links work, the app prefers USB. The bar accepts either, and the latest message wins.</li>
+      <li>If both links work, the app prefers USB, with the same <code>client</code> and the next <code>seq</code>.</li>
     </ul>
+    <p><code>docs/api.md</code> is the full contract between the bar and everything that talks to it (every endpoint and error code, the USB details, pairing's limits), and it wins wherever this summary differs.</p>
   </section>
 </div>
 
@@ -1696,8 +1834,33 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     on: true, titles: false, lastSync: addMin(t0, -2), events: sampleEvents(), replacing: false, confirm: false,
   };
   // The Mac app (built later). link is 'usb' or 'wifi' once it has been heard from; call is { id, app, since, via }.
-  const mac = { on: true, link: null, lastHeard: null, lostAt: null, quiet: false, quietMs: 0, call: null };
+  // refused: its last message over Wi-Fi was refused for want of a token (pairing, proposed).
+  const mac = { on: true, link: null, lastHeard: null, lostAt: null, quiet: false, quietMs: 0, call: null, refused: false };
   const MAC_TIMEOUT = 90000;
+
+  // ---------- Pairing (Proposed, docs/api.md section 4) ----------
+  // Who this bar is. Proposed: the default name is "TinyBar" plus the last four characters of its ID (api.md 3), and
+  // host is the mDNS name it actually got (tinybar-2.local and so on when a second bar is around).
+  const BAR = { name: 'TinyBar 2A1C', host: 'tinybar.local', id: 'f412fa3f2a1c' };
+  const PAIR_MS = 120000, PAIR_TRIES = 3, MAX_TOKENS = 10, BACKOFF_MS = 30000, BACKOFF_MAX = 3600000;
+  // One code at a time. It waits for the power screens before it shows (shown), and its 2 minutes (left, demo time,
+  // so the demo speed applies) count from when it appears. fails counts pairings in a row that ended without success;
+  // from the second, pair/start is refused for lockMs (30 s, doubling to an hour). All of it is RAM: a restart clears it.
+  const pair = { code: null, id: null, who: null, left: 0, shown: false, shownAt: 0, tries: 0, fails: 0, lockMs: 0 };
+  // The bar's paired tokens (api.md 12.1): only a hash of each token is kept, with these details. client keeps one
+  // token per device: pairing again replaces it. used is when it was last used over Wi-Fi (USB needs no token).
+  // Sample data: the Mac paired over the cable this morning, this phone, and a script from last week.
+  const tokens = [
+    { id: '74d8a526', name: 'Mac', kind: 'mac', scope: 'call', client: 'mac', at: addMin(t0, -312), via: 'usb', used: null },
+    { id: '27110499', name: 'iPhone', kind: 'remote', scope: 'full', client: 'phone', at: addMin(t0, -294), via: 'wifi', used: t0 },
+    { id: '5c0e91b7', name: 'Desk script', kind: 'automation', scope: 'full', client: 'script', at: addMin(t0, -8840), via: 'wifi', used: addMin(t0, -2955) },
+  ];
+  // The Remote on this phone: token is the cookie it holds (null: not paired, so the pairing prompt shows). step is
+  // the prompt's page ('start' or 'code'); pid the pairing_id of the code it asked for; askErr and err the replies
+  // shown under the button and the field; note the line above the prompt; confirm the device whose Remove is open.
+  const phone = { token: '27110499', step: 'start', pid: null, askErr: null, err: null, note: '', lostNote: '', confirm: null, okUntil: 0 };
+  // The simulated Mac app's side of a Wi-Fi pairing: the pairing_id it holds, and what it says.
+  const macPair = { pid: null, msg: '' };
 
   const todays = () => { const n = now(), day = n.toDateString(); return cal.events.filter(e => e.end > n && e.start.toDateString() === day); };
   const currentEvent = () => { const n = now(); return cal.events.filter(e => e.start <= n && n < e.end).sort((a, b) => b.start - a.start)[0] || null; };
@@ -1743,6 +1906,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     bright: 0.7,
     powered: true,
     booting: false,
+    poweringOff: false,
     wifi: { mode: 'ok', ssid: 'Office-WiFi', ip: '10.0.4.42', error: '' },
     since: addMin(t0, -12),              // when you picked your own status (In a meeting by hand counts from here)
     aside: { call: null, meeting: null }, // ids of the call and meeting you set aside
@@ -1847,8 +2011,17 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       say('timer: phase done, the alarm waits until the call or meeting ends');
       return;
     }
+    // Proposed: while a pairing code shows, the alarm waits too, with no chime or flash, and rings once when pairing
+    // ends (as after a call). With auto-start on, the next phase starts on time under the code, silently.
+    const pairing = pairShowing();
+    if (pairing && !pomo.auto) {
+      Object.assign(pomo, { running: false, waiting: true, justEnded: ended, heldAlarm: 'pairing' });
+      bump();
+      say('timer: phase done, the alarm waits until pairing ends');
+      return;
+    }
     const muted = pomo.sound && quiet() ? ` · chime muted during the ${quietWhy()}` : '';
-    chime(ended === 'focus');
+    if (!pairing) chime(ended === 'focus');
     if (pomo.auto) { pomo.running = true; pomo.waiting = false; pomo.justEnded = null; }
     else {
       pomo.running = false; pomo.waiting = true; pomo.justEnded = ended;
@@ -1858,8 +2031,8 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     s.idx = POMO;
     hideMenu();
     render();
-    flash();
-    say((ended === 'focus' ? 'timer: focus done' : 'timer: break over') + (pomo.auto ? ', next phase started' : ', alarm ringing') + muted);
+    if (!pairing) flash();
+    say((ended === 'focus' ? 'timer: focus done' : 'timer: break over') + (pomo.auto ? ', next phase started' : ', alarm ringing') + (pairing ? ', under the pairing code' : muted));
   }
 
   function silence() {
@@ -1905,18 +2078,23 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     say(`${how}: Pomodoro stopped, back to ${STATES[s.idx].name}${asideLog(aside)}`);
   }
 
-  let toastTimer = null;
-  function toast(text) {
+  let toastTimer = null, toastHoldUntil = 0;
+  function toast(text, hold) {
     // A dark screen stays dark: a confirmation for something changed from the Remote (or this page) waits until the
     // screen is woken, unless an automatic change is already waiting. Powered off, there's nothing to show it on.
     if (!s.powered) return;
     if (s.off) { pendingToast = pendingToast || text; return; }
+    // Proposed: while a pairing code shows, a change made underneath (from the Remote, a call or meeting) is shown
+    // once pairing ends, after the pairing toast. A toast shown with hold (pairing's result) stays its full 1.6 s,
+    // and anything that comes in meanwhile follows it.
+    if (pairShowing() || (!hold && Date.now() < toastHoldUntil)) { pendingToast = text; return; }
     const el = $('toast');
     el.textContent = text;
     el.hidden = false;
     clearUnderToast();
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => { el.hidden = true; clearUnderToast(); }, 1600);
+    toastHoldUntil = hold ? Date.now() + 1600 : 0;
   }
   // While a toast is up, the small text it crosses is hidden (the sub line, a side foot, a menu tile's foot, the setup
   // screen's lines), so no fragments of it show around the pill. Only text whose ink comes within 8 px of the pill
@@ -1958,10 +2136,11 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     return make(cut(n));
   }
   // Toasts for automatic changes wait until the screen is free: not dark, no menu, no setup or power screen.
-  const screenFree = () => s.powered && !s.booting && !s.off && menu.hidden && !onWifiScreen() && $('holdOv').hidden;
-  function notify(text) { if (screenFree()) toast(text); else pendingToast = text; }
+  const screenFree = () => s.powered && !s.booting && !s.off && menu.hidden && !onWifiScreen() && $('holdOv').hidden && !pairShowing();
+  function notify(text, hold) { if (screenFree()) toast(text, hold); else pendingToast = text; }
   const hiddenNote = () => s.booting ? ' · shows once TinyBar has started'
     : onWifiScreen() ? ' · shows when setup is done'
+    : pairShowing() ? ' · shows when pairing ends'
     : !menu.hidden ? ' · shows when the menu closes'
     : s.off ? ' · the screen is dark, it shows when woken' : '';
 
@@ -2137,6 +2316,23 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     };
   }
 
+  // The pairing screen (Proposed, api.md 4.8): the Clock screen's dark surfaces, since it isn't a status. The kicker
+  // names who asked, the code is the 112 px headline in tabular digits (only digits and a space, which that font
+  // has), and the info column counts down the 2 minutes above this bar's own name, so in an office with several bars
+  // you can check it's the one you meant. The progress bar fills as the time runs out.
+  const pairSub = { mac: 'Type it on your Mac · tap to cancel', remote: 'Type it on your phone · tap to cancel' };
+  function pairView() {
+    rendering = 'pairing';
+    const secs = Math.max(1, Math.ceil(pair.left / 1000));
+    return {
+      main: `<div class="kicker">Pairing · ${esc(pairLabel(pair.who))}</div>`
+        + `<div class="word time" style="--fs:17" data-fit="code">${pair.code.slice(0, 3)} ${pair.code.slice(3)}</div>`
+        + `<div class="sub">${pairSub[pair.who.kind] || 'Type this code on that device · tap to cancel'}</div>`,
+      side: side('Code expires in', mmss(secs), esc(BAR.name)),
+      bar: (PAIR_MS - Math.max(0, pair.left)) / PAIR_MS * 100,
+    };
+  }
+
   // ---------- Wi-Fi setup ----------
   let qrCache = null;
   function qrSvg() {
@@ -2174,8 +2370,8 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       </div></div>`;
     if (w.mode === 'connected') return `
       <div class="wsetup"><div class="wtext">
-        <div class="kicker">Connected to ${esc(w.ssid)}</div>
-        <div class="word title" style="--fs:10" data-fit="setup">tinybar.local</div>
+        <div class="kicker">${esc(BAR.name)} · Connected to ${esc(w.ssid)}</div>
+        <div class="word title" style="--fs:10" data-fit="setup">${esc(BAR.host)}</div>
         <div class="sub">or ${w.ip} · open it on your phone for the Remote</div>
       </div></div>`;
     return `
@@ -2188,13 +2384,16 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   let connectTimer = null, connectedTimer = null;
   function startSetup(how) {
     clearTimeout(connectTimer); clearTimeout(connectedTimer);
+    // Proposed: starting Wi-Fi setup ends a pairing, which counts as canceled; no code shows during setup.
+    const pairing = !!pair.code;
+    if (pairing) pairEnd('setup');
     s.wifi.mode = 'setup';
     s.wifi.error = '';
     hideMenu();
     setupMsg('');
     wCalErr('');
     render();
-    say(`${how}: Wi-Fi setup`);
+    say(`${how}: Wi-Fi setup${pairing ? ', pairing canceled' : ''}`);
   }
   function setupMsg(text, isErr) {
     const el = $('setupMsg');
@@ -2231,6 +2430,13 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     } else if (onWifiScreen()) {
       key = 'setup';
       html = wifiView();
+    } else if (pairShowing()) {
+      // Proposed: a pairing code covers everything else, which carries on underneath (your status, a call or meeting).
+      key = 'clock';
+      const v = pairView();
+      html = `<div class="main">${v.main}</div>${v.side}`;
+      barPct = v.bar;
+      document.documentElement.style.setProperty('--state', 'var(--s-meeting)');
     } else {
       // A call or meeting shows over your own status; your status is still there underneath, unchanged.
       const a = autoTop(), st = STATES[s.idx];
@@ -2413,8 +2619,10 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     const k = asideKind();
     // Connected is the end of setup: a tap moves on and holding opens the quick menu.
     const connected = s.wifi.mode === 'connected';
+    const pairing = s.powered && !s.booting && pairShowing();
     $('hint').textContent = !s.powered ? 'Powered off · Press PWR on the side to turn it on'
       : s.booting ? 'Starting up'
+      : pairing ? 'Pairing · Tap, swipe, hold or BOOT: cancel · Flip: cancel, then flip as usual · PWR: cancel and screen off'
       : connected ? 'Connected · Tap: continue · Hold: quick menu'
       : onWifiScreen() ? 'Wi-Fi setup · Tap: continue · Hold: skip setup · Use the phone panel to connect'
       : a ? 'Automatic status · Tap: back to your status · Swipe: change status · Hold: quick menu · BOOT: back to your status'
@@ -2427,12 +2635,14 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     screen.setAttribute('aria-label', !s.powered ? 'TinyBar screen, powered off. Press PWR to turn it on.'
       : s.booting ? 'TinyBar screen, starting up.'
       : s.off ? 'TinyBar screen, dark. Tap to wake it.'
+      // The bar's screen is the one place the code shows, so a screen reader hears it here, digit by digit.
+      : pairing ? `TinyBar screen, pairing code ${pair.code.split('').join(' ')} for ${pairLabel(pair.who)}, expires in ${spokenTime(pair.left)}. Tap to cancel.`
       : connected ? 'TinyBar screen, connected to Wi-Fi. Tap to continue, long-press for the quick menu.'
       : onWifiScreen() ? 'TinyBar screen, Wi-Fi setup. Tap to continue, long-press for setup options.'
       : a ? `TinyBar screen, ${a.kind === 'call' ? 'On a call, from your Mac' : 'In a meeting, from your calendar'}. Tap to go back to your status, swipe to change status, long-press for the quick menu.`
       : pomoScr ? 'TinyBar screen, Pomodoro. Tap to start or pause, swipe to change status, long-press for timer options.'
       : 'TinyBar screen. Tap for next status, swipe to change status, long-press for the quick menu.');
-    $('btnBoot').setAttribute('aria-label', a ? 'BOOT button: back to your status' : 'BOOT button: next status');
+    $('btnBoot').setAttribute('aria-label', pairing ? 'BOOT button: cancel pairing' : a ? 'BOOT button: back to your status' : 'BOOT button: next status');
   }
 
   const colorOf = key => (style && style.colors[key]) || BASE[key];
@@ -2450,16 +2660,21 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     if (pb) sbtnColor(pb, pomo.phase);
     $('pwrHoldBtn').textContent = s.powered ? 'Hold PWR 3 s' : 'Press PWR';
     const setupMode = s.powered && ['setup', 'connecting', 'failed'].includes(s.wifi.mode);
+    // Proposed: until this phone is paired, the pairing prompt takes the place of every control (the bar answers
+    // 401 to anything else). The header names the bar in every state, so you can tell which one a phone talks to.
     $('setupView').hidden = !setupMode;
-    $('remoteMain').hidden = setupMode;
+    $('remoteMain').hidden = setupMode || !phone.token;
+    $('pairView').hidden = setupMode || !!phone.token;
     $('phoneTitle').textContent = setupMode ? 'Wi-Fi setup' : 'Remote';
-    $('phoneAddr').textContent = setupMode ? 'TinyBar-Setup · 192.168.4.1' : 'tinybar.local';
+    $('phoneAddr').textContent = setupMode ? 'TinyBar-Setup · 192.168.4.1' : `${BAR.name} · ${BAR.host}`;
     const note = !s.powered ? "TinyBar is powered off, so this page can't reach it. Press PWR on the side of the bar to turn it on."
       : s.wifi.mode === 'offline' ? "TinyBar isn't on Wi-Fi, so this page can't reach it. Hold its screen, then choose Wi-Fi to set it up."
       : '';
     $('offNote').textContent = note;
     $('offNote').hidden = !note;
     updateAutoRemote();
+    updatePhonePair();
+    renderDevices();
     updateSim();
   }
 
@@ -2538,16 +2753,36 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     const macT = c ? `on a call (${c.app || 'no app name'}) over ${c.via === 'usb' ? 'USB' : 'Wi-Fi'}`
       : mac.link ? `connected over ${mac.link === 'usb' ? 'USB' : 'Wi-Fi'}` : 'not connected';
     const q = mac.link && mac.quiet ? ` · quiet: TinyBar gives up in ${Math.max(0, Math.ceil((MAC_TIMEOUT - mac.quietMs) / 1000))} s (demo time)` : '';
-    $('simState').textContent = `Calendar: ${calT} · Mac: ${macT}${q}`;
+    // Whether the Mac app has a Wi-Fi token, and how it got it. Without one, TinyBar refuses its calls over Wi-Fi.
+    const mt = macTok();
+    const macP = mt ? `paired over ${mt.via === 'usb' ? 'USB' : 'Wi-Fi'}`
+      : mac.refused ? "not paired, so TinyBar refuses its calls over Wi-Fi: pair it, or switch Link to USB" : 'not paired (USB works without pairing)';
+    const n = tokens.length;
+    const pairT = pair.code ? `code for ${pairLabel(pair.who)}, ${pair.shown ? `${mmss(Math.max(1, Math.ceil(pair.left / 1000)))} left` : 'waiting for the screen'}, ${pair.tries} ${pair.tries === 1 ? 'try' : 'tries'}`
+      : pair.lockMs > 0 ? `refused for ${Math.ceil(pair.lockMs / 1000)} s (${pair.fails} failed in a row)`
+      : `none · ${n} paired${pair.fails ? ` · ${pair.fails} failed in a row` : ''}`;
+    const text = `Calendar: ${calT} · Mac: ${macT}, ${macP}${q} · Pairing: ${pairT}`;
+    if ($('simState').textContent !== text) $('simState').textContent = text;
+    $('simPairMsg').textContent = macPair.msg;
+    pickSeg($('simPhone'), $('simPhone').querySelector(`[data-v="${phone.token ? 'paired' : 'unpaired'}"]`));
   }
 
   // Redraw only when something visible changes, so the marquee keeps scrolling.
-  let lastKey = '', lastShape = '', lastTs = Date.now();
+  let lastKey = '', lastShape = '', lastTs = Date.now(), lastPoll = 0;
   function loop() {
     if (!s.powered || s.booting) { lastTs = Date.now(); return; }
     const t = Date.now();
     const dt = t - lastTs;
     lastTs = t;
+    // Pairing: a code waiting for the power screens shows once they're gone; one on screen counts down (demo time);
+    // the back-off after failed pairings runs out.
+    pairTryShow();
+    if (pairShowing()) { pair.left -= dt * pomo.speed; if (pair.left <= 0) { pairEnd('timeout'); lastKey = ''; } }
+    if (pair.lockMs > 0) pair.lockMs = Math.max(0, pair.lockMs - dt * pomo.speed);
+    // The Remote polls the bar every 2 seconds while it's open (api.md 7.2), which is how it notices its code ran
+    // out, or that it was forgotten on the bar.
+    if (t - lastPoll >= 2000) { lastPoll = t; remotePoll(); }
+    updatePhonePair();
     syncAuto();
     releaseHeldAlarm();
     macTimers(dt);
@@ -2563,14 +2798,16 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       if (pomo.phase === 'focus') pomo.focusedMs += Math.min(d, d + pomo.remaining);
       if (pomo.remaining <= 0) { endPhase(); lastKey = ''; return; }
     }
-    if (pendingToast && screenFree() && $('toast').hidden) { toast(pendingToast); pendingToast = null; }
+    if (pendingToast && screenFree() && $('toast').hidden) { const next = pendingToast; pendingToast = null; toast(next); }
     if (!$('toast').hidden) clearUnderToast();
     const quietSec = mac.quiet ? Math.floor(mac.quietMs / 1000) : 0;
-    const key = [s.idx, fmt(now()), pomo.phase, remSec(), pomo.running, pomo.waiting, s.wifi.mode, s.rev, quietSec].join('|');
+    const pairSec = pairShowing() ? Math.ceil(pair.left / 1000) : '-';
+    const lockSec = pair.lockMs > 0 ? Math.ceil(pair.lockMs / 1000) : 0;
+    const key = [s.idx, fmt(now()), pomo.phase, remSec(), pomo.running, pomo.waiting, s.wifi.mode, s.rev, quietSec, pairSec, lockSec].join('|');
     if (key === lastKey) return;
     lastKey = key;
-    const shape = [s.idx, s.rev, s.wifi.mode].join('|');
-    if (STATES[s.idx].id === 'message' && !autoTop() && shape === lastShape) {
+    const shape = [s.idx, s.rev, s.wifi.mode, pairShowing()].join('|');
+    if (STATES[s.idx].id === 'message' && !autoTop() && !pairShowing() && shape === lastShape) {
       rendering = 'message';
       const sys = lcd.querySelector('.sys');
       if (sys) { sys.outerHTML = sysRow(); alignInk(screen); }
@@ -2651,8 +2888,15 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     if (s.ringing) { s.ringing = false; pomo.heldAlarm = top.kind; out += ', alarm held'; }
     return out;
   }
+  // Proposed: an alarm held by a pairing code rings once when pairing ends. If a call or meeting took over meanwhile,
+  // it waits for that instead; one that's set aside only mutes the chime (chime() checks), so it just flashes.
   function releaseHeldAlarm() {
-    if (!pomo.heldAlarm || quiet() || !s.powered || s.booting) return;
+    if (!pomo.heldAlarm || !s.powered || s.booting) return;
+    if (pomo.heldAlarm === 'pairing') {
+      if (pair.code && pair.shown) return;
+      const a = autoTop();
+      if (a && pomo.waiting) { pomo.heldAlarm = a.kind; return; }
+    } else if (quiet()) return;
     const after = pomo.heldAlarm;
     pomo.heldAlarm = null;
     if (!pomo.waiting) return;
@@ -2661,7 +2905,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     render();
     chime(pomo.phase !== 'focus');
     flash();
-    say(`timer: ${pomo.justEnded === 'focus' ? 'break time' : 'back to it'}, one chime now the ${after} is over`);
+    say(`timer: ${pomo.justEnded === 'focus' ? 'break time' : 'back to it'}, one ${quiet() ? 'flash' : 'chime'} now ${after === 'pairing' ? 'pairing' : 'the ' + after} is over`);
   }
   // Compare what should show with what is showing, and announce the change once. lead names what happened
   // ("Call ended", "Calendar removed"...) when the caller knows. Returns true when the screen changed.
@@ -2705,7 +2949,13 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   function macTimers(dt) {
     if (!mac.link) return;
     const unreachable = mac.link === 'wifi' && !wifiUp();
-    if (!mac.quiet && !unreachable) { mac.lastHeard = now(); mac.quietMs = 0; return; }
+    if (!mac.quiet && !unreachable) {
+      mac.lastHeard = now(); mac.quietMs = 0;
+      // Each heartbeat over Wi-Fi uses the Mac's token, so Paired devices says when it was last used.
+      const mt = mac.link === 'wifi' && macTok();
+      if (mt) mt.used = now();
+      return;
+    }
     mac.quietMs += dt * pomo.speed;
     if (mac.quietMs < MAC_TIMEOUT) return;
     const hadCall = !!callNow();
@@ -2716,6 +2966,367 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       if (hadCall) notify('Lost contact with your Mac · call ended');
       say(`mac: lost contact after 90 s${hadCall ? ', call ended' : ''}`);
     }
+  }
+
+  // ---------- Pairing: the bar's side (Proposed, api.md 4.6 to 4.9) ----------
+  // Text the bar can draw, as the firmware's tb_text_drawable() decides it, after the mapping in api.md 2.3: printable
+  // ASCII, Latin-1, the en and em dashes and the ellipsis. Curly quotes become straight ones, dashes a hyphen, the
+  // ellipsis three dots; control characters are dropped (tab and line breaks become a space).
+  const TEXT_MAP = { '‘': "'", '’': "'", '“': '"', '”': '"', '–': '-', '—': '-', '…': '...' };
+  const drawable = cp => (cp >= 0x20 && cp <= 0x7e) || (cp >= 0xa0 && cp <= 0xff) || cp === 0x2013 || cp === 0x2014 || cp === 0x2026;
+  const isControl = cp => cp < 0x20 || cp === 0x7f || (cp >= 0x80 && cp <= 0x9f);
+  const cleanText = t => [...t].map(ch => TEXT_MAP[ch] ?? (/[\t\n\r]/.test(ch) ? ' ' : ch)).filter(ch => !isControl(ch.codePointAt(0))).join('');
+  const textDrawable = t => [...cleanText(t)].every(ch => drawable(ch.codePointAt(0)));
+  // The characters of a message the bar can't show, each once, in the order typed. What you see as one character (an
+  // emoji with a skin tone, a flag) counts as one.
+  function unsupportedChars(t) {
+    let parts;
+    try { parts = [...new Intl.Segmenter('en', { granularity: 'grapheme' }).segment(t)].map(x => x.segment); } catch (e) { parts = [...t]; }
+    const out = [];
+    parts.forEach(g => { if (!textDrawable(g) && !out.includes(g)) out.push(g); });
+    return out;
+  }
+
+  // The label on the pairing screen and in its toasts: the name the device sent, if the bar can draw it, otherwise
+  // its kind's default (api.md 4.6). The kicker cuts a long one with an ellipsis.
+  const KIND_LABEL = { mac: 'Mac', remote: 'Phone', automation: 'Script' };
+  const pairLabel = w => (w.name && textDrawable(w.name) ? cleanText(w.name) : KIND_LABEL[w.kind] || 'Device');
+  const pairShowing = () => !!(pair.code && pair.shown);
+  const macTok = () => tokens.find(t => t.client === 'mac') || null;
+  const phoneTok = () => (phone.token && tokens.find(t => t.id === phone.token)) || null;
+  const rand = n => { try { return crypto.getRandomValues(new Uint32Array(1))[0] % n; } catch (e) { return Math.floor(Math.random() * n); } };
+  const hex8 = () => rand(0x100000000).toString(16).padStart(8, '0');
+  const spokenTime = ms => {
+    const t = Math.max(1, Math.ceil(ms / 1000)), m = Math.floor(t / 60), sec = t % 60;
+    return [m && `${m} minute${m === 1 ? '' : 's'}`, sec && `${sec} second${sec === 1 ? '' : 's'}`].filter(Boolean).join(' ');
+  };
+  // Waits round up: in seconds under a minute ("45 seconds"), otherwise in whole minutes ("4 minutes").
+  const waitText = ms => {
+    const t = Math.max(1, Math.ceil(ms / 1000)), m = Math.ceil(t / 60);
+    return t < 60 ? `${t} second${t === 1 ? '' : 's'}` : `${m} minute${m === 1 ? '' : 's'}`;
+  };
+  const digitsOf = v => v.replace(/\D/g, '').slice(0, 6);
+  const codeFormat = d => d.length > 3 ? `${d.slice(0, 3)} ${d.slice(3)}` : d;
+  // A device on the office Wi-Fi gets no answer from a bar that's off or powering off, or that isn't on the office
+  // Wi-Fi (skipped, or showing its own setup network).
+  const reachable = () => s.powered && !s.poweringOff && wifiUp();
+
+  // POST /api/v1/pair/start. who is { kind, scope, name, client }. The checks run in the firmware's order; a code is
+  // never shown on the Wi-Fi setup screens, Connected included (409 in_setup).
+  function pairStart(who) {
+    if (!reachable()) return { ok: false, error: 'no_answer' };
+    if (onWifiScreen()) return { ok: false, error: 'in_setup' };
+    if (pair.lockMs > 0) return { ok: false, error: 'rate_limited', retry_after_s: Math.ceil(pair.lockMs / 1000) };
+    if (pair.code) return { ok: false, error: 'pairing_busy', retry_after_s: Math.ceil((pair.shown ? pair.left : PAIR_MS) / 1000) };
+    if (tokens.length >= MAX_TOKENS && !tokens.some(t => t.client === who.client)) return { ok: false, error: 'token_limit' };
+    Object.assign(pair, { code: String(rand(1000000)).padStart(6, '0'), id: hex8() + hex8(), who, left: PAIR_MS, shown: false, shownAt: 0, tries: PAIR_TRIES });
+    bump();
+    pairTryShow();
+    if (!pair.shown) say(`pairing: ${pairLabel(who)} asked, the code shows ${s.booting ? 'once TinyBar has started' : 'when the power screen is gone'}`);
+    return { ok: true, pairing_id: pair.id, expires_in_s: PAIR_MS / 1000, code_length: 6, attempts: PAIR_TRIES };
+  }
+
+  // Put a waiting code on the screen: it waits for the power screens (starting up, the Keep holding overlay), wakes a
+  // dark screen, and closes an open menu without acting on it (a Forget all confirmation included); the menu doesn't
+  // come back. A toast that's up goes, and a ringing alarm is held, as during a call.
+  function pairTryShow() {
+    if (!pair.code || pair.shown || !s.powered || s.booting || s.poweringOff || !$('holdOv').hidden || onWifiScreen()) return;
+    pair.shown = true;
+    pair.shownAt = Date.now();
+    const woke = s.off, closed = !menu.hidden;
+    if (s.off) togglePower();
+    hideMenu();
+    $('toast').hidden = true;
+    toastHoldUntil = 0;
+    if (s.ringing) { s.ringing = false; pomo.heldAlarm = 'pairing'; }
+    bump();
+    lastKey = '';
+    render();
+    say(`pairing: ${pairLabel(pair.who)} asked, the code is on the bar${woke ? ' (it woke the screen)' : closed ? ' (the menu closed)' : ''}`);
+  }
+
+  // POST /api/v1/pair: the code typed on the device that asked (the pairing_id ties it to that device).
+  function pairTry(pid, typed) {
+    if (!reachable()) return { ok: false, error: 'no_answer' };
+    if (!pair.code || pair.id !== pid) return { ok: false, error: 'not_pairing' };
+    if (typed.replace(/[\s-]/g, '') === pair.code) {
+      const w = pair.who;
+      const tok = addToken({ name: pairLabel(w), kind: w.kind, scope: w.scope, client: w.client, via: 'wifi' });
+      pairEnd('paired');
+      return { ok: true, token_id: tok.id, scope: w.scope };
+    }
+    pair.tries--;
+    if (pair.tries > 0) {
+      // The bar's screen doesn't change for the first two misses; the device that typed it says how many are left.
+      bump();
+      say(`pairing: wrong code, ${pair.tries} ${pair.tries === 1 ? 'try' : 'tries'} left`);
+      return { ok: false, error: 'wrong_code', attempts_left: pair.tries };
+    }
+    pairEnd('wrong');
+    return { ok: false, error: 'wrong_code', attempts_left: 0 };
+  }
+
+  // A new token, replacing any older one of the same device (its client), so pairing again never adds a second row.
+  function addToken(t) {
+    const old = tokens.findIndex(x => x.client === t.client);
+    if (old >= 0) tokens.splice(old, 1);
+    const tok = { id: hex8(), at: now(), used: t.via === 'wifi' ? now() : null, ...t };
+    tokens.push(tok);
+    bump();
+    return tok;
+  }
+
+  // How a pairing ends: 'paired', 'timeout', 'wrong' (third wrong code), 'cancel' (tap, swipe, hold, BOOT), 'flip',
+  // 'pwr', 'setup' (Wi-Fi setup started) or 'off' (powered off or restarted). Every end but success counts as a failed
+  // pairing: from the second in a row, pair/start is refused for 30 s, doubling each time up to an hour (api.md 4.9).
+  // Powering off clears that, as a restart clears the bar's RAM. The screen stays on afterwards. Returns a note for
+  // the log when a held alarm rings.
+  const PAIR_TOAST = { timeout: 'Pairing timed out', wrong: 'Pairing canceled · wrong code', cancel: 'Pairing canceled', setup: 'Pairing canceled' };
+  function pairEnd(how) {
+    if (!pair.code) return '';
+    const label = pairLabel(pair.who), wasShown = pair.shown;
+    Object.assign(pair, { code: null, id: null, who: null, left: 0, shown: false, shownAt: 0, tries: 0 });
+    if (how === 'paired' || how === 'off') { pair.fails = 0; pair.lockMs = 0; }
+    else {
+      pair.fails++;
+      if (pair.fails >= 2) pair.lockMs = Math.min(BACKOFF_MAX, BACKOFF_MS * 2 ** (pair.fails - 2));
+    }
+    // A PWR press drops a held alarm's chime: the waiting screen shows, silently, when the screen is woken.
+    if (how === 'pwr' && pomo.heldAlarm === 'pairing') { pomo.heldAlarm = null; if (pomo.waiting) s.idx = POMO; }
+    if (how === 'off') pomo.heldAlarm = null;
+    bump();
+    lastKey = '';
+    render();
+    const text = how === 'paired' ? `Paired · ${label}` : PAIR_TOAST[how];
+    if (text && wasShown) toast(text, true);
+    if (how === 'paired') say(`pairing: paired with ${label}`);
+    else if (how === 'timeout') say('pairing: timed out after 2 minutes');
+    else if (how === 'wrong') say('pairing: canceled after 3 wrong codes');
+    // The flip answers a held alarm itself (it starts the next phase), so it doesn't ring here.
+    const rings = how !== 'flip' && pomo.heldAlarm === 'pairing' && pomo.waiting && !autoTop();
+    if (how !== 'flip') releaseHeldAlarm();
+    return rings ? ', the alarm rings once' : '';
+  }
+  // Tap, swipe, hold and BOOT only cancel: a swipe doesn't change the status and a hold opens no menu.
+  function pairCancel(how) {
+    const note = pairEnd('cancel');
+    say(`${how}: pairing canceled${how === 'swipe' ? ', status unchanged' : how === 'hold' ? ', no menu' : ''}${note}`);
+  }
+
+  // ---------- Pairing: the Wi-Fi menu's Devices tile and Forget all ----------
+  // Forgetting every device is on the bar only, so no single stolen token can lock everyone out (api.md 12.3). It
+  // works offline too, since the tokens live on the bar.
+  let forgetAt = 0;
+  function showForgetMenu() {
+    const n = tokens.length;
+    const names = [...tokens].sort((a, b) => (b.used || 0) - (a.used || 0) || b.at - a.at).map(t => esc(t.name)).join(', ');
+    fillMenu(`
+      <div class="tile info"><b>Paired</b><span>${n} device${n === 1 ? '' : 's'}</span><small class="clamp2">${names}</small></div>
+      <div class="tile danger" data-action="forgetall"><b>Tap again</b><span>Forget all</span><small>each needs a new code</small></div>
+      <div class="tile done" data-action="keepdevices"><b>Cancel</b><span>Keep</span><small>back to Wi-Fi</small></div>`);
+    forgetAt = Date.now();
+    say(`menu: forget all ${n} paired device${n === 1 ? '' : 's'}? Tap Forget all again, or Keep`);
+  }
+  // Every token goes. The Remote's next request gets 401 and it shows the pairing prompt; a call the Mac reported over
+  // Wi-Fi ends, and its next call over Wi-Fi is refused until it pairs again. USB isn't affected.
+  function forgetAll(how) {
+    const n = tokens.length;
+    hideMenu();
+    tokens.length = 0;
+    if (phone.token) phone.lostNote = 'TinyBar forgot this phone. Pair it again to use the Remote.';
+    const ended = dropMacWifi();
+    bump();
+    const lead = `Forgot ${n} device${n === 1 ? '' : 's'}`;
+    if (!syncAuto(lead)) toast(lead);
+    say(`${how}: forgot ${n} paired device${n === 1 ? '' : 's'}, each needs a new code${ended ? "; the Mac's Wi-Fi call ended" : ''} (USB still works)`);
+    render();
+  }
+  // A revoked Mac token: the Mac's link over Wi-Fi ends at once, with any call it reported there (api.md 12.2). Over
+  // USB it carries on. Returns whether a call ended.
+  function dropMacWifi() {
+    if (mac.link !== 'wifi') return false;
+    const had = !!mac.call;
+    Object.assign(mac, { lostAt: now(), link: null, quiet: false, quietMs: 0, call: null });
+    s.aside.call = null;
+    return had;
+  }
+
+  // ---------- Pairing: the Remote's side ----------
+  // Screen readers hear each change of the prompt once, from this polite region; the countdowns in the messages
+  // tick without being read out every second.
+  function phoneSay(text) { const el = $('phoneSay'); el.textContent = ''; setTimeout(() => { el.textContent = text; }, 30); }
+  const setText = (el, t) => { if (el.textContent !== t) el.textContent = t; };
+  const busyLeft = () => pair.code ? (pair.shown ? pair.left : PAIR_MS) : 0;
+  function askErrText(e) {
+    switch (e.error) {
+      case 'pairing_busy': return `Another device is pairing with this TinyBar. Try again in ${waitText(busyLeft())}.`;
+      case 'rate_limited': return `Too many tries. You can try again in ${waitText(pair.lockMs)}.`;
+      case 'token_limit': return `${BAR.name} already has 10 paired devices. Remove one on a paired phone, or forget them all on TinyBar: hold its screen, then Wi-Fi, then Devices.`;
+      case 'in_setup': return 'TinyBar is setting up Wi-Fi. Finish setup on the bar, then try again.';
+      default: return `${BAR.name} didn't answer. Make sure it's on, then try again.`;
+    }
+  }
+  const PAIR_ERR = {
+    wrong: e => `That code didn't match. ${e.left} ${e.left === 1 ? 'try' : 'tries'} left.`,
+    out: () => "That code didn't match, so TinyBar canceled pairing. Show a new code to try again.",
+    gone: () => 'That code has expired or was canceled on TinyBar. Show a new code to try again.',
+    noanswer: () => `${BAR.name} didn't answer. Make sure it's on, then try again.`,
+  };
+  // Redraws the pairing prompt from the state, in place, so typing in the field is never disturbed. The busy and
+  // back-off waits count down live, and the button comes back by itself when they're over.
+  function updatePhonePair() {
+    $('pairedMsg').hidden = !(phone.token && phone.okUntil > Date.now());
+    setText($('pairNote'), phone.note);
+    $('pairNote').hidden = !phone.note;
+    $('pairStart').hidden = phone.step !== 'start';
+    $('pairCode').hidden = phone.step !== 'code';
+    const ae = phone.askErr;
+    if (ae && ((ae.error === 'pairing_busy' && busyLeft() <= 0) || (ae.error === 'rate_limited' && pair.lockMs <= 0))) phone.askErr = null;
+    setText($('pairAskErr'), phone.askErr ? askErrText(phone.askErr) : '');
+    $('pairAskErr').hidden = !phone.askErr;
+    $('pairAsk').disabled = !!phone.askErr && ['pairing_busy', 'rate_limited'].includes(phone.askErr.error);
+    const mine = pair.code && pair.id === phone.pid && pair.shown, e = phone.err;
+    setText($('pairLine'), `The code works for 2 minutes${mine ? ` · ${mmss(Math.max(1, Math.ceil(pair.left / 1000)))} left` : ''}.`);
+    $('pairLine').hidden = !!e;
+    setText($('pairErr'), e ? PAIR_ERR[e.kind](e) : '');
+    $('pairErr').hidden = !e;
+    const dead = !!e && (e.kind === 'out' || e.kind === 'gone'), d = digitsOf($('pairInput').value);
+    $('pairInput').disabled = dead;
+    $('pairInput').setAttribute('aria-invalid', e && ((e.kind === 'wrong' && !d) || e.kind === 'out') ? 'true' : 'false');
+    $('pairGo').hidden = dead;
+    $('pairNew').hidden = !dead;
+    $('pairGo').disabled = d.length < 6;
+  }
+  // Pair this phone (and Show a new code): asks the bar for a code. Pressed again while this phone's own code is
+  // still on the bar, it goes back to that code instead of calling it busy.
+  function phoneAsk() {
+    if (phone.pid && pair.code && pair.id === phone.pid) {
+      Object.assign(phone, { step: 'code', err: null, askErr: null, note: '' });
+      updatePhonePair();
+      $('pairInput').focus();
+      say('remote: back to its code on the bar');
+      return;
+    }
+    // The Remote names itself after the kind of phone, when the browser says (Proposed); this one is an iPhone.
+    const r = pairStart({ kind: 'remote', scope: 'full', name: 'iPhone', client: 'phone' });
+    if (!r.ok) {
+      Object.assign(phone, { step: 'start', askErr: r, err: null, note: '' });
+      updatePhonePair();
+      $('pairAsk').focus();
+      phoneSay(askErrText(r));
+      say(`remote: TinyBar refused a code (${r.error.replace('_', ' ')})`);
+      return;
+    }
+    Object.assign(phone, { step: 'code', pid: r.pairing_id, askErr: null, err: null, note: '' });
+    $('pairInput').value = '';
+    updatePhonePair();
+    $('pairInput').focus();
+    phoneSay('Type the code shown on your TinyBar. The code works for 2 minutes.');
+  }
+  function phoneTry() {
+    const d = digitsOf($('pairInput').value);
+    if (d.length < 6) return;
+    const r = pairTry(phone.pid, d);
+    if (r.ok) {
+      Object.assign(phone, { token: r.token_id, step: 'start', pid: null, askErr: null, err: null, note: '', lostNote: '', okUntil: Date.now() + 6000 });
+      $('pairInput').value = '';
+      updateRemote();
+      phoneSay(`Paired. This phone is ${BAR.name}'s Remote now.`);
+      return;
+    }
+    phone.err = r.error === 'wrong_code' ? (r.attempts_left > 0 ? { kind: 'wrong', left: r.attempts_left } : { kind: 'out' })
+      : r.error === 'not_pairing' ? { kind: 'gone' } : { kind: 'noanswer' };
+    if (phone.err.kind !== 'noanswer') $('pairInput').value = '';
+    updatePhonePair();
+    if (phone.err.kind === 'wrong' || phone.err.kind === 'noanswer') $('pairInput').focus(); else $('pairNew').focus();
+    phoneSay(PAIR_ERR[phone.err.kind](phone.err));
+    if (r.error === 'not_pairing') say('remote: that code is gone from the bar');
+    else if (r.error === 'no_answer') say("remote: TinyBar didn't answer");
+  }
+  // The Remote polls every 2 seconds. A 401 means this phone was forgotten on the bar (or removed on another phone);
+  // a code it's waiting on that's no longer on the bar ran out or was canceled there.
+  function remotePoll() {
+    if (!reachable()) return;
+    const tok = phoneTok();
+    if (phone.token && !tok) {
+      Object.assign(phone, { token: null, step: 'start', pid: null, askErr: null, err: null, confirm: null, okUntil: 0,
+        note: phone.lostNote || `This phone isn't paired with ${BAR.name} anymore. Pair it again to use the Remote.` });
+      phone.lostNote = '';
+      updateRemote();
+      phoneSay(phone.note);
+      say('remote: TinyBar answered 401, back to the pairing prompt');
+      return;
+    }
+    if (tok) tok.used = now();
+    if (!phone.token && phone.step === 'code' && phone.pid && !phone.err && !(pair.code && pair.id === phone.pid)) {
+      phone.err = { kind: 'gone' };
+      $('pairInput').value = '';
+      updatePhonePair();
+      phoneSay(PAIR_ERR.gone());
+    }
+  }
+
+  // Paired devices (GET /api/v1/clients): this phone first, then the rest by when they were last used. Times are
+  // worked out against the bar's clock. The list is redrawn only when its text changes, so focus stays put.
+  const KIND_NAME = { mac: 'Mac app', remote: 'Remote', automation: 'Automation' };
+  const SCOPE_NAME = { call: 'Calls only', full: 'Full control' };
+  function dayWord(d) {
+    const n = now(), day = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const diff = Math.round((day(n) - day(d)) / 86400000);
+    return diff === 0 ? 'today' : diff === 1 ? 'yesterday'
+      : d.toLocaleDateString('en-US', d.getFullYear() === n.getFullYear() ? { month: 'short', day: 'numeric' } : { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  const pairedWhen = t => { const w = dayWord(t.at); return `Paired${t.via === 'usb' ? ' over USB' : ''} ${w === 'today' || w === 'yesterday' ? `${w}, ${fmt(t.at)}` : w}`; };
+  function usedWhen(t) {
+    if (!t.used) return t.via === 'usb' ? 'used only over USB so far' : 'not used yet';
+    const m = Math.floor((now() - t.used) / 60000), w = dayWord(t.used);
+    return m < 1 ? 'used just now' : m < 60 ? `used ${m} min ago` : w === 'today' ? `used ${fmt(t.used)}` : `used ${w}`;
+  }
+  let devHtml = null;
+  function renderDevices() {
+    const self = phoneTok();
+    if (phone.confirm && !tokens.some(t => t.id === phone.confirm)) phone.confirm = null;
+    const list = [...tokens].sort((a, b) => (b === self) - (a === self) || (b.used || 0) - (a.used || 0) || b.at - a.at);
+    const html = list.map(t => {
+      const me = t === self, open = phone.confirm === t.id, who = me ? 'this phone' : esc(t.name);
+      const q = me ? "Remove this phone? The Remote signs out here, and you'll need a code from TinyBar to use it again."
+        : t.kind === 'mac' ? `Remove ${esc(t.name)}? It stops working over Wi-Fi until it pairs again. USB still works.`
+        : `Remove ${esc(t.name)}? It can't change your status until it pairs again with a new code from the bar.`;
+      return `<li class="dev" data-id="${t.id}"><div class="dev-name"><span>${esc(t.name)}</span>${me ? '<span class="badge ok">This phone</span>' : ''}</div>`
+        + (open ? '<span></span>' : `<button class="btn ghost sm" type="button" data-remove="${t.id}" aria-label="Remove ${who}">Remove</button>`)
+        + `<div class="meta">${KIND_NAME[t.kind] || 'Device'} · ${SCOPE_NAME[t.scope] || t.scope}</div>`
+        + `<div class="meta"><span>${pairedWhen(t)}</span> · <span>${usedWhen(t)}</span></div>`
+        + (open ? `<div class="setup-msg"><p>${q}</p><div class="row"><button class="btn" type="button" data-yes="${t.id}">Remove ${who}</button><button class="btn ghost" type="button" data-no="${t.id}">Keep it</button></div></div>` : '')
+        + '</li>';
+    }).join('');
+    if (html !== devHtml) { devHtml = html; $('devList').innerHTML = html; }
+    setText($('devFoot'), `${tokens.length} of ${MAX_TOKENS}. To forget them all at once, hold the bar's screen, then tap Wi-Fi › Devices. Over USB, your Mac needs no pairing.`);
+  }
+  // Remove (DELETE /api/v1/clients/{token_id}, or /self for this phone): revoked at once, with a toast on the bar.
+  function removeDevice(id) {
+    const i = tokens.findIndex(t => t.id === id);
+    if (i < 0) return;
+    const t = tokens[i], me = t.id === phone.token;
+    const pos = [...$('devList').children].findIndex(x => x.dataset.id === id);
+    tokens.splice(i, 1);
+    phone.confirm = null;
+    bump();
+    if (me) {
+      Object.assign(phone, { token: null, step: 'start', pid: null, askErr: null, err: null, okUntil: 0, note: 'This phone is signed out. Pair it again to use the Remote.' });
+      toast(`Removed ${t.name}`);
+      updateRemote();
+      $('pairAsk').focus();
+      phoneSay(phone.note);
+      say(`remote: removed this phone (${t.name}), the Remote is signed out`);
+      return;
+    }
+    const ended = t.client === 'mac' && dropMacWifi();
+    if (!syncAuto(`Removed ${t.name}`)) toast(`Removed ${t.name}`);
+    render();
+    say(`remote: removed ${t.name}${ended ? ', and the call it reported over Wi-Fi ended' : ''}`);
+    const next = $('devList').children[pos] || $('devList').children[pos - 1];
+    const b = next && next.querySelector('[data-remove]');
+    if (b) b.focus(); else $('devLabel').focus();
   }
 
   // Remote panel
@@ -2754,14 +3365,18 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     });
   });
 
-  $('speedSeg').addEventListener('click', e => {
-    const b = e.target.closest('button');
-    if (!b) return;
-    pickSeg($('speedSeg'), b);
-    pomo.speed = +b.dataset.v;
-    say(pomo.speed > 1 ? 'demo: 1 minute per second' : 'demo: real time');
+  // Demo speed (mock-up only): on the Remote's Pomodoro, and in the Simulate panel's Pairing box as Speed, so it can be
+  // reached while the Remote shows its pairing prompt. Both set the same speed: timers, the Mac's 90 s and pairing.
+  function setSpeed(v) {
+    pomo.speed = v;
+    ['speedSeg', 'simSpeed'].forEach(id => pickSeg($(id), $(id).querySelector(`[data-v="${v}"]`)));
+    say(v > 1 ? 'demo: 1 minute per second' : 'demo: real time');
     lastKey = '';
-  });
+  }
+  ['speedSeg', 'simSpeed'].forEach(id => $(id).addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (b) setSpeed(+b.dataset.v);
+  }));
 
   const toPomo = fn => () => { wake(); s.idx = POMO; fn('remote'); };
   $('pStart').addEventListener('click', toPomo(startPause));
@@ -2795,11 +3410,78 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     if (b) setTicking(pomo.tick, b.dataset.v, 'remote');
   });
 
+  // Characters the bar can't show (api.md 8.2) are named under the field as you type, before anything is sent, and
+  // Show waits until they're gone. The check is the firmware's own (drawable(), after the mapping), so curly quotes,
+  // dashes, the ellipsis and Latin-1 letters such as é are fine. If the bar still answered 400 unsupported_chars,
+  // the same message would come from its chars list.
+  function listChars(cs) {
+    if (cs.length === 1) return cs[0];
+    if (cs.length <= 5) return `${cs.slice(0, -1).join(', ')} or ${cs[cs.length - 1]}`;
+    return `${cs.slice(0, 5).join(', ')} and ${cs.length - 5} more`;
+  }
+  function checkMessage() {
+    const bad = unsupportedChars($('msgInput').value);
+    const text = bad.length ? `TinyBar can't show ${listChars(bad)}. Remove ${bad.length === 1 ? 'it' : 'them'} to show this message.` : '';
+    setText($('msgErr'), text);
+    $('msgErr').hidden = !text;
+    $('msgInput').setAttribute('aria-invalid', text ? 'true' : 'false');
+    $('msgShow').disabled = !!text;
+    return !text;
+  }
+  $('msgInput').addEventListener('input', checkMessage);
   $('msgForm').addEventListener('submit', e => {
     e.preventDefault();
-    s.message = $('msgInput').value.trim() || 'Hello';
+    if (!checkMessage()) { say("remote: TinyBar can't show some of those characters"); return; }
+    // The bar keeps the text as it will draw it (api.md 2.3): straight quotes, a hyphen for a dash, three dots.
+    s.message = cleanText($('msgInput').value).trim() || 'Hello';
     s.messageAt = now();
     go(STATES.findIndex(x => x.id === 'message'), 'remote');
+  });
+
+  // The pairing prompt (Proposed). The field takes typing or pasting, keeps only digits (spaces and dashes are
+  // ignored), shows them as "482 913", and pairs as soon as the sixth digit is in, as the Mac app does.
+  $('pairAsk').addEventListener('click', phoneAsk);
+  $('pairNew').addEventListener('click', phoneAsk);
+  $('pairInput').addEventListener('input', () => {
+    const d = digitsOf($('pairInput').value);
+    $('pairInput').value = codeFormat(d);
+    updatePhonePair();
+    if (d.length === 6) phoneTry();
+  });
+  $('pairInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); phoneTry(); } });
+  $('pairGo').addEventListener('click', phoneTry);
+  // Cancel goes back to the start. The bar has no way to be told, so the code stays there until it runs out or
+  // someone taps the bar, and Pair this phone goes straight back to it meanwhile.
+  $('pairCancel').addEventListener('click', () => {
+    const mine = pair.code && pair.id === phone.pid;
+    Object.assign(phone, { step: 'start', err: null, askErr: null,
+      note: mine ? "The code stays on TinyBar until it runs out or someone taps the bar's screen. Pair this phone takes you back to it." : '' });
+    if (!mine) phone.pid = null;
+    $('pairInput').value = '';
+    updatePhonePair();
+    $('pairAsk').focus();
+    say('remote: pairing canceled on the phone' + (mine ? ', the code stays on the bar until it runs out or someone taps it' : ''));
+  });
+  // The "Paired" line goes after 6 seconds or at the first action.
+  $('remoteMain').addEventListener('click', e => { if (phone.okUntil && e.target.closest('button, input, label')) { phone.okUntil = 0; updatePhonePair(); } });
+  $('devList').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.dataset.remove) {
+      // Remove asks first, in place, as the calendar's Remove does. Nothing happens until it's confirmed.
+      phone.confirm = b.dataset.remove;
+      renderDevices();
+      const k = $('devList').querySelector(`[data-no="${phone.confirm}"]`);
+      if (k) k.focus();
+      say('remote: confirm removing a paired device');
+    } else if (b.dataset.no) {
+      const id = b.dataset.no;
+      phone.confirm = null;
+      renderDevices();
+      const r = $('devList').querySelector(`[data-remove="${id}"]`);
+      if (r) r.focus();
+      say('remote: kept the paired device');
+    } else if (b.dataset.yes) removeDevice(b.dataset.yes);
   });
 
   // Quick menu. On the Pomodoro screen it holds timer options instead (but on a call or meeting screen it's
@@ -2816,7 +3498,17 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     if (cal.checking) return `<div class="tile" data-action="sync"><b>Calendar</b><span>Sync…</span><small>syncing now</small></div>`;
     return `<div class="tile" data-action="sync"><b>Calendar</b><span>Sync</span><small>synced ${ago(cal.lastSync, true)}</small></div>`;
   }
+  // Put a menu's tiles up and start its 8-second close. five: the Wi-Fi menu's grid of five columns.
+  function fillMenu(html, five) {
+    menu.innerHTML = html;
+    menu.classList.toggle('five', !!five);
+    menu.hidden = false;
+    armMenuTimer();
+  }
   function showMenu() {
+    // Proposed: no menu opens over a pairing code; a hold there cancels it instead (see the touch handlers).
+    if (pairShowing()) return;
+    menu.classList.remove('five');
     const done = `<div class="tile done" data-action="close"><b>Close</b><span>Done</span><small>or wait 8 s</small></div>`;
     // Connected is the end of setup: holding there finishes it and opens the usual menu, so Skip can't undo it.
     if (s.wifi.mode === 'connected') { clearTimeout(connectedTimer); s.wifi.mode = 'ok'; render(); }
@@ -2861,30 +3553,33 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   // Timer settings: auto-start and ticking, with Back to the timer menu. The menu stays open so ticking can be
   // stepped through Off, Soft and Medium.
   function showTimerSettings() {
-    menu.innerHTML = `
+    fillMenu(`
       <div class="tile" data-action="auto"><b>Auto-start</b><span>${pomo.auto ? 'On' : 'Off'}</span><small>next phase</small></div>
       <div class="tile" data-action="tick"><b>Ticking</b><span>${tickLabel()}</span><small>during focus</small></div>
-      <div class="tile done" data-action="timermenu"><b>Settings</b><span>Back</span><small>to the timer menu</small></div>`;
-    menu.hidden = false;
-    armMenuTimer();
+      <div class="tile done" data-action="timermenu"><b>Settings</b><span>Back</span><small>to the timer menu</small></div>`);
   }
+  // The Wi-Fi menu: This TinyBar (the network tile, read-only) names this bar and its real address, so bars in one
+  // office can be told apart; under a NETWORK label the bar's name would read as the Wi-Fi's. Devices (Proposed)
+  // counts the paired devices and opens Forget all; with none paired it's read-only and says where to pair, so a tap
+  // there closes the menu like a tap on This TinyBar. Each foot breaks where the markup does (LVGL: "\n").
   function showWifiMenu() {
-    const off = s.wifi.mode === 'offline';
-    menu.innerHTML = `
-      <div class="tile info"><b>Network</b><span>${off ? 'None' : 'On'}</span><small>${off ? 'not connected' : `${esc(s.wifi.ssid)} · ${s.wifi.ip}`}</small></div>
-      <div class="tile" data-action="wifisetup"><b>${off ? 'Set up' : 'Change'}</b><span>Set up</span><small>show the QR code</small></div>
-      <div class="tile done" data-action="close"><b>Close</b><span>Back</span><small>or wait 8 s</small></div>`;
-    menu.hidden = false;
-    armMenuTimer();
+    const off = s.wifi.mode === 'offline', n = tokens.length;
+    const foot = off ? '<span>Not connected</span><span>set it up for the Remote</span>'
+      : `<span>${esc(BAR.host)} · ${esc(s.wifi.ip)}</span><span>on ${esc(s.wifi.ssid)}</span>`;
+    const dev = n ? `<div class="tile" data-action="devices"><b>Devices</b><span>${n >= MAX_TOKENS ? 'Full' : `${n} paired`}</span><small>tap to<br>forget all</small></div>`
+      : `<div class="tile info"><b>Devices</b><span>None</span><small>${off ? 'set up Wi-Fi<br>to pair' : 'pair a phone<br>or a Mac'}</small></div>`;
+    fillMenu(`
+      <div class="tile info wide"><b>This TinyBar</b><span>${esc(BAR.name)}</span><small>${foot}</small></div>
+      ${dev}
+      <div class="tile" data-action="wifisetup"><b>${off ? 'Set up' : 'Change'}</b><span>Set up</span><small>show the<br>QR code</small></div>
+      <div class="tile done" data-action="close"><b>Close</b><span>Back</span><small>or wait 8 s</small></div>`, true);
     say('menu: Wi-Fi');
   }
   function showPowerMenu() {
-    menu.innerHTML = `
+    fillMenu(`
       <div class="tile" data-action="restart"><b>Restart</b><span>Restart</span><small>back in a few seconds</small></div>
       <div class="tile" data-action="poweroff"><b>Power off</b><span>Off</span><small>press PWR to turn on</small></div>
-      <div class="tile done" data-action="close"><b>Close</b><span>Back</span><small>or wait 8 s</small></div>`;
-    menu.hidden = false;
-    armMenuTimer();
+      <div class="tile done" data-action="close"><b>Close</b><span>Back</span><small>or wait 8 s</small></div>`);
     say('menu: power options');
   }
   function armMenuTimer() {
@@ -2925,6 +3620,15 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       return;
     }
     if (a === 'showagain') { showAgain('menu'); return; }
+    if (a === 'devices') { showForgetMenu(); return; }
+    if (a === 'keepdevices') { showWifiMenu(); say('menu: kept every paired device, back to Wi-Fi'); return; }
+    if (a === 'forgetall') {
+      // Forget all sits right under Devices, so taps in the first 600 ms are ignored: a quick double tap on Devices
+      // can't forget everything. It still takes a second, deliberate tap.
+      if (Date.now() - forgetAt < 600) { say('menu: tap Forget all again to confirm'); return; }
+      forgetAll('menu');
+      return;
+    }
     hideMenu();
     if (a === 'close') say('menu: closed');
     else if (a === 'restart') restart('menu');
@@ -2944,10 +3648,11 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   let p = null, held = false, holdTimer = null;
   screen.addEventListener('pointerdown', e => {
     if (s.off || !s.powered || s.booting) { p = null; return; }
-    p = { x: e.clientX, y: e.clientY };
+    p = { x: e.clientX, y: e.clientY, t: Date.now() };
     held = false;
     clearTimeout(holdTimer);
-    holdTimer = setTimeout(() => { held = true; silence(); showMenu(); }, 550);
+    // On a pairing code a hold opens no menu: like every gesture there, it counts when the finger lifts, and cancels.
+    holdTimer = setTimeout(() => { held = true; if (pairShowing()) return; silence(); showMenu(); }, 550);
   });
   screen.addEventListener('pointermove', e => {
     if (!p) return;
@@ -2961,7 +3666,14 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     let dx = e.clientX - p.x;
     const moved = Math.abs(dx) >= 10 || Math.abs(e.clientY - p.y) >= 10;
     if (s.flipped) dx = -dx;
+    const began = p.t;
     p = null;
+    if (pairShowing()) {
+      // A touch that began before the code appeared is ignored, so a tap meant for the screen underneath can't cancel it.
+      if (began < pair.shownAt) { say('touch: ignored, it began before the code appeared'); return; }
+      pairCancel(Math.abs(dx) > 40 ? 'swipe' : held ? 'hold' : 'tap');
+      return;
+    }
     if (held) return;
     if (!menu.hidden) {
       // Only a tap acts on a menu. A swipe is ignored, so it can't run whichever tile the finger lifts on.
@@ -2982,6 +3694,11 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   screen.addEventListener('pointercancel', () => { clearTimeout(holdTimer); p = null; });
   screen.addEventListener('keydown', e => {
     if (!s.powered || s.booting) return;
+    if (pairShowing() && ['ArrowRight', 'ArrowLeft', 'Enter', ' ', 'm'].includes(e.key)) {
+      e.preventDefault();
+      pairCancel(e.key.startsWith('Arrow') ? 'swipe' : e.key === 'm' ? 'hold' : 'tap');
+      return;
+    }
     if (e.key === 'ArrowRight') { e.preventDefault(); go(s.idx + 1, 'swipe'); }
     else if (e.key === 'ArrowLeft') { e.preventDefault(); go(s.idx - 1, 'swipe'); }
     else if (e.key === 'Enter' || e.key === ' ') {
@@ -3014,6 +3731,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   $('btnBoot').addEventListener('click', () => {
     if (!s.powered || s.booting) { say('BOOT: TinyBar is off, press PWR to turn it on'); return; }
     if (wake('BOOT')) return;
+    if (pairShowing()) { pairCancel('BOOT'); return; }
     if (onWifiScreen()) { wifiTap('BOOT'); return; }
     if (silence()) { say('BOOT: alarm off'); toast('Alarm off'); render(); return; }
     if (autoTop()) { backToOwn('BOOT'); return; }
@@ -3023,6 +3741,8 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   // When the bar is off, a press turns it on. This matches the V2 board, where the software holds the
   // power on through the SYS_EN line and reads the button on GPIO 16.
   function pwrShort() {
+    // On a pairing code, a press cancels it and turns the screen off as usual; the dark screen is the confirmation.
+    if (pairShowing()) { pairEnd('pwr'); togglePower(); say('PWR: pairing canceled, screen off'); return; }
     if (silence()) { say('PWR: alarm off'); toast('Alarm off'); render(); return; }
     togglePower();
   }
@@ -3039,6 +3759,10 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   function powerOff(how) {
     silence();
     hideMenu();
+    // Powering off ends a pairing (and drops one still waiting to show); it all lives in RAM, the back-off too.
+    // Paired devices stay paired.
+    pairEnd('off');
+    s.poweringOff = true;
     const el = $('holdOv');
     $('holdTitle').textContent = 'Powering off';
     $('holdSub').textContent = 'Press PWR to turn it back on';
@@ -3051,6 +3775,8 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       $('holdTitle').textContent = 'Keep holding';
       $('holdSub').textContent = 'to power off';
       s.powered = false;
+      s.poweringOff = false;
+      Object.assign(pair, { fails: 0, lockMs: 0 });
       s.off = false;
       screen.classList.remove('off');
       screen.classList.add('dead');
@@ -3085,6 +3811,8 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   function restart(how) {
     silence();
     hideMenu();
+    pairEnd('off');
+    Object.assign(pair, { fails: 0, lockMs: 0 });
     resetPomo();
     powerOn(`${how}: restart`);
   }
@@ -3119,7 +3847,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
 
   // The remote stands in for a 3-second hold, since the side button is small.
   $('pwrHoldBtn').addEventListener('click', () => {
-    if (s.booting) return;
+    if (s.booting || s.poweringOff) return;
     if (!s.powered) { powerOn('PWR'); return; }
     showHold();
     say('PWR: holding');
@@ -3127,9 +3855,9 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   });
 
   // While the bar is off its web page is unreachable, so the remote's controls do nothing but explain why.
-  const phone = document.querySelector('.phone');
-  phone.addEventListener('click', e => {
-    if (s.powered && s.wifi.mode === 'offline' && e.target.closest('#remoteMain button, #remoteMain input')) {
+  const phoneEl = document.querySelector('.phone');
+  phoneEl.addEventListener('click', e => {
+    if (s.powered && s.wifi.mode === 'offline' && e.target.closest('#remoteMain button, #remoteMain input, #pairView button, #pairView input')) {
       e.preventDefault();
       e.stopPropagation();
       say("remote: TinyBar isn't on Wi-Fi");
@@ -3141,7 +3869,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     e.stopPropagation();
     say('remote: TinyBar is off, press PWR to turn it on');
   }, true);
-  phone.addEventListener('submit', e => { if (!s.powered) { e.preventDefault(); e.stopPropagation(); } }, true);
+  phoneEl.addEventListener('submit', e => { if (!s.powered) { e.preventDefault(); e.stopPropagation(); } }, true);
 
   // Flipping the bar over always does three things: turns the layout the right way up,
   // silences any alarm, and starts whatever the Pomodoro is waiting for. A running timer is left alone.
@@ -3151,6 +3879,10 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     s.flipped = !s.flipped;
     device.classList.toggle('flipped', s.flipped);
     if (!s.powered) { say('flip: TinyBar is off, nothing happens until you press PWR'); return; }
+    // Proposed: on a pairing code, a flip cancels it first, then does all three things as usual. A held alarm is
+    // answered by the flip starting the next phase.
+    const pairing = pairShowing();
+    if (pairing) pairEnd('flip');
     wake();
     hideMenu();
     const quieted = silence();
@@ -3158,11 +3890,20 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     const started = startWaiting();
     if (started || aside) s.idx = POMO;
     render();
+    if (pairing) {
+      toast(started ? `Pairing canceled · ${started}` : 'Pairing canceled', true);
+      say(`flip: pairing canceled, layout turned${started ? `, ${started.toLowerCase()}` : ''}${asideLog(aside)}`);
+      return;
+    }
     const msg = started || `${PHASE_NAME[pomo.phase]} already running`;
     toast(quieted ? `Alarm off · ${msg}` : msg);
     say(`flip: layout turned${quieted ? ', alarm off' : ''}, ${msg.toLowerCase()}${asideLog(aside)}`);
   });
-  $('menuBtn').addEventListener('click', () => { wake(); menu.hidden ? showMenu() : hideMenu(); });
+  // The quick-menu stand-in acts like a hold: on a pairing code it cancels it.
+  $('menuBtn').addEventListener('click', () => {
+    if (s.powered && !s.booting && pairShowing()) { pairCancel('hold'); return; }
+    wake(); menu.hidden ? showMenu() : hideMenu();
+  });
 
   // ---------- Phone setup page ----------
   const netValue = () => (document.querySelector('input[name="net"]:checked') || {}).value;
@@ -3417,7 +4158,23 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
         : "mac: can't reach TinyBar over Wi-Fi during setup; USB still works");
       return;
     }
+    // Proposed: over Wi-Fi the bar answers 401 without a token, so an unpaired Mac's call doesn't show and the Mac
+    // isn't connected there. If it was plugged in before, its USB messages stop too, so the bar ends that call after
+    // 90 s, as when a Mac goes quiet.
+    if (via === 'wifi' && !macTok()) {
+      mac.refused = true;
+      if (mac.link && !mac.quiet) { mac.quiet = true; mac.quietMs = 0; }
+      bump();
+      render();
+      say("mac: TinyBar refused the call over Wi-Fi (401, not paired). Pair it in the Pairing box, or switch Link to USB");
+      return;
+    }
+    // Plugged in with no token, the Mac app pairs over the cable at once, with no code (mac-app-ux.md 5.3).
+    // Its toast holds the screen for 1.6 s, and the call's toast follows it.
+    if (via === 'usb' && mac.link !== 'usb' && !macTok()) macPairUsb('mac');
+    mac.refused = false;
     Object.assign(mac, { link: via, lastHeard: now(), quiet: false, quietMs: 0, lostAt: null });
+    if (via === 'wifi') macTok().used = now();
     if (mac.call) {
       // Repeats while already on a call keep the start time and update the app name.
       Object.assign(mac.call, { app, via });
@@ -3435,6 +4192,14 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   $('simCallEnd').addEventListener('click', () => {
     if (!s.powered) { say("simulate: TinyBar is off, so the Mac can't reach it"); return; }
     if (!mac.call) { say('simulate: no call to end'); return; }
+    if (segValue('simLink') === 'wifi' && wifiUp() && !macTok()) {
+      mac.refused = true;
+      if (mac.link && !mac.quiet) { mac.quiet = true; mac.quietMs = 0; }
+      bump();
+      render();
+      say('mac: TinyBar refused the message over Wi-Fi (401, not paired); the bar ends the call after 90 s without a message');
+      return;
+    }
     Object.assign(mac, { call: null, lastHeard: now(), quiet: false, quietMs: 0 });
     bump();
     if (!syncAuto('Call ended')) say(`mac: call ended${mac.on ? '' : ' (Calls from your Mac was off)'}`);
@@ -3449,6 +4214,122 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     bump();
     say(`mac: gone quiet; TinyBar ends ${mac.call ? 'the call' : 'the connection'} after 90 s without a message`);
     render();
+  });
+
+  // ---------- Simulate: pairing (mock-up only, Proposed) ----------
+  // The Pairing box stands in for the Mac app's Pair Over Wi-Fi (mac-app-ux.md 5.4): ask the bar for a code, then type
+  // what it shows. Its answers are the Mac app's own words (5.5). The bar runs the real rules: one code at a time, 2
+  // minutes, 3 tries, the back-off, 10 devices. The code itself only ever shows on the simulated bar.
+  const macLabel = () => pairLabel({ kind: 'mac', name: $('simMacName').value.trim() || null });
+  function macSays(text) { macPair.msg = text ? `Mac app: ${text}` : ''; updateSim(); }
+  function macErrText(r) {
+    switch (r.error) {
+      case 'pairing_busy': return `Someone else is pairing with this TinyBar. Try again in ${waitText(r.retry_after_s * 1000)}.`;
+      case 'rate_limited': return `Too many tries. You can try again in ${waitText(r.retry_after_s * 1000)}.`;
+      case 'token_limit': return `${BAR.name} already has 10 paired devices. Remove one on its Remote, then try again.`;
+      case 'in_setup': return `${BAR.name} is setting up Wi-Fi. Finish setup on the bar, then try again.`;
+      case 'wrong_code': return r.attempts_left > 0 ? `That code didn't match. ${r.attempts_left} ${r.attempts_left === 1 ? 'try' : 'tries'} left.`
+        : "That code didn't match, so TinyBar canceled pairing. Show a new code to try again.";
+      case 'not_pairing': return 'That code has expired or was canceled on TinyBar. Show a new code to try again.';
+      default: return `${BAR.name} didn't answer. Make sure it's on, then try again.`;
+    }
+  }
+  // Over USB the Mac app pairs at once, with no code (api.md 6.6, Proposed), and the bar confirms on its screen once
+  // the screen is free (not dark, no menu, setup or pairing code).
+  function macPairUsb(how) {
+    if (!s.powered || s.poweringOff) { macSays(`${BAR.name} didn't answer. Make sure it's on, then try again.`); say("mac: no TinyBar on USB, it's off"); return false; }
+    Object.assign(mac, { link: 'usb', lastHeard: now(), quiet: false, quietMs: 0, lostAt: null, refused: false });
+    if (tokens.length >= MAX_TOKENS && !macTok()) {
+      macSays(`Connected to ${BAR.name} over USB. To use Wi-Fi too, remove a device on TinyBar's Remote; it can keep 10.`);
+      say('mac: connected over USB; no Wi-Fi token, TinyBar already has 10 paired devices');
+      bump(); render();
+      return false;
+    }
+    addToken({ name: macLabel(), kind: 'mac', scope: 'call', client: 'mac', via: 'usb' });
+    macPair.pid = null;
+    macSays(`Connected to ${BAR.name} over USB, and paired for Wi-Fi.`);
+    notify(`Paired · ${macLabel()} · over USB`, true);
+    say(`${how}: paired over USB, no code needed${hiddenNote()}`);
+    bump(); render();
+    return true;
+  }
+  $('simPairAsk').addEventListener('click', () => {
+    if (segValue('simLink') === 'usb') { macPairUsb('mac'); return; }
+    // Asking again while its own code is still on the bar just goes back to typing it.
+    if (macPair.pid && pair.code && pair.id === macPair.pid) { macSays(`Type the code shown on ${BAR.name}.`); $('simPairCode').focus(); return; }
+    const r = pairStart({ kind: 'mac', scope: 'call', name: $('simMacName').value.trim() || null, client: 'mac' });
+    if (!r.ok) { macSays(macErrText(r)); say(`mac: TinyBar refused a code (${r.error.replace('_', ' ')})`); return; }
+    macPair.pid = r.pairing_id;
+    $('simPairCode').value = '';
+    macSays(`Type the code shown on ${BAR.name}. The code works for 2 minutes.`);
+    $('simPairCode').focus();
+  });
+  function macTry(code) {
+    if (!macPair.pid) { macSays(`Choose Mac app asks to pair first, so ${BAR.name} shows a code.`); return; }
+    const r = pairTry(macPair.pid, code);
+    $('simPairCode').value = '';
+    if (r.ok) { macPair.pid = null; mac.refused = false; macSays(`Paired with ${BAR.name}. It shows On a call whenever this Mac is on one.`); return; }
+    macSays(macErrText(r));
+    if (r.error === 'not_pairing') say('mac: that code is gone from the bar');
+    else if (r.error === 'no_answer') say("mac: TinyBar didn't answer");
+  }
+  $('simPairCode').addEventListener('input', () => {
+    const d = digitsOf($('simPairCode').value);
+    $('simPairCode').value = codeFormat(d);
+    if (d.length === 6) macTry(d);
+  });
+  $('simPairCode').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('simPairGo').click(); } });
+  $('simPairGo').addEventListener('click', () => {
+    const d = digitsOf($('simPairCode').value);
+    if (d.length < 6) { macSays(d ? 'Type all 6 digits of the code on the bar.' : `Type the code shown on ${BAR.name}.`); return; }
+    macTry(d);
+  });
+  // A wrong code: the Mac's own code with one digit changed, so it can't match by chance.
+  $('simPairWrong').addEventListener('click', () => {
+    if (!(pair.code && pair.shown && pair.id === macPair.pid)) { say("simulate: no code of the Mac's is on the bar; choose Mac app asks to pair first"); return; }
+    const i = rand(6), wrong = pair.code.slice(0, i) + ((+pair.code[i] + 1 + rand(9)) % 10) + pair.code.slice(i + 1);
+    macTry(wrong);
+  });
+  $('simPairJump').addEventListener('click', () => {
+    if (!pair.code) { say('simulate: no code on the bar to run down'); return; }
+    pair.left = Math.min(pair.left, 5000);
+    lastKey = '';
+    say('simulate: the code has 5 seconds left');
+  });
+  // A shortcut between the Remote's two states, without codes or toasts.
+  $('simPhone').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.dataset.v === 'unpaired') {
+      if (!phone.token) { say('simulate: this phone already isn\'t paired'); return; }
+      const i = tokens.findIndex(t => t.id === phone.token);
+      if (i >= 0) tokens.splice(i, 1);
+      Object.assign(phone, { token: null, step: 'start', pid: null, askErr: null, err: null, note: '', lostNote: '', confirm: null, okUntil: 0 });
+      say('simulate: this phone is not paired now; the Remote shows its pairing prompt');
+    } else {
+      if (phone.token) { say('simulate: this phone is already paired'); return; }
+      const t = addToken({ name: 'iPhone', kind: 'remote', scope: 'full', client: 'phone', via: 'wifi' });
+      Object.assign(phone, { token: t.id, step: 'start', pid: null, askErr: null, err: null, note: '', confirm: null });
+      say('simulate: this phone is paired now');
+    }
+    bump();
+    updateRemote();
+  });
+  // Sample devices up to the limit of 10, to see the Devices tile's Full and the Remote's 10-device message.
+  const FILL = [['iPad', 'remote'], ['Android phone', 'remote'], ['Windows browser', 'remote'], ['Hallway sign', 'automation'],
+    ['Shortcuts', 'automation'], ['Mac browser', 'remote'], ['Chromebook', 'remote'], ['Home Assistant', 'automation'], ['Team script', 'automation'], ['Kitchen iPad', 'remote']];
+  $('simFill').addEventListener('click', () => {
+    if (tokens.length >= MAX_TOKENS) { say('simulate: TinyBar already has 10 paired devices'); return; }
+    let k = 0;
+    for (const [name, kind] of FILL) {
+      if (tokens.length >= MAX_TOKENS) break;
+      if (tokens.some(t => t.client === 'sample-' + name)) continue;
+      k++;
+      tokens.push({ id: hex8(), name, kind, scope: 'full', client: 'sample-' + name, at: addMin(now(), -1440 * (k + 1)), via: 'wifi', used: addMin(now(), -97 * k) });
+    }
+    bump();
+    updateRemote();
+    say(`simulate: ${k} sample device${k === 1 ? '' : 's'} paired, ${tokens.length} of 10`);
   });
 
   // ---------- Style panel ----------
@@ -3546,7 +4427,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     head: 'Bitcount Prop Single', text: 'Handjet Snap17', mono: null, layout: 'pixel',
     roles: { kick: 'text', sub: 'text', sys: 'text', vals: 'text', tv: 'text' }, weights: { word: 400, kick: 400, val: 400, sub: 400 },
     sizes: { kick: 17, label: 17, sub: 17, val: 40, vals: 34, foot: 17, sys: 17, word: 1, chip: 17, toast: 17, wol: 17, wfoot: 17, tv: 34, tv2: 34, hold: 40, splash: 100 },
-    ladder: { word: [100, 80, 60, 50, 40], time: [120], pair: [60], title: [60, 40], msg: [100, 80, 60, 50], marquee: [60], qr: [50], setup: [60, 50, 40], val: [40], vals: [34] },
+    ladder: { word: [100, 80, 60, 50, 40], time: [120], code: [80], pair: [60], title: [60, 40], msg: [100, 80, 60, 50], marquee: [60], qr: [50], setup: [60, 50, 40], val: [40], vals: [34] },
     kickTrack: 1 / 17,   // 1 px at 17 px
     pad: [14, 20, 12, 20], padSide: [14, 16, 12, 16],
   };
@@ -3555,8 +4436,8 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   // titles and messages as written), all small text is Barlow, and the info column is a solid darker tint of the
   // status color (lv_color_darken(status, 61)). White text only on the color field, at full opacity; the muted color
   // only on the tint and the dark surfaces. layout 'signal' puts every line on the spec's fixed baselines (see the
-  // Signal layout CSS). The headline takes the largest of 112, 100, 78 and 62 px that fits the 404 px column: Busy and
-  // the timer and clock at 112, Available and On a call at 100, In a meeting and Back at 1:30 at 78 (the ladder applies
+  // Signal layout CSS). The headline takes the largest of 112, 100, 78 and 62 px that fits the 404 px column: Busy,
+  // the timer, the clock and a pairing code at 112, Available and On a call at 100, In a meeting and Back at 1:30 at 78 (the ladder applies
   // to Barlow Condensed only; ladderFont). Text as written (meeting titles, messages, the Wi-Fi setup titles) is 62 px,
   // the one size the firmware converts with lowercase (printable ASCII); a message too wide for it scrolls. The alarm
   // pair is 62 px too, the size at which Break time fits beside its 64 px tomato. Fonts past the designer's list:
@@ -3577,7 +4458,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     tints: { available: [null, '#0B612E'], busy: [null, '#9E152C'], meeting: [null, '#6A2CAE'], call: [null, '#0F3D89'], focus: [null, '#86440A'], short: [null, '#085D55'], long: [null, '#0E556D'], away: [null, '#40464D'], message: [null, '#92136B'], clock: [null, '#1B1E23'] },
     roles: { kick: 'text', sub: 'text', sys: 'text' }, weights: { word: 700, kick: 700, val: 700, sub: 500, tv: 700 },
     sizes: { kick: 15, label: 12, sub: 19, val: 46, vals: 28, foot: 14, sys: 15, word: 1, chip: 12, toast: 15, wol: 16, wfoot: 14, tv: 28, tv2: 28, hold: 46, splash: 78 },
-    ladder: { word: [112, 100, 78, 62], time: [112], pair: [62], title: [62], msg: [62], marquee: [62], qr: [62], setup: [62] },
+    ladder: { word: [112, 100, 78, 62], time: [112], code: [112], pair: [62], title: [62], msg: [62], marquee: [62], qr: [62], setup: [62] },
     ladderFont: 'Barlow Condensed',
     kickTrack: .1,   // 1.5 px on the 15 px kicker, 1.2 px on the 12 px label
     pad: [16, 20, 16, 24], padSide: [14, 16, 14, 16],
