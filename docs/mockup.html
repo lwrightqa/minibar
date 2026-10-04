@@ -1,7 +1,7 @@
 <title>TinyBar Screen Mock-up</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800&family=Bitcount+Prop+Single:slnt,wght,CRSV,ELSH,ELXP@-8..0,100..900,0..1,0..100,0..100&family=Handjet:wght,ELGR,ELSH@400,1,2&family=JetBrains+Mono:wght@400;500&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700&family=Barlow+Condensed:wght@500;600;700;800&family=Big+Shoulders+Display:wght@500;700;800&family=Bitcount+Prop+Single:slnt,wght,CRSV,ELSH,ELXP@-8..0,100..900,0..1,0..100,0..100&family=Handjet:wght,ELGR,ELSH@400,1,2&family=JetBrains+Mono:wght@400;500&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
 <style>
 /* Handjet Snap17, the bar's small-text font: Handjet's solid squares (wght 400, ELSH 2, ELGR 1) with every element
    moved onto a whole pixel at 17 px, subset to ASCII, Latin-1 (accented names such as "José" or "Café") and the
@@ -262,6 +262,13 @@ h1 .dot { color: var(--state); transition: color .3s; }
 .sys > span { white-space: nowrap; }
 .sys .icons { display: flex; align-items: center; gap: .9cqw; }
 .sys svg { width: 2.6cqw; height: 2.6cqw; display: block; }
+/* Status row icons. Looks drawn with a battery show it; a look for the bar on USB power (data-power="usb", Bold
+   Signal) has no battery and shows a Mac icon while your Mac is connected. Next to the Pomodoro pill there's room
+   for fewer: the battery and a set-aside glyph, or on USB one icon, the set-aside glyph or else Wi-Fi. */
+.sys .ic-mac, .sys.has-pill .ic-wifi { display: none; }
+.scr[data-power="usb"] .sys .ic-batt, .scr[data-power="usb"] .sys.has-pill .ic-mac { display: none; }
+.scr[data-power="usb"] .sys .ic-mac, .scr[data-power="usb"] .sys.has-pill .ic-wifi { display: block; }
+.scr[data-power="usb"] .sys.has-pill .ic-aside ~ .ic-wifi { display: none; }
 .ctx-label {
   font-family: var(--f-kick, var(--f-screen));
   font-weight: var(--w-kick, 700);
@@ -284,12 +291,18 @@ h1 .dot { color: var(--state); transition: color .3s; }
   text-overflow: ellipsis;
 }
 .ctx-value.small { font-family: var(--f-vals, var(--f-screen)); font-variation-settings: var(--fv-vals, normal); font-size: var(--z-vals, 3.6cqw); line-height: 1.05; }
+/* A time in the side value carries its AM or PM in one of two places, and the look picks: at the start of the foot
+   ("PM · then a meeting", .f-ampm) or small after the digits (.v-ampm, Bold Signal). */
+.ctx-value .v-ampm { display: none; }
 .ctx-foot { font-size: var(--z-foot, 2cqw); line-height: var(--lh-s, 1.55); opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ctx-foot.after-tomatoes { margin-top: 1cqw; }
 .tomatoes { display: flex; gap: 1cqw; margin-top: .8cqw; }
 .tomato { position: relative; display: block; }
 .tomato img { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; image-rendering: pixelated; }
 .tomato.ghost img, .tomato img.faint { opacity: .35; }
+/* A paler copy of the ripe sprite for upcoming sessions, for looks whose side column is too dark or too colorful for
+   a see-through tomato (Bold Signal). Only those looks show it. */
+.tomato img.pale { display: none; }
 .tomatoes .tomato { flex: 0 1 5cqw; min-width: 0; aspect-ratio: 1; }
 
 .bar {
@@ -720,8 +733,9 @@ table.controls td.none { color: var(--muted); }
 
 /* ---------- Screen treatments ----------
    The Style panel and the Design directions set these attributes and variables on the simulator and on each preview.
-   data-mode: solid (the status color fills the screen, the original look), dark (near-black with color accents; the default, Low Glare Pixel), light (pale tints, ink text).
-   data-layout: pixel puts text on the pixel look's fixed lines (see the Pixel layout section below).
+   data-mode: solid (the status color fills the screen: the original look and Bold Signal, the default), dark (near-black with color accents; Low Glare and Low Glare Pixel), light (pale tints, ink text).
+   data-layout: signal and pixel put text on Bold Signal's and the pixel look's fixed lines (see the Signal layout and Pixel layout sections below).
+   data-power: usb for a look without a battery icon (see the status row icons).
    --sc is the status color, --tc and --tsc a direction's own main and side tints, --b-* its base background, text and muted text.
    Everything maps to LVGL 9: solid fills, borders and one image opacity. */
 .scr[data-dir] .kicker, .scr[data-dir] .sub, .scr[data-dir] .ctx-label, .scr[data-dir] .ctx-foot,
@@ -895,6 +909,91 @@ table.controls td.none { color: var(--muted); }
 .scr[data-layout="pixel"] .wsetup ol { margin: 0; padding-left: 3.125cqw; line-height: 3.28125cqw; }
 .scr[data-layout="pixel"][data-mode="dark"] .wsetup ol { color: var(--b-text); }
 
+/* ---------- Signal layout (data-layout="signal": Bold Signal, the default look) ----------
+   The UX designer's spec in screen pixels (1 px = .15625cqw). The status color fills x 0 to 448, with text from x 24
+   to 428; the info column, x 448 to 640, is a solid darker tint of it with a 16 px inset. Every line has a fixed
+   baseline, so nothing moves when the headline changes size: kicker 30 and sub 152 in the main column; time 30,
+   label 92, value 130 and foot 152 in the info column. Each line is a box of 1.2 em, Barlow's ascent plus descent,
+   so its baseline is 1 em below its top (LVGL: a label's y is its baseline minus the font's ascent). The headline's
+   capitals (.7 em) are centered on y 86 at every size, which puts the baselines at 125 (112 px), 121 (100 px), 113
+   (78 px) and 108 (62 px). Text on the color field is white at full opacity; the muted color is only for the tint and
+   the dark surfaces (clock, menus). Digits are tabular everywhere, as in the bar's copy of the fonts (tnum frozen in). */
+.scr[data-layout="signal"] { font-variant-numeric: tabular-nums; }
+.scr[data-layout="signal"] .lcd { grid-template-columns: 1fr 30cqw; }
+.scr[data-layout="signal"] :is(.main, .side) { position: relative; padding: 0; }
+.scr[data-layout="signal"] :is(.main, .wtext) > * { position: absolute; left: 3.75cqw; right: 3.125cqw; }
+.scr[data-layout="signal"] :is(.kicker, .sub, .ctx-label, .ctx-value, .ctx-foot, .sys, .wsetup .wfoot) { line-height: 1.2; }
+.scr[data-layout="signal"] .kicker { top: 2.34375cqw; }
+.scr[data-layout="signal"] .sub { top: 20.78125cqw; }
+.scr[data-layout="signal"] .word { line-height: 1.2; margin: 0; letter-spacing: 0; }
+.scr[data-layout="signal"] :is(.main, .wtext) > .word { top: calc(13.4375cqw - .65em); }
+/* A message, or an alarm's tomato and words, fill the column's height and center the capitals the same way. */
+.scr[data-layout="signal"] .main > :is(.marquee, .endrow) { top: 0; bottom: 0; display: flex; align-items: center; }
+.scr[data-layout="signal"] :is(.marquee, .endrow) .word { margin-top: -.1em; }
+.scr[data-layout="signal"] .marquee .word { flex: none; }
+.scr[data-layout="signal"] .endrow { gap: 2.5cqw; }
+.scr[data-layout="signal"] .endrow .tomato { width: 10cqw; height: 10cqw; }
+/* The source chip (MAC, CALENDAR) is the info column's label style on the status's tint. */
+.scr[data-layout="signal"] .chip { background: var(--tsc); padding: 0 .9375cqw; border-radius: .625cqw; line-height: 1.3; letter-spacing: .1em; }
+/* The paused timer blinks off and on (LVGL: hide and show the label), rather than dimming, which would make it muted text. */
+.scr[data-layout="signal"] .word.blink { animation: blink-off 1.2s step-end infinite; }
+@keyframes blink-off { 75% { visibility: hidden; } }
+/* Info column */
+.scr[data-layout="signal"] .side > * { position: absolute; left: 2.5cqw; right: 2.5cqw; }
+.scr[data-layout="signal"] .side > div:not(.sys) { top: 0; bottom: 0; }
+.scr[data-layout="signal"] .side > div:not(.sys) > * { position: absolute; left: 0; right: 0; margin: 0; }
+.scr[data-layout="signal"] .sys { top: 2.34375cqw; font-weight: 600; gap: 1.25cqw; }
+.scr[data-layout="signal"] .sys .icons { gap: 1.25cqw; }
+.scr[data-layout="signal"] .sys svg { width: 2.5cqw; height: 2.5cqw; }
+.scr[data-layout="signal"] .ctx-label { top: 12.5cqw; }
+.scr[data-layout="signal"] .ctx-value { top: 13.125cqw; }
+.scr[data-layout="signal"] .ctx-value.small { top: 15.9375cqw; }
+.scr[data-layout="signal"] .ctx-value .v-ampm { display: inline; font-size: 2.65625cqw; margin-left: .3125cqw; }
+.scr[data-layout="signal"] .f-ampm { display: none; }
+.scr[data-layout="signal"] .ctx-foot { top: 21.5625cqw; font-weight: 500; }
+/* Tomatoes at the sprites' own 32 px with 8 px gaps (four fill the 160 px exactly), from y 102 to 134. Upcoming ones
+   are the pale copy (LVGL: the ripe image recolored 55% toward white), which reads on every tint; a see-through
+   tomato turns into a brown smudge on Focus. */
+.scr[data-layout="signal"] .tomatoes { top: 15.9375cqw; gap: 1.25cqw; }
+.scr[data-layout="signal"] .tomatoes .tomato { flex: none; width: 5cqw; height: 5cqw; }
+.scr[data-layout="signal"] .tomato.ghost:has(.pale) img { display: none; }
+.scr[data-layout="signal"] .tomato.ghost img.pale { display: block; opacity: 1; }
+/* The Pomodoro pill: the phase color with a 2 px white border, white text and a plain white dot, since the 32 px
+   tomato would blur at 15 px. It reads on every tint, including a break's color next to Available's green. Its border
+   hangs 2 px above and below the row, so the time beside it stays on its baseline. */
+.scr[data-layout="signal"] .sys .pill { display: inline-flex; align-items: center; gap: .625cqw; margin: -.3125cqw 0; padding: 0 .78125cqw; border: .3125cqw solid #fff; border-radius: var(--r); box-shadow: none; font-weight: 600; }
+.scr[data-layout="signal"] .sys .pill .tomato { display: none; }
+.scr[data-layout="signal"] .sys .pill::before { content: ""; width: 1.25cqw; height: 1.25cqw; border-radius: 50%; background: #fff; flex: none; }
+/* Progress: 6 px along the bottom edge, a darker shade of the status color with a white fill. */
+.scr[data-layout="signal"] .bar { height: .9375cqw; background: color-mix(in srgb, var(--sc) 65%, #000); }
+.scr[data-layout="signal"] .bar i { background: #fff; }
+/* Menus and the hold screen are opaque on the base color (LV_OPA_COVER). Tiles #1C1F24 with muted labels and feet;
+   the Done tile is light with dark text. Toasts are a tile-colored pill with a thin edge, so they show on the clock's
+   near-black too. */
+.scr[data-layout="signal"] :is(.menu, .hold) { background: var(--b-bg); }
+.scr[data-layout="signal"] .tile { background: #1c1f24; justify-content: flex-start; }
+.scr[data-layout="signal"] .tile[data-action]:hover { background: #2a2e36; }
+.scr[data-layout="signal"] .tile.done { background: #e8ebee; }
+.scr[data-layout="signal"] .tile.done[data-action]:hover { background: #d5dade; }
+/* In a tile, the label is at the top, the value 12 px under it and the foot at the bottom, so values line up. */
+.scr[data-layout="signal"] .tile span { margin-top: 1.875cqw; }
+.scr[data-layout="signal"] .tile small { margin-top: auto; }
+.scr[data-layout="signal"] :is(.tile b, .tile small, .hold small) { color: var(--b-muted); }
+.scr[data-layout="signal"] :is(.tile.done b, .tile.done small) { color: #4a525c; }
+.scr[data-layout="signal"] .toast { background: #1c1f24; box-shadow: inset 0 0 0 .15625cqw #4a515c; padding: .9375cqw 2.1875cqw; bottom: 2.5cqw; }
+.device.flipped .scr[data-layout="signal"] .toast { bottom: auto; top: 2.5cqw; }
+/* Wi-Fi setup: the same lines as the status screens. Beside the QR code (132 px, 4 px modules, x 24 to 156, its
+   center on y 86), the text starts at x 180: the kicker and the foot keep their baselines (30 and 152), the title's
+   baseline is 82 and the two steps (16 px on a 20 px pitch) sit at 110 and 130. */
+.scr[data-layout="signal"] .wsetup { padding: 0; gap: 0; align-items: stretch; }
+.scr[data-layout="signal"] .wsetup .qr { align-self: center; margin-left: 3.75cqw; height: 20.625cqw; padding: 1.25cqw; }
+.scr[data-layout="signal"] .wsetup .wtext { flex: 1; position: relative; gap: 0; }
+.scr[data-layout="signal"] .wsetup:has(.qr) .wtext > .word { top: 3.125cqw; }
+.scr[data-layout="signal"] .wsetup ol { top: 14.6875cqw; margin: 0; line-height: 3.125cqw; }
+.scr[data-layout="signal"] .wsetup .wfoot { top: 21.5625cqw; }
+.scr[data-layout="signal"] .splash { gap: 2.5cqw; }
+.scr[data-layout="signal"] .splash .tomato { width: 10cqw; height: 10cqw; }
+
 /* ---------- Automatic status on the Remote ---------- */
 .auto-sec { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .auto-sec > p { margin: 0; }
@@ -959,7 +1058,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
 @media (prefers-reduced-motion: reduce) {
   .device, .lcd, .bar i { transition: none; }
   .marquee.scroll .word { animation: none; padding-left: 0; }
-  .word.blink { animation: none; }
+  .word.blink, .scr[data-layout="signal"] .word.blink { animation: none; }
   /* The alarm shows a steady frame instead of flashing: white on a solid color field, the status color on the
      dark and light modes. These selectors are as specific as the mode rules above, and come later, so they win. */
   .scr[data-mode] .lcd.alert::after { animation: none; opacity: 1; background: transparent; box-shadow: inset 0 0 0 .9375cqw #fff; }
@@ -1036,7 +1135,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     <div class="style-head">
       <div class="eyebrow">Mock-up only · not on the device</div>
       <h2 id="dirsTitle">Design directions</h2>
-      <p>Complete looks for the screen, side by side. Your pick comes first: the Low Glare layout in Bitcount Prop Single and Handjet, the look the simulator now opens with. The large preview in each card follows the simulator live; the small ones show Busy and the Pomodoro. Apply puts a direction on the simulator and in the Style panel below, where you can fine-tune it. Reset to defaults there brings back your pick.</p>
+      <p>Complete looks for the screen, side by side. Your pick comes first: Bold Signal, white Barlow Condensed capitals on the full status color with a darker info column, the look the simulator now opens with. Your earlier pick, Low Glare Pixel, comes next. The large preview in each card follows the simulator live; the small ones show Busy and the Pomodoro. Apply puts a direction on the simulator and in the Style panel below, where you can fine-tune it. Reset to defaults there brings back your pick.</p>
     </div>
     <div class="dir-grid" id="dirGrid"></div>
   </section>
@@ -1046,7 +1145,8 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
       <div class="eyebrow">Mock-up only · not on the device</div>
       <h2 id="styleTitle">Style</h2>
       <p>Try fonts, colors and screen modes on the screen. Your choices stay in this browser. Copy them when you've found a look you like, and send them to me for the firmware.</p>
-      <p>The simulator opens with your pick, Low Glare Pixel: Bitcount Prop Single for headlines and Handjet for small text, which come first under Pixel fonts. Pixel fonts snap to whole multiples of their own pixel grid so they stay crisp, and each headline takes the largest of those sizes that fits. Bitcount's digits are drawn in equal-width cells, as the bar's copy of the font draws them, so the timer and clock don't jitter. With a pixel headline font other than Jersey 10 or 15, the line under the headline uses the text font, since the others are too wide or too big for it.</p>
+      <p>The simulator opens with your pick, Bold Signal: Barlow Condensed for headlines and Barlow for small text on solid color fields. Each headline takes the largest of its four sizes that fits (112, 100, 78 or 62 px), and the digits are all one width, so the timer and clock don't jitter. A look you apply or change here is remembered in this browser; one you've never touched follows the default.</p>
+      <p>Your earlier pick, Low Glare Pixel, is a design direction above, and its Bitcount Prop Single and Handjet come first under Pixel fonts. Pixel fonts snap to whole multiples of their own pixel grid so they stay crisp, and each headline takes the largest of those sizes that fits. Bitcount's digits are drawn in equal-width cells, as the bar's copy of the font draws them, so the timer and clock don't jitter. With a pixel headline font other than Jersey 10 or 15, the line under the headline uses the text font, since the others are too wide or too big for it.</p>
       <p>Dark mode is the Low Glare treatment: picking it starts from Low Glare's colors, tints and sentence-case headlines, with the fonts you've chosen. The original look is still here: choose Solid color fields, then Big Shoulders Display and Schibsted Grotesk.</p>
     </div>
     <div class="style-grid">
@@ -1279,7 +1379,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
           <dt>Audio</dt><dd>ES8311 codec + speaker</dd>
           <dt>Power</dt><dd>USB-C, or 3.7 V Li-ion on MX1.25 (pin 2 +), charges at 1.2 A</dd>
         </dl>
-        <p class="note-small">Meetings and the sample calendar address, calls and their app names, the battery level and today's Pomodoro count are sample data.</p>
+        <p class="note-small">Meetings and the sample calendar address, calls and their app names, and today's Pomodoro count are sample data, as is the battery level in the looks that show one. The bar runs on USB for now, so Bold Signal shows none.</p>
       </div>
     </div>
   </section>
@@ -1384,7 +1484,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   // shades (green, yellow, orange, red) taken from its own green and red versions, so the sprite's shading
   // survives. The frames are built once from the two sprites; the firmware would ship the same frames as images.
   const RIPEN_FRAMES = 24;
-  let ripenFrames = null;
+  let ripenFrames = null, ripePale = null;
   const rgbToHsl = (r, g, b) => {
     r /= 255; g /= 255; b /= 255;
     const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
@@ -1420,6 +1520,15 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       const cx = cv.getContext('2d', { willReadFrequently: true });
       const read = im => { cx.clearRect(0, 0, W, H); cx.drawImage(im, 0, 0); return cx.getImageData(0, 0, W, H).data; };
       const G = read(gi), R = read(ri);
+      // The pale tomato for upcoming sessions in Bold Signal: the ripe sprite with every pixel 55% of the way to white,
+      // as LVGL's image recolor draws it (white at opa 140).
+      const pale = cx.createImageData(W, H);
+      for (let i = 0; i < R.length; i += 4) {
+        for (let k = 0; k < 3; k++) pale.data[i + k] = Math.round(R[i + k] + (255 - R[i + k]) * .55);
+        pale.data[i + 3] = R[i + 3];
+      }
+      cx.putImageData(pale, 0, 0);
+      ripePale = cv.toDataURL('image/png');
       // The skin is wherever the two sprites differ; outline, face and leaves are shared and stay put.
       const skin = [];
       let minX = W, maxX = 0, maxY = 0;
@@ -1466,7 +1575,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   })();
 
   function tomato(kind, p = 1) {
-    if (kind === 'ghost') return `<span class="tomato ghost"><img src="${IMG_RIPE}" alt=""></span>`;
+    if (kind === 'ghost') return `<span class="tomato ghost"><img src="${IMG_RIPE}" alt="">${ripePale ? `<img class="pale" src="${ripePale}" alt="">` : ''}</span>`;
     if (kind === 'ripe') return `<span class="tomato"><img src="${IMG_RIPE}" alt=""></span>`;
     const t = Math.max(0, Math.min(1, p));
     if (ripenFrames) return `<span class="tomato"><img src="${ripenFrames[Math.round(t * (RIPEN_FRAMES - 1))]}" alt=""></span>`;
@@ -1827,17 +1936,21 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     : !menu.hidden ? ' · shows when the menu closes'
     : s.off ? ' · the screen is dark, it shows when woken' : '';
 
-  const battery = `<svg viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="2" y="6" width="21" height="12" rx="2.5"/><rect x="5" y="9" width="12" height="6" rx="1" fill="currentColor" stroke="none"/><path d="M25.5 10v4" stroke-linecap="round"/></svg>`;
+  // Each icon has a class so a look can choose among them (see the status row icons in the CSS).
+  const battery = `<svg class="ic-batt" viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="2" y="6" width="21" height="12" rx="2.5"/><rect x="5" y="9" width="12" height="6" rx="1" fill="currentColor" stroke="none"/><path d="M25.5 10v4" stroke-linecap="round"/></svg>`;
   const wifiIcon = () => s.wifi.mode === 'offline'
-    ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><g opacity=".4"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5.5 12.5a10 10 0 0 1 13 0"/><path d="M9 16a5 5 0 0 1 6 0"/></g><path d="M4 3l16 18"/></svg>`
-    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5.5 12.5a10 10 0 0 1 13 0"/><path d="M9 16a5 5 0 0 1 6 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/></svg>`;
+    ? `<svg class="ic-wifi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><g opacity=".4"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5.5 12.5a10 10 0 0 1 13 0"/><path d="M9 16a5 5 0 0 1 6 0"/></g><path d="M4 3l16 18"/></svg>`
+    : `<svg class="ic-wifi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5.5 12.5a10 10 0 0 1 13 0"/><path d="M9 16a5 5 0 0 1 6 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/></svg>`;
   // A call or meeting you set aside leaves a small glyph in the corner: a headset or a calendar.
-  const headset = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.5" height="6.5" rx="1.5"/><rect x="16.5" y="14" width="4.5" height="6.5" rx="1.5"/></svg>`;
-  const calGlyph = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`;
+  const headset = `<svg class="ic-aside" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.5" height="6.5" rx="1.5"/><rect x="16.5" y="14" width="4.5" height="6.5" rx="1.5"/></svg>`;
+  const calGlyph = `<svg class="ic-aside" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`;
   const asideGlyph = () => { const k = asideKind(); return k === 'call' ? headset : k === 'meeting' ? calGlyph : ''; };
-  const iconsHtml = () => `<span class="icons">${asideGlyph()}${wifiIcon()}${battery}</span>`;
+  // A laptop while your Mac is connected (over USB or Wi-Fi) and Calls from your Mac is on, so it means calls will
+  // show. Only looks without a battery icon draw it.
+  const macIcon = () => mac.link && mac.on ? `<svg class="ic-mac" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19.5h20"/></svg>` : '';
+  const iconsHtml = () => `<span class="icons">${asideGlyph()}${macIcon()}${wifiIcon()}${battery}</span>`;
 
-  // Top row of the side column. Off the Pomodoro screen, a running timer shows as a small pill.
+  // Top row of the side column. Off the Pomodoro screen, a running timer shows as a small pill, with fewer icons.
   function sysRow() {
     let pill = '';
     if (rendering !== 'pomodoro' && pomoActive()) {
@@ -1845,9 +1958,12 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       pill = `<span class="pill" style="--pc:var(--s-${pomo.phase})">${pomo.phase === 'focus' ? tomato('ripening', 1 - pomo.remaining / phaseLen('focus')) : tomato('ripe')}${label}</span>`;
     }
     if (!pill) return `<div class="sys"><span>${fmt(now())}</span>${iconsHtml()}</div>`;
-    return `<div class="sys"><span>${fmtShort(now())}</span>${pill}<span class="icons">${asideGlyph()}${battery}</span></div>`;
+    return `<div class="sys has-pill"><span>${fmtShort(now())}</span>${pill}${iconsHtml()}</div>`;
   }
 
+  // AM or PM for a time in the side value: small after the digits (vAP) or leading the foot (fAP), as the look shows it.
+  const vAP = d => `<span class="v-ampm">${ampm(d)}</span>`;
+  const fAP = (d, sep = ' · ') => `<span class="f-ampm">${ampm(d)}${sep}</span>`;
   const side = (label, value, foot = '', valueClass = '') => `
     <aside class="side">
       ${sysRow()}
@@ -1908,7 +2024,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
         // Free until comes from the calendar; without one, the side says how long you've been available.
         let sd;
         if (!cd) sd = side('Available for', hm(minsUp(n - s.since)), 'since ' + fmt(s.since));
-        else if (nx) sd = side('Free until', fmtShort(nx.start), `${ampm(nx.start)} · then ${esc(titleOf(nx) || 'a meeting')}`);
+        else if (nx) sd = side('Free until', fmtShort(nx.start) + vAP(nx.start), `${fAP(nx.start)}then ${esc(titleOf(nx) || 'a meeting')}`);
         else sd = side('Free', 'Rest of day', 'no meetings left', 'small');
         return {
           main: `<div class="kicker">Status</div><div class="word" style="--fs:14.5">Available</div><div class="sub">Happy to chat</div>`,
@@ -1942,7 +2058,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
         const long = s.message.length > 22;
         return {
           main: `<div class="kicker">Message</div><div class="marquee ${long ? 'scroll' : ''}" style="--dur:${Math.max(6, s.message.length * 0.32)}s"><div class="word" style="--fs:10" data-fit="msg">${text}</div></div><div class="sub">Set from the Remote</div>`,
-          side: side('Posted', fmtShort(s.messageAt), ampm(s.messageAt) + ' today'),
+          side: side('Posted', fmtShort(s.messageAt) + vAP(s.messageAt), fAP(s.messageAt, ' ') + 'today'),
         };
       }
       case 'clock': {
@@ -1950,10 +2066,10 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
         if (s.wifi.mode === 'offline') sd = side('Calendar', 'Off', 'needs Wi-Fi', 'small');
         else if (cal.state !== 'ok') sd = side('Calendar', 'Not set up', 'add it on the Remote', 'small');
         else if (!cal.on) sd = side('Calendar', 'Off', 'turned off on the Remote', 'small');
-        // Next up reads like Free until and Posted: the start time is the side value, and AM or PM leads the foot,
-        // followed by the title and place (titles on) or how soon it starts. A title in the foot gets about 25
+        // Next up reads like Free until and Posted: the start time is the side value, and AM or PM leads the foot (in
+        // Bold Signal it follows the digits instead), then the title and place (titles on) or how soon it starts. A title in the foot gets about 25
         // characters before the ellipsis; as the side value it got about 9.
-        else if (nx) sd = side('Next up', fmtShort(nx.start), `${ampm(nx.start)} · ` + (titleOf(nx)
+        else if (nx) sd = side('Next up', fmtShort(nx.start) + vAP(nx.start), fAP(nx.start) + (titleOf(nx)
           ? esc(titleOf(nx)) + (placeOf(nx) ? ' · ' + esc(placeOf(nx)) : '') : `meeting in ${hm(minsUp(nx.start - n))}`));
         else sd = side('Next up', 'Nothing', 'rest of today is free', 'small');
         return {
@@ -2177,9 +2293,10 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   // pixel grid so it stays crisp: a headline takes the largest such size that fits (down to 2x, or 24 px for fonts
   // with a small grid, then it's cut with an ellipsis), and the sub line and side value step down the same way.
   // Pixel fonts without a strict grid scale freely. On the device each direction would ship fixed sizes; this just
-  // finds them. A look with a size ladder (the user's pick) uses its sizes instead, for each kind of text: the
-  // markup's data-fit, or the timer, a headline, a side value or a small side value. The ladder only applies to a
-  // font whose grid it's built on, so another font picked in the Style panel falls back to its own grid.
+  // finds them. A look with a size ladder (Bold Signal, Low Glare Pixel) uses its sizes instead, for each kind of text:
+  // the markup's data-fit, or the timer, a headline, a side value or a small side value. The ladder only applies to a
+  // font whose grid it's built on, or for a font without a grid to the look's own headline font (ladderFont), so
+  // another font picked in the Style panel falls back to its own sizes.
   function fitWords(root) {
     const w0 = root.clientWidth;
     if (!w0) return;
@@ -2205,8 +2322,9 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       const word = el.classList.contains('word');
       if (!word && !pf) return;           // sub lines and side values are only fitted in pixel fonts
       const px = parseFloat(cs.fontSize) * k;
-      const lad = g && root._ladder && root._ladder[kindOf(el, word)];
-      const ladder = lad && lad.every(v => Math.abs(v / g - Math.round(v / g)) < 1e-6) ? lad : null;
+      const lad = root._ladder && root._ladder[kindOf(el, word)];
+      const ladder = !lad ? null : g ? (lad.every(v => Math.abs(v / g - Math.round(v / g)) < 1e-6) ? lad : null)
+        : root._ladderFont && cs.fontFamily.split(',')[0].trim().replace(/^["']|["']$/g, '') === root._ladderFont ? lad : null;
       const mq = el.closest('.marquee');
       if (mq) {
         // A message scrolls instead of shrinking. In a pixel font it rounds down to the grid, and any message too
@@ -2255,7 +2373,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
           || box.lastElementChild.getBoundingClientRect().bottom > r.bottom - parseFloat(cs.paddingBottom) + 1;
       };
       const ok = () => fits(el) && (!box || !tall());
-      if (g) set(el, steps[0]);
+      if (g || ladder) set(el, steps[0]);
       for (let i = 1; i < steps.length && !ok(); i++) set(el, steps[i]);
     });
     alignInk(root);
@@ -2702,7 +2820,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
         <div class="tile" data-action="bright"><b>Light</b><span>${Math.round(s.bright * 100)}%</span><small>tap to change</small></div>
         ${calTile()}
         <div class="tile" data-action="wifi"><b>Wi-Fi</b><span>${s.wifi.mode === 'offline' ? 'Off' : 'On'}</span><small>${s.wifi.mode === 'offline' ? 'tap to set up' : esc(s.wifi.ssid)}</small></div>
-        <div class="tile" data-action="power"><b>Power</b><span>82%</span><small>off or restart</small></div>
+        <div class="tile" data-action="power"><b>Power</b><span>${style.power === 'usb' ? 'USB' : '82%'}</span><small>off or restart</small></div>
         ${done}`;
     }
     menu.hidden = false;
@@ -3384,15 +3502,15 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     roles: { kick: 'text', sub: 'head', sys: 'text' }, weights: { word: 400, kick: 400, val: 400, sub: 400 },
     sizes: { kick: 18.667, label: 18.667, sub: 27, val: 54, vals: 27, foot: 18.667, sys: 18.667, word: 1.24 }, kickTrack: .054, lh: [1.05, 1],
   };
-  // The user's pick (2026-10-04) and the default look: the Low Glare layout in Bitcount Prop Single and Handjet,
-  // option G in docs/pixel-fonts.html, to the UX designer's type spec. Round dots for headlines, the timer and the
-  // clock; Bitcount's squares for the side value and the hold title; Handjet Snap17 for everything else, at 17 px,
-  // or 34 px for tile values, small side values and AM/PM. layout 'pixel' puts text on the spec's lines (see the Pixel
-  // layout CSS). ladder lists the sizes the firmware ships for each kind of headline or value (data-fit on the
-  // markup), largest first: text takes the first that fits its column, and the last is cut off with an ellipsis (a
-  // message scrolls instead, at the marquee size). Bitcount is wide, so the status word swings from 100 px (Busy) to
-  // 80 (Available), 60 (In a meeting, the alarm pair), 50 (Back at 12:30) and 40 (long meeting titles). A message
-  // stands still at 100, 80, 60 or 50 px when it fits ("Out sick today" at 50), and scrolls at 60 when it doesn't.
+  // The user's earlier pick (2026-10-04, until the switch to Bold Signal the same day): the Low Glare layout in Bitcount
+  // Prop Single and Handjet, option G in docs/pixel-fonts.html, to the UX designer's type spec. Round dots for
+  // headlines, the timer and the clock; Bitcount's squares for the side value and the hold title; Handjet Snap17 for
+  // everything else, at 17 px, or 34 px for tile values, small side values and AM/PM. layout 'pixel' puts text on the
+  // spec's lines (see the Pixel layout CSS). ladder lists the sizes the firmware ships for each kind of headline or
+  // value (data-fit on the markup), largest first: text takes the first that fits its column, and the last is cut off
+  // with an ellipsis (a message scrolls instead, at the marquee size). Bitcount is wide, so the status word swings from
+  // 100 px (Busy) to 80 (Available), 60 (In a meeting, the alarm pair), 50 (Back at 12:30) and 40 (long meeting
+  // titles). A message stands still at 100, 80, 60 or 50 px when it fits ("Out sick today" at 50), and scrolls at 60.
   const LOW_GLARE_PIXEL = {
     ...LOW_GLARE,
     head: 'Bitcount Prop Single', text: 'Handjet Snap17', mono: null, layout: 'pixel',
@@ -3402,28 +3520,48 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     kickTrack: 1 / 17,   // 1 px at 17 px
     pad: [14, 20, 12, 20], padSide: [14, 16, 12, 16],
   };
-  // The user's pick comes first.
+  // Bold Signal, the user's pick (Direction A, chosen 2026-10-04) and the default look, to the UX designer's spec in
+  // docs/design-directions.html. The status color fills the screen behind white Barlow Condensed 700 capitals (meeting
+  // titles and messages as written), all small text is Barlow, and the info column is a solid darker tint of the
+  // status color (lv_color_darken(status, 61)). White text only on the color field, at full opacity; the muted color
+  // only on the tint and the dark surfaces. layout 'signal' puts every line on the spec's fixed baselines (see the
+  // Signal layout CSS). The headline takes the largest of 112, 100, 78 and 62 px that fits the 404 px column: Busy and
+  // the timer and clock at 112, Available and On a call at 100, In a meeting and Back at 1:30 at 78 (the ladder applies
+  // to Barlow Condensed only; ladderFont). Text as written (meeting titles, messages, the Wi-Fi setup titles) is 62 px,
+  // the one size the firmware converts with lowercase (printable ASCII); a message too wide for it scrolls. The alarm
+  // pair is 62 px too, the size at which Break time fits beside its 64 px tomato. Sizes past the designer's font list:
+  // AM/PM at 17 px after a side value (in the spec) and 36 px in the clock (A, M and P only), and the setup steps in
+  // Barlow 16 px. power 'usb': the bar runs on USB, so the status row has no battery and shows a Mac icon while your
+  // Mac is connected, and the quick menu's Power tile says USB.
+  const BOLD_SIGNAL = {
+    head: 'Barlow Condensed', text: 'Barlow', mode: 'solid', headlineCase: 'upper', sidePanel: 'tint', accentBar: false, cornerRadius: 8,
+    layout: 'signal', power: 'usb',
+    base: { background: '#0E1013', text: '#FFFFFF', mutedText: '#DFE5EA' },
+    colors: { available: '#0F7F3C', busy: '#D01B3A', meeting: '#8B3AE5', call: '#1450B4', focus: '#B0590D', short: '#0B7A70', long: '#12708F', away: '#545C65', message: '#C0198C', clock: '#0E1013', setup: '#1D3557' },
+    // The clock's info column is a raised panel, lighter than its near-black field.
+    tints: { available: [null, '#0B612E'], busy: [null, '#9E152C'], meeting: [null, '#6A2CAE'], call: [null, '#0F3D89'], focus: [null, '#86440A'], short: [null, '#085D55'], long: [null, '#0E556D'], away: [null, '#40464D'], message: [null, '#92136B'], clock: [null, '#1B1E23'] },
+    roles: { kick: 'text', sub: 'text', sys: 'text' }, weights: { word: 700, kick: 700, val: 700, sub: 500, tv: 700 },
+    sizes: { kick: 15, label: 12, sub: 19, val: 46, vals: 28, foot: 14, sys: 15, word: 1, chip: 12, toast: 15, wol: 16, wfoot: 14, tv: 28, tv2: 28, hold: 46, splash: 78 },
+    ladder: { word: [112, 100, 78, 62], time: [112], pair: [62], title: [62], msg: [62], marquee: [62], qr: [62], setup: [62] },
+    ladderFont: 'Barlow Condensed',
+    kickTrack: .1,   // 1.5 px on the 15 px kicker, 1.2 px on the 12 px label
+    pad: [16, 20, 16, 24], padSide: [14, 16, 14, 16],
+  };
+  // The user's pick comes first, then the earlier pick.
   const DIRS = [
     {
-      id: 'lgpixel', name: 'Low Glare Pixel', pick: 'Your pick · fonts chosen',
-      tagline: "The Low Glare layout in the pixel fonts you picked: Bitcount Prop Single's round dots for the status, the timer and the clock, its square dots for the side value, and Handjet for all the small text.",
-      tryLine: "Every size is one the bar draws on whole pixels: the status takes the largest of 100, 80, 60, 50 or 40 px that fits, the timer and clock are 120 px, and small text is 17 px. Bitcount's digits all get the same width on the bar, so the timer and clock hold still, and the mock-up draws them that way too. Fine-tune it in the Style panel below.",
-      fonts: [['Headlines', 'Bitcount Prop Single', 'round dots'], ['Side value', 'Bitcount Prop Single', 'square dots'], ['Small text', 'Handjet', 'solid squares']],
-      style: LOW_GLARE_PIXEL,
+      id: 'signal', name: 'Bold Signal', pick: 'Your pick · the default',
+      tagline: 'Full-bleed saturated status fields with huge white road-sign capitals, plus a calm, darker info column that lines up with the main text.',
+      tryLine: "White text only on the color, at least 4.9:1 on every status. The status takes the largest of 112, 100, 78 or 62 px that fits, every line sits on a fixed baseline so nothing jumps when it changes, and the digits are all one width, so the timer and clock hold still. The bar runs on USB, so the corner shows Wi-Fi and, while your Mac is connected, a Mac icon instead of a battery. Fine-tune it in the Style panel below.",
+      fonts: [['Headlines', 'Barlow Condensed', '700'], ['Text', 'Barlow', '500, 600, 700']],
+      style: BOLD_SIGNAL,
     },
     {
-      id: 'signal', name: 'Bold Signal',
-      tagline: 'Full-bleed saturated status fields with huge white road-sign capitals, plus a calm, darker info column that lines up with the main text.',
-      fonts: [['Headlines', 'Barlow Condensed', '700'], ['Text', 'Barlow', '500, 600, 700']],
-      style: {
-        head: 'Barlow Condensed', text: 'Barlow', mode: 'solid', headlineCase: 'upper', sidePanel: 'tint', accentBar: false, cornerRadius: 8,
-        base: { background: '#0E1013', text: '#FFFFFF', mutedText: '#DFE5EA' },
-        colors: { available: '#0F7F3C', busy: '#D01B3A', meeting: '#8B3AE5', call: '#1450B4', focus: '#B0590D', short: '#0B7A70', long: '#12708F', away: '#545C65', message: '#C0198C', clock: '#0E1013', setup: '#1D3557' },
-        tints: { available: [null, '#0B612E'], busy: [null, '#9E152C'], meeting: [null, '#6A2CAE'], call: [null, '#0F3D89'], focus: [null, '#86440A'], short: [null, '#085D55'], long: [null, '#0E556D'], away: [null, '#40464D'], message: [null, '#92136B'] },
-        roles: { kick: 'text', sub: 'text', sys: 'text' }, weights: { word: 700, kick: 700, val: 700, sub: 500 },
-        sizes: { kick: 15, label: 12, sub: 19, val: 46, vals: 28, foot: 14, sys: 15, word: 1.03 }, kickTrack: .1,
-        pad: [16, 20, 16, 24], padSide: [14, 16, 14, 16],
-      },
+      id: 'lgpixel', name: 'Low Glare Pixel',
+      tagline: "Your earlier pick: the Low Glare layout in the pixel fonts you chose, Bitcount Prop Single's round dots for the status, the timer and the clock, its square dots for the side value, and Handjet for all the small text.",
+      tryLine: "Every size is one the bar draws on whole pixels: the status takes the largest of 100, 80, 60, 50 or 40 px that fits, the timer and clock are 120 px, and small text is 17 px. Bitcount's digits all get the same width on the bar, so the timer and clock hold still, and the mock-up draws them that way too.",
+      fonts: [['Headlines', 'Bitcount Prop Single', 'round dots'], ['Side value', 'Bitcount Prop Single', 'square dots'], ['Small text', 'Handjet', 'solid squares']],
+      style: LOW_GLARE_PIXEL,
     },
     {
       id: 'lowglare', name: 'Low Glare',
@@ -3460,31 +3598,53 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   ];
   // The default look is the user's pick, applied as its direction. The original look (Big Shoulders Display and
   // Schibsted Grotesk on solid color fields) is still in the panel's lists: Solid color fields, then those fonts.
-  const DEFAULT_STYLE = { ...LOW_GLARE_PIXEL, direction: 'lgpixel', edited: false };
+  const DEFAULT_STYLE = { ...BOLD_SIGNAL, direction: 'signal', edited: false };
   const freshDefault = () => JSON.parse(JSON.stringify(DEFAULT_STYLE));
-  // Version 2 of the saved style: the default changed on 2026-10-04, and earlier saves held the old default.
-  // Only what you chose is saved: the direction's id, and with your edits just the settings that differ from it. The
-  // rest is rebuilt from DIRS on every load, so a later change to a direction (or to the default look) reaches a
-  // browser that has opened the page before. Saves from before this (the whole look) are read too: an unedited one
-  // is rebuilt from its direction, an edited one is kept as it was.
-  const STORE = 'tinybar-style-2';
+  // Version 3 of the saved style (2026-10-04, when the default became Bold Signal). Only a look you chose is saved: the
+  // direction you applied, and with your edits just the settings that differ from it. The rest is rebuilt from DIRS
+  // on every load, so a later change to a direction reaches a browser that has opened the page before. The default
+  // you never touched, or went back to with Reset to defaults, isn't saved at all, so a browser always opens with the
+  // current default (chosen marks a look you picked).
+  const STORE = 'tinybar-style-3';
+  // Version 2 saved the default too, so its saves can't tell the old default (Low Glare Pixel, unedited) from Low
+  // Glare Pixel applied on purpose: both are { direction: 'lgpixel', edited: false }. Those open with the new default;
+  // every other version 2 save (another direction, or any edited look) is kept and moved to version 3. Version 2 also
+  // read the whole-look saves from before it, so those are read here the same way: unedited ones rebuilt from their
+  // direction, edited ones kept as they were.
+  const OLD_STORE = 'tinybar-style-2';
   const clone = o => JSON.parse(JSON.stringify(o));
   function restoreStyle(saved) {
     const d = saved && DIRS.find(x => x.id === saved.direction);
     if (d && (!saved.edited || saved.changes)) {
-      return { ...clone(d.style), ...(saved.edited ? saved.changes : {}), direction: d.id, edited: !!saved.edited };
+      return { ...clone(d.style), ...(saved.edited ? saved.changes : {}), direction: d.id, edited: !!saved.edited, chosen: true };
     }
-    if (saved && saved.head) return { mode: 'solid', headlineCase: 'upper', ...saved, colors: { ...(saved.colors || {}) } };
+    if (saved && saved.head) return { mode: 'solid', headlineCase: 'upper', ...saved, colors: { ...(saved.colors || {}) }, chosen: true };
     return null;
   }
+  function loadSaved() {
+    let raw = null, oldRaw = null;
+    // The version 2 save is read once and removed, so Reset to defaults can't bring it back later.
+    try { raw = localStorage.getItem(STORE); oldRaw = localStorage.getItem(OLD_STORE); localStorage.removeItem(OLD_STORE); } catch (e) {}
+    if (raw != null) { try { return restoreStyle(JSON.parse(raw)); } catch (e) { return null; } }
+    let old = null;
+    try { old = JSON.parse(oldRaw); } catch (e) {}
+    if (!old || (old.direction === 'lgpixel' && !old.edited)) return null;
+    // A version 2 edit of Bold Signal that changed its screen mode was made before Bold Signal had its own layout and
+    // ladder, so they stay off for it.
+    if (old.direction === 'signal' && old.edited && old.changes && 'mode' in old.changes) {
+      ['layout', 'ladder', 'ladderFont'].forEach(k => { if (!(k in old.changes)) old.changes[k] = null; });
+    }
+    return restoreStyle(old);
+  }
   function saveStyle() {
+    if (!style.chosen) { try { localStorage.removeItem(STORE); } catch (e) {} return; }
     const d = DIRS.find(x => x.id === style.direction);
     let out = style;
     if (d) {
       const changes = {};
       if (style.edited) {
         new Set([...Object.keys(d.style), ...Object.keys(style)]).forEach(k => {
-          if (k === 'direction' || k === 'edited') return;
+          if (k === 'direction' || k === 'edited' || k === 'chosen') return;
           if (JSON.stringify(style[k] ?? null) !== JSON.stringify(d.style[k] ?? null)) changes[k] = style[k] ?? null;
         });
       }
@@ -3492,13 +3652,10 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     }
     try { localStorage.setItem(STORE, JSON.stringify(out)); } catch (e) {}
   }
-  style = freshDefault();
-  try {
-    const saved = restoreStyle(JSON.parse(localStorage.getItem(STORE)));
-    if (saved) style = saved;
-  } catch (e) {}
-  // Fonts the page's own link already loads (the default look's Bitcount with all its axes).
-  const loadedFonts = new Set(['Big Shoulders Display|500;700;800', 'Schibsted Grotesk|400;500;600', 'JetBrains Mono|400;500', 'Bitcount Prop Single|400']);
+  style = loadSaved() || freshDefault();
+  // Fonts the page's own link already loads (the default look's Barlow and Barlow Condensed, and Bitcount with all
+  // its axes for Low Glare Pixel).
+  const loadedFonts = new Set(['Barlow|500;600;700', 'Barlow Condensed|500;600;700;800', 'Big Shoulders Display|500;700;800', 'Schibsted Grotesk|400;500;600', 'JetBrains Mono|400;500', 'Bitcount Prop Single|400']);
   function loadFont(name, weights) {
     const pf = PIXEL_FONTS[name];
     if (!name || (pf && pf.embedded)) return;
@@ -3522,7 +3679,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   Object.entries(MODES).forEach(([k, m]) => $('sMode').add(new Option(m.label, k)));
   const sw = $('swatches');
   // Any edit after Apply keeps the direction's name, marked as edited.
-  const edit = patch => { style = { ...style, ...patch, edited: !!style.direction }; applyStyle(); };
+  const edit = patch => { style = { ...style, ...patch, edited: !!style.direction, chosen: true }; applyStyle(); };
   COLOR_KEYS.forEach(([k, label]) => {
     const l = document.createElement('label');
     l.className = 'sw';
@@ -3592,6 +3749,8 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     if (st.layout) d.layout = st.layout; else delete d.layout;
     // The fitter reads the look's size ladder from the element (see fitWords()).
     el._ladder = st.ladder || null;
+    el._ladderFont = st.ladderFont || null;
+    if (st.power) d.power = st.power; else delete d.power;
     const pixel = n => n in PIXEL_FONTS;
     const R = st.roles || {}, W = st.weights || {}, Z = st.sizes || {};
     const role = r => r === 'text' ? 'var(--f-body)' : r === 'head' ? 'var(--f-screen)' : r === 'mono' ? fam(st.mono || 'JetBrains Mono', 'ui-monospace, Menlo, monospace') : null;
@@ -3618,7 +3777,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       '--fv-body': fv(st.text), '--fv-screen': fv(st.head), '--fv-val': fvVal, '--fv-kick': fv(kickF), '--fv-sub': fv(subF),
       '--fv-sys': fv(sysF), '--fv-vals': valsF === st.head ? fvVal : fv(valsF), '--fv-tv': fv(tvF),
       '--w-word': W.word, '--w-kick': W.kick, '--w-val': W.val, '--w-sub': W.sub,
-      '--w-tv': hp || pixel(tvF) ? 400 : null, '--w-toast': pixel(st.text) ? 400 : null,
+      '--w-tv': hp || pixel(tvF) ? 400 : (W.tv || null), '--w-toast': pixel(st.text) ? 400 : null,
       '--ws': Z.word, '--z-wmax': Z.wordMax ? cq(Z.wordMax) : null, '--lh-s': st.lh && st.lh[0], '--lh-sub': st.lh && st.lh[1],
       '--lh-word': box ? box[0] : wordLH && wordLH[0], '--mt-word': box ? box[1] : wordLH && wordLH[1], '--mb-word': box && box[2],
       '--lh-title': titleLH && titleLH[0], '--mt-title': titleLH && titleLH[1],
@@ -3638,13 +3797,13 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       sized[k] = snapPx(FONT[k], Z[k] || DEF_PX[k], SMALL[k]);
       v['--z-' + k] = sized[k] != null ? cq(sized[k]) : Z[k] ? cq(Z[k]) : null;
     });
-    // The rest of the screen's text (chip, toast, menu tiles, setup screen, power screens), only for pixel fonts.
-    // A look can set these sizes too.
-    const snapV = (font, px, small) => { const n = snapPx(font, px, small); return n != null ? cq(n) : null; };
+    // The rest of the screen's text (chip, toast, menu tiles, setup screen, power screens), snapped for pixel fonts.
+    // A look can set these sizes too; in other fonts only the ones it sets are used (own).
+    const snapV = (font, px, small, own) => { const n = snapPx(font, px, small); return n != null ? cq(n) : own ? cq(own) : null; };
     Object.assign(v, {
-      '--z-chip': snapV(kickF, Z.chip || .88 * (sized.kick || Z.kick || DEF_PX.kick), true),
-      '--z-toast': snapV(st.text, Z.toast || 15.36, true), '--z-wol': snapV(st.text, Z.wol || 16.64, true), '--z-wfoot': snapV(st.text, Z.wfoot || 12.8, true),
-      '--z-tv': snapV(tvF, Z.tv || 28.16), '--z-tv2': snapV(tvF, Z.tv2 || 23.04), '--z-hold': snapV(st.head, Z.hold || 32), '--z-splash': snapV(st.head, Z.splash || 57.6),
+      '--z-chip': snapV(kickF, Z.chip || .88 * (sized.kick || Z.kick || DEF_PX.kick), true, Z.chip),
+      '--z-toast': snapV(st.text, Z.toast || 15.36, true, Z.toast), '--z-wol': snapV(st.text, Z.wol || 16.64, true, Z.wol), '--z-wfoot': snapV(st.text, Z.wfoot || 12.8, true, Z.wfoot),
+      '--z-tv': snapV(tvF, Z.tv || 28.16, false, Z.tv), '--z-tv2': snapV(tvF, Z.tv2 || 23.04, false, Z.tv2), '--z-hold': snapV(st.head, Z.hold || 32, false, Z.hold), '--z-splash': snapV(st.head, Z.splash || 57.6, false, Z.splash),
     });
     ['t', 'r', 'b', 'l'].forEach((k, i) => {
       v['--pm-' + k] = st.pad ? cq(st.pad[i]) : null;
@@ -3698,7 +3857,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   $('fText').addEventListener('change', e => edit({ text: e.target.value }));
   // Everything in a look except its fonts.
   const TREATMENT = ['headlineCase', 'labelCase', 'sidePanel', 'accentBar', 'accentWidth', 'cornerRadius', 'base', 'colors', 'tints',
-    'roles', 'weights', 'sizes', 'kickTrack', 'lh', 'wordLH', 'titleLH', 'pad', 'padSide', 'barStyle', 'layout', 'ladder'];
+    'roles', 'weights', 'sizes', 'kickTrack', 'lh', 'wordLH', 'titleLH', 'pad', 'padSide', 'barStyle', 'layout', 'ladder', 'ladderFont'];
   $('sMode').addEventListener('change', e => {
     // A new mode starts from the applied direction's treatment when that direction uses the mode. Otherwise dark
     // starts from Low Glare (its colors, which read on near-black, its tints and sentence-case headlines), and
@@ -3712,14 +3871,14 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     say(`style: ${MODES[mode].label.toLowerCase()}${from === LOW_GLARE ? ', starting from Low Glare' : ''}`);
   });
   $('sCase').addEventListener('change', e => { edit({ headlineCase: e.target.value }); say(`style: headlines ${e.target.value === 'none' ? 'as written' : 'in uppercase'}`); });
-  // Reset brings back the default look, which is the user's pick (Low Glare Pixel).
+  // Reset brings back the default look, which is the user's pick (Bold Signal), and forgets the saved choice.
   $('styleReset').addEventListener('click', () => {
     style = freshDefault();
     applyStyle();
     $('styleOut').hidden = true;
     document.querySelectorAll('.dir-card [data-msg]').forEach(m => { m.textContent = ''; });
-    $('styleMsg').textContent = 'Back to the default look: Low Glare Pixel';
-    say('style: back to the default look, Low Glare Pixel');
+    $('styleMsg').textContent = 'Back to the default look: Bold Signal';
+    say('style: back to the default look, Bold Signal');
   });
   $('styleCopy').addEventListener('click', () => {
     const d = DIRS.find(x => x.id === style.direction), m = MODES[style.mode] || MODES.solid;
@@ -3745,7 +3904,10 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       fontVariations: Object.fromEntries([['headline', style.head, 'vs'], ['sideValue', style.head, 'vsVal'], ['text', style.text, 'vs']]
         .filter(([, n, k]) => PIXEL_FONTS[n] && PIXEL_FONTS[n][k]).map(([r, n, k]) => [r, PIXEL_FONTS[n][k]])),
       equalWidthDigits: PIXEL_FONTS[style.head] && PIXEL_FONTS[style.head].cells
-        ? 'tools/fonts/equalize_digits.py --grid 100 --colon --tnum-shapes (every digit 7 dots wide, ink centered)' : null,
+        ? 'tools/fonts/equalize_digits.py --grid 100 --colon --tnum-shapes (every digit 7 dots wide, ink centered)'
+        : style.layout === 'signal' ? 'pyftfeatfreeze -f tnum on both fonts before lv_font_conv (tabular figures become the default digits)' : null,
+      // On USB power: no battery icon or level; a Mac icon while a Mac is connected.
+      power: style.power || 'battery',
       accentWidth: (style.accentBar ?? m.accentBar) ? (style.accentWidth || 6) : null,
       barStyle: style.barStyle || 'plain',
       kickerTracking: style.kickTrack ?? .14,
@@ -3811,7 +3973,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   }
   function applyDirection(id) {
     const d = DIRS.find(x => x.id === id);
-    style = { ...JSON.parse(JSON.stringify(d.style)), direction: id, edited: false };
+    style = { ...JSON.parse(JSON.stringify(d.style)), direction: id, edited: false, chosen: true };
     applyStyle();
     document.querySelectorAll('.dir-card [data-msg]').forEach(m => { m.textContent = ''; });
     document.querySelector(`.dir-card[data-id="${id}"] [data-msg]`).textContent = 'On the simulator now';
