@@ -36,9 +36,14 @@
  *   - Settings changed through the API each show a toast (api.md 10.2), including the ones the mock-up's Remote
  *     changed silently (lengths, chime) and brightness, which the mock-up's Remote doesn't have.
  *   - Ticking is also silent while "Powering off" shows.
- *   - Menus refresh their tiles while open (a "synced 2m ago" foot ages; a tile that no longer applies goes).
+ *   - Menus refresh their tiles while open (a "synced 2m ago" foot ages; a tile that no longer applies goes), and the
+ *     setup menu closes once setup is over underneath it.
  *   - Today's tomatoes reset at local midnight.
- *   - The pairing screen and the Devices tile (api.md 4.8, proposed).
+ *   - Skipping Wi-Fi is remembered (net saves it): the next start is offline too (tb_app_init's wifi_start).
+ *   - A dropped office Wi-Fi link (mode OK, link down) counts as no Wi-Fi for Sync now and the Calendar tile.
+ *   - Message shown by a tap, swipe or BOOT before any message was ever set stores "Hello", the mock-up's fallback, so
+ *     the API reports what the bar shows.
+ *   - The pairing screen, the Devices tile and Forget all (api.md 4.8 and decisions.md "Pairing", proposed).
  */
 #pragma once
 
@@ -66,6 +71,8 @@ extern "C" {
 #define TB_CAL_SYNC_EVERY_S    600     /* about every 10 minutes (calendar's task runs it) */
 #define TB_ADD_MIN             5       /* the timer menu's +5 */
 #define TB_TITLE_TOAST_CHARS   24      /* withTitle(): a meeting title in a toast is cut to 24 characters */
+#define TB_PAIR_MS             120000  /* a pairing code lasts 2 minutes from when it appears on the screen */
+#define TB_MESSAGE_FALLBACK    "Hello" /* view(): s.message || 'Hello' */
 
 /* Light tile steps (api.md 10.1: from any other value the next tap goes to the next of these above it). */
 #define TB_BRIGHT_LEVELS {40, 70, 100}
@@ -85,14 +92,14 @@ typedef enum {
     TB_FX_POWER_OFF,        /* after "Powering off": deep sleep on USB, SYS_EN low on battery */
     TB_FX_RESTART,          /* Restart tile */
     TB_FX_WIFI_SETUP,       /* show the QR code: start TinyBar-Setup, DNS catch-all and the setup page */
-    TB_FX_WIFI_SKIP,        /* Skip: stop the setup network, stay offline */
+    TB_FX_WIFI_SKIP,        /* Skip: stop the setup network, stay offline (net remembers it for the next start) */
     TB_FX_WIFI_DONE,        /* the Connected screen was dismissed: setup is over, stop the setup network */
     TB_FX_CAL_SYNC,         /* Sync now from the quick menu */
     TB_FX_SAVE_SETTINGS,    /* settings changed: persist (main debounces NVS writes) */
     TB_FX_SAVE_STATE,       /* own status, last status, message, today's tomatoes or the timer's run/pause changed */
-    TB_FX_PAIRING_CANCELED, /* a tap, swipe, hold, BOOT or PWR canceled the pairing screen (net ends the pairing;
-                             * it must not call tb_app_pairing_end() for it, core already said "Pairing canceled") */
-    TB_FX_FORGET_DEVICES,   /* the Devices tile was confirmed: revoke every token (core already toasted) */
+    TB_FX_PAIRING_CANCELED, /* a tap, swipe, hold, BOOT, PWR, flip, Wi-Fi setup, power off or restart ended the pairing
+                             * (net ends it; it must not call tb_app_pairing_end() for it, core already said so) */
+    TB_FX_FORGET_DEVICES,   /* Forget all was confirmed: revoke every token (core already toasted) */
 } tb_effect_kind_t;
 
 typedef struct {
@@ -107,7 +114,9 @@ typedef enum { TB_HOLD_NONE = 0, TB_HOLD_KEEP_HOLDING, TB_HOLD_POWERING_OFF } tb
 
 typedef enum {
     TB_PAIR_END_PAIRED = 0,     /* "Paired · Mac" */
-    TB_PAIR_END_PAIRED_USB,     /* "Paired · Mac · over USB" (shown even though USB pairing has no code screen) */
+    TB_PAIR_END_PAIRED_USB,     /* "Paired · Mac · over USB": USB pairing has no code screen, so this is only a
+                                 * confirmation; a code another device asked for stays on the screen (the toast waits
+                                 * until that pairing ends) */
     TB_PAIR_END_TIMEOUT,        /* "Pairing timed out" */
     TB_PAIR_END_WRONG_CODE,     /* "Pairing canceled · wrong code" */
     TB_PAIR_END_CANCELED,       /* "Pairing canceled" */
@@ -131,6 +140,12 @@ typedef enum {
 /* Pomodoro actions from the API (api.md 9.1). */
 typedef enum { TB_POMO_START = 0, TB_POMO_PAUSE, TB_POMO_TOGGLE, TB_POMO_SKIP, TB_POMO_STOP, TB_POMO_EXTEND } tb_pomo_action_t;
 
+/* Who asked for a pairing code (api.md 4.6 kind): the screen's sub line and the label's default. */
+typedef enum { TB_PAIR_KIND_OTHER = 0, TB_PAIR_KIND_MAC, TB_PAIR_KIND_PHONE, TB_PAIR_KIND_SCRIPT } tb_pair_kind_t;
+
+#define TB_PAIRED_NAMES_BYTES 120   /* "iPhone, Desk script, Mac": the Forget all tile's names, most recently used first */
+#define TB_PAIRED_MAX         10    /* api.md 4.3: a bar keeps at most 10 tokens (the Devices tile then reads "Full") */
+
 /* Buttons (board posts debounced edges; core does the PWR timing). */
 typedef enum { TB_BTN_BOOT = 0, TB_BTN_PWR_DOWN, TB_BTN_PWR_UP } tb_button_t;
 
@@ -144,7 +159,7 @@ typedef struct {
     tb_status_t last_status;        /* s.lastStatus: what Stop returns to (never Pomodoro or Clock) */
     tb_ms_t since_ms;               /* s.since: when you picked it */
     tb_epoch_t since;               /*   ...as wall time, for "since 2:04 PM" (0 = unknown) */
-    char message[TB_MESSAGE_BYTES]; /* s.message, "" if never set */
+    char message[TB_MESSAGE_BYTES]; /* s.message, "" if never set (until Message is first shown: TB_MESSAGE_FALLBACK) */
     tb_epoch_t message_at;          /* s.messageAt */
     char away_back_at[6];           /* api.md 8.1 (proposed): "13:30" or "" */
     char away_note[TB_AWAY_NOTE_BYTES];
@@ -195,6 +210,7 @@ typedef struct {
     tb_menu_t menu;
     char toast[TB_TOAST_BYTES];     /* "" = none */
     tb_ms_t toast_until;
+    tb_ms_t toast_hold_until;       /* toastHoldUntil: pairing's result stays its full 1.6 s; others wait behind it */
     /* A meeting title inside the toast (withTitle()): byte offset and length, 0/0 when none. The title is already cut
      * to 24 characters with "…"; ui may cut it further (keep fewer characters, trim, add "…") while the pill would
      * still reach the info column, measuring with lv_text_get_width. */
@@ -204,10 +220,15 @@ typedef struct {
     struct {
         bool active;                /* a code is out (it shows when tb_app_pairing_visible()) */
         char code[8];               /* "482913"; the UI shows it as "482 913" */
-        char who[TB_CLIENT_NAME_BYTES];   /* "Mac", "iPhone" */
-        tb_ms_t expires;
+        char who[TB_CLIENT_NAME_BYTES];   /* the label: the name the device sent, else "Mac", "Phone", "Script" */
+        tb_pair_kind_t kind;
+        tb_ms_t shown_at;           /* when the code first appeared on the screen (0: not yet; it waits for the power
+                                     * and setup screens). The 2 minutes count from here. */
+        tb_ms_t expires;            /* shown_at + TB_PAIR_MS once shown (net keeps its own expiry in step with it) */
     } pairing;
-    uint8_t paired_count;           /* for the Devices tile ("3 paired · tap to forget all") */
+    bool alarm_held_by_pairing;     /* heldAlarm 'pairing': the code silenced or held the alarm; it rings once after */
+    uint8_t paired_count;           /* for the Devices tile ("3 paired") */
+    char paired_names[TB_PAIRED_NAMES_BYTES];   /* for Forget all's Paired tile */
 
     /* gesture recognizer state */
     tb_gesture_state_t gesture;
@@ -231,8 +252,10 @@ typedef struct {
 /* ---------- Life cycle ---------- */
 
 /* Power-up: settings loaded by main, own status restored from NVS (or defaults), booting = true (splash for 1.5 s,
- * then "Ready"). wifi_configured: credentials exist (else the bar opens on the QR code, as on first start). */
-void tb_app_init(tb_app_t *a, const tb_settings_t *s, bool wifi_configured, const tb_clock_t *now);
+ * then "Ready"). wifi_start is how the Wi-Fi starts, as net found it saved: TB_WIFI_OK (a network is saved and Wi-Fi
+ * wasn't skipped: join it), TB_WIFI_OFFLINE (Skip was the last choice: stay offline, as the mock-up's powerOn()
+ * does) or TB_WIFI_SETUP (nothing saved: the QR code, as on a first start). Any other value counts as SETUP. */
+void tb_app_init(tb_app_t *a, const tb_settings_t *s, tb_wifi_mode_t wifi_start, const tb_clock_t *now);
 
 /* Restore what main saved (TB_FX_SAVE_STATE). Call between init and the first tick. */
 void tb_app_restore(tb_app_t *a, tb_status_t idx, tb_status_t last_status, const char *message, tb_epoch_t message_at,
@@ -269,7 +292,9 @@ tb_err_t tb_app_remote_status(tb_app_t *a, tb_status_t st, const char *back_at, 
  * (unsupported_chars); any left are shown as "?". */
 tb_err_t tb_app_remote_message(tb_app_t *a, const char *text, bool set_aside, const tb_clock_t *now);
 tb_err_t tb_app_remote_aside(tb_app_t *a, bool aside, const tb_clock_t *now);
-/* minutes: for TB_POMO_EXTEND only, 1..60 (net passes 5 when the request leaves it out). */
+/* minutes: for TB_POMO_EXTEND only, 1..60 (net passes 5 when the request leaves it out). Every action silences a
+ * ringing alarm first, as any control does (api.md 9.1), even one that then answers an error (pause when nothing runs:
+ * "Alarm off", then TB_E_NOT_RUNNING). */
 tb_err_t tb_app_remote_pomodoro(tb_app_t *a, tb_pomo_action_t act, int minutes, bool set_aside, const tb_clock_t *now);
 tb_err_t tb_app_remote_settings(tb_app_t *a, const tb_settings_patch_t *p, const char **field, const tb_clock_t *now);
 /* The time zone from the Mac's hello (api.md 6.6: only if none is set yet; PATCH device.time_zone changes it later,
@@ -301,13 +326,18 @@ void tb_app_wifi_failed(tb_app_t *a, const char *ssid, const char *error_text, c
 /* Outside setup: the link came up or dropped (the bar keeps following its last calendar copy). */
 void tb_app_wifi_link(tb_app_t *a, bool up, const char *ip, const char *host, const tb_clock_t *now);
 
-/* ---------- Pairing screen (net; api.md 4.8, proposed) ---------- */
+/* ---------- Pairing screen (net; api.md 4.8 and decisions.md "Pairing", proposed) ---------- */
 /* A code is out. The screen shows it once the power screens are gone (never on the Wi-Fi setup screens), waking a
- * dark screen and closing an open menu. A tap, swipe, hold, BOOT or PWR press cancels it (TB_FX_PAIRING_CANCELED). */
-void tb_app_pairing_show(tb_app_t *a, const char *code, const char *who, tb_ms_t expires, const tb_clock_t *now);
+ * dark screen, closing an open menu and the toast, and holding a ringing alarm (it rings once when pairing ends). The
+ * 2 minutes count from then (pairing.expires). A tap, swipe, hold or BOOT cancels it ("Pairing canceled"); a PWR press
+ * cancels it and darkens the screen; a flip cancels it and does what a flip does; each sends TB_FX_PAIRING_CANCELED.
+ * who: the label ("iPhone"), or NULL / "" for the kind's word ("Mac", "Phone", "Script", "Device"). */
+void tb_app_pairing_show(tb_app_t *a, const char *code, const char *who, tb_pair_kind_t kind, const tb_clock_t *now);
 /* The pairing ended for a reason net knows. who: the client's label for "Paired · Mac" (NULL: the one shown). */
 void tb_app_pairing_end(tb_app_t *a, tb_pair_end_t why, const char *who, const tb_clock_t *now);
-void tb_app_set_paired_count(tb_app_t *a, uint8_t n);
+/* The paired devices: how many, and their names joined with ", ", most recently used first (NULL: none known). */
+void tb_app_set_paired(tb_app_t *a, uint8_t n, const char *names);
+void tb_app_set_paired_count(tb_app_t *a, uint8_t n);   /* the count alone (names unchanged) */
 
 /* A confirmation from elsewhere ("Removed Mac", "Ticking on · Medium"...): shown now, or once the screen is free. */
 void tb_app_notify(tb_app_t *a, const char *text, const tb_clock_t *now);
@@ -350,6 +380,8 @@ bool tb_app_screen_free(const tb_app_t *a);
 bool tb_app_on_wifi_screen(const tb_app_t *a);
 /* The pairing screen is up (a code is out and nothing it waits for is showing). */
 bool tb_app_pairing_visible(const tb_app_t *a);
+/* pairShowing(): a code is out and has appeared on the screen (it stays "showing" under the Keep holding screen). */
+bool tb_app_pairing_shown(const tb_app_t *a);
 /* The color key the screen is painted in right now (status, phase, call, meeting, clock or setup). */
 tb_color_key_t tb_app_color_key(const tb_app_t *a, const tb_clock_t *now);
 /* STATES[i].name: "Available", "Busy", "In a meeting", "Pomodoro", "Away", "Message", "Clock". */

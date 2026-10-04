@@ -41,8 +41,10 @@ function(tb_test_module module)
     target_compile_options(test_${module} PRIVATE -Wall -Wextra)
     target_link_libraries(test_${module} PRIVATE ${ARGN})
     add_test(NAME ${module} COMMAND test_${module})
-    # Fixtures (sample .ics files and the like) are read from here.
+    # Fixtures (sample .ics files and the like) are read from here: TB_FIXTURES when set (ctest sets it), else the
+    # source folder compiled in, so a runner also works on its own (build-host-<name>/test_calendar <name>).
     set_tests_properties(${module} PROPERTIES ENVIRONMENT "TB_FIXTURES=${CMAKE_CURRENT_LIST_DIR}/${module}/fixtures")
+    target_compile_definitions(test_${module} PRIVATE TB_FIXTURES_DIR="${CMAKE_CURRENT_LIST_DIR}/${module}/fixtures")
 endfunction()
 
 tb_test_module(core tb_core)

@@ -9,8 +9,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/idf_additions.h"
 #include "freertos/task.h"
 #include "lwip/sockets.h"
 
@@ -70,8 +72,14 @@ void net_dns_start(uint32_t ip)
     if (!ip) return;
     s_ip = ip;
     s_run = true;
-    if (!s_task) xTaskCreatePinnedToCore(dns_task, "dns", 3072, NULL, 3, &s_task, 0);
-    else xTaskNotifyGive(s_task);
+    /* The stack is in PSRAM (the task only uses sockets, never flash), so it can be roomy: 4 KB with the
+     * protocol-safe logger's frame on top of lwIP's. */
+    if (s_task) {
+        xTaskNotifyGive(s_task);
+        return;
+    }
+    if (xTaskCreatePinnedToCoreWithCaps(dns_task, "dns", 4096, NULL, 3, &s_task, 0, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT) != pdPASS)
+        xTaskCreatePinnedToCore(dns_task, "dns", 4096, NULL, 3, &s_task, 0);
 }
 
 void net_dns_stop(void)

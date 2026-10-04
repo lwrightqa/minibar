@@ -53,6 +53,7 @@ static const char *TAG = "cal";
 #define CAL_FETCH_MAX_BYTES  (16 * 1024 * 1024)     /* Google feeds of heavy calendars reach a few MB */
 #define CAL_MAX_REDIRECTS    5
 #define CAL_READ_CHUNK       2048
+#define CAL_YIELD_EVERY_BYTES (32 * 1024)          /* vTaskDelay(1) this often while reading, for IDLE0 */
 #define CAL_TASK_STACK       10240
 #define CAL_TASK_PRIO        2
 #define CAL_TASK_CORE        0
@@ -380,7 +381,7 @@ static cal_sync_err_t fetch(const char *url, const fetch_args_t *a, tb_meeting_t
         goto done;
     }
     res = CAL_SYNC_UNREACHABLE;
-    uint64_t total = 0;
+    uint64_t total = 0, yielded_at = 0;
     for (;;) {
         if (canceled(a)) {
             *gone = true;
@@ -409,6 +410,12 @@ static cal_sync_err_t fetch(const char *url, const fetch_args_t *a, tb_meeting_t
         if (cal_feed_write(feed, buf, (size_t)r) == CAL_ERR_NOT_A_CALENDAR) {
             res = CAL_SYNC_NOT_A_CALENDAR;
             goto done;
+        }
+        /* A feed that's already buffered is decrypted and parsed back to back at priority 2, above core 0's idle
+         * task, which the task watchdog watches: block for a tick every 32 KB so it can run. */
+        if (total - yielded_at >= CAL_YIELD_EVERY_BYTES) {
+            yielded_at = total;
+            vTaskDelay(1);
         }
     }
     int k = 0;

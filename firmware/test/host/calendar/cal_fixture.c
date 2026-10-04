@@ -7,7 +7,11 @@
 
 char *fx_load(const char *name, size_t *len)
 {
+    /* ctest sets TB_FIXTURES; run on its own, the runner uses the source folder it was built from. */
     const char *dir = getenv("TB_FIXTURES");
+#ifdef TB_FIXTURES_DIR
+    if (!dir || !dir[0]) dir = TB_FIXTURES_DIR;
+#endif
     char path[512];
     snprintf(path, sizeof(path), "%s/%s", dir ? dir : "fixtures", name);
     FILE *f = fopen(path, "rb");

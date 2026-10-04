@@ -14,6 +14,10 @@
  * Credentials live in NVS namespace "wifi" (ssid, user, pass, sec), saved only once a join worked. NVS encryption is
  * off until the user agrees (ARCHITECTURE.md "Secrets"), so the Wi-Fi password is stored in plain NVS, as ESP-IDF's
  * own Wi-Fi storage would.
+ *
+ * Skip is remembered (key "skipped" in the same namespace): decisions.md says Skip uses the bar offline, so the next
+ * start stays offline with the radio off, instead of opening the open TinyBar-Setup network again. Set up (the QR
+ * code) and a join that works clear it.
  */
 #include <stdlib.h>
 #include <string.h>
@@ -72,12 +76,13 @@ typedef struct {
     uint8_t sec;                /* net_security_t */
 } creds_t;
 
-typedef enum { J_SAVE_CREDS = 1, J_ONLINE, J_SCAN, J_STOP_AP, J_CONNECT } job_t;
+typedef enum { J_SAVE_CREDS = 1, J_ONLINE, J_SCAN, J_STOP_AP, J_CONNECT, J_SAVE_SKIP, J_CLEAR_SKIP } job_t;
 
 static SemaphoreHandle_t s_lock;
 static QueueHandle_t s_jobs;
 static esp_netif_t *s_sta, *s_ap;
 static bool s_inited, s_running, s_creds_loaded, s_have_creds, s_ap_up;
+static bool s_skipped;          /* Skip was the last Wi-Fi choice (saved as "skipped") */
 static creds_t s_creds;
 static wmode_t s_mode;
 static bool s_sta_up;
@@ -135,6 +140,8 @@ static void creds_load(void)
     s_creds_loaded = true;
     nvs_handle_t h;
     if (nvs_open("wifi", NVS_READONLY, &h) != ESP_OK) return;
+    uint8_t skipped = 0;
+    s_skipped = nvs_get_u8(h, "skipped", &skipped) == ESP_OK && skipped;
     size_t n = sizeof s_creds.ssid;
     if (nvs_get_str(h, "ssid", s_creds.ssid, &n) == ESP_OK && s_creds.ssid[0]) {
         n = sizeof s_creds.user;
@@ -155,15 +162,39 @@ static void creds_save(const creds_t *c)
     if (err == ESP_OK) err = nvs_set_str(h, "user", c->user);
     if (err == ESP_OK) err = nvs_set_str(h, "pass", c->pass);
     if (err == ESP_OK) err = nvs_set_u8(h, "sec", c->sec);
+    if (err == ESP_OK) {
+        esp_err_t e2 = nvs_erase_key(h, "skipped");     /* a join that worked ends "offline" */
+        if (e2 != ESP_OK && e2 != ESP_ERR_NVS_NOT_FOUND) err = e2;
+    }
     if (err == ESP_OK) err = nvs_commit(h);
     nvs_close(h);
     if (err != ESP_OK) ESP_LOGE(TAG, "saving the Wi-Fi network failed: %s", esp_err_to_name(err));
+}
+
+/* Remember Skip (true), or forget it (false). Runs on the worker: it writes flash. */
+static void skip_save(bool skipped)
+{
+    nvs_handle_t h;
+    esp_err_t err = nvs_open("wifi", NVS_READWRITE, &h);
+    if (err == ESP_OK) {
+        err = skipped ? nvs_set_u8(h, "skipped", 1) : nvs_erase_key(h, "skipped");
+        if (err == ESP_ERR_NVS_NOT_FOUND) err = ESP_OK;
+        if (err == ESP_OK) err = nvs_commit(h);
+        nvs_close(h);
+    }
+    if (err != ESP_OK) ESP_LOGE(TAG, "saving the Wi-Fi skip failed: %s", esp_err_to_name(err));
 }
 
 bool net_wifi_have_creds(void)
 {
     creds_load();
     return s_have_creds;
+}
+
+tb_wifi_mode_t net_wifi_start_mode(void)
+{
+    creds_load();
+    return s_skipped ? TB_WIFI_OFFLINE : s_have_creds ? TB_WIFI_OK : TB_WIFI_SETUP;
 }
 
 /* Point the station at a network (personal, open, or work login). */
@@ -368,6 +399,7 @@ static void on_ip(void *arg, esp_event_base_t base, int32_t id, void *data)
             s_joining = false;
             s_creds = s_join;
             s_have_creds = true;
+            s_skipped = false;          /* creds_save() erases the saved skip too */
             s_js.state = NET_JOIN_CONNECTED;
             s_js.error = s_js.message = NULL;
             tb_strlcpy(s_js.ip, ip, sizeof s_js.ip);
@@ -569,6 +601,8 @@ static void worker(void *arg)
             break;
         }
         case J_SCAN: scan_start(); break;
+        case J_SAVE_SKIP: skip_save(true); break;
+        case J_CLEAR_SKIP: skip_save(false); break;
         case J_STOP_AP: {
             LOCK();
             bool stop = s_mode != M_SETUP && s_ap_up;
@@ -647,6 +681,14 @@ static void wifi_run(wifi_mode_t mode)
 
 void net_wifi_start(void)
 {
+    if (s_skipped) {
+        /* Skip was the last choice: stay offline with the radio off (hold, Wi-Fi, Set up starts setup again). */
+        LOCK();
+        s_mode = M_OFF;
+        UNLOCK();
+        ESP_LOGI(TAG, "Wi-Fi was skipped: staying offline");
+        return;
+    }
     if (s_have_creds) {
         LOCK();
         s_mode = M_STA;
@@ -663,6 +705,11 @@ static const char CAPTIVE_URI[] = "http://" NET_SETUP_IP "/";
 
 void net_wifi_setup_begin(void)
 {
+    LOCK();
+    bool was_skipped = s_skipped;
+    s_skipped = false;
+    UNLOCK();
+    if (was_skipped) job(J_CLEAR_SKIP);
     LOCK();
     s_mode = M_SETUP;
     s_joining = false;
@@ -699,6 +746,11 @@ void net_wifi_setup_begin(void)
 
 void net_wifi_setup_skip(void)
 {
+    LOCK();
+    bool save = !s_skipped;
+    s_skipped = true;
+    UNLOCK();
+    if (save) job(J_SAVE_SKIP);     /* the next start stays offline too */
     LOCK();
     s_mode = M_OFF;
     s_joining = false;

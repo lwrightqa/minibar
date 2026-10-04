@@ -8,8 +8,9 @@
 // the QR library inlined (QRCODE_JS=<path to qrcode-generator 1.4.4's qrcode.min.js>, else it's fetched from cdnjs
 // with curl), a fixed clock (Sunday 2026-10-04, 2:04:00 PM in Los Angeles) and a hook (window.__tb) into the
 // mock-up's script, so each scene sets the mock-up's state directly, the way host/ui_scenes.c sets the firmware's.
-// Scenes the mock-up can't show (the firmware's proposals: plain Away, the unknown clock, the pairing screen) are
-// skipped.
+// Scenes the mock-up can't show (the firmware's proposals: plain Away, the unknown clock) are skipped. The pairing
+// round's screens (the pairing screen, the Wi-Fi menu with Devices, Forget all) are drawn from the mock-up's pair and
+// tokens. MOCKUP=<path> renders another copy of the mock-up (default docs/mockup.html).
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
@@ -30,11 +31,11 @@ function qrLib() {
 const HOOK = `window.__tb = { s, pomo, cal, mac, render, toast, showMenu, showTimerSettings, showWifiMenu, showPowerMenu,
   hideMenu, showHold, phaseLen, withTitle, autoTop, screen, lcd, clearUnderToast,
   resetKey() { lastKey = ''; lastShape = ''; }, set autoShown(v) { autoShown = v; },
-  get ripenFrames() { return ripenFrames; } };
+  get ripenFrames() { return ripenFrames; }, pair, tokens, BAR, showForgetMenu };
   setInterval(loop, 200);`;
 
 function page() {
-  let src = fs.readFileSync(path.join(REPO, 'docs/mockup.html'), 'utf8');
+  let src = fs.readFileSync(process.env.MOCKUP || path.join(REPO, 'docs/mockup.html'), 'utf8');
   src = src.replace(/<link rel="stylesheet" href="https:\/\/fonts.googleapis[^>]*>/, '');
   src = src.replace('<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>', () => '<script>' + qrLib() + '</script>');
   if (!src.includes('  setInterval(loop, 200);')) throw new Error('the hook point in docs/mockup.html moved');
@@ -77,7 +78,14 @@ const LIB = () => {
       Object.assign(cal, { state: 'none', on: false, titles: false, checking: false, events: [], lastSync: at(-2) });
       Object.assign(mac, { on: true, link: null, call: null, quiet: false, quietMs: 0 });
       t.autoShown = null;
+      // No code out, and the mock-up's three sample devices (a Mac over USB, this phone, a script), as it starts.
+      Object.assign(t.pair, { code: null, id: null, who: null, left: 0, shown: false, shownAt: 0, tries: 0 });
+      if (!window.__tok0) window.__tok0 = t.tokens.slice();
+      t.tokens.length = 0;
+      window.__tok0.forEach(x => t.tokens.push(x));
     },
+    // A code on the bar for who ({ kind, name }), shown 18 s ago: 1:42 left.
+    pairing(who) { Object.assign(t.pair, { code: '482913', id: 'x', who, left: 102000, shown: true, shownAt: Date.now(), tries: 3 }); },
     pomo(phase, round, secs, running) { Object.assign(t.pomo, { phase, round, remaining: secs * 1000, running, waiting: false, justEnded: null }); },
     waiting(ended, next, round) { Object.assign(t.pomo, { phase: next, round, remaining: t.phaseLen(next), running: false, waiting: true, justEnded: ended }); },
     calendar(titles, list) {
@@ -121,6 +129,9 @@ const SCENES = {
   pomo_paused: () => { __sc.base('pomodoro'); __sc.pomo('focus', 2, 18 * 60 + 42, false); },
   pomo_short: () => { __sc.base('pomodoro'); __sc.pomo('short', 2, 3 * 60 + 10, true); },
   pomo_long: () => { __sc.base('pomodoro'); __sc.pomo('long', 4, 12 * 60, true); __sc.t.pomo.doneToday = 4; },
+  pomo_bigfoot: () => { __sc.base('pomodoro'); __sc.pomo('focus', 2, 18 * 60 + 42, true); Object.assign(__sc.t.pomo, { doneToday: 12, focusedMs: (5 * 60 + 10) * 60000 }); },
+  pomo_paused_long: () => { __sc.base('pomodoro'); __sc.pomo('long', 4, 12 * 60, false); __sc.t.pomo.doneToday = 4; },
+  pomo_paused_short: () => { __sc.base('pomodoro'); __sc.pomo('short', 2, 3 * 60 + 10, false); },
   pomo_break_time: () => { __sc.base('pomodoro'); __sc.waiting('focus', 'short', 2); __sc.t.pomo.doneToday = 2; },
   pomo_back_to_it: () => { __sc.base('pomodoro'); __sc.waiting('short', 'focus', 3); __sc.t.pomo.doneToday = 2; },
   pill_focus: () => { __sc.base('busy'); __sc.pomo('focus', 2, 18 * 60 + 42, true); },
@@ -154,6 +165,9 @@ const SCENES = {
   menu_timer_showagain: () => { __sc.base('pomodoro'); __sc.pomo('focus', 2, 18 * 60 + 42, true); __sc.call('Slack'); __sc.asideAll(); __sc.draw(); __sc.t.showMenu(); },
   menu_timer_settings: () => { __sc.base('pomodoro'); __sc.pomo('focus', 2, 18 * 60 + 42, true); __sc.draw(); __sc.t.showTimerSettings(); },
   menu_wifi: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.draw(); __sc.t.showWifiMenu(); },
+  menu_wifi_none: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.t.tokens.length = 0; __sc.draw(); __sc.t.showWifiMenu(); },
+  menu_wifi_offline: () => { __sc.base('available'); __sc.t.s.wifi.mode = 'offline'; __sc.t.tokens.length = 0; __sc.draw(); __sc.t.showWifiMenu(); },
+  menu_forget: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.draw(); __sc.t.showForgetMenu(); },
   menu_power: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.draw(); __sc.t.showPowerMenu(); },
   menu_setup: () => { __sc.base('clock', false); __sc.draw(); __sc.t.showMenu(); },
   toast_status: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.draw(); __sc.t.toast('Meeting set aside · hold to show it again'); },
@@ -171,7 +185,9 @@ const SCENES = {
   },
   flash: () => { __sc.base('pomodoro'); __sc.waiting('focus', 'short', 2); __sc.t.pomo.doneToday = 2; __sc.t.s.ringing = true; __sc.draw(); __sc.t.lcd.classList.add('alert'); },
   splash: () => { __sc.base('clock'); __sc.t.s.booting = true; },
-  pairing: null,
+  pairing: () => { __sc.base('busy'); __sc.pairing({ kind: 'mac', name: null }); },
+  pairing_phone: () => { __sc.base('busy'); __sc.pairing({ kind: 'remote', name: null }); },
+  pairing_named: () => { __sc.base('busy'); __sc.pairing({ kind: 'mac', name: "Alex's MacBook Air" }); },
   dark: () => { __sc.base('busy'); __sc.draw(); __sc.t.s.off = true; __sc.t.screen.classList.add('off'); __sc.el('bar').style.visibility = 'hidden'; },
   flipped: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.t.s.flipped = true; __sc.el('device').classList.add('flipped'); __sc.draw(); __sc.t.toast('Meeting set aside · hold to show it again'); },
 };

@@ -83,10 +83,10 @@ TB_TEST(wifi_link_drop_keeps_mode)
     TB_EQ_STR(b->a.wifi_ip, "");
     hold(b);
     tap_tile_named(b, TB_ACT_WIFI);
-    TB_EQ_STR(b->a.menu.tiles[0].foot, "Office-WiFi");
+    TB_EQ_STR(b->a.menu.tiles[0].foot, "TinyBar 2A1C\nnot connected");
     tb_app_wifi_link(&b->a, true, "10.0.4.50", "tinybar-2.local", &b->now);
     TB_EQ_STR(b->a.wifi_host, "tinybar-2.local");
-    TB_EQ_STR(b->a.menu.tiles[0].foot, "Office-WiFi \xC2\xB7 10.0.4.50");
+    TB_EQ_STR(b->a.menu.tiles[0].foot, "TinyBar 2A1C\ntinybar-2.local \xC2\xB7 10.0.4.50");
 }
 
 /* ---- pairing ---- */
@@ -94,7 +94,7 @@ TB_TEST(wifi_link_drop_keeps_mode)
 static bench_t *pairing_up(void)
 {
     bench_t *b = bench_new();
-    tb_app_pairing_show(&b->a, "482913", "Mac", b->now.mono + 120000, &b->now);
+    tb_app_pairing_show(&b->a, "482913", "Mac", TB_PAIR_KIND_MAC, &b->now);
     bench_drain(b);
     TB_TRUE(tb_app_pairing_visible(&b->a));
     return b;
@@ -104,14 +104,14 @@ TB_TEST(pairing_wakes_and_replaces_a_menu)
 {
     bench_t *b = bench_new();
     pwr_press(b);
-    tb_app_pairing_show(&b->a, "482913", "iPhone", b->now.mono + 120000, &b->now);
+    tb_app_pairing_show(&b->a, "482913", "iPhone", TB_PAIR_KIND_PHONE, &b->now);
     bench_drain(b);
     TB_FALSE(b->a.off);
     TB_TRUE(tb_app_pairing_visible(&b->a));
     TB_EQ_STR(b->a.pairing.who, "iPhone");
     b = bench_new();
     hold(b);
-    tb_app_pairing_show(&b->a, "482913", NULL, b->now.mono + 120000, &b->now);
+    tb_app_pairing_show(&b->a, "482913", NULL, TB_PAIR_KIND_MAC, &b->now);
     TB_EQ_INT(b->a.menu.kind, TB_MENU_NONE);
     TB_EQ_STR(b->a.pairing.who, "Mac");
     TB_FALSE(tb_app_screen_free(&b->a));                 /* other toasts wait */
@@ -163,13 +163,13 @@ TB_TEST(pairing_waits_for_the_power_screens_and_skips_setup)
     tb_app_button(&b->a, TB_BTN_PWR_DOWN, &b->now);
     bench_run(b, 500);
     TB_EQ_INT(b->a.hold, TB_HOLD_KEEP_HOLDING);
-    tb_app_pairing_show(&b->a, "111222", "Mac", b->now.mono + 120000, &b->now);
+    tb_app_pairing_show(&b->a, "111222", "Mac", TB_PAIR_KIND_MAC, &b->now);
     TB_FALSE(tb_app_pairing_visible(&b->a));
     bench_run(b, 500);
     tb_app_button(&b->a, TB_BTN_PWR_UP, &b->now);       /* released early */
     TB_TRUE(tb_app_pairing_visible(&b->a));
     b = bench_new_opts(false, true);
-    tb_app_pairing_show(&b->a, "111222", "Mac", b->now.mono + 120000, &b->now);
+    tb_app_pairing_show(&b->a, "111222", "Mac", TB_PAIR_KIND_MAC, &b->now);
     TB_FALSE(tb_app_pairing_visible(&b->a));            /* never on the Wi-Fi setup screens */
     TB_EQ_INT(b->a.wifi_mode, TB_WIFI_SETUP);
 }

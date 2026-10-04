@@ -5,15 +5,18 @@
  *   - QSPI on SPI3 at 40 MHz, mode 3, 32-bit commands, CS on GPIO 9, no DC line;
  *   - init commands 0x11 (sleep out) and 0x29 (display on), 100 ms each, after the LCD reset on EXIO5
  *     (high 30 ms, low 250 ms, high 30 ms);
- *   - LVGL display at the native 172 x 640 with full-frame RGB565 buffers in PSRAM (LV_DISPLAY_RENDER_MODE_FULL) and
- *     software rotation: LV_DISPLAY_ROTATION_90, or 270 when the bar is flipped, turned by lv_draw_sw_rotate() into a
- *     third PSRAM frame;
+ *   - LVGL display at the native 172 x 640 with a full-frame RGB565 buffer in PSRAM (LV_DISPLAY_RENDER_MODE_FULL) and
+ *     software rotation: LV_DISPLAY_ROTATION_90, or 270 when the bar is flipped (swapped by CONFIG_TINYBAR_LCD_TURN_180),
+ *     turned by lv_draw_sw_rotate() into a second PSRAM frame. One draw buffer, not the example's two: the flush is
+ *     synchronous (rotate, copy, send, then flush_ready), so a second buffer would never overlap any work;
  *   - the frame goes out in ten 64-line chunks through one internal DMA buffer, each chunk waiting for the previous
  *     transfer (on_color_trans_done). In QSPI mode the AXS15231B takes no row address: a chunk starting at row 0 is a
  *     RAMWR (0x2C) and the others continue it (RAMWRC, 0x3C), so a frame is always sent whole and in order.
  * Changes from the example: the RGB565 byte swap happens in the DMA buffer (LVGL's buffer is never modified), every
  * wait has a time-out so a dead panel can't hang the app task, there's no LVGL task or tick timer (the app task runs
- * lv_timer_handler(); lv_tick_set_cb() reads esp_timer), and the backlight waits for the first frame.
+ * lv_timer_handler(); lv_tick_set_cb() reads esp_timer), and the backlight waits for the first frame. While the
+ * backlight is off (a dark screen), frames aren't sent: the panel can't be seen, and a running timer would otherwise
+ * rotate and send 220 KB every second. The first frame after it comes back on is sent before the light.
  */
 #include <string.h>
 
@@ -67,7 +70,8 @@ static uint8_t *s_rot;
 static bool s_panel_ok;
 static uint32_t s_flush_errors;
 static uint32_t s_flush_count;
-static int64_t s_flush_us_total;
+static int64_t s_flush_us_total, s_flush_us_max;
+static bool s_skipped_dark;         /* frames were skipped while the backlight was off: send one before the light */
 
 /* Backlight state. */
 static bool s_ledc_ok;
@@ -117,7 +121,13 @@ void board_backlight_set(uint8_t percent)
     if (percent > 100) percent = 100;
     s_bl_percent = percent;
     s_bl_requested = true;
-    if (s_frame_shown) bl_write(percent);
+    if (!s_frame_shown) return;
+    if (percent > 0 && s_skipped_dark && s_panel_ok && s_disp) {
+        /* The panel still holds the frame from before the screen went dark: redraw first, light after (flush_cb). */
+        lv_obj_invalidate(lv_display_get_screen_active(s_disp));
+        return;
+    }
+    bl_write(percent);
 }
 
 void board_backlight_raw_duty(uint8_t duty)
@@ -249,6 +259,12 @@ static bool send_frame(const uint8_t *frame)
 
 static void flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px)
 {
+    if (s_frame_shown && s_bl_percent == 0 && s_panel_ok) {
+        /* Dark screen: nothing to see, so nothing to send (see the top of the file). */
+        s_skipped_dark = true;
+        lv_display_flush_ready(disp);
+        return;
+    }
     int64_t t0 = esp_timer_get_time();
     const uint8_t *frame = px;
     lv_display_rotation_t rot = lv_display_get_rotation(disp);
@@ -270,15 +286,27 @@ static void flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px)
             ESP_LOGI(TAG, "first frame shown (rotate + send %lld ms), backlight %u%%", (long long)(us / 1000),
                      s_bl_percent);
         }
-        s_flush_us_total += us;
-        if (++s_flush_count % 600 == 0) {
-            ESP_LOGD(TAG, "%lu frames, average rotate + send %lld ms", (unsigned long)s_flush_count,
-                     (long long)(s_flush_us_total / s_flush_count / 1000));
+        if (s_skipped_dark) {
+            s_skipped_dark = false;
+            bl_write(s_bl_percent);     /* the light comes back with a fresh frame on the panel */
         }
+        s_flush_us_total += us;
+        if (us > s_flush_us_max) s_flush_us_max = us;
+        s_flush_count++;
     } else if (s_panel_ok && (s_flush_errors++ % 100) == 0) {
         ESP_LOGE(TAG, "panel transfer timed out (%lu so far)", (unsigned long)s_flush_errors);
     }
     lv_display_flush_ready(disp);
+}
+
+/* Upright is LVGL rotation 90 and flipped 270, unless CONFIG_TINYBAR_LCD_TURN_180 swaps them. */
+#ifndef CONFIG_TINYBAR_LCD_TURN_180
+#define CONFIG_TINYBAR_LCD_TURN_180 0
+#endif
+static lv_display_rotation_t rotation_for(bool flipped)
+{
+    if (CONFIG_TINYBAR_LCD_TURN_180) flipped = !flipped;
+    return flipped ? LV_DISPLAY_ROTATION_270 : LV_DISPLAY_ROTATION_90;
 }
 
 static uint32_t tick_cb(void)
@@ -298,9 +326,8 @@ lv_display_t *board_display_init(bool flipped)
 
     s_dma = heap_caps_malloc(LCD_CHUNK_BYTES, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
     uint8_t *b1 = heap_caps_aligned_alloc(64, LCD_FRAME_BYTES, MALLOC_CAP_SPIRAM);
-    uint8_t *b2 = heap_caps_aligned_alloc(64, LCD_FRAME_BYTES, MALLOC_CAP_SPIRAM);
     s_rot = heap_caps_aligned_alloc(64, LCD_FRAME_BYTES, MALLOC_CAP_SPIRAM);
-    if (!s_dma || !b1 || !b2 || !s_rot) {
+    if (!s_dma || !b1 || !s_rot) {
         ESP_LOGE(TAG, "no memory for the frame buffers");
         return NULL;
     }
@@ -317,18 +344,32 @@ lv_display_t *board_display_init(bool flipped)
     s_disp = lv_display_create(BOARD_LCD_H_RES, BOARD_LCD_V_RES);
     if (!s_disp) return NULL;
     lv_display_set_color_format(s_disp, LV_COLOR_FORMAT_RGB565);
-    lv_display_set_buffers(s_disp, b1, b2, LCD_FRAME_BYTES, LV_DISPLAY_RENDER_MODE_FULL);
+    lv_display_set_buffers(s_disp, b1, NULL, LCD_FRAME_BYTES, LV_DISPLAY_RENDER_MODE_FULL);
     lv_display_set_flush_cb(s_disp, flush_cb);
     board_display_set_flipped(flipped);
-    ESP_LOGI(TAG, "display %dx%d, rotation %d", BOARD_SCREEN_W, BOARD_SCREEN_H, flipped ? 270 : 90);
+    ESP_LOGI(TAG, "display %dx%d, rotation %d%s", BOARD_SCREEN_W, BOARD_SCREEN_H, rotation_for(flipped) == LV_DISPLAY_ROTATION_270 ? 270 : 90,
+             CONFIG_TINYBAR_LCD_TURN_180 ? " (turned 180 by CONFIG_TINYBAR_LCD_TURN_180)" : "");
     return s_disp;
 }
 
 void board_display_set_flipped(bool flipped)
 {
     if (!s_disp) return;
-    lv_display_rotation_t want = flipped ? LV_DISPLAY_ROTATION_270 : LV_DISPLAY_ROTATION_90;
+    lv_display_rotation_t want = rotation_for(flipped);
     if (lv_display_get_rotation(s_disp) != want) lv_display_set_rotation(s_disp, want);
+}
+
+uint32_t board_display_frame_count(void)
+{
+    return s_flush_count;
+}
+
+void board_display_stats(uint32_t *frames, uint32_t *avg_flush_ms, uint32_t *max_flush_ms)
+{
+    *frames = s_flush_count;
+    *avg_flush_ms = s_flush_count ? (uint32_t)(s_flush_us_total / s_flush_count / 1000) : 0;
+    *max_flush_ms = (uint32_t)(s_flush_us_max / 1000);
+    s_flush_us_max = 0;
 }
 
 void board_display_shutdown(void)

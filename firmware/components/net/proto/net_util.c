@@ -233,7 +233,7 @@ const char *net_join_err_screen(net_join_err_t e)
     case NET_JOIN_LOGIN_FAILED: return "Login failed";
     case NET_JOIN_NOT_FOUND: return "Network not found";
     case NET_JOIN_NO_SIGNAL: return "No signal";
-    case NET_JOIN_NO_ADDRESS: return "No address";
+    case NET_JOIN_NO_ADDRESS: return "No IP address";
     default: return "";
     }
 }

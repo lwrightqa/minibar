@@ -43,7 +43,7 @@ TB_TEST(toast_pending_rules)
     b = bench_new();
     pwr_press(b);
     tb_app_calendar_event(&b->a, TB_CALEV_SYNCED, &b->now);        /* toast() */
-    tb_app_pairing_end(&b->a, TB_PAIR_END_PAIRED_USB, NULL, &b->now);
+    tb_app_calendar_event(&b->a, TB_CALEV_SYNC_FAILED, &b->now);   /* toast() again */
     TB_EQ_STR(b->a.pending_toast, "Calendar synced");
     /* ...but an automatic change replaces it (notify) */
     call_start(b, NULL);

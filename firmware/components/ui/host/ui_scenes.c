@@ -38,7 +38,7 @@ static void base_opts(tb_app_t *a, tb_clock_t *now, tb_status_t st, bool wifi)
     tb_settings_t s;
     tb_settings_defaults(&s, "f412fa3f2a1c");
     *now = (tb_clock_t){.mono = 60 * MIN, .wall = REF, .valid = true};
-    tb_app_init(a, &s, wifi, now);
+    tb_app_init(a, &s, wifi ? TB_WIFI_OK : TB_WIFI_SETUP, now);
     tb_app_restore(a, st, st == TB_ST_POMODORO || st == TB_ST_CLOCK ? TB_ST_BUSY : st,
                    "On a deadline until 3 PM, message me instead", REF, 1, 31 * MIN + 18000, tb_local_yyyymmdd(REF));
     if (wifi) {
@@ -212,6 +212,21 @@ static void s_pomo_long(tb_app_t *a, tb_clock_t *n)
     pomo(a, TB_PH_LONG, 4, 12 * 60, true);
     a->pomo.done_today = 4;
 }
+/* The longest real copy in the small slots: a full day's foot, and the longest paused kickers. */
+static void s_pomo_bigfoot(tb_app_t *a, tb_clock_t *n)
+{
+    base(a, n, TB_ST_POMODORO);
+    pomo(a, TB_PH_FOCUS, 2, 18 * 60 + 42, true);
+    a->pomo.done_today = 12;
+    a->pomo.focused_ms = (5 * 60 + 10) * MIN;
+}
+static void s_pomo_paused_long(tb_app_t *a, tb_clock_t *n)
+{
+    base(a, n, TB_ST_POMODORO);
+    pomo(a, TB_PH_LONG, 4, 12 * 60, false);
+    a->pomo.done_today = 4;
+}
+static void s_pomo_paused_short(tb_app_t *a, tb_clock_t *n) { base(a, n, TB_ST_POMODORO); pomo(a, TB_PH_SHORT, 2, 3 * 60 + 10, false); }
 static void s_pomo_break_time(tb_app_t *a, tb_clock_t *n)
 {
     base(a, n, TB_ST_POMODORO);
@@ -318,6 +333,15 @@ static void s_menu_quick_syncing(tb_app_t *a, tb_clock_t *n)
     tb_app_set_calendar(a, true, true, REF - 120, n);
     hold_menu(a, n);
 }
+/* Firmware only: the office Wi-Fi dropped after setup (the calendar can't sync; the bar follows its saved copy). */
+static void s_menu_quick_linkdown(tb_app_t *a, tb_clock_t *n)
+{
+    base(a, n, TB_ST_AVAILABLE);
+    calendar(a, n, false, SAMPLE, 3);
+    tb_app_wifi_link(a, false, NULL, NULL, n);
+    quiet_toast(a);
+    hold_menu(a, n);
+}
 static void s_menu_quick_showagain(tb_app_t *a, tb_clock_t *n)
 {
     s_aside_call(a, n);
@@ -348,10 +372,37 @@ static void s_menu_timer_settings(tb_app_t *a, tb_clock_t *n)
     s_menu_timer(a, n);
     tap_action(a, n, TB_ACT_TIMER_SETTINGS);
 }
+/* The mock-up starts paired: a Mac over USB, this phone and a script (decisions.md, Pairing). */
+static void paired3(tb_app_t *a)
+{
+    tb_app_set_paired(a, 3, "iPhone, Desk script, Mac");
+}
 static void s_menu_wifi(tb_app_t *a, tb_clock_t *n)
 {
     s_menu_quick(a, n);
+    paired3(a);
     tap_action(a, n, TB_ACT_WIFI);
+}
+static void s_menu_wifi_none(tb_app_t *a, tb_clock_t *n)
+{
+    s_menu_quick(a, n);
+    tap_action(a, n, TB_ACT_WIFI);
+}
+static void s_menu_wifi_offline(tb_app_t *a, tb_clock_t *n)
+{
+    base(a, n, TB_ST_AVAILABLE);
+    a->wifi_mode = TB_WIFI_OFFLINE;
+    a->wifi_link_up = false;
+    tb_app_pointer(a, true, 200, 80, TB_TILE_NONE, n);
+    run(a, n, 700);
+    tb_app_pointer(a, false, 200, 80, TB_TILE_NONE, n);
+    run(a, n, 50);
+    tap_action(a, n, TB_ACT_WIFI);
+}
+static void s_menu_forget(tb_app_t *a, tb_clock_t *n)
+{
+    s_menu_wifi(a, n);
+    tap_action(a, n, TB_ACT_DEVICES);
 }
 static void s_menu_power(tb_app_t *a, tb_clock_t *n)
 {
@@ -423,13 +474,19 @@ static void s_splash(tb_app_t *a, tb_clock_t *n)
     tb_settings_t s;
     tb_settings_defaults(&s, "f412fa3f2a1c");
     *n = (tb_clock_t){.mono = 60 * MIN, .wall = REF, .valid = true};
-    tb_app_init(a, &s, true, n);
+    tb_app_init(a, &s, TB_WIFI_OK, n);
 }
-static void s_pairing(tb_app_t *a, tb_clock_t *n)
+static void pairing_up(tb_app_t *a, tb_clock_t *n, const char *who, tb_pair_kind_t kind)
 {
     base(a, n, TB_ST_BUSY);
-    tb_app_pairing_show(a, "482913", "Mac", n->mono + 102 * 1000, n);
+    tb_app_pairing_show(a, "482913", who, kind, n);
+    a->pairing.shown_at -= 18 * 1000;       /* the code went up 18 s ago: 1:42 left */
+    a->pairing.expires -= 18 * 1000;
+    a->rev++;
 }
+static void s_pairing(tb_app_t *a, tb_clock_t *n) { pairing_up(a, n, NULL, TB_PAIR_KIND_MAC); }
+static void s_pairing_phone(tb_app_t *a, tb_clock_t *n) { pairing_up(a, n, NULL, TB_PAIR_KIND_PHONE); }
+static void s_pairing_named(tb_app_t *a, tb_clock_t *n) { pairing_up(a, n, "Alex's MacBook Air", TB_PAIR_KIND_MAC); }
 static void s_dark(tb_app_t *a, tb_clock_t *n)
 {
     base(a, n, TB_ST_BUSY);
@@ -468,6 +525,9 @@ const ui_scene_t ui_scenes[] = {
     {"pomo_paused", "Pomodoro paused", s_pomo_paused, 0, false},
     {"pomo_short", "Short break running", s_pomo_short, 0, false},
     {"pomo_long", "Long break running", s_pomo_long, 0, false},
+    {"pomo_bigfoot", "Focus running after a long day: 12 done, 5h 10m focused", s_pomo_bigfoot, 0, false},
+    {"pomo_paused_long", "A paused long break (the longest kicker)", s_pomo_paused_long, 0, false},
+    {"pomo_paused_short", "A paused short break", s_pomo_paused_short, 0, false},
     {"pomo_break_time", "Focus done: Break time", s_pomo_break_time, 0, false},
     {"pomo_back_to_it", "Break over: Back to it", s_pomo_back_to_it, 0, false},
     {"pill_focus", "Busy with the focus timer in the pill", s_pill_focus, 0, false},
@@ -496,11 +556,15 @@ const ui_scene_t ui_scenes[] = {
     {"menu_quick_nocal", "The quick menu without a calendar", s_menu_quick_nocal, 0, false},
     {"menu_quick_syncing", "The quick menu while syncing", s_menu_quick_syncing, 0, false},
     {"menu_quick_showagain", "The quick menu with Show again", s_menu_quick_showagain, 0, false},
+    {"menu_quick_linkdown", "The quick menu with the Wi-Fi link down (firmware only)", s_menu_quick_linkdown, 0, false},
     {"menu_timer", "The timer menu mid-phase", s_menu_timer, 0, false},
     {"menu_timer_ready", "The timer menu when ready (no +5)", s_menu_timer_ready, 0, false},
     {"menu_timer_showagain", "The timer menu with Show again", s_menu_timer_showagain, 0, false},
     {"menu_timer_settings", "Timer settings", s_menu_timer_settings, 0, false},
-    {"menu_wifi", "The Wi-Fi menu", s_menu_wifi, 0, false},
+    {"menu_wifi", "The Wi-Fi menu, 3 devices paired", s_menu_wifi, 0, false},
+    {"menu_wifi_none", "The Wi-Fi menu, nothing paired", s_menu_wifi_none, 0, false},
+    {"menu_wifi_offline", "The Wi-Fi menu offline", s_menu_wifi_offline, 0, false},
+    {"menu_forget", "Forget all's confirmation", s_menu_forget, 0, false},
     {"menu_power", "The power menu", s_menu_power, 0, false},
     {"menu_setup", "The setup menu", s_menu_setup, 0, false},
     {"toast_status", "A toast over a status (the sub line hides)", s_toast_status, 0, false},
@@ -512,7 +576,9 @@ const ui_scene_t ui_scenes[] = {
     {"hold_off", "Powering off", s_hold_off, 0, false},
     {"flash", "The alarm's white flash", s_flash, 0, false},
     {"splash", "Starting up", s_splash, 0, false},
-    {"pairing", "The pairing screen (proposed)", s_pairing, 0, false},
+    {"pairing", "The pairing screen for a Mac (proposed)", s_pairing, 0, false},
+    {"pairing_phone", "The pairing screen for a phone", s_pairing_phone, 0, false},
+    {"pairing_named", "The pairing screen for a Mac with a name", s_pairing_named, 0, false},
     {"dark", "The dark screen", s_dark, 0, false},
     {"flipped", "Flipped: a toast over Available, the display turned 180 degrees", s_flipped, 0, true},
 };

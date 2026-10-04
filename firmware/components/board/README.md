@@ -59,6 +59,7 @@ What the schematic adds (none of it is in Waveshare's code):
 | `TINYBAR_BL_ZERO_DUTY` | 164 | Checklist step 3 |
 | `TINYBAR_AUDIO_VOLUME` | 75 (−12.5 dB) | Checklist step 8 |
 | `TINYBAR_AUDIO_AMP_GATE` | on | Checklist step 8 |
+| `TINYBAR_LCD_TURN_180` | off | Checklist step 3: on if the splash is upside down (swaps LVGL rotation 90 and 270) |
 | `TINYBAR_LCD_PCLK_MHZ` | 40 | Leave at 40 (Waveshare's value) unless the picture shows noise |
 | `TINYBAR_BOARD_BRINGUP` | off | On for the first runs only |
 
@@ -77,6 +78,12 @@ put them in `sdkconfig.defaults`).
    - No flash of garbage at power-up; the splash appears the right way up for how the bar stands, with true colors
      (white text, the status color; red and blue not swapped, no noise). Log: `first frame shown (rotate + send N ms)`;
      expect N around 20 to 30 ms.
+   - **If the splash is upside down:** the "upright" rotation (90) comes from a path in Waveshare's example that never
+     ran as shipped, so it's only known once seen. Without an IMU, or if it's upside down whichever way the bar
+     stands, turn `TINYBAR_LCD_TURN_180` on. With an IMU, if it's right one way up and wrong after a flip, pick the
+     opposite sign of `TINYBAR_IMU_UP_` instead (step 5). Both flip the layout and the touch together.
+   - Read the boot time: the timestamp of `power held (SYS_EN high)` (the PSRAM test and the bootloader's INFO log are
+     off to keep it short; on a battery, a PWR press shorter than that wouldn't keep the bar on).
    - The sweep logs `LCD_BL duty N of 255`: note the first duty at which the screen is fully dark. Expected about 164.
      Set `TINYBAR_BL_ZERO_DUTY` to it.
    - The quick menu's Light tile: 40, 70 and 100% look clearly different, and 40% is still comfortable to read.
@@ -104,7 +111,11 @@ put them in `sdkconfig.defaults`).
 9. **RTC.** First boot after flashing: `RTC time not trusted (never set by TinyBar)`. Once Wi-Fi time (SNTP) or the
    Mac has set the clock: `RTC set to ... UTC`. Restart (Restart tile): `clock set from the RTC`, and the clock is
    right before Wi-Fi connects. Unplug USB for a minute (no battery): `oscillator stopped (power lost)`.
-10. **Watchdog.** No `task_wdt` messages in an hour of normal use, including during calendar syncs.
+10. **Watchdog and headroom.** No `task_wdt` messages in an hour of normal use, including during calendar syncs. The
+    health lines (15 s after start, right after the first calendar fetch, then every minute) give the internal heap
+    (free, lowest, largest block), every task's unused stack (`stack left (bytes): app ... tiT ... sys_evt ...`) and
+    the frame time (`frame time (render + rotate + send)`). Note the lowest internal free and the smallest stack
+    margins with the Remote open, a calendar sync running and the setup network up at once.
 11. **Turn `TINYBAR_BOARD_BRINGUP` off** again.
 
 ## Open questions only the board can answer
@@ -115,4 +126,5 @@ put them in `sdkconfig.defaults`).
 - Whether gating the amplifier pops (step 8), and the volume for an open office.
 - Frame time: about 11 ms of QSPI plus the rotation and copy, for every redraw (LVGL redraws the whole screen in this
   mode). Fine for a clock that changes once a second; if the message marquee stutters, the next step is an async
-  flush or `LV_DISPLAY_RENDER_MODE_DIRECT`.
+  flush or `LV_DISPLAY_RENDER_MODE_DIRECT`. The health log reports it at INFO. There's one draw buffer (the flush is
+  synchronous, so a second never overlapped any work), and nothing is sent while the backlight is off.

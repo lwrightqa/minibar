@@ -3,7 +3,7 @@ PRODID:-//Google Inc//Google Calendar 70.9054//EN
 VERSION:2.0
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
-X-WR-CALNAME:lwright@example.com
+X-WR-CALNAME:sam.lee@example.com
 X-WR-TIMEZONE:America/Los_Angeles
 BEGIN:VTIMEZONE
 TZID:America/Los_Angeles
@@ -52,7 +52,7 @@ UID:7kukuqrfedlm2f6ra5o5r2iqel@google.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
  ;CN=priya@example.com;X-NUM-GUESTS=0:mailto:priya@example.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 X-GOOGLE-CONFERENCE:https://meet.google.com/kfq-zrvd-dxa
 CREATED:20250912T171500Z
 DESCRIPTION:-::~:~::~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~
@@ -74,7 +74,7 @@ ACTION:EMAIL
 DESCRIPTION:This is an event reminder
 SUMMARY:Alarm notification
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 TRIGGER:-P0DT0H30M0S
 END:VALARM
 END:VEVENT
@@ -88,7 +88,7 @@ RECURRENCE-ID;TZID=America/Los_Angeles:20261005T110000
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
  ;CN=priya@example.com;X-NUM-GUESTS=0:mailto:priya@example.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 X-GOOGLE-CONFERENCE:https://meet.google.com/kfq-zrvd-dxa
 CREATED:20250912T171500Z
 DESCRIPTION:
@@ -96,14 +96,14 @@ LAST-MODIFIED:20261002T203344Z
 LOCATION:Priya's desk
 SEQUENCE:1
 STATUS:CONFIRMED
-SUMMARY:1:1 Priya / Lisa (moved)
+SUMMARY:1:1 Priya / Alex (moved)
 TRANSP:OPAQUE
 BEGIN:VALARM
 ACTION:EMAIL
 DESCRIPTION:This is an event reminder
 SUMMARY:Alarm notification
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 TRIGGER:-P0DT0H30M0S
 END:VALARM
 END:VEVENT
@@ -117,7 +117,7 @@ UID:2p3ccf1u6v9rtlb4v5kq5o0g7d@google.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
  ;CN=priya@example.com;X-NUM-GUESTS=0:mailto:priya@example.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 X-GOOGLE-CONFERENCE:https://meet.google.com/kfq-zrvd-dxa
 CREATED:20250912T171500Z
 DESCRIPTION:
@@ -125,14 +125,14 @@ LAST-MODIFIED:20261002T203344Z
 LOCATION:Priya's desk
 SEQUENCE:1
 STATUS:CONFIRMED
-SUMMARY:1:1 Priya / Lisa
+SUMMARY:1:1 Priya / Alex
 TRANSP:OPAQUE
 BEGIN:VALARM
 ACTION:EMAIL
 DESCRIPTION:This is an event reminder
 SUMMARY:Alarm notification
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 TRIGGER:-P0DT0H30M0S
 END:VALARM
 END:VEVENT
@@ -146,7 +146,7 @@ UID:5a8e1c8d0kq1n3h2tbu4fh0g3s@google.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
  ;CN=priya@example.com;X-NUM-GUESTS=0:mailto:priya@example.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 X-GOOGLE-CONFERENCE:https://meet.google.com/kfq-zrvd-dxa
 CREATED:20250912T171500Z
 DESCRIPTION:
@@ -161,7 +161,7 @@ ACTION:EMAIL
 DESCRIPTION:This is an event reminder
 SUMMARY:Alarm notification
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 TRIGGER:-P0DT0H30M0S
 END:VALARM
 END:VEVENT
@@ -175,7 +175,7 @@ RECURRENCE-ID;TZID=America/Los_Angeles:20261006T100000
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
  ;CN=priya@example.com;X-NUM-GUESTS=0:mailto:priya@example.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 X-GOOGLE-CONFERENCE:https://meet.google.com/kfq-zrvd-dxa
 CREATED:20250912T171500Z
 DESCRIPTION:
@@ -190,7 +190,7 @@ ACTION:EMAIL
 DESCRIPTION:This is an event reminder
 SUMMARY:Alarm notification
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 TRIGGER:-P0DT0H30M0S
 END:VALARM
 END:VEVENT
@@ -203,7 +203,7 @@ UID:0vni9j3h8a4uo0p4lq6m4ku2lb@google.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
  ;CN=priya@example.com;X-NUM-GUESTS=0:mailto:priya@example.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 X-GOOGLE-CONFERENCE:https://meet.google.com/kfq-zrvd-dxa
 CREATED:20250912T171500Z
 DESCRIPTION:
@@ -219,7 +219,7 @@ ACTION:EMAIL
 DESCRIPTION:This is an event reminder
 SUMMARY:Alarm notification
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 TRIGGER:-P0DT0H30M0S
 END:VALARM
 END:VEVENT
@@ -227,12 +227,12 @@ BEGIN:VEVENT
 DTSTART;TZID=America/Los_Angeles:20261005T150000
 DTEND;TZID=America/Los_Angeles:20261005T170000
 DTSTAMP:20261004T150412Z
-ORGANIZER;CN=lwright@example.com:mailto:lwright@example.com
+ORGANIZER;CN=sam.lee@example.com:mailto:sam.lee@example.com
 UID:3bq1o6c5hn9v2t1m6kp0s5c7f8@google.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 X-GOOGLE-CONFERENCE:https://meet.google.com/kfq-zrvd-dxa
 CREATED:20250912T171500Z
 DESCRIPTION:
@@ -247,7 +247,7 @@ ACTION:EMAIL
 DESCRIPTION:This is an event reminder
 SUMMARY:Alarm notification
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 TRIGGER:-P0DT0H30M0S
 END:VALARM
 END:VEVENT
@@ -260,7 +260,7 @@ UID:6d1t0q8p5n2m4l3k2j1h0g9f8e@google.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
  ;CN=priya@example.com;X-NUM-GUESTS=0:mailto:priya@example.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 X-GOOGLE-CONFERENCE:https://meet.google.com/kfq-zrvd-dxa
 CREATED:20250912T171500Z
 DESCRIPTION:
@@ -275,7 +275,7 @@ ACTION:EMAIL
 DESCRIPTION:This is an event reminder
 SUMMARY:Alarm notification
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 TRIGGER:-P0DT0H30M0S
 END:VALARM
 END:VEVENT
@@ -288,7 +288,7 @@ UID:1c2b3a4d5e6f7g8h9i0j1k2l3m@google.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
  ;CN=sales@vendor.example;X-NUM-GUESTS=0:mailto:sales@vendor.example
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 X-GOOGLE-CONFERENCE:https://meet.google.com/kfq-zrvd-dxa
 CREATED:20250912T171500Z
 DESCRIPTION:
@@ -303,7 +303,7 @@ ACTION:EMAIL
 DESCRIPTION:This is an event reminder
 SUMMARY:Alarm notification
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 TRIGGER:-P0DT0H30M0S
 END:VALARM
 END:VEVENT
@@ -311,12 +311,12 @@ BEGIN:VEVENT
 DTSTART;TZID=America/Los_Angeles:20261005T233000
 DTEND;TZID=America/Los_Angeles:20261006T003000
 DTSTAMP:20261004T150412Z
-ORGANIZER;CN=lwright@example.com:mailto:lwright@example.com
+ORGANIZER;CN=sam.lee@example.com:mailto:sam.lee@example.com
 UID:4r5t6y7u8i9o0p1a2s3d4f5g6h@google.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 X-GOOGLE-CONFERENCE:https://meet.google.com/kfq-zrvd-dxa
 CREATED:20250912T171500Z
 DESCRIPTION:
@@ -331,7 +331,7 @@ ACTION:EMAIL
 DESCRIPTION:This is an event reminder
 SUMMARY:Alarm notification
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 TRIGGER:-P0DT0H30M0S
 END:VALARM
 END:VEVENT
@@ -345,7 +345,7 @@ UID:9z8y7x6w5v4u3t2s1r0q9p8o7n@google.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
  ;CN=ops@example.co.uk;X-NUM-GUESTS=0:mailto:ops@example.co.uk
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 X-GOOGLE-CONFERENCE:https://meet.google.com/kfq-zrvd-dxa
 CREATED:20250912T171500Z
 DESCRIPTION:
@@ -360,7 +360,7 @@ ACTION:EMAIL
 DESCRIPTION:This is an event reminder
 SUMMARY:Alarm notification
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 TRIGGER:-P0DT0H30M0S
 END:VALARM
 END:VEVENT
@@ -374,7 +374,7 @@ UID:8h7g6f5e4d3c2b1a0z9y8x7w6v@google.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
  ;CN=priya@example.com;X-NUM-GUESTS=0:mailto:priya@example.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 X-GOOGLE-CONFERENCE:https://meet.google.com/kfq-zrvd-dxa
 CREATED:20250912T171500Z
 DESCRIPTION:
@@ -389,7 +389,7 @@ ACTION:EMAIL
 DESCRIPTION:This is an event reminder
 SUMMARY:Alarm notification
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 TRIGGER:-P0DT0H30M0S
 END:VALARM
 END:VEVENT
@@ -403,7 +403,7 @@ RECURRENCE-ID;TZID=America/Los_Angeles:20261008T100000
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
  ;CN=priya@example.com;X-NUM-GUESTS=0:mailto:priya@example.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 X-GOOGLE-CONFERENCE:https://meet.google.com/kfq-zrvd-dxa
 CREATED:20250912T171500Z
 DESCRIPTION:
@@ -418,7 +418,7 @@ ACTION:EMAIL
 DESCRIPTION:This is an event reminder
 SUMMARY:Alarm notification
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 TRIGGER:-P0DT0H30M0S
 END:VALARM
 END:VEVENT
@@ -432,7 +432,7 @@ UID:m1n2b3v4c5x6z7l8k9j0h1g2f3@google.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
  ;CN=priya@example.com;X-NUM-GUESTS=0:mailto:priya@example.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 X-GOOGLE-CONFERENCE:https://meet.google.com/kfq-zrvd-dxa
 CREATED:20250912T171500Z
 DESCRIPTION:
@@ -447,7 +447,7 @@ ACTION:EMAIL
 DESCRIPTION:This is an event reminder
 SUMMARY:Alarm notification
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 TRIGGER:-P0DT0H30M0S
 END:VALARM
 END:VEVENT
@@ -461,7 +461,7 @@ RECURRENCE-ID;TZID=America/Los_Angeles:20261005T140000
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
  ;CN=priya@example.com;X-NUM-GUESTS=0:mailto:priya@example.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 X-GOOGLE-CONFERENCE:https://meet.google.com/kfq-zrvd-dxa
 CREATED:20250912T171500Z
 DESCRIPTION:
@@ -476,7 +476,7 @@ ACTION:EMAIL
 DESCRIPTION:This is an event reminder
 SUMMARY:Alarm notification
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 TRIGGER:-P0DT0H30M0S
 END:VALARM
 END:VEVENT
@@ -489,7 +489,7 @@ UID:c4f3s7nc0f0ld3dutf8t3st000@google.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
  ;CN=priya@example.com;X-NUM-GUESTS=0:mailto:priya@example.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 X-GOOGLE-CONFERENCE:https://meet.google.com/kfq-zrvd-dxa
 CREATED:20250912T171500Z
 DESCRIPTION:
@@ -506,7 +506,7 @@ ACTION:EMAIL
 DESCRIPTION:This is an event reminder
 SUMMARY:Alarm notification
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 TRIGGER:-P0DT0H30M0S
 END:VALARM
 END:VEVENT
@@ -520,7 +520,7 @@ UID:a1l2l3h4a5n6d7s8m9o0n1t2h3@google.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
  ;CN=ceo@example.com;X-NUM-GUESTS=0:mailto:ceo@example.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 X-GOOGLE-CONFERENCE:https://meet.google.com/kfq-zrvd-dxa
 CREATED:20250912T171500Z
 DESCRIPTION:
@@ -535,7 +535,7 @@ ACTION:EMAIL
 DESCRIPTION:This is an event reminder
 SUMMARY:Alarm notification
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 TRIGGER:-P0DT0H30M0S
 END:VALARM
 END:VEVENT
@@ -549,7 +549,7 @@ UID:o1n2b3o4a5r6d7i8n9g0c1o2u3@google.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
  ;CN=priya@example.com;X-NUM-GUESTS=0:mailto:priya@example.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 X-GOOGLE-CONFERENCE:https://meet.google.com/kfq-zrvd-dxa
 CREATED:20250912T171500Z
 DESCRIPTION:
@@ -564,7 +564,7 @@ ACTION:EMAIL
 DESCRIPTION:This is an event reminder
 SUMMARY:Alarm notification
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 TRIGGER:-P0DT0H30M0S
 END:VALARM
 END:VEVENT
@@ -573,12 +573,12 @@ DTSTART;TZID=America/Los_Angeles:20260608T100000
 DTEND;TZID=America/Los_Angeles:20260608T103000
 RRULE:FREQ=WEEKLY;UNTIL=20260928T165959Z;BYDAY=MO
 DTSTAMP:20261004T150412Z
-ORGANIZER;CN=lwright@example.com:mailto:lwright@example.com
+ORGANIZER;CN=sam.lee@example.com:mailto:sam.lee@example.com
 UID:s1a2m3o4n5e6o7n8o9n0e1x2y3@google.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 X-GOOGLE-CONFERENCE:https://meet.google.com/kfq-zrvd-dxa
 CREATED:20250912T171500Z
 DESCRIPTION:
@@ -586,14 +586,14 @@ LAST-MODIFIED:20261002T203344Z
 LOCATION:
 SEQUENCE:1
 STATUS:CONFIRMED
-SUMMARY:1:1 Sam / Lisa
+SUMMARY:1:1 Sam / Alex
 TRANSP:OPAQUE
 BEGIN:VALARM
 ACTION:EMAIL
 DESCRIPTION:This is an event reminder
 SUMMARY:Alarm notification
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 TRIGGER:-P0DT0H30M0S
 END:VALARM
 END:VEVENT
@@ -602,12 +602,12 @@ DTSTART;TZID=America/Los_Angeles:20261005T100000
 DTEND;TZID=America/Los_Angeles:20261005T103000
 RRULE:FREQ=WEEKLY;BYDAY=MO
 DTSTAMP:20261004T150412Z
-ORGANIZER;CN=lwright@example.com:mailto:lwright@example.com
+ORGANIZER;CN=sam.lee@example.com:mailto:sam.lee@example.com
 UID:s1a2m3o4n5e6o7n8o9n0e1x2y3_R20261005T170000@google.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 X-GOOGLE-CONFERENCE:https://meet.google.com/kfq-zrvd-dxa
 CREATED:20250912T171500Z
 DESCRIPTION:
@@ -615,14 +615,14 @@ LAST-MODIFIED:20261002T203344Z
 LOCATION:
 SEQUENCE:1
 STATUS:CONFIRMED
-SUMMARY:1:1 Sam / Lisa
+SUMMARY:1:1 Sam / Alex
 TRANSP:OPAQUE
 BEGIN:VALARM
 ACTION:EMAIL
 DESCRIPTION:This is an event reminder
 SUMMARY:Alarm notification
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED;RSVP=TRUE
- ;CN=lwright@example.com;X-NUM-GUESTS=0:mailto:lwright@example.com
+ ;CN=sam.lee@example.com;X-NUM-GUESTS=0:mailto:sam.lee@example.com
 TRIGGER:-P0DT0H30M0S
 END:VALARM
 END:VEVENT

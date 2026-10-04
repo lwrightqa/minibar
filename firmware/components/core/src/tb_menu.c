@@ -2,9 +2,9 @@
  * tb_menu.c: the hold menus' tiles. Owner: core builder.
  *
  * A port of the mock-up's showMenu() (quick and timer menus, and the setup screens' menu), calTile(),
- * showTimerSettings(), showWifiMenu() and showPowerMenu(). Which menu opens is decided by the caller (tb_app.c's
- * show_menu, the mock-up's showMenu); this file says what each tile reads. Labels are written as in the mock-up's
- * <b> ("Light"); the ui draws them in capitals.
+ * showTimerSettings(), showWifiMenu(), showForgetMenu() and showPowerMenu(). Which menu opens is decided by the caller
+ * (tb_app.c's show_menu, the mock-up's showMenu); this file says what each tile reads. Labels are written as in the
+ * mock-up's <b> ("Light"); the ui draws them in capitals. A foot's "\n" is the mock-up's <br>.
  */
 #include <stdio.h>
 #include <string.h>
@@ -44,6 +44,12 @@ static void done_tile(tb_menu_t *m)
     add(m, TB_ACT_CLOSE, TB_TILE_DONE, "Close", "Done", "or wait 8 s");
 }
 
+/* The office Wi-Fi was joined but the link is down now (the bar reconnects by itself). */
+static bool link_down(const tb_app_t *a)
+{
+    return a->wifi_mode == TB_WIFI_OK && !a->wifi_link_up;
+}
+
 /* calTile(): a state for every situation, so it's never a dead end; Show again while a call or meeting is aside. */
 static void cal_tile(tb_app_t *a, const tb_clock_t *now)
 {
@@ -69,7 +75,9 @@ static void cal_tile(tb_app_t *a, const tb_clock_t *now)
     if (!a->cal_last_sync) snprintf(foot, sizeof foot, "not synced yet");          /* Firmware: no sync time saved */
     else if (!now->valid) snprintf(foot, sizeof foot, "tap to sync");              /* Firmware: clock unknown */
     else snprintf(foot, sizeof foot, "synced %s", tb_fmt_ago(ago, sizeof ago, a->cal_last_sync, now->wall, true));
-    add(m, TB_ACT_SYNC, TB_TILE_NORMAL, "Calendar", "Sync", foot);
+    /* Firmware: with the link down it can't sync (Sync now says "No Wi-Fi, can't sync"), but it keeps following its
+     * last copy, so the tile says it's offline and when it last synced (decisions.md, offline). */
+    add(m, TB_ACT_SYNC, TB_TILE_NORMAL, "Calendar", link_down(a) ? "Offline" : "Sync", foot);
 }
 
 static void quick_menu(tb_app_t *a, const tb_clock_t *now)
@@ -80,7 +88,8 @@ static void quick_menu(tb_app_t *a, const tb_clock_t *now)
     add(m, TB_ACT_BRIGHT, TB_TILE_NORMAL, "Light", v, "tap to change");
     cal_tile(a, now);
     bool off = a->wifi_mode == TB_WIFI_OFFLINE;
-    add(m, TB_ACT_WIFI, TB_TILE_NORMAL, "Wi-Fi", off ? "Off" : "On", off ? "tap to set up" : a->wifi_ssid);
+    /* Firmware: a dropped link says so instead of the network's name. */
+    add(m, TB_ACT_WIFI, TB_TILE_NORMAL, "Wi-Fi", off ? "Off" : "On", off ? "tap to set up" : link_down(a) ? "reconnecting" : a->wifi_ssid);
     /* Bold Signal's Power tile says USB: the bar runs on USB with no battery (decisions.md, Product). */
     add(m, TB_ACT_POWER, TB_TILE_NORMAL, "Power", "USB", "off or restart");
     done_tile(m);
@@ -114,29 +123,45 @@ static void timer_settings(tb_app_t *a)
     add(m, TB_ACT_TIMER_MENU, TB_TILE_DONE, "Settings", "Back", "to the timer menu");
 }
 
+/* showWifiMenu(): on the quick menu's five columns. Network is read-only and two columns wide: the office network as
+ * its value, and under it this bar's name and its real address (two lines, each cut with "…"), so bars in one office
+ * can be told apart. Devices (proposed) counts the paired devices and opens Forget all; with none it's read-only and
+ * says how to pair. Then Set up (Change) and Back. */
 static void wifi_menu(tb_app_t *a)
 {
     tb_menu_t *m = &a->menu;
     bool off = a->wifi_mode == TB_WIFI_OFFLINE;
-    char foot[80];
-    if (off) snprintf(foot, sizeof foot, "not connected");
-    else if (a->wifi_link_up && a->wifi_ip[0]) snprintf(foot, sizeof foot, "%s \xC2\xB7 %s", a->wifi_ssid, a->wifi_ip);
-    else snprintf(foot, sizeof foot, "%s", a->wifi_ssid);  /* Firmware: the link dropped, no address to show */
-    add(m, TB_ACT_NONE, TB_TILE_INFO, "Network", off ? "None" : "On", foot);
-    add(m, TB_ACT_WIFI_SETUP, TB_TILE_NORMAL, off ? "Set up" : "Change", "Set up", "show the QR code");
-    /* Proposed (api.md 4.8): Devices, "3 paired · tap to forget all", a second tap confirms. Only while something is
-     * paired, so it's never a tile that does nothing. Needs the UX designer's drawing. */
+    m->five = true;
+    char foot[sizeof m->tiles[0].foot];
+    /* Firmware: with the link down there's no address to show, so it reads like offline. */
+    if (off || !a->wifi_link_up || !a->wifi_ip[0]) snprintf(foot, sizeof foot, "%s\nnot connected", a->set.device.name);
+    else snprintf(foot, sizeof foot, "%s\n%s \xC2\xB7 %s", a->set.device.name, a->wifi_host, a->wifi_ip);
+    tb_tile_t *t = add(m, TB_ACT_NONE, TB_TILE_INFO, "Network", off ? "None" : a->wifi_ssid, foot);
+    t->wide = true;
+    t->foot_lines = true;
     if (a->paired_count) {
         char v[24];
-        if (!m->devices_confirm) {
-            snprintf(v, sizeof v, "%u paired", (unsigned)a->paired_count);
-            add(m, TB_ACT_DEVICES, TB_TILE_NORMAL, "Devices", v, "tap to forget all");
-        } else {
-            snprintf(foot, sizeof foot, "%u device%s \xC2\xB7 tap again", (unsigned)a->paired_count, a->paired_count == 1 ? "" : "s");
-            add(m, TB_ACT_DEVICES, TB_TILE_NORMAL, "Devices", "Forget all", foot);
-        }
+        if (a->paired_count >= TB_PAIRED_MAX) snprintf(v, sizeof v, "Full");
+        else snprintf(v, sizeof v, "%u paired", (unsigned)a->paired_count);
+        add(m, TB_ACT_DEVICES, TB_TILE_NORMAL, "Devices", v, "tap to\nforget all");
+    } else {
+        add(m, TB_ACT_NONE, TB_TILE_INFO, "Devices", "None", off ? "set up Wi-Fi\nto pair" : "pair a phone\nor a Mac");
     }
+    add(m, TB_ACT_WIFI_SETUP, TB_TILE_NORMAL, off ? "Set up" : "Change", "Set up", "show the\nQR code");
     add(m, TB_ACT_CLOSE, TB_TILE_DONE, "Close", "Back", "or wait 8 s");
+}
+
+/* showForgetMenu(): what Forget all forgets, the button (a tap in its first 600 ms is ignored, so a quick double tap
+ * on Devices can't forget everything), and a way back that forgets nothing. The 8 s close forgets nothing either. */
+static void forget_menu(tb_app_t *a)
+{
+    tb_menu_t *m = &a->menu;
+    unsigned n = a->paired_count;
+    char v[24];
+    snprintf(v, sizeof v, "%u device%s", n, n == 1 ? "" : "s");
+    add(m, TB_ACT_NONE, TB_TILE_INFO, "Paired", v, a->paired_names)->foot_clamp2 = true;
+    add(m, TB_ACT_FORGET_ALL, TB_TILE_DANGER, "Tap again", "Forget all", "each needs a new code");
+    add(m, TB_ACT_KEEP_DEVICES, TB_TILE_DONE, "Cancel", "Keep", "back to Wi-Fi");
 }
 
 static void power_menu(tb_app_t *a)
@@ -158,7 +183,10 @@ static void setup_menu(tb_app_t *a)
 void tb_menu_fill(tb_app_t *a, const tb_clock_t *now)
 {
     tb_menu_t *m = &a->menu;
+    /* Firmware: with nothing left to forget (the last device was removed meanwhile), Forget all goes back to Wi-Fi. */
+    if (m->kind == TB_MENU_FORGET && !a->paired_count) m->kind = TB_MENU_WIFI;
     m->n = 0;
+    m->five = false;
     memset(m->tiles, 0, sizeof(m->tiles));
     switch (m->kind) {
     case TB_MENU_QUICK: quick_menu(a, now); break;
@@ -167,6 +195,7 @@ void tb_menu_fill(tb_app_t *a, const tb_clock_t *now)
     case TB_MENU_WIFI: wifi_menu(a); break;
     case TB_MENU_POWER: power_menu(a); break;
     case TB_MENU_SETUP: setup_menu(a); break;
+    case TB_MENU_FORGET: forget_menu(a); break;
     case TB_MENU_NONE: break;
     }
 }
@@ -174,11 +203,12 @@ void tb_menu_fill(tb_app_t *a, const tb_clock_t *now)
 void tb_menu_build(tb_app_t *a, tb_menu_kind_t kind, const tb_clock_t *now)
 {
     tb_menu_t *m = &a->menu;
-    bool confirm = m->kind == kind && m->devices_confirm;   /* kept only by the Devices tile's own rebuild */
+    bool same = m->kind == kind;
+    tb_ms_t opened = m->opened_at;
     memset(m, 0, sizeof(*m));
     m->kind = kind;
     if (kind == TB_MENU_NONE) return;
-    m->devices_confirm = confirm;
+    m->opened_at = same ? opened : now->mono;               /* rebuilt in place (Light, Ticking): still the same menu */
     m->closes_at = now->mono + TB_MENU_CLOSE_MS;            /* armMenuTimer() */
     tb_menu_fill(a, now);
 }

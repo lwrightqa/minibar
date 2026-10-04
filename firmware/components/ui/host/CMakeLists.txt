@@ -4,7 +4,7 @@
 #
 #   cmake -S firmware/components/ui/host -B firmware/build-host-ui && cmake --build firmware/build-host-ui
 #   firmware/build-host-ui/tinybar_snapshot <out-dir> [scene ...]      (--list shows the scenes)
-#   ctest --test-dir firmware/build-host-ui                             (tinybar_touch_test)
+#   ctest --test-dir firmware/build-host-ui                             (tinybar_touch_test, tinybar_layout_test)
 #
 # LVGL comes from the ESP-IDF component manager's copy (firmware/managed_components/lvgl__lvgl, present after any
 # idf.py build or reconfigure), so the host renders with exactly the device's LVGL version.
@@ -34,5 +34,10 @@ target_compile_options(tinybar_snapshot PRIVATE -Wall -Wextra)
 add_executable(tinybar_touch_test touch_test.c)
 target_link_libraries(tinybar_touch_test PRIVATE tb_ui tb_ui_view tb_core lvgl m)
 target_compile_options(tinybar_touch_test PRIVATE -Wall -Wextra)
+# Layout on rendered frames, one screen after another as on the device (the sub line after the Wi-Fi QR screen).
+add_executable(tinybar_layout_test layout_test.c)
+target_link_libraries(tinybar_layout_test PRIVATE tb_ui tb_ui_view tb_core lvgl m)
+target_compile_options(tinybar_layout_test PRIVATE -Wall -Wextra)
 enable_testing()
 add_test(NAME ui_touch COMMAND tinybar_touch_test)
+add_test(NAME ui_layout COMMAND tinybar_layout_test)

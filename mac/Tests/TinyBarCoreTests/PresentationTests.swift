@@ -394,7 +394,7 @@ final class PresentationTests: XCTestCase {
         XCTAssertEqual(NameRules.appNameProblem("Café")?.message, "TinyBar can\u{2019}t show \u{201C}é\u{201D}.")
         XCTAssertEqual(NameRules.appNameProblem("Zoë – Ünï")?.message,
                        "TinyBar can\u{2019}t show \u{201C}ë\u{201D}, \u{201C}–\u{201D} or \u{201C}Ü\u{201D}.")
-        XCTAssertEqual(NameRules.macNameProblem("Lisa\tMac")?.message, "TinyBar can\u{2019}t show U+0009.")
+        XCTAssertEqual(NameRules.macNameProblem("Alex\tMac")?.message, "TinyBar can\u{2019}t show U+0009.")
         XCTAssertEqual(NameProblem.empty.message, "Type a name.")
     }
 

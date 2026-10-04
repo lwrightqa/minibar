@@ -475,7 +475,7 @@ int main(int argc, char **argv)
     tb_settings_defaults(&s, "f412fa3f2a1c");
     tb_clock_t now = now_clock();
     s_setup_net = setup;
-    tb_app_init(&s_app, &s, !setup, &now);
+    tb_app_init(&s_app, &s, setup ? TB_WIFI_SETUP : TB_WIFI_OK, &now);
     s_wifi.state = setup ? NET_WIFI_SETUP : NET_WIFI_CONNECTED;
     s_wifi.sta_up = !setup;
     snprintf(s_wifi.ssid, sizeof s_wifi.ssid, "Office-WiFi");

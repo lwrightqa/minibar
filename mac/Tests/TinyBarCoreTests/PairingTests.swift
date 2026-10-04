@@ -201,7 +201,7 @@ final class PairingScenarios {
 
     func test_C22_codePairing() async throws {
         let factory = ScriptedWiFiFactory()
-        let flow = flow(factory, macName: "Lisa's Mac", explain: true)
+        let flow = flow(factory, macName: "Alex's Mac", explain: true)
         XCTAssertEqual(flow.step, .explainLocalNetwork, "macOS 15, the first time: explain before the prompt")
         XCTAssertEqual(discovery.starts, 0, "nothing browses before Continue")
 
@@ -218,7 +218,7 @@ final class PairingScenarios {
         XCTAssertEqual(pairingID, "d407580a9215e992")
         XCTAssertEqual(expiresAt, clock.now().addingTimeInterval(120))
         XCTAssertEqual(factory.log.get().last,
-                       #"pair/start {"client":"6F1C2A9E-5B7D-4E0A-9C3B-2D8F1A7E4B60","kind":"mac","name":"Lisa's Mac","scope":"call"}"#)
+                       #"pair/start {"client":"6F1C2A9E-5B7D-4E0A-9C3B-2D8F1A7E4B60","kind":"mac","name":"Alex's Mac","scope":"call"}"#)
 
         await flow.submit(code: "482 91")   // not six digits yet: nothing happens
         XCTAssertEqual(factory.log.get().count, 1)

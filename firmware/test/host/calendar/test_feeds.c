@@ -20,8 +20,8 @@ static void check_week(const feed_result_t *r)
     static const struct { int mo, d, h, mi, eh, emi; const char *title; } want[] = {
         {10, 5, 16, 0, 16, 30, "London sync"},          /* 17:00 London (BST) = 9:00 */
         {10, 5, 16, 30, 16, 45, "Daily standup"},       /* 9:30 */
-        {10, 5, 17, 0, 17, 30, "1:1 Sam / Lisa"},       /* 10:00, the new half of a split series */
-        {10, 5, 20, 0, 20, 30, "1:1 Priya / Lisa (moved)"},    /* 11:00 moved to 13:00 */
+        {10, 5, 17, 0, 17, 30, "1:1 Sam / Alex"},       /* 10:00, the new half of a split series */
+        {10, 5, 20, 0, 20, 30, "1:1 Priya / Alex (moved)"},    /* 11:00 moved to 13:00 */
         {10, 6, 6, 30, 7, 30, "Release watch"},         /* 23:30 to 0:30, across midnight */
         {10, 6, 16, 0, 17, 0, "Monthly all-hands"},     /* first Tuesday, 9:00 */
         {10, 6, 18, 30, 19, 0, "Caf\xC3\xA9 ? sync"},   /* the coffee cup isn't in the fonts */
@@ -50,7 +50,7 @@ TB_TEST(google_week_reads_the_two_days)
     TB_TRUE(!fx_find(&r, "Offsite planning"));      /* all day */
     TB_TRUE(!fx_find(&r, "Vendor demo"));           /* declined by you */
     TB_TRUE(!fx_find(&r, "Staff meeting"));         /* moved out to Friday */
-    TB_TRUE(!fx_find(&r, "1:1 Priya / Lisa"));      /* the master's Monday instance is replaced */
+    TB_TRUE(!fx_find(&r, "1:1 Priya / Alex"));      /* the master's Monday instance is replaced */
     TB_TRUE(!fx_find(&r, "Onboarding"));            /* COUNT=5 ended last week */
     TB_TRUE(!fx_find(&r, "Quarterly planning"));    /* Thursday is outside the window */
     TB_EQ_INT(fx_count(&r, "Daily standup"), 1);    /* Tuesday's is an EXDATE */
@@ -60,7 +60,7 @@ TB_TEST(google_week_details)
 {
     feed_result_t r;
     fx_run_file("google_week.ics", 2026, 10, 5, SELF_EMAIL, &r);
-    const tb_meeting_t *p = fx_find(&r, "1:1 Priya / Lisa (moved)");
+    const tb_meeting_t *p = fx_find(&r, "1:1 Priya / Alex (moved)");
     TB_TRUE(p != NULL);
     if (p) {
         TB_EQ_STR(p->location, "Priya's desk");
@@ -107,7 +107,7 @@ TB_TEST(google_week_without_owner_email_keeps_declined)
     fx_run_file("google_week.ics", 2026, 10, 5, SELF_EMAIL, &r);
     TB_TRUE(fx_find(&r, "Daily standup") != NULL);
     /* the owner's address matches in any case */
-    fx_run_file("google_week.ics", 2026, 10, 5, "LWright@Example.COM", &r);
+    fx_run_file("google_week.ics", 2026, 10, 5, "Sam.Lee@Example.COM", &r);
     TB_EQ_INT(r.n, 9);
 }
 
@@ -130,7 +130,7 @@ TB_TEST(google_week_next_days)
     /* the next Monday: the 1:1 is back at 11:00, the staff meeting at 14:00 */
     fx_run_file("google_week.ics", 2026, 10, 12, SELF_EMAIL, &r);
     TB_TRUE(fx_at(&r, fx_utc(2026, 10, 12, 18, 0)) != NULL);
-    TB_TRUE(fx_find(&r, "1:1 Priya / Lisa") != NULL);
+    TB_TRUE(fx_find(&r, "1:1 Priya / Alex") != NULL);
     TB_TRUE(fx_find(&r, "Staff meeting") != NULL);
     TB_TRUE(fx_find(&r, "Team sync") != NULL);  /* Tuesday 10/13 is a normal one */
 }
@@ -153,7 +153,7 @@ TB_TEST(google_week_now_next_left)
     const tb_meeting_t *cur = cal_today_current(r.m, r.n, t);
     TB_EQ_STR(cur ? cur->title : NULL, "Daily standup");
     nx = cal_today_next(r.m, r.n, t, &la);
-    TB_EQ_STR(nx ? nx->title : NULL, "1:1 Sam / Lisa");
+    TB_EQ_STR(nx ? nx->title : NULL, "1:1 Sam / Alex");
     TB_EQ_INT(cal_today_left(r.m, r.n, t, &la), 4);
     /* 23:45: in the release watch, nothing after it today */
     t = fx_utc(2026, 10, 6, 6, 45);

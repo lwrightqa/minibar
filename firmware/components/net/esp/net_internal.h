@@ -20,6 +20,8 @@ esp_err_t net_wifi_init(void);
 /* Station with the saved credentials, or the setup network when there are none. */
 void net_wifi_start(void);
 bool net_wifi_have_creds(void);
+/* How the bar starts (tb_app_init): OFFLINE when Skip was the last choice, OK with a saved network, else SETUP. */
+tb_wifi_mode_t net_wifi_start_mode(void);
 void net_wifi_setup_begin(void);
 void net_wifi_setup_skip(void);
 void net_wifi_setup_done(void);

@@ -252,7 +252,7 @@ TB_TEST(scenario_first_boot_is_the_clock)
     bench_t *b = bench_new_opts(true, false);
     tb_settings_t s;
     tb_settings_defaults(&s, "f412fa3f2a1c");
-    tb_app_init(&b->a, &s, true, &b->now);
+    tb_app_init(&b->a, &s, TB_WIFI_OK, &b->now);
     TB_EQ_INT(b->a.idx, TB_ST_CLOCK);
     TB_EQ_INT(b->a.last_status, TB_ST_AVAILABLE);
     bench_run(b, TB_BOOT_SPLASH_MS + 60);

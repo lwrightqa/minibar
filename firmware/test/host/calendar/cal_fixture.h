@@ -8,7 +8,7 @@
 #include "tb_test.h"
 
 #define LA_POSIX "PST8PDT,M3.2.0,M11.1.0"
-#define SELF_EMAIL "lwright@example.com"
+#define SELF_EMAIL "sam.lee@example.com"
 
 typedef struct {
     tb_meeting_t m[CAL_CANDIDATES_MAX];

@@ -134,14 +134,14 @@ final class ReviewFixTests: XCTestCase {
     }
 
     func test_protectedFolders() {
-        let home = "/Users/lisa"
-        XCTAssertTrue(AppPaths.isInProtectedFolder("/Users/lisa/Downloads/Zoom.app", home: home))
-        XCTAssertTrue(AppPaths.isInProtectedFolder("/Users/lisa/Desktop/Build/MyApp.app", home: home + "/"))
-        XCTAssertTrue(AppPaths.isInProtectedFolder("/Users/lisa/Library/Mobile Documents/com~apple~CloudDocs/A.app", home: home))
+        let home = "/Users/alex"
+        XCTAssertTrue(AppPaths.isInProtectedFolder("/Users/alex/Downloads/Zoom.app", home: home))
+        XCTAssertTrue(AppPaths.isInProtectedFolder("/Users/alex/Desktop/Build/MyApp.app", home: home + "/"))
+        XCTAssertTrue(AppPaths.isInProtectedFolder("/Users/alex/Library/Mobile Documents/com~apple~CloudDocs/A.app", home: home))
         XCTAssertTrue(AppPaths.isInProtectedFolder("/Volumes/Work/Tools/A.app", home: home))
         XCTAssertFalse(AppPaths.isInProtectedFolder("/Applications/Slack.app", home: home))
-        XCTAssertFalse(AppPaths.isInProtectedFolder("/Users/lisa/Applications/Slack.app", home: home))
-        XCTAssertFalse(AppPaths.isInProtectedFolder("/Users/lisa/DownloadsExtra/A.app", home: home))
+        XCTAssertFalse(AppPaths.isInProtectedFolder("/Users/alex/Applications/Slack.app", home: home))
+        XCTAssertFalse(AppPaths.isInProtectedFolder("/Users/alex/DownloadsExtra/A.app", home: home))
     }
 
     // MARK: - The real clock

@@ -230,9 +230,9 @@ TB_TEST(remote_settings_misc_toasts)
     TB_EQ_STR(b->a.toast, "Chime on");
     memset(&p, 0, sizeof p);
     p.has_name = true;
-    strcpy(p.v.device.name, "Lisa's bar");
+    strcpy(p.v.device.name, "Alex's bar");
     tb_app_remote_settings(&b->a, &p, NULL, &b->now);
-    TB_EQ_STR(b->a.set.device.name, "Lisa's bar");
+    TB_EQ_STR(b->a.set.device.name, "Alex's bar");
     memset(&p, 0, sizeof p);
     p.has_brightness = true;
     p.v.display.brightness = 40;
@@ -241,7 +241,7 @@ TB_TEST(remote_settings_misc_toasts)
     tb_app_remote_settings(&b->a, &p, NULL, &b->now);
     bench_drain(b);
     TB_EQ_INT(fx_count(b, TB_FX_BACKLIGHT), 0);          /* dark stays dark; the new level comes with the wake */
-    TB_EQ_STR(b->a.pending_toast, "Brightness 40%");
+    TB_EQ_STR(b->a.pending_toast, "Light 40%");
     pwr_press(b);
     TB_EQ_INT(fx_last(b, TB_FX_BACKLIGHT), 40);
 }

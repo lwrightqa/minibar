@@ -31,7 +31,7 @@ static const char *TAG = "board.imu";
 #define QMI_RESET       0x60
 #define QMI_ID          0x05
 
-#define IMU_TASK_STACK  3072
+#define IMU_TASK_STACK  4096    /* logs on flips and read errors (the protocol-safe logger adds about 300 B) */
 #define IMU_TASK_PRIO   3
 #define IMU_TASK_CORE   0
 

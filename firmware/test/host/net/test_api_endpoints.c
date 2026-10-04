@@ -481,16 +481,16 @@ TB_TEST(settings_get_and_patch)
     nf_free(&r);
     TB_TRUE(toast_has("Ticking on"));
     r = nf_http("PATCH", "/api/v1/settings", "{\"pomodoro\": {\"focus_min\": 50}, \"display\": {\"brightness\": 100}, "
-                "\"device\": {\"name\": \"Lisa’s bar\", \"time_zone\": \"Europe/Berlin\"}}", T);
+                "\"device\": {\"name\": \"Alex’s bar\", \"time_zone\": \"Europe/Berlin\"}}", T);
     TB_EQ_INT(r.status, 200);
     TB_EQ_INT(nf_num(r.j, "settings.pomodoro.focus_min"), 50);
     TB_EQ_INT(nf_num(r.j, "settings.display.brightness"), 100);
-    TB_EQ_STR(nf_str(r.j, "settings.device.name"), "Lisa's bar");
+    TB_EQ_STR(nf_str(r.j, "settings.device.name"), "Alex's bar");
     TB_EQ_STR(nf_str(r.j, "settings.device.time_zone"), "Europe/Berlin");
     nf_free(&r);
-    TB_EQ_STR(nf_app.set.device.name, "Lisa's bar");
+    TB_EQ_STR(nf_app.set.device.name, "Alex's bar");
     r = nf_http("GET", "/api/v1/info", NULL, NULL);
-    TB_EQ_STR(nf_str(r.j, "name"), "Lisa's bar");
+    TB_EQ_STR(nf_str(r.j, "name"), "Alex's bar");
     nf_free(&r);
 }
 
@@ -940,14 +940,14 @@ TB_TEST(setup_networks_and_state)
 TB_TEST(setup_wifi_join)
 {
     in_setup_mode();
-    nf_resp_t r = setup_req("POST", "/api/v1/setup/wifi", "{\"ssid\": \"Office-Corp\", \"username\": \"lwright\", "
+    nf_resp_t r = setup_req("POST", "/api/v1/setup/wifi", "{\"ssid\": \"Office-Corp\", \"username\": \"sam.lee\", "
                             "\"password\": \"correct horse battery staple\", \"calendar_url\": null, \"time_zone\": \"America/Los_Angeles\"}");
     TB_EQ_INT(r.status, 202);
     TB_EQ_STR(nf_str(r.j, "state"), "connecting");
     nf_free(&r);
     TB_EQ_INT(fake_join_calls, 1);
     TB_EQ_STR(fake_join_ssid, "Office-Corp");
-    TB_EQ_STR(fake_join_user, "lwright");
+    TB_EQ_STR(fake_join_user, "sam.lee");
     TB_EQ_STR(fake_join_pass, "correct horse battery staple");
     TB_EQ_STR(fake_join_cal, "");
     TB_EQ_INT(nf_app.wifi_mode, TB_WIFI_CONNECTING);
@@ -956,7 +956,7 @@ TB_TEST(setup_wifi_join)
     /* setting the bar up again (after a move) takes the phone's zone, unlike the Mac's hello (lead decision) */
     nf_app.wifi_mode = TB_WIFI_SETUP;
     nf_app.toast[0] = '\0';
-    r = setup_req("POST", "/api/v1/setup/wifi", "{\"ssid\": \"Office-Corp\", \"username\": \"lwright\", "
+    r = setup_req("POST", "/api/v1/setup/wifi", "{\"ssid\": \"Office-Corp\", \"username\": \"sam.lee\", "
                   "\"password\": \"correct horse battery staple\", \"time_zone\": \"Europe/Berlin\"}");
     TB_EQ_INT(r.status, 202);
     nf_free(&r);
@@ -964,7 +964,7 @@ TB_TEST(setup_wifi_join)
     TB_EQ_STR(nf_app.toast, "");    /* a zone change shows no toast */
     /* an unknown zone is ignored */
     nf_app.wifi_mode = TB_WIFI_SETUP;
-    r = setup_req("POST", "/api/v1/setup/wifi", "{\"ssid\": \"Office-Corp\", \"username\": \"lwright\", "
+    r = setup_req("POST", "/api/v1/setup/wifi", "{\"ssid\": \"Office-Corp\", \"username\": \"sam.lee\", "
                   "\"password\": \"correct horse battery staple\", \"time_zone\": \"Mars/Olympus\"}");
     TB_EQ_INT(r.status, 202);
     nf_free(&r);

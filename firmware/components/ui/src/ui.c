@@ -138,9 +138,25 @@ static struct {
 
 /* The panel shows RGB565, and LVGL turns a 24-bit color into it by dropping the low bits, which darkens every color
  * and tints the dark ones (#0E1013 would land on #081010). Each palette color is moved to the 565 value nearest to it
- * first, so dropping the low bits gives the nearest color the panel can show. */
+ * first, so dropping the low bits gives the nearest color the panel can show.
+ *
+ * Rounding each channel on its own can move a neutral or dark color's hue, though. Four palette colors land visibly
+ * off that way (CIEDE2000 2.7 to 4.8): tiles and toasts would turn teal, muted text cyan. For those, the 565 value
+ * that's perceptually nearest (among the 8 floor/ceil neighbors, chosen offline) is used instead; each is within 1.6. */
+static const struct { uint32_t in, out; } NEAREST_565[] = {
+    {0x1C1F24, 0x181C21},   /* tiles and toasts: 565 (3,7,4) = 0x18E4, not the teal (3,8,4) */
+    {0xDFE5EA, 0xDEE3E7},   /* muted text: (27,56,28) = 0xDF1C, not the cyan (27,57,28) */
+    {0x545C65, 0x525963},   /* the Away field: (10,22,12) = 0x52CC */
+    {0x2A2E36, 0x293039},   /* the hold screen's track: (5,12,7) = 0x2987 */
+};
+
 static lv_color_t rgb(uint32_t hex)
 {
+    for (size_t i = 0; i < sizeof NEAREST_565 / sizeof NEAREST_565[0]; i++)
+        if (NEAREST_565[i].in == hex) {
+            uint32_t o = NEAREST_565[i].out;   /* already on the 565 grid: dropping the low bits keeps it */
+            return lv_color_make((uint8_t)(o >> 16), (uint8_t)(o >> 8), (uint8_t)o);
+        }
     uint32_t r = (hex >> 16) & 0xFF, g = (hex >> 8) & 0xFF, b = hex & 0xFF;
     uint32_t r5 = (r * 31 + 127) / 255, g6 = (g * 63 + 127) / 255, b5 = (b * 31 + 127) / 255;
     return lv_color_make((uint8_t)(r5 << 3 | r5 >> 2), (uint8_t)(g6 << 2 | g6 >> 4), (uint8_t)(b5 << 3 | b5 >> 2));
@@ -309,6 +325,17 @@ static void put_caps(lv_obj_t *l, const char *s, int32_t x, int32_t baseline, in
     char up[256];
     ui_text_upper(up, sizeof up, s);
     put_line(l, up, x, baseline, max_w);
+}
+
+/* lv_color_darken() on the 24-bit spec color, rounded (the spec's track colors), before the panel's 565 rounding.
+ * Darkening the already-rounded color and letting LVGL truncate lands one red step low (Focus #6A3808, not #723A08). */
+static uint32_t darken24(uint32_t c, uint32_t lvl)
+{
+    uint32_t r = (c >> 16) & 0xFF, g = (c >> 8) & 0xFF, b = c & 0xFF;
+    r = (r * (255 - lvl) + 127) / 255;
+    g = (g * (255 - lvl) + 127) / 255;
+    b = (b * (255 - lvl) + 127) / 255;
+    return r << 16 | g << 8 | b;
 }
 
 static lv_color_t status_color(tb_color_key_t k)
@@ -615,10 +642,12 @@ static void put_side(const ui_view_t *v)
     if (!v->tomatoes) {
         set_font(U.value, ui_font(v->value_small ? UI_FONT_VALUE_28 : UI_FONT_VALUE_46));
         int32_t ampm_w = v->value_ampm[0] ? VALUE_AMPM_GAP + text_w(ui_font(UI_FONT_AMPM_17), v->value_ampm, 0) : 0;
-        put_line(U.value, v->value, x0, UI_BASE_VALUE, w - ampm_w);
+        /* word values (28 px) sit a pixel higher, as the mock-up draws them (.ctx-value.small) */
+        int32_t base = v->value_small ? UI_BASE_VALUE_WORD : UI_BASE_VALUE;
+        put_line(U.value, v->value, x0, base, w - ampm_w);
         if (v->value_ampm[0]) {
             set_text(U.value_ampm, v->value_ampm);
-            at_base(U.value_ampm, x0 + text_w(font_of(U.value), lv_label_get_text(U.value), 0) + VALUE_AMPM_GAP, UI_BASE_VALUE);
+            at_base(U.value_ampm, x0 + text_w(font_of(U.value), lv_label_get_text(U.value), 0) + VALUE_AMPM_GAP, base);
         }
     }
     for (int i = 0; i < TB_POMO_MAX_ROUNDS; i++) {
@@ -700,6 +729,9 @@ static void put_view(const ui_view_t *v, tb_ms_t now)
     }
 
     const int32_t x = UI_MAIN_TEXT_X;
+    /* The sub line's font first: put_line() measures and places it with the font it holds, and the QR screen leaves
+     * the 14 px foot font on it (the QR case sets that again below). */
+    if (v->layout != UI_LAYOUT_SETUP_QR) set_font(U.sub, ui_font(UI_FONT_SUB_19));
     switch (v->layout) {
     case UI_LAYOUT_STATUS:
         put_kicker(v, x, UI_MAIN_TEXT_W);
@@ -783,12 +815,11 @@ static void put_view(const ui_view_t *v, tb_ms_t now)
     }
     }
     apply_main();
-    if (v->layout != UI_LAYOUT_SETUP_QR) set_font(U.sub, ui_font(UI_FONT_SUB_19));
 
     /* progress: 6 px along the bottom, a darker shade of the status color with a white fill */
     show(U.bar, v->bar_permille >= 0);
     if (v->bar_permille >= 0) {
-        set_bg(U.bar, lv_color_darken(sc, UI_PROGRESS_DARKEN));
+        set_bg(U.bar, rgb(darken24(UI_STATUS_COLOR[v->key < TB_KEY_COUNT ? v->key : TB_KEY_CLOCK], UI_PROGRESS_DARKEN)));
         set_size(U.bar_fill, (int32_t)v->bar_permille * UI_W / 1000, UI_PROGRESS_H);
     }
 }
@@ -798,8 +829,14 @@ static void put_view(const ui_view_t *v, tb_ms_t now)
 static void put_menu(const tb_menu_t *m)
 {
     U.n_tiles = m->n;
-    float w = (UI_W - 2 * MENU_PAD - (m->n - 1) * MENU_GAP) / (m->n ? m->n : 1);
+    /* Columns: the tiles share the row equally, or (the Wi-Fi menu) sit on the quick menu's five columns, where a wide
+     * tile spans two (#menu.five, .tile.wide). */
+    int cols = 0;
+    for (int i = 0; i < m->n; i++) cols += m->tiles[i].wide ? 2 : 1;
+    if (m->five) cols = TB_MENU_MAX_TILES;
+    float w = (UI_W - 2 * MENU_PAD - (cols - 1) * MENU_GAP) / (cols ? cols : 1);
     const int32_t y0 = (int32_t)(MENU_PAD + .5f), y1 = (int32_t)(UI_H - MENU_PAD + .5f);
+    int col = 0;
     for (int i = 0; i < TB_MENU_MAX_TILES; i++) {
         tile_t *t = &U.tiles[i];
         bool on = i < m->n;
@@ -809,26 +846,31 @@ static void put_menu(const tb_menu_t *m)
         show(t->foot, on);
         if (!on) continue;
         const tb_tile_t *d = &m->tiles[i];
-        float fx = MENU_PAD + i * (w + MENU_GAP);
-        int32_t x0 = (int32_t)(fx + .5f), x1 = (int32_t)(fx + w + .5f);
+        int span = d->wide ? 2 : 1;
+        float fx = MENU_PAD + col * (w + MENU_GAP);
+        float tile_w = span * w + (span - 1) * MENU_GAP;
+        col += span;
+        int32_t x0 = (int32_t)(fx + .5f), x1 = (int32_t)(fx + tile_w + .5f);
         set_pos(t->box, x0, y0);
         set_size(t->box, x1 - x0, y1 - y0);
         U.tile_area[i] = (lv_area_t){x0, y0, x1 - 1, y1 - 1};
-        bool done = d->style == TB_TILE_DONE, info = d->style == TB_TILE_INFO;
-        /* A read-only tile (Network) has the tile's fill but no edge: only tiles that do something have one. */
-        if (lv_obj_get_style_border_width(t->box, 0) != (info ? 0 : TILE_BORDER))
-            lv_obj_set_style_border_width(t->box, info ? 0 : TILE_BORDER, 0);
-        lv_color_t bg = rgb(done ? UI_COLOR_TILE_DONE : UI_COLOR_TILE);
+        bool done = d->style == TB_TILE_DONE, info = d->style == TB_TILE_INFO, danger = d->style == TB_TILE_DANGER;
+        /* A read-only tile (Network) has the tile's fill but no edge, and so does Forget all's red: only tiles that do
+         * something on the tile's own fill have one. */
+        int32_t border = info || danger ? 0 : TILE_BORDER;
+        if (lv_obj_get_style_border_width(t->box, 0) != border) lv_obj_set_style_border_width(t->box, border, 0);
+        lv_color_t bg = danger ? status_color(TB_KEY_BUSY) : rgb(done ? UI_COLOR_TILE_DONE : UI_COLOR_TILE);
         set_bg(t->box, bg);
         /* the mock-up's 1.6 px inset edge, drawn as 2 px at 80% over the tile's own color */
         lv_color_t edge = lv_color_mix(rgb(C_TILE_EDGE_INK), bg, 204);
         if (!lv_color_eq(lv_obj_get_style_border_color(t->box, 0), edge)) lv_obj_set_style_border_color(t->box, edge, 0);
-        lv_color_t small = rgb(done ? UI_COLOR_TILE_DONE_TEXT : UI_COLOR_MUTED);
+        /* Forget all: white label, value and foot on Busy red (5.38:1) */
+        lv_color_t small = rgb(danger ? UI_COLOR_TEXT : done ? UI_COLOR_TILE_DONE_TEXT : UI_COLOR_MUTED);
         set_color(t->label, small);
         set_color(t->foot, small);
         set_color(t->value, rgb(done ? C_DONE_TEXT : UI_COLOR_TEXT));
 
-        int32_t tx = (int32_t)(fx + TILE_PAD + .5f), tw = (int32_t)(w - 2 * TILE_PAD);
+        int32_t tx = (int32_t)(fx + TILE_PAD + .5f), tw = (int32_t)(tile_w - 2 * TILE_PAD);
         put_caps(t->label, d->label, tx, TILE_BASE_LABEL, tw);
         /* The value: one line, cut with "…"; "Show again" wraps onto two (span.two). */
         if (d->value_two_lines) {
@@ -839,14 +881,43 @@ static void put_menu(const tb_menu_t *m)
             set_long(t->value, LV_LABEL_LONG_MODE_CLIP, LV_SIZE_CONTENT);
             put_line(t->value, d->value, tx, TILE_BASE_VALUE, tw);
         }
-        /* The foot wraps and sits at the bottom of the tile, so "synced 2m ago" takes two lines upward. */
-        set_long(t->foot, LV_LABEL_LONG_MODE_WRAP, tw);
-        set_text(t->foot, d->foot);
+        /* The foot sits at the bottom of the tile, so "synced 2m ago" takes two lines upward. It wraps (a "\n" is the
+         * mock-up's <br>); foot_lines: each line is its own, cut with "…" (Network's name and address); foot_clamp2:
+         * at most two lines, the second cut with "…" (Forget all's device names). */
+        const lv_font_t *ff = font_of(t->foot);
+        const int32_t line_space = TILE_FOOT_PITCH - ff->line_height;
+        char foot[sizeof d->foot + 16];
+        if (d->foot_lines) {
+            char line[sizeof d->foot], cut[sizeof d->foot + 4];
+            foot[0] = '\0';
+            const char *p = d->foot;
+            while (*p) {
+                const char *nl = strchr(p, '\n');
+                size_t n = nl ? (size_t)(nl - p) : strlen(p);
+                if (n >= sizeof line) n = sizeof line - 1;
+                memcpy(line, p, n);
+                line[n] = '\0';
+                ellipsize(cut, sizeof cut, line, ff, 0, tw);
+                if (foot[0]) strncat(foot, "\n", sizeof foot - strlen(foot) - 1);
+                strncat(foot, cut, sizeof foot - strlen(foot) - 1);
+                p = nl ? nl + 1 : p + n;
+            }
+        } else {
+            tb_strlcpy(foot, d->foot, sizeof foot);
+        }
         lv_point_t sz;
-        lv_text_get_size(&sz, d->foot, font_of(t->foot), 0, TILE_FOOT_PITCH - font_of(t->foot)->line_height, tw,
-                         LV_TEXT_FLAG_NONE);
-        int lines = (sz.y + TILE_FOOT_PITCH - font_of(t->foot)->line_height) / TILE_FOOT_PITCH;
+        lv_text_get_size(&sz, foot, ff, 0, line_space, tw, LV_TEXT_FLAG_NONE);
+        int lines = (sz.y + line_space) / TILE_FOOT_PITCH;
         if (lines < 1) lines = 1;
+        if (d->foot_clamp2 && lines > 2) {
+            lines = 2;
+            if (lv_label_get_long_mode(t->foot) != LV_LABEL_LONG_MODE_DOTS) lv_label_set_long_mode(t->foot, LV_LABEL_LONG_MODE_DOTS);
+            set_size(t->foot, tw, ff->line_height + TILE_FOOT_PITCH);
+        } else {
+            set_long(t->foot, LV_LABEL_LONG_MODE_WRAP, tw);
+            if (lv_obj_get_style_height(t->foot, 0) != LV_SIZE_CONTENT) lv_obj_set_height(t->foot, LV_SIZE_CONTENT);
+        }
+        set_text(t->foot, foot);
         at_base(t->foot, tx, TILE_BASE_FOOT - (lines - 1) * TILE_FOOT_PITCH);
     }
 }

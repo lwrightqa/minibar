@@ -12,10 +12,16 @@ uint32_t nf_ip;
 const char *nf_host;
 char nf_last_line[NET_REPLY_MAX + 16];
 
+/* Core's effects, handled as main/app_task.c does for the ones that reach net. */
 static void drain(void)
 {
     tb_effect_t fx[TB_EFFECTS_MAX];
-    while (tb_app_take_effects(&nf_app, fx, TB_EFFECTS_MAX) > 0) {
+    int n;
+    while ((n = tb_app_take_effects(&nf_app, fx, TB_EFFECTS_MAX)) > 0) {
+        for (int i = 0; i < n; i++) {
+            if (fx[i].kind == TB_FX_PAIRING_CANCELED) net_api_pairing_canceled(&fake_now);
+            else if (fx[i].kind == TB_FX_FORGET_DEVICES) net_api_forget_devices(&fake_now);
+        }
     }
 }
 
@@ -42,7 +48,7 @@ void nf_setup(void)
     fake_tokens_clear();
     tb_settings_t s;
     tb_settings_defaults(&s, "f412fa3f2a1c");
-    tb_app_init(&nf_app, &s, true, &fake_now);
+    tb_app_init(&nf_app, &s, TB_WIFI_OK, &fake_now);
     net_api_bind(&nf_app);
     net_api_set_auth(true);
     net_api_init();

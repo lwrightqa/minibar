@@ -516,7 +516,7 @@ TB_TEST(http_busy_while_starting_up)
     net_api_set_auth(false);
     /* a fresh boot: the splash is still up */
     tb_settings_t s = nf_app.set;
-    tb_app_init(&nf_app, &s, true, &fake_now);
+    tb_app_init(&nf_app, &s, TB_WIFI_OK, &fake_now);
     net_req_t req = {.via = NET_VIA_HTTP, .method = "POST", .path = "/api/v1/status", .host = "tinybar.local", .peer_ip = 1,
                      .body = "{\"status\": \"busy\"}", .body_len = 18, .content_type_json = true};
     net_resp_t resp;

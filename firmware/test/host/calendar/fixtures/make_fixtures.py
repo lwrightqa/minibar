@@ -22,7 +22,7 @@ Run it from anywhere; it writes next to itself. The expected values live in test
 import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SELF = 'lwright@example.com'
+SELF = 'sam.lee@example.com'
 
 
 def fold(line, width=75):
@@ -154,9 +154,9 @@ def google_week():
                 rrule='FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR', exdates=['20261006T093000'], description=MEET)
     # 2a. The override of the Monday 1:1 comes first in the file (Google doesn't promise an order).
     L += gevent('2p3ccf1u6v9rtlb4v5kq5o0g7d@google.com', '20261005T130000', '20261005T133000',
-                '1:1 Priya / Lisa (moved)', rid='20261005T110000', location='Priya\'s desk')
+                '1:1 Priya / Alex (moved)', rid='20261005T110000', location='Priya\'s desk')
     # 2b. Its master: Mondays 11:00 since March 2 (before the March DST change).
-    L += gevent('2p3ccf1u6v9rtlb4v5kq5o0g7d@google.com', '20260302T110000', '20260302T113000', '1:1 Priya / Lisa',
+    L += gevent('2p3ccf1u6v9rtlb4v5kq5o0g7d@google.com', '20260302T110000', '20260302T113000', '1:1 Priya / Alex',
                 rrule='FREQ=WEEKLY;BYDAY=MO', location='Priya\'s desk')
     # 3. Tuesday team sync; the 10/6 instance is cancelled by an override.
     L += gevent('5a8e1c8d0kq1n3h2tbu4fh0g3s@google.com', '20260106T100000', '20260106T110000', 'Team sync',
@@ -209,10 +209,10 @@ def google_week():
     L += gevent('o1n2b3o4a5r6d7i8n9g0c1o2u3@google.com', '20260928T080000', '20260928T083000', 'Onboarding',
                 rrule='FREQ=DAILY;COUNT=5')
     # 15. A series split with "this and following": the old one ends with UNTIL, the new one starts 10/5.
-    L += gevent('s1a2m3o4n5e6o7n8o9n0e1x2y3@google.com', '20260608T100000', '20260608T103000', '1:1 Sam / Lisa',
+    L += gevent('s1a2m3o4n5e6o7n8o9n0e1x2y3@google.com', '20260608T100000', '20260608T103000', '1:1 Sam / Alex',
                 rrule='FREQ=WEEKLY;UNTIL=20260928T165959Z;BYDAY=MO', organizer=SELF)
     L += gevent('s1a2m3o4n5e6o7n8o9n0e1x2y3_R20261005T170000@google.com', '20261005T100000', '20261005T103000',
-                '1:1 Sam / Lisa', rrule='FREQ=WEEKLY;BYDAY=MO', organizer=SELF)
+                '1:1 Sam / Alex', rrule='FREQ=WEEKLY;BYDAY=MO', organizer=SELF)
     L.append('END:VCALENDAR')
     write('google_week.ics', L)
 

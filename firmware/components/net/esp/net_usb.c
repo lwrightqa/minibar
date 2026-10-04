@@ -23,6 +23,7 @@
 #include "esp_log.h"
 #include "esp_task_wdt.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/idf_additions.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 
@@ -200,7 +201,10 @@ void net_usb_start(void)
     s_out = heap_caps_malloc(OUT_CAP, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     if (!s_out) s_out = malloc(OUT_CAP);
     if (!s_out) return;
-    if (xTaskCreatePinnedToCore(usb_rx_task, "usb_rx", 4096, NULL, 4, NULL, 0) != pdPASS) return;
+    /* The reader's stack is in PSRAM: it only reads the port and hands lines to the app task, never writes flash. */
+    if (xTaskCreatePinnedToCoreWithCaps(usb_rx_task, "usb_rx", 4096, NULL, 4, NULL, 0, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT) != pdPASS &&
+        xTaskCreatePinnedToCore(usb_rx_task, "usb_rx", 4096, NULL, 4, NULL, 0) != pdPASS)
+        return;
     s_started = true;
     char ready[160];
     net_api_usb_ready_line(ready, sizeof ready);

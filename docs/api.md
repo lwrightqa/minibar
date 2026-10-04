@@ -308,12 +308,14 @@ With `"cookie": true` the body has `"token": null` and the response carries `Set
 
 ### 4.8 On the bar
 
-These screens aren't in the mock-up yet; the UX designer needs to draw them (section 14). Proposed behavior:
+These screens are drawn in the mock-up's pairing round and built into the firmware (decisions.md "Pairing"; still **Proposed**, waiting for the user's OK). Proposed behavior:
 
-- **Pairing screen:** on a dark surface (#0E1013, like the menus), since it isn't a status. Kicker "PAIRING · MAC" (the client's name or kind), the code as the headline in tabular digits ("482 913"), sub line "Type this code on that device · tap to cancel", and in the info column "Code expires" with a countdown.
-- It **wakes a dark screen** (someone is pairing right now) and **replaces an open menu**. It waits for the power screens to finish. It never appears on the Wi-Fi setup screens.
-- **No dead ends:** a tap, swipe, hold or BOOT cancels it ("Pairing canceled"), and so does a PWR press, which also turns the screen off as usual. It also ends on success ("Paired · Mac"), after 2 minutes ("Pairing timed out"), or after 3 wrong codes ("Pairing canceled · wrong code").
-- **Forgetting devices on the bar:** the Wi-Fi menu (Network, Set up again, Back) gets a **Devices** tile, "3 paired · tap to forget all", which asks for a second tap to confirm ("Forget all · 3 devices"). The Remote lists each device with a Remove button (section 12). Neither affects USB.
+- **Pairing screen:** on a dark surface (#0E1013, like the menus), since it isn't a status. Kicker "PAIRING · MAC" (the client's name, or its kind's word when none was sent or it can't be drawn: "Mac", "Phone" for `remote`, "Script" for `automation`), the code as the headline in tabular digits ("482 913"), and a sub line that names the device: "Type it on your Mac · tap to cancel", "Type it on your phone · tap to cancel", otherwise "Type this code on that device · tap to cancel". In the info column, "Code expires in" over an m:ss countdown, with the bar's name ("TinyBar 2A1C") as the foot; the progress bar fills as the 2 minutes run out.
+- **The 2 minutes count from when the code appears on the screen.** It waits for the power screens to finish (the splash, Keep holding), and the countdown and `retry_after_s` wait with it. It never appears on the Wi-Fi setup screens, Connected included (`409 in_setup`).
+- It **wakes a dark screen** (someone is pairing right now), **replaces an open menu** and the toast, and **holds a ringing alarm**: the Pomodoro keeps waiting, and when pairing ends the waiting screen chimes and flashes once. A phase that ends while the code shows waits the same way. A change made underneath (a call, a meeting, the Remote) shows after the pairing's own confirmation.
+- **No dead ends:** a tap, swipe, hold or BOOT cancels it ("Pairing canceled"); a PWR press cancels it and turns the screen off as usual; a flip cancels it and does what a flip always does ("Pairing canceled · Focus started"). A touch that began before the code appeared is ignored. It also ends on success ("Paired · Mac"), after 2 minutes ("Pairing timed out"), after 3 wrong codes ("Pairing canceled · wrong code"), when Wi-Fi setup starts, and at Power off or Restart.
+- **USB pairing** (section 6.6) has no code screen. If another device's code is on the bar, that code stays up and valid, `info.pairing` stays `"showing"`, and "Paired · Mac · over USB" shows once that pairing ends.
+- **Forgetting devices on the bar:** the Wi-Fi menu is Network, **Devices**, Set up again, Back. Devices reads "3 paired" ("Full" at 10) and opens a confirmation: the paired devices' names, **Forget all** (a second, deliberate tap: one in its first 600 ms is ignored), and Keep, which goes back. With nothing paired the tile stays, reads "None" and is read-only. The Remote lists each device with a Remove button (section 12). Neither affects USB.
 
 ### 4.9 Rate limits
 

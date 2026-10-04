@@ -20,6 +20,7 @@
 #include <sys/time.h>
 #include <time.h>
 
+#include "esp_attr.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -40,7 +41,9 @@
 
 static const char *TAG = "app";
 
-tb_app_t g_app;
+/* The model lives in PSRAM (about 11 KB, most of it today's meetings): only the app task touches it, never while the
+ * flash cache is off, and internal RAM is the scarce one. */
+EXT_RAM_BSS_ATTR tb_app_t g_app;
 
 #define APP_CORE              1
 #define APP_PRIORITY          5
@@ -49,11 +52,14 @@ tb_app_t g_app;
 #define APP_EVENTS_PER_LOOP   16      /* events and router jobs per loop; the rest wait for the next one */
 #define APP_LVGL_LOCK_MS      1000
 #define APP_SLOW_LOOP_MS      250     /* log a loop slower than this (bring-up: LVGL, NVS or a router job) */
+#define APP_HEALTH_FIRST_MS   15000   /* the first health line, 15 s after start (Wi-Fi and mDNS are up by then) */
 #define APP_HEALTH_EVERY_MS   60000   /* heap, stack and bus figures in the log, for bring-up */
 #define CLOCK_VALID_AFTER     1735689600  /* 2025-01-01: same rule as net and calendar ("the clock was set") */
 
 static volatile bool s_clock_valid;
 static volatile bool s_net_ready;
+static bool s_health_now;           /* log the health line at the next loop (after the first calendar fetch) */
+static bool s_synced_once;
 
 /* Wi-Fi effects core asked for before net was up (in practice never: the splash outlasts net's start-up). */
 static tb_effect_kind_t s_deferred[4];
@@ -157,6 +163,11 @@ static void handle_event(const tb_event_t *ev)
     }
     case TB_EV_CAL_STATUS:
         tb_app_set_calendar(&g_app, ev->u.cal.saved, ev->u.cal.checking, ev->u.cal.last_sync, &now);
+        /* The first TLS fetch is the high-water mark for internal RAM: log the figures right after it. */
+        if (!s_synced_once && !ev->u.cal.checking && ev->u.cal.last_sync) {
+            s_synced_once = true;
+            s_health_now = true;
+        }
         break;
     case TB_EV_CAL_EVENT:
         tb_app_calendar_event(&g_app, (tb_cal_event_t)ev->u.i32, &now);
@@ -251,19 +262,60 @@ static void run_effects(void)
 
 /* ---------- bring-up figures ---------- */
 
+/* Every task we know of by name, TinyBar's and ESP-IDF's: the bytes of stack it has never used. A name that doesn't
+ * exist (mDNS before the first address, the setup DNS before setup) is left out. */
+static const char *const TASKS[] = {"app", "main", "net", "usb_rx", "dns", "httpd", "imu", "audio", "cal_sync",
+                                    "tiT", "sys_evt", "wifi", "esp_timer", "mdns", "Tmr Svc", "ipc0", "ipc1", "IDLE0",
+                                    "IDLE1"};
+
+static void log_stacks(void)
+{
+    char line[400];
+    int n = 0;
+    for (size_t i = 0; i < sizeof TASKS / sizeof TASKS[0] && n < (int)sizeof line - 32; i++) {
+        TaskHandle_t t = xTaskGetHandle(TASKS[i]);
+        if (t) n += snprintf(line + n, sizeof line - n, " %s %u", TASKS[i], (unsigned)uxTaskGetStackHighWaterMark(t));
+    }
+    ESP_LOGI(TAG, "stack left (bytes):%s", n ? line : " none found");
+}
+
 static void log_health(tb_ms_t now_ms)
 {
-    static tb_ms_t next;
-    if (now_ms < next) return;
+    static tb_ms_t next = APP_HEALTH_FIRST_MS;
+    if (now_ms < next && !s_health_now) return;
     next = now_ms + APP_HEALTH_EVERY_MS;
-    ESP_LOGI(TAG, "health: internal %u free (low %u, largest %u), PSRAM %u free, app stack %u left, bus dropped %u, "
-                  "effects dropped %u",
+    s_health_now = false;
+    uint32_t frames, avg_ms, max_ms;
+    board_display_stats(&frames, &avg_ms, &max_ms);
+    ESP_LOGI(TAG, "health: internal %u free (low %u, largest %u), PSRAM %u free, bus dropped %u, effects dropped %u, "
+                  "%lu frames (rotate + send: average %lu ms, slowest %lu ms lately)",
              (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
              (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL),
              (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
              (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
-             (unsigned)uxTaskGetStackHighWaterMark(NULL),
-             (unsigned)tb_bus_dropped(), (unsigned)g_app.fx_dropped);
+             (unsigned)tb_bus_dropped(), (unsigned)g_app.fx_dropped, (unsigned long)frames, (unsigned long)avg_ms,
+             (unsigned long)max_ms);
+    log_stacks();
+}
+
+/* The time a frame takes on the app task: LVGL's render plus the flush (rotate + send), averaged over the frames of
+ * each minute, at INFO so it shows in a normal log. The decision to keep LVGL out of IRAM rests on it. */
+static void note_frame_time(tb_ms_t handler_ms, uint32_t frames_before)
+{
+    static uint32_t n;
+    static tb_ms_t total, worst, next = APP_HEALTH_FIRST_MS;
+    if (board_display_frame_count() != frames_before) {
+        n++;
+        total += handler_ms;
+        if (handler_ms > worst) worst = handler_ms;
+    }
+    tb_ms_t now = esp_timer_get_time() / 1000;
+    if (now < next) return;
+    next = now + APP_HEALTH_EVERY_MS;
+    if (n) ESP_LOGI(TAG, "frame time (render + rotate + send): %lu frames, average %lld ms, slowest %lld ms",
+                    (unsigned long)n, (long long)(total / n), (long long)worst);
+    n = 0;
+    total = worst = 0;
 }
 
 /* ---------- the loop ---------- */
@@ -299,7 +351,10 @@ static void app_task(void *arg)
         if (board_display_lock(APP_LVGL_LOCK_MS)) {
             run_effects();
             ui_update(&g_app, &now);
+            uint32_t frames_before = board_display_frame_count();
+            tb_ms_t h0 = esp_timer_get_time() / 1000;
             next = lv_timer_handler();
+            note_frame_time(esp_timer_get_time() / 1000 - h0, frames_before);
             run_effects();      /* what this frame's touch samples asked for (a wake, a chime), without a loop's delay */
             board_display_unlock();
         } else {

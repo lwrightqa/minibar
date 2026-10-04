@@ -25,9 +25,9 @@ extern "C" {
 #endif
 
 /* Bring up QSPI (SPI3, 40 MHz, mode 3), reset the panel (EXIO5: high 30 ms, low 250 ms, high 30 ms), send the init
- * commands (0x11, 0x29), create the LVGL display with two full-frame RGB565 buffers and a rotation buffer in PSRAM
- * (3 x 215 KB) and a 64-line DMA buffer in internal RAM (21.5 KB), set the tick source, and set up the backlight PWM
- * (dark). flipped picks the rotation. Call lv_init() first (main does). If the panel itself fails, the display is
+ * commands (0x11, 0x29), create the LVGL display with one full-frame RGB565 buffer and a rotation buffer in PSRAM
+ * (2 x 215 KB) and a 64-line DMA buffer in internal RAM (21.5 KB), set the tick source, and set up the backlight PWM
+ * (dark). flipped picks the rotation (90 upright, 270 flipped; CONFIG_TINYBAR_LCD_TURN_180 swaps them). Call lv_init() first (main does). If the panel itself fails, the display is
  * still created (it draws nowhere, and the log says why) so the rest of the bar keeps working. Returns NULL only
  * when there's no memory. Takes about 0.6 s. */
 lv_display_t *board_display_init(bool flipped);
@@ -35,10 +35,17 @@ lv_display_t *board_display_init(bool flipped);
 /* Turn the layout 180 degrees (the flip): rotation 90 or 270. LVGL redraws the whole screen. App task only. */
 void board_display_set_flipped(bool flipped);
 
+/* Frames sent to the panel so far, their average rotate + send time, and the slowest since the last call (bring-up
+ * figures for the health log). App task only. */
+void board_display_stats(uint32_t *frames, uint32_t *avg_flush_ms, uint32_t *max_flush_ms);
+/* Frames sent so far (to tell whether an lv_timer_handler() call flushed one). */
+uint32_t board_display_frame_count(void);
+
 /* Backlight in percent, 0 = off (dark screen). Follows the mock-up's Light levels: percent -> its brightness factor
  * 0.45 + 0.55 p -> luminance -> LED current -> the inverted PWM on GPIO 42 (see brd_logic.h), with BL_EN (EXIO1) on
  * whenever percent > 0. Nothing lights until the first frame has reached the panel; then the last level asked for
- * applies (70% if none was). App task only. */
+ * applies (70% if none was). While it's 0, frames aren't sent to the panel; the first one after it comes back on is
+ * sent before the light. App task only. */
 void board_backlight_set(uint8_t percent);
 
 /* The touch controller on I2C_NUM_1 (GPIO 17/18, 0x3B) as an LVGL pointer input device for disp, read by polling.

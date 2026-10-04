@@ -427,7 +427,8 @@ static void wifi_view(ui_view_t *v, const tb_app_t *a)
         return;
     case TB_WIFI_CONNECTED:
         v->layout = UI_LAYOUT_SETUP_TEXT;
-        PUT(v->kicker, "Connected to %s", a->wifi_ssid);
+        /* The bar's own name first, so bars in one office can be told apart (pairing round, proposed). */
+        PUT(v->kicker, "%s " MID_DOT " Connected to %s", a->set.device.name, a->wifi_ssid);
         PUT(v->head, "%s", a->wifi_host[0] ? a->wifi_host : "tinybar.local");
         PUT(v->sub, "or %s " MID_DOT " open it on your phone for the Remote", a->wifi_ip);
         return;
@@ -440,8 +441,11 @@ static void wifi_view(ui_view_t *v, const tb_app_t *a)
     }
 }
 
-/* ---------- the pairing screen (api.md 4.8, proposed; not in the mock-up yet) ---------- */
+/* ---------- pairView() (api.md 4.8 and decisions.md "Pairing", proposed) ---------- */
 
+/* The Clock screen's dark surfaces, since it isn't a status. The kicker names who asked, the code is the 112 px
+ * headline in tabular digits, and the info column counts the 2 minutes down above this bar's own name, so in an office
+ * with several bars you can check it's the one you meant. The progress bar fills as the time runs out. */
 static void pairing_view(ui_view_t *v, const tb_app_t *a, const tb_clock_t *now)
 {
     sys_row(v, a, now, false);
@@ -452,9 +456,16 @@ static void pairing_view(ui_view_t *v, const tb_app_t *a, const tb_clock_t *now)
     else PUT(v->head, "%s", c);
     v->fit = UI_FIT_TIME;
     v->head_caps = true;
-    PUT(v->sub, "Type this code on that device " MID_DOT " tap to cancel");
+    if (a->pairing.kind == TB_PAIR_KIND_MAC) PUT(v->sub, "Type it on your Mac " MID_DOT " tap to cancel");
+    else if (a->pairing.kind == TB_PAIR_KIND_PHONE) PUT(v->sub, "Type it on your phone " MID_DOT " tap to cancel");
+    else PUT(v->sub, "Type this code on that device " MID_DOT " tap to cancel");
     tb_ms_t left = a->pairing.expires - now->mono;
-    side(v, "Code expires", mmss((int32_t)((left > 0 ? left : 0) + 999) / 1000).s, NULL, "", false);
+    if (left < 0) left = 0;
+    if (left > TB_PAIR_MS) left = TB_PAIR_MS;
+    /* Math.max(1, Math.ceil(left / 1000)): it reads 0:01 to the end */
+    int32_t secs = (int32_t)((left + 999) / 1000);
+    side(v, "Code expires in", mmss(secs < 1 ? 1 : secs).s, NULL, a->set.device.name, false);
+    v->bar_permille = (int16_t)((TB_PAIR_MS - left) * 1000 / TB_PAIR_MS);
 }
 
 /* ---------- render() ---------- */

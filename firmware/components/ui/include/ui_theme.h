@@ -55,6 +55,7 @@ extern const uint32_t UI_TINT_COLOR[TB_KEY_COUNT];
 #define UI_BASE_SYS          30         /* info column status row, level with the kicker */
 #define UI_BASE_LABEL        92
 #define UI_BASE_VALUE        130
+#define UI_BASE_VALUE_WORD   129        /* word values at 28 px ("Rest of day"): .ctx-value.small, top 102 */
 #define UI_BASE_FOOT         151        /* spec 152; level with the sub line, as in the spec */
 /* Headline: capitals centered on y 86 at every size. */
 #define UI_HEAD_CAP_CENTER_Y 86

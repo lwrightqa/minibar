@@ -49,7 +49,7 @@ bench_t *bench_new_opts(bool wifi_configured, bool skip_splash)
     b->now = (tb_clock_t){.mono = T0_MONO, .wall = T0_WALL, .valid = true};
     tb_settings_t s;
     tb_settings_defaults(&s, "f412fa3f2a1c");
-    tb_app_init(&b->a, &s, wifi_configured, &b->now);
+    tb_app_init(&b->a, &s, wifi_configured ? TB_WIFI_OK : TB_WIFI_SETUP, &b->now);
     tb_app_restore(&b->a, TB_ST_BUSY, TB_ST_BUSY, "", 0, 0, 0, tb_local_yyyymmdd(T0_WALL));
     if (wifi_configured) tb_app_wifi_link(&b->a, true, "10.0.4.42", "tinybar.local", &b->now);
     if (wifi_configured) tb_strlcpy_test(b->a.wifi_ssid, "Office-WiFi", sizeof(b->a.wifi_ssid));

@@ -46,21 +46,40 @@ cmake -S firmware/components/ui/host -B firmware/build-host-ui && cmake --build 
 firmware/build-host-ui/tinybar_snapshot out/snaps
 # the same scenes from docs/mockup.html (Playwright's Chromium, the real Barlow fonts, a fixed clock)
 NODE_PATH=$(npm root -g) node firmware/components/ui/tools/ref_scenes.js out/ref
-# side by side, with a difference map; prints the share of pixels that differ, worst first
+# side by side, with a difference map; prints the share of pixels that differ, worst first, and every text line
+# 1 px or more off the mock-up's baseline (exit status 1 if any)
 python3 firmware/components/ui/tools/compare.py out/ref out/snaps out/cmp
-# the touch path through LVGL's input device, straight and flipped
+# the touch path through LVGL's input device (straight and flipped), and the layout test: screens drawn one after
+# another as on the device (the sub line after the QR screen), and the longest real copy in each slot without "…"
 ctest --test-dir firmware/build-host-ui
 ```
 
-70 scenes: every status and its info-column variants, the Pomodoro (ready, running, paused, both breaks, both waiting
-screens, the pill on other screens), On a call (with and without an app name, a long name, during a meeting), In a
-meeting from the calendar (titles off and on, private, a long title), the set-aside glyphs and the Mac icon, the four
-Wi-Fi setup screens, every menu, toasts over a status, the clock, the setup screen and a menu, a cut title, the hold
-and Powering off screens, the flash, the splash, the dark screen, flipped, and the firmware's own screens (plain Away,
-the clock before it's set, the pairing screen). On 2026-10-04 every scene the mock-up can show matched it in layout,
-copy and color; the remaining differences are anti-aliasing at glyph edges, whole-pixel glyph advances (LVGL) against
-the browser's fractional ones (a line drifts by at most 2 to 4 px), RGB565 color depth, and the QR code's pattern
-(below). Under 8% of pixels differ in any scene, nearly all at glyph edges.
+79 scenes: every status and its info-column variants, the Pomodoro (ready, running, paused, both breaks, both waiting
+screens, the pill on other screens, a long day's foot and the longest paused kickers), On a call (with and without an
+app name, a long name, during a meeting), In a meeting from the calendar (titles off and on, private, a long title),
+the set-aside glyphs and the Mac icon, the four Wi-Fi setup screens, every menu (the Wi-Fi menu with 3 devices
+paired, none, and offline, and Forget all's confirmation), toasts over a status, the clock, the setup screen and a
+menu, a cut title, the hold and Powering off screens, the flash, the splash, the dark screen, flipped, the pairing
+screen (for a Mac, a phone, and a named Mac), and the firmware's own screens (plain Away, the clock before it's set,
+the quick menu with the Wi-Fi link down).
+
+The snapshot tool draws every scene in one process, one after another, as the device does; tools/compare.py misses
+a line drawn a few pixels off when it only counts pixels (a 4 px drop of the sub line was under 2%), so it also
+measures each text line's baseline in both. As of the 2026-10-04 review round (after the fixes below), 76 scenes are
+compared and every text line sits on the mock-up's baseline; the remaining differences are anti-aliasing at glyph
+edges, whole-pixel glyph advances (LVGL) against the browser's fractional ones, RGB565 color depth, and the QR code's
+pattern (below). Under 8% of pixels differ in any scene, nearly all at glyph edges.
+
+- **Small text runs up to 7 px wider than in the mock-up.** LVGL rounds every glyph's advance to a whole pixel, about
+  +0.16 px a character for Barlow: "PAUSED · SHORT BREAK · THEN FOCUS 3 OF 4" is 6 px wider, as are "turned off on the
+  Remote" and "Idle · 1 Pomodoro done today". Nothing that fits the mock-up is cut today (the layout test checks the
+  longest real copy in each slot), but copy within about 2% of a slot's width would get "…" on the bar and not in the
+  mock-up. If copy grows, bake 1.25 px instead of 1.5 into the kicker font's tracking.
+- **Fixed in the review round:** the sub line was laid out with the font the screen before left on it (4 px low and
+  not cut at the column's edge right after the QR screen); the Wi-Fi menu is the mock-up's five columns with Network
+  two wide; Forget all is its own three tiles; the pairing screen's label, foot, sub line and progress bar; the
+  Connected kicker names the bar; four palette colors that RGB565 rounding tinted; the Focus progress track; word
+  values at 129.
 
 The host tests (`test/host/ui`, in the lead's ctest) check every screen's copy word for word through the same scenes,
 the overlays, the redraw key, the flash curve and the capitals, that the tomato frames match the mock-up's pixel for
@@ -70,7 +89,12 @@ pixel, and that the fonts carry exactly the characters `tb_text_drawable()` acce
 
 - **Baselines follow the mock-up as drawn**, which is 1 px from the spec in four places: the sub line and the foot at
   151 (spec 152), the 78 px headline at 112 (113), the 62 px headline at 108 (107). The browser floors a fractional
-  half-leading. ARCHITECTURE.md 13.8 asked for a pick for the 62 px baseline: 108.
+  half-leading. ARCHITECTURE.md 13.8 asked for a pick for the 62 px baseline: 108. Word values (28 px) sit at 129, as
+  the mock-up draws .ctx-value.small. decisions.md's spec now states these (Proposed, 2026-10-04).
+- **Colors are rounded to the nearest RGB565 value channel by channel, except four** where that moves the hue
+  (CIEDE2000 2.7 to 4.8): tiles and toasts #1C1F24, muted text #DFE5EA, the Away field #545C65 and the hold track
+  #2A2E36 use the perceptually nearest 565 neighbor instead (each within 1.6). The progress track is darkened from the
+  24-bit spec color before rounding (lv_color_darken on the rounded color landed Focus one red step low).
 - **The clock's AM/PM is 36 px** (the mock-up's .32 em of 112 px, 35.84), with 2 px letter-spacing.
 - **The QR code** is `lv_qrcode` (`WIFI:T:nopass;S:TinyBar-Setup;;`, 116 px, 4 px modules on the white 132 px square).
   LVGL raises the error correction to Q when it fits the same size (29 modules), so the pattern differs from the
@@ -86,8 +110,11 @@ pixel, and that the fonts carry exactly the characters `tb_text_drawable()` acce
   time it's the mock-up's "Away" / "Back at 2:30" / note.
 - **A message from another day**: the Posted foot says "yesterday" or the date ("Oct 1") instead of "today"; posted
   while the clock was unknown, the value is "Earlier".
-- **The pairing screen** (api.md 4.8): the dark surface, kicker "Pairing · Mac", the code at 112 px ("482 913"), sub
-  "Type this code on that device · tap to cancel", and "Code expires" with a m:ss countdown in the info column.
+- **The pairing screen** (api.md 4.8; decisions.md "Pairing", proposed; now in the mock-up): the dark surface, kicker
+  "Pairing · Mac" (the device's name, or Mac, Phone, Script, Device), the code at 112 px ("482 913"), the sub line
+  naming the device ("Type it on your Mac · tap to cancel", "Type it on your phone · tap to cancel", otherwise "Type
+  this code on that device · tap to cancel"), "Code expires in" with a m:ss countdown over the bar's name, and the
+  progress bar filling as the 2 minutes run out.
 - **Wi-Fi dropped** (ARCHITECTURE.md 13.6): the crossed-out icon also shows while the link is down after setup, as
   the lead proposed.
 - **An app name the fonts can't draw** shows "Mic or camera on" after the MAC chip, as when none was sent.

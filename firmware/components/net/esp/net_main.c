@@ -71,11 +71,10 @@ esp_err_t net_init(tb_app_t *app, const char *device_id)
         return err;
     }
     /* The token table and the Mac table belong to the app task (they tell core the paired count), so they're set up
-     * there. */
-    if (!tb_bus_exec(api_init_job, NULL, 5000)) {
-        ESP_LOGW(TAG, "app task busy; setting the router up from here");
-        net_api_init();
-    }
+     * there, and only there: running it here would touch g_app from a second task. tb_bus_exec() returns false only
+     * when the job was dropped before it ran, so trying again can't run it twice. */
+    for (int tries = 1; !tb_bus_exec(api_init_job, NULL, 5000); tries++)
+        ESP_LOGE(TAG, "the app task hasn't run the router's set-up after %d s; still waiting", tries * 5);
     return ESP_OK;
 }
 
@@ -90,10 +89,6 @@ esp_err_t net_start(void)
     return ESP_OK;
 }
 
-bool net_wifi_configured(void)
-{
-    return net_wifi_have_creds();
-}
 
 void net_setup_begin(void) { net_wifi_setup_begin(); }
 void net_setup_skip(void) { net_wifi_setup_skip(); }

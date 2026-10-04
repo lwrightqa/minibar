@@ -21,5 +21,5 @@ void settings_store_mark_settings(void);
 void settings_store_mark_state(void);
 /* Called every app loop: writes what's due. */
 void settings_store_poll(const tb_app_t *a, tb_ms_t now);
-/* Write everything pending now (before power off and restart). */
+/* Write the settings and the state now, pending or not (before power off and restart; focused time included). */
 void settings_store_flush(const tb_app_t *a);

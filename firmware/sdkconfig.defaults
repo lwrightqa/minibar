@@ -18,11 +18,20 @@ CONFIG_SPIRAM_USE_MALLOC=y
 CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=4096
 CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=49152
 CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
+# Task stacks that never touch flash may live in PSRAM (httpd, usb_rx, dns: see ARCHITECTURE.md section 11), and so
+# may the core model (g_app, EXT_RAM_BSS_ATTR): internal RAM is the scarce one.
 CONFIG_SPIRAM_ALLOW_STACK_EXTERNAL_MEMORY=y
+CONFIG_SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY=y
+# Boot time: SYS_EN (the power hold) goes high in app_main, so everything before it delays it. The full 8 MB PSRAM
+# test takes about 0.5 to 0.8 s, and the bootloader's INFO log adds more; on battery a short PWR press would not
+# keep the bar on. Both off.
+CONFIG_SPIRAM_MEMTEST=n
+CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y
 CONFIG_COMPILER_OPTIMIZATION_PERF=y
 CONFIG_FREERTOS_HZ=1000
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
-CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=4096
+# The default event loop runs net's Wi-Fi handlers (on_wifi alone is a 1 KB frame) plus the protocol-safe logger.
+CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=5120
 
 # ---------- Console: USB Serial/JTAG only ----------
 # The board's USB-C is the ESP32-S3's USB Serial/JTAG port (VID 0x303A, PID 0x1001). It carries the log and the
@@ -68,6 +77,15 @@ CONFIG_LWIP_DHCP_GET_NTP_SRV=y
 CONFIG_LWIP_SNTP_MAX_SERVERS=3
 CONFIG_LWIP_IPV6=y
 CONFIG_MDNS_MAX_SERVICES=4
+# Wi-Fi and the network stack stay on core 0, the screen on core 1 (ARCHITECTURE.md section 3). The tcpip thread
+# runs DHCP-server callbacks that log, so it gets 4 KB.
+CONFIG_LWIP_TCPIP_TASK_AFFINITY_CPU0=y
+CONFIG_LWIP_TCPIP_TASK_STACK_SIZE=4096
+
+# ---------- I2C (system bus: expander, IMU, RTC, touch, codec) ----------
+# NVS writes disable the cache for tens to hundreds of ms; an IRAM-safe ISR lets a transaction that straddles one
+# finish instead of timing out (every I2C caller's buffers are on internal stacks).
+CONFIG_I2C_ISR_IRAM_SAFE=y
 
 # ---------- HTTP server (api.md 2.5 and section 15) ----------
 CONFIG_HTTPD_MAX_REQ_HDR_LEN=2048
@@ -94,8 +112,10 @@ CONFIG_NVS_ENCRYPTION=n
 CONFIG_LV_COLOR_DEPTH_16=y
 # LVGL runs only in the app task (see ARCHITECTURE.md), so it needs no OS locking of its own.
 CONFIG_LV_OS_NONE=y
-# LVGL's allocations go through malloc(), so big ones land in PSRAM.
-CONFIG_LV_USE_CLIB_MALLOC=y
+# LVGL's allocations (objects, label text, layers) go to PSRAM through board/src/board_lv_mem.c, so they don't press
+# on internal RAM (with plain malloc() everything under 4 KB stayed internal). LVGL only runs on the app task, never
+# while the cache is off.
+CONFIG_LV_USE_CUSTOM_MALLOC=y
 CONFIG_LV_USE_CLIB_STRING=y
 CONFIG_LV_USE_CLIB_SPRINTF=y
 CONFIG_LV_DEF_REFR_PERIOD=33

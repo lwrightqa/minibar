@@ -101,10 +101,10 @@ void app_main(void)
     WARN_IF(board_rtc_init(&rtc_valid), "RTC");
     app_clock_set_valid(rtc_valid);
 
-    /* 7. The model: settings, the saved own status and tallies, the starting orientation. net_wifi_configured()
-     * only reads NVS, so it works before net_init(). */
+    /* 7. The model: settings, the saved own status and tallies, the starting orientation. How the Wi-Fi starts (a
+     * saved network, Skip remembered, or the QR code) only reads NVS, so it works before net_init(). */
     tb_clock_t now = app_clock_now();
-    tb_app_init(&g_app, &settings, net_wifi_configured(), &now);
+    tb_app_init(&g_app, &settings, net_wifi_start_mode(), &now);
     settings_store_restore(&g_app);
     tb_app_flip(&g_app, flipped, true, &now);
 

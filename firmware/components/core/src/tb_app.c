@@ -246,6 +246,11 @@ bool tb_app_pairing_visible(const tb_app_t *a)
            !a->off && !tb_app_on_wifi_screen(a);
 }
 
+bool tb_app_pairing_shown(const tb_app_t *a)
+{
+    return a->pairing.active && a->pairing.shown_at != 0;
+}
+
 /* screenFree(): s.powered && !s.booting && !s.off && menu.hidden && !onWifiScreen() && holdOv.hidden, plus the
  * pairing screen. */
 bool tb_app_screen_free(const tb_app_t *a)
@@ -277,29 +282,44 @@ tb_color_key_t tb_app_color_key(const tb_app_t *a, const tb_clock_t *now)
 /* Toasts: toast(), notify(), withTitle()                                                                   */
 /* ======================================================================================================== */
 
-/* toast(): a dark screen stays dark, so the confirmation waits until the screen is woken, unless something is already
- * waiting. Powered off, there's nothing to show it on. */
-static void toast_span(tb_app_t *a, const char *text, size_t toff, size_t tlen, const tb_clock_t *now)
+static void set_pending(tb_app_t *a, const char *text, size_t toff, size_t tlen)
+{
+    tb_strlcpy(a->pending_toast, text, sizeof(a->pending_toast));
+    a->pending_title_off = (uint8_t)toff;
+    a->pending_title_len = (uint8_t)tlen;
+}
+
+/* toast(text, hold): a dark screen stays dark, so the confirmation waits until the screen is woken, unless something
+ * is already waiting. Powered off, there's nothing to show it on. While a pairing code shows, a change made underneath
+ * is shown once pairing ends, after the pairing toast; that one (hold) stays its full 1.6 s and anything that comes in
+ * meanwhile follows it. */
+static void toast_span(tb_app_t *a, const char *text, size_t toff, size_t tlen, bool hold, const tb_clock_t *now)
 {
     if (a->powered_off) return;
     if (a->off) {
-        if (!a->pending_toast[0]) {
-            tb_strlcpy(a->pending_toast, text, sizeof(a->pending_toast));
-            a->pending_title_off = (uint8_t)toff;
-            a->pending_title_len = (uint8_t)tlen;
-        }
+        if (!a->pending_toast[0]) set_pending(a, text, toff, tlen);
+        return;
+    }
+    if (tb_app_pairing_shown(a) || (!hold && now->mono < a->toast_hold_until)) {
+        set_pending(a, text, toff, tlen);
         return;
     }
     tb_strlcpy(a->toast, text, sizeof(a->toast));
     a->toast_title_off = (uint8_t)toff;
     a->toast_title_len = (uint8_t)tlen;
     a->toast_until = now->mono + TB_TOAST_MS;
+    a->toast_hold_until = hold ? a->toast_until : 0;
     tb_bump(a);
 }
 
 static void toast(tb_app_t *a, const char *text, const tb_clock_t *now)
 {
-    toast_span(a, text, 0, 0, now);
+    toast_span(a, text, 0, 0, false, now);
+}
+
+static void toast_hold(tb_app_t *a, const char *text, const tb_clock_t *now)
+{
+    toast_span(a, text, 0, 0, true, now);
 }
 
 static void toastf(tb_app_t *a, const tb_clock_t *now, const char *fmt, ...) __attribute__((format(printf, 3, 4)));
@@ -317,13 +337,11 @@ static void toastf(tb_app_t *a, const tb_clock_t *now, const char *fmt, ...)
 static void notify_span(tb_app_t *a, const char *text, size_t toff, size_t tlen, const tb_clock_t *now)
 {
     if (tb_app_screen_free(a)) {
-        toast_span(a, text, toff, tlen, now);
+        toast_span(a, text, toff, tlen, false, now);
         return;
     }
     if (a->powered_off) return;
-    tb_strlcpy(a->pending_toast, text, sizeof(a->pending_toast));
-    a->pending_title_off = (uint8_t)toff;
-    a->pending_title_len = (uint8_t)tlen;
+    set_pending(a, text, toff, tlen);
 }
 
 static void notifyf(tb_app_t *a, const tb_clock_t *now, const char *fmt, ...) __attribute__((format(printf, 3, 4)));
@@ -365,7 +383,7 @@ static void with_title(tb_app_t *a, bool via_notify, const char *pre, const char
     size_t off = strlen(pre), len = strlen(cut);
     if (n < 0 || (size_t)n >= sizeof buf || !real_title) off = len = 0;
     if (via_notify) notify_span(a, buf, off, len, now);
-    else toast_span(a, buf, off, len, now);
+    else toast_span(a, buf, off, len, false, now);
 }
 
 /* ======================================================================================================== */
@@ -451,11 +469,24 @@ static void takeover(tb_app_t *a, tb_auto_t top)
 }
 
 /* releaseHeldAlarm(): once the call or meeting that held the alarm is over, the waiting screen chimes and flashes
- * once (no repeats). A dark screen stays dark. */
+ * once (no repeats). A dark screen stays dark. Proposed (decisions.md, Pairing): an alarm held by a pairing code rings
+ * once when pairing ends; if a call or meeting took over meanwhile it waits for that instead, and one that's set aside
+ * only mutes the chime (chime() checks), so it just flashes. */
 static void release_held_alarm(tb_app_t *a, const tb_clock_t *now)
 {
-    if (a->pomo.held_alarm == TB_AUTO_NONE || tb_app_quiet(a, now) || a->powered_off || a->booting) return;
-    a->pomo.held_alarm = TB_AUTO_NONE;
+    if (a->powered_off || a->booting) return;
+    if (a->alarm_held_by_pairing) {
+        if (tb_app_pairing_shown(a)) return;
+        a->alarm_held_by_pairing = false;
+        tb_auto_t top = tb_app_auto_top(a, now, NULL);
+        if (top != TB_AUTO_NONE && a->pomo.waiting) {
+            a->pomo.held_alarm = top;
+            return;
+        }
+    } else {
+        if (a->pomo.held_alarm == TB_AUTO_NONE || tb_app_quiet(a, now)) return;
+        a->pomo.held_alarm = TB_AUTO_NONE;
+    }
     if (!a->pomo.waiting) return;
     a->idx = POMO;
     tb_bump(a);
@@ -552,7 +583,19 @@ static void end_phase(tb_app_t *a, const tb_clock_t *now)
         tb_bump(a);
         return;
     }
-    chime(a, ended == TB_PH_FOCUS, now);
+    /* Proposed (decisions.md, Pairing): while a pairing code shows, the alarm waits too, with no chime or flash, and
+     * rings once when pairing ends (as after a call). With auto-start on, the next phase starts on time under the
+     * code, silently. */
+    bool pairing = tb_app_pairing_shown(a);
+    if (pairing && !a->set.pomodoro.auto_start) {
+        a->pomo.running = false;
+        a->pomo.waiting = true;
+        a->pomo.just_ended = (int8_t)ended;
+        a->alarm_held_by_pairing = true;
+        tb_bump(a);
+        return;
+    }
+    if (!pairing) chime(a, ended == TB_PH_FOCUS, now);
     if (a->set.pomodoro.auto_start) {
         a->pomo.running = true;
         a->pomo.waiting = false;
@@ -568,13 +611,20 @@ static void end_phase(tb_app_t *a, const tb_clock_t *now)
     wake(a);
     a->idx = POMO;
     hide_menu(a);
-    flash(a, now);
+    if (!pairing) flash(a, now);
     tb_bump(a);
+}
+
+static void toast_started_span(tb_app_t *a, tb_pomo_start_t started, const char *before, bool hold, const tb_clock_t *now)
+{
+    char buf[TB_TOAST_BYTES];
+    snprintf(buf, sizeof buf, "%s%s %s", before, tb_phase_name(a->pomo.phase), started == TB_POMO_STARTED ? "started" : "resumed");
+    toast_span(a, buf, 0, 0, hold, now);
 }
 
 static void toast_started(tb_app_t *a, tb_pomo_start_t started, const char *before, const tb_clock_t *now)
 {
-    toastf(a, now, "%s%s %s", before, tb_phase_name(a->pomo.phase), started == TB_POMO_STARTED ? "started" : "resumed");
+    toast_started_span(a, started, before, false, now);
 }
 
 /* startPause(): start what's waiting, a fresh session or a paused timer; or pause a running one. */
@@ -650,6 +700,12 @@ static void go(tb_app_t *a, int i, bool aside_it, const tb_clock_t *now)
     tb_auto_t aside = aside_it ? set_aside(a, now) : TB_AUTO_NONE;
     a->idx = (tb_status_t)((i + TB_ST_COUNT) % TB_ST_COUNT);
     if (a->idx != POMO && a->idx != TB_ST_CLOCK) a->last_status = a->idx;
+    /* Firmware: Message before any message was set shows the mock-up's "Hello"; it's stored, so the API and the
+     * Remote report what the bar shows (and POST /status "message" works). */
+    if (a->idx == TB_ST_MESSAGE && !a->message[0]) {
+        tb_strlcpy(a->message, TB_MESSAGE_FALLBACK, sizeof(a->message));
+        a->message_at = wall_or_0(now);
+    }
     a->since_ms = now->mono;
     a->since = wall_or_0(now);
     hide_menu(a);
@@ -668,8 +724,17 @@ static void wifi_done(tb_app_t *a)
     tb_bump(a);
 }
 
-static void start_setup(tb_app_t *a)
+static void end_pairing_here(tb_app_t *a, int how, const tb_clock_t *now);
+#define PE_CANCEL 0     /* tap, swipe, hold, BOOT: "Pairing canceled" */
+#define PE_PWR    1     /* PWR press: no toast (the dark screen is the confirmation); a held alarm's chime is dropped */
+#define PE_FLIP   2     /* the flip says it itself, and answers a held alarm by starting the next phase */
+#define PE_SETUP  3     /* Wi-Fi setup started: "Pairing canceled" */
+#define PE_OFF    4     /* powering off or restarting: no toast, a held alarm is forgotten */
+
+static void start_setup(tb_app_t *a, const tb_clock_t *now)
 {
+    /* Proposed (decisions.md, Pairing): starting Wi-Fi setup ends a pairing, which counts as canceled. */
+    end_pairing_here(a, PE_SETUP, now);
     a->wifi_mode = TB_WIFI_SETUP;
     a->wifi_error[0] = '\0';
     hide_menu(a);
@@ -750,7 +815,7 @@ static void menu_action(tb_app_t *a, tb_action_t act, const tb_clock_t *now)
         return;
     case TB_ACT_POWER: open_submenu(a, TB_MENU_POWER, now); return;
     case TB_ACT_WIFI: open_submenu(a, TB_MENU_WIFI, now); return;
-    case TB_ACT_WIFI_SETUP: start_setup(a); return;
+    case TB_ACT_WIFI_SETUP: start_setup(a, now); return;
     case TB_ACT_WIFI_SKIP: skip_wifi(a, now); return;
     case TB_ACT_TIMER_SETTINGS: open_submenu(a, TB_MENU_TIMER_SETTINGS, now); return;
     case TB_ACT_TIMER_MENU: show_menu(a, now); return;
@@ -770,19 +835,21 @@ static void menu_action(tb_app_t *a, tb_action_t act, const tb_clock_t *now)
     }
     case TB_ACT_SHOW_AGAIN: show_again(a, now); return;
     case TB_ACT_DEVICES:
-        /* Proposed (api.md 4.8): the first tap asks, the second forgets every paired device. */
-        if (!a->menu.devices_confirm) {
-            a->menu.devices_confirm = true;
-            open_submenu(a, TB_MENU_WIFI, now);
-            return;
-        }
-        {
-            unsigned n = a->paired_count;
-            hide_menu(a);
-            tb_fx(a, TB_FX_FORGET_DEVICES, 0);
-            toastf(a, now, "Forgot %u device%s", n, n == 1 ? "" : "s");
-        }
+        /* Proposed (api.md 4.8, decisions.md "the Devices tile"): Devices opens Forget all's confirmation. */
+        if (a->paired_count) open_submenu(a, TB_MENU_FORGET, now);
+        else hide_menu(a);
         return;
+    case TB_ACT_KEEP_DEVICES: open_submenu(a, TB_MENU_WIFI, now); return;
+    case TB_ACT_FORGET_ALL: {
+        /* Forget all sits right under Devices, so taps in its first 600 ms are ignored: a quick double tap on Devices
+         * can't forget everything. It still takes a second, deliberate tap. */
+        if (now->mono - a->menu.opened_at < TB_FORGET_GUARD_MS) return;
+        unsigned n = a->paired_count;
+        hide_menu(a);
+        tb_fx(a, TB_FX_FORGET_DEVICES, 0);
+        toastf(a, now, "Forgot %u device%s", n, n == 1 ? "" : "s");
+        return;
+    }
     default: break;
     }
     hide_menu(a);
@@ -823,6 +890,8 @@ static void power_off(tb_app_t *a, const tb_clock_t *now)
 {
     silence(a);
     hide_menu(a);
+    /* Powering off ends a pairing; paired devices stay paired (the back-off lives in RAM and goes with it). */
+    end_pairing_here(a, PE_OFF, now);
     a->pwr_down_at = 0;
     a->hold = TB_HOLD_POWERING_OFF;
     a->powering_off = true;
@@ -844,6 +913,7 @@ static void restart(tb_app_t *a, const tb_clock_t *now)
 {
     silence(a);
     hide_menu(a);
+    end_pairing_here(a, PE_OFF, now);
     tb_pomo_reset_run(&a->pomo, &a->set);
     tb_fx(a, TB_FX_RESTART, 0);
     power_on(a, now);
@@ -867,18 +937,40 @@ static void boot_done(tb_app_t *a, const tb_clock_t *now)
     else toast(a, "Ready", now);
 }
 
-static void cancel_pairing(tb_app_t *a, const tb_clock_t *now)
+/* pairEnd() for the endings core decides (net's own endings come through tb_app_pairing_end). Every one tells net
+ * (TB_FX_PAIRING_CANCELED), which counts it as a failed pairing for the back-off. The screen stays on afterwards. */
+static void end_pairing_here(tb_app_t *a, int how, const tb_clock_t *now)
 {
+    if (!a->pairing.active) return;
+    bool was_shown = a->pairing.shown_at != 0;
     a->pairing.active = false;
+    a->pairing.shown_at = 0;
     tb_fx(a, TB_FX_PAIRING_CANCELED, 0);
-    toast(a, "Pairing canceled", now);
+    /* A PWR press drops a held alarm's chime: the waiting screen shows, silently, when the screen is woken. */
+    if (how == PE_PWR && a->alarm_held_by_pairing) {
+        a->alarm_held_by_pairing = false;
+        if (a->pomo.waiting) a->idx = POMO;
+    }
+    if (how == PE_OFF) a->alarm_held_by_pairing = false;
     tb_bump(a);
+    if (was_shown && (how == PE_CANCEL || how == PE_SETUP)) toast_hold(a, "Pairing canceled", now);
+    if (how != PE_FLIP) release_held_alarm(a, now);
 }
 
-/* pwrShort(): a press answers an alarm, or turns the screen off or on. It also cancels the pairing screen. */
+static void cancel_pairing(tb_app_t *a, const tb_clock_t *now)
+{
+    end_pairing_here(a, PE_CANCEL, now);
+}
+
+/* pwrShort(): a press answers an alarm, or turns the screen off or on. On a pairing code it cancels it and turns the
+ * screen off as usual; the dark screen is the confirmation. */
 static void pwr_short(tb_app_t *a, const tb_clock_t *now)
 {
-    if (tb_app_pairing_visible(a)) cancel_pairing(a, now);
+    if (tb_app_pairing_visible(a)) {
+        end_pairing_here(a, PE_PWR, now);
+        toggle_power(a);
+        return;
+    }
     if (silence(a)) {
         toast(a, "Alarm off", now);
         tb_bump(a);
@@ -929,7 +1021,8 @@ static uint32_t visible_sig(const tb_app_t *a)
     h_str(&s, a->away_note);
     h_i64(&s, a->flipped | a->off << 1 | a->booting << 2 | a->powering_off << 3 | a->powered_off << 4 |
                   a->ringing << 5 | a->wifi_link_up << 6 | a->cal_saved << 7 | a->cal_checking << 8 |
-                  a->pairing.active << 9 | a->menu.devices_confirm << 10);
+                  a->pairing.active << 9 | a->alarm_held_by_pairing << 10 | (a->pairing.shown_at != 0) << 11 |
+                  a->pairing.kind << 12);
     h_i64(&s, a->hold);
     h_i64(&s, a->flash_at);
     h_i64(&s, a->wifi_mode);
@@ -969,7 +1062,9 @@ static uint32_t visible_sig(const tb_app_t *a)
     h_str(&s, a->toast);
     h_str(&s, a->pairing.code);
     h_str(&s, a->pairing.who);
+    h_i64(&s, a->pairing.expires);
     h_i64(&s, a->paired_count);
+    h_str(&s, a->paired_names);
     return s.h;
 }
 
@@ -984,11 +1079,27 @@ static void resync_sigs(tb_app_t *a)
 static void settle(tb_app_t *a, const tb_clock_t *now)
 {
     if (!a->powered_off) {
-        /* The pairing screen wants the screen: wake it and close a menu (once the power screens are gone). */
-        if (a->pairing.active && !a->booting && !a->powering_off && a->hold == TB_HOLD_NONE && !tb_app_on_wifi_screen(a)) {
+        /* pairTryShow(): a waiting code goes on the screen once the power screens are gone (never during Wi-Fi setup).
+         * It wakes a dark screen, closes an open menu without acting on it, hides the toast, and holds a ringing alarm
+         * as a call does. The 2 minutes count from here. */
+        if (a->pairing.active && !a->pairing.shown_at && !a->booting && !a->powering_off && a->hold == TB_HOLD_NONE &&
+            !tb_app_on_wifi_screen(a)) {
+            a->pairing.shown_at = stamp(now);
+            a->pairing.expires = a->pairing.shown_at + TB_PAIR_MS;
             wake(a);
             hide_menu(a);
+            a->toast[0] = '\0';
+            a->toast_title_off = a->toast_title_len = 0;
+            a->toast_hold_until = 0;
+            if (a->ringing) {
+                a->ringing = false;
+                a->alarm_held_by_pairing = true;
+            }
+            tb_bump(a);
         }
+        /* Firmware: the setup menu goes once setup is over underneath it (Connected moved on), so its Skip can't
+         * undo a join that worked (decisions.md: "Connected is the end of setup"). */
+        if (a->menu.kind == TB_MENU_SETUP && !tb_app_on_wifi_screen(a)) hide_menu(a);
         if (a->menu.kind != TB_MENU_NONE) tb_menu_fill(a, now);   /* Firmware: tiles stay current while open */
 
         int8_t level = tb_app_ticking(a, now) ? (a->set.pomodoro.tick_volume == TB_TICK_MEDIUM ? 2 : 1) : 0;
@@ -1022,7 +1133,7 @@ static void settle(tb_app_t *a, const tb_clock_t *now)
 /* Life cycle                                                                                               */
 /* ======================================================================================================== */
 
-void tb_app_init(tb_app_t *a, const tb_settings_t *s, bool wifi_configured, const tb_clock_t *now)
+void tb_app_init(tb_app_t *a, const tb_settings_t *s, tb_wifi_mode_t wifi_start, const tb_clock_t *now)
 {
     memset(a, 0, sizeof(*a));
     a->set = *s;
@@ -1034,7 +1145,8 @@ void tb_app_init(tb_app_t *a, const tb_settings_t *s, bool wifi_configured, cons
     a->since = wall_or_0(now);
     a->booting = true;
     a->boot_until = now->mono + TB_BOOT_SPLASH_MS;
-    a->wifi_mode = wifi_configured ? TB_WIFI_OK : TB_WIFI_SETUP;
+    /* Firmware: a skip is remembered, so an offline bar starts offline (the mock-up's powerOn() keeps the mode). */
+    a->wifi_mode = wifi_start == TB_WIFI_OK || wifi_start == TB_WIFI_OFFLINE ? wifi_start : TB_WIFI_SETUP;
     strcpy(a->wifi_host, "tinybar.local");
     tb_pomo_init(&a->pomo, &a->set, now->valid ? tb_local_yyyymmdd(now->wall) : 0);
     tb_gesture_reset(&a->gesture);
@@ -1053,6 +1165,7 @@ void tb_app_restore(tb_app_t *a, tb_status_t idx, tb_status_t last_status, const
     if (last_status < TB_ST_COUNT && last_status != TB_ST_POMODORO && last_status != TB_ST_CLOCK) a->last_status = last_status;
     if (message) tb_strlcpy(a->message, message, sizeof(a->message));
     a->message_at = message_at;
+    if (a->idx == TB_ST_MESSAGE && !a->message[0]) tb_strlcpy(a->message, TB_MESSAGE_FALLBACK, sizeof(a->message));
     a->pomo.done_today = done_today;
     a->pomo.focused_ms = focused_ms < 0 ? 0 : focused_ms;
     /* Tallies from another day reset at the first tick that knows the date (tb_pomo_roll_day). */
@@ -1150,7 +1263,7 @@ void tb_app_tick(tb_app_t *a, const tb_clock_t *now)
         uint8_t off = a->pending_title_off, len = a->pending_title_len;
         a->pending_toast[0] = '\0';
         a->pending_title_off = a->pending_title_len = 0;
-        toast_span(a, text, off, len, now);
+        toast_span(a, text, off, len, false, now);
     }
     /* Firmware: today's tallies reset at local midnight (checked once a minute). */
     if (now->valid && now->wall / 60 != a->last_wall_min) {
@@ -1168,9 +1281,14 @@ void tb_app_tick(tb_app_t *a, const tb_clock_t *now)
  * cancels the pairing instead. */
 static void on_hold(tb_app_t *a, const tb_clock_t *now)
 {
+    if (tb_app_pairing_visible(a)) {
+        /* A press that began before the code appeared is ignored, so a touch meant for the screen underneath can't
+         * cancel it. */
+        if (a->gesture.t0 >= a->pairing.shown_at) cancel_pairing(a, now);
+        return;
+    }
     silence(a);
-    if (tb_app_pairing_visible(a)) cancel_pairing(a, now);
-    else show_menu(a, now);
+    show_menu(a, now);
 }
 
 /* pointerup on a screen that's on, for a press that counts. g: TAP, MOVED_TAP, SWIPE_NEXT or SWIPE_PREV. */
@@ -1178,6 +1296,7 @@ static void on_release(tb_app_t *a, tb_gesture_t g, int8_t tile, const tb_clock_
 {
     bool moved = g != TB_GEST_TAP;
     if (tb_app_pairing_visible(a)) {
+        if (a->gesture.t0 < a->pairing.shown_at) return;   /* it began before the code appeared: ignored */
         silence(a);
         cancel_pairing(a, now);
         return;
@@ -1319,12 +1438,25 @@ void tb_app_flip(tb_app_t *a, bool flipped, bool initial, const tb_clock_t *now)
         settle(a, now);
         return;
     }
+    /* Proposed (decisions.md, Pairing): on a pairing code a flip cancels it first, then does all three things as
+     * usual. A held alarm is answered by the flip starting the next phase. */
+    bool pairing = tb_app_pairing_shown(a);
+    if (pairing) end_pairing_here(a, PE_FLIP, now);
     wake(a);
     hide_menu(a);
     bool quieted = silence(a);
     tb_auto_t aside = set_aside(a, now);
     tb_pomo_start_t started = tb_pomo_start_waiting(&a->pomo, &a->set);
     if (started != TB_POMO_NOTHING || aside != TB_AUTO_NONE) a->idx = POMO;
+    if (pairing) {
+        if (!a->pomo.waiting) a->alarm_held_by_pairing = false;
+        if (started != TB_POMO_NOTHING) toast_started_span(a, started, "Pairing canceled \xC2\xB7 ", true, now);
+        else toast_hold(a, "Pairing canceled", now);
+        release_held_alarm(a, now);
+        tb_bump(a);
+        settle(a, now);
+        return;
+    }
     const char *before = quieted ? "Alarm off \xC2\xB7 " : "";
     if (started != TB_POMO_NOTHING) toast_started(a, started, before, now);
     else toastf(a, now, "%s%s already running", before, tb_phase_name(a->pomo.phase));
@@ -1439,7 +1571,16 @@ tb_err_t tb_app_remote_pomodoro(tb_app_t *a, tb_pomo_action_t act, int minutes, 
     case TB_POMO_PAUSE:
     case TB_POMO_TOGGLE:
         /* startPause() pauses a running timer; "pause" on one that isn't running is an error. */
-        if (act == TB_POMO_PAUSE && !a->pomo.running) return TB_E_NOT_RUNNING;
+        if (act == TB_POMO_PAUSE && !a->pomo.running) {
+            /* api.md 9.1: every action silences a ringing alarm first, as any control does, even this refused one. */
+            if (silence(a)) {
+                wake(a);
+                toast(a, "Alarm off", now);
+                tb_bump(a);
+                settle(a, now);
+            }
+            return TB_E_NOT_RUNNING;
+        }
         wake(a);
         a->idx = POMO;
         start_pause(a, set_aside_it, now);
@@ -1519,7 +1660,7 @@ tb_err_t tb_app_remote_settings(tb_app_t *a, const tb_settings_patch_t *p, const
                     want.pomodoro.tick_volume, now);
     if (p->has_brightness) {
         a->set.display.brightness = want.display.brightness;
-        toastf(a, now, "Brightness %d%%", a->set.display.brightness);           /* new copy: no Remote control */
+        toastf(a, now, "Light %d%%", a->set.display.brightness);    /* new copy, named like the quick menu's Light tile */
     }
     if (p->has_name) tb_strlcpy(a->set.device.name, want.device.name, sizeof(a->set.device.name));
     if (p->has_time_zone) tb_strlcpy(a->set.device.time_zone, want.device.time_zone, sizeof(a->set.device.time_zone));
@@ -1715,40 +1856,72 @@ void tb_app_wifi_link(tb_app_t *a, bool up, const char *ip, const char *host, co
 /* Pairing (api.md 4.8, proposed)                                                                           */
 /* ======================================================================================================== */
 
-void tb_app_pairing_show(tb_app_t *a, const char *code, const char *who, tb_ms_t expires, const tb_clock_t *now)
+/* KIND_LABEL: the label when the device sent no name the bar can draw (api.md 4.6; "Phone" proposed for remote). */
+static const char *kind_label(tb_pair_kind_t k)
+{
+    return k == TB_PAIR_KIND_MAC ? "Mac" : k == TB_PAIR_KIND_PHONE ? "Phone" : k == TB_PAIR_KIND_SCRIPT ? "Script" : "Device";
+}
+
+void tb_app_pairing_show(tb_app_t *a, const char *code, const char *who, tb_pair_kind_t kind, const tb_clock_t *now)
 {
     if (a->powered_off) return;
     a->pairing.active = true;
+    a->pairing.kind = kind;
     tb_strlcpy(a->pairing.code, code ? code : "", sizeof(a->pairing.code));
-    tb_strlcpy(a->pairing.who, who && who[0] ? who : "Mac", sizeof(a->pairing.who));
-    a->pairing.expires = expires;
+    tb_strlcpy(a->pairing.who, who && who[0] ? who : kind_label(kind), sizeof(a->pairing.who));
+    a->pairing.shown_at = 0;
+    a->pairing.expires = 0;
     tb_bump(a);
-    settle(a, now);     /* wakes a dark screen and closes a menu once the power screens are gone */
+    settle(a, now);     /* shows it now, or once the power screens are gone (pairTryShow) */
 }
 
+/* pairEnd() for the endings net reports. USB pairing has no code: it only confirms, and a code another device asked
+ * for stays on the screen (the confirmation follows once that pairing ends). */
 void tb_app_pairing_end(tb_app_t *a, tb_pair_end_t why, const char *who, const tb_clock_t *now)
 {
     if (a->powered_off) return;
-    bool was = a->pairing.active;
     const char *name = who && who[0] ? who : a->pairing.who[0] ? a->pairing.who : "Mac";
     char label[TB_CLIENT_NAME_BYTES];
     tb_strlcpy(label, name, sizeof label);
+    if (why == TB_PAIR_END_PAIRED_USB) {
+        notifyf(a, now, "Paired \xC2\xB7 %s \xC2\xB7 over USB", label);
+        settle(a, now);
+        return;
+    }
+    bool shown = a->pairing.active && a->pairing.shown_at != 0;
     a->pairing.active = false;
+    a->pairing.shown_at = 0;
     tb_bump(a);
     switch (why) {
-    case TB_PAIR_END_PAIRED: toastf(a, now, "Paired \xC2\xB7 %s", label); break;
-    case TB_PAIR_END_PAIRED_USB: toastf(a, now, "Paired \xC2\xB7 %s \xC2\xB7 over USB", label); break;
-    case TB_PAIR_END_TIMEOUT: if (was) toast(a, "Pairing timed out", now); break;
-    case TB_PAIR_END_WRONG_CODE: if (was) toast(a, "Pairing canceled \xC2\xB7 wrong code", now); break;
-    case TB_PAIR_END_CANCELED: if (was) toast(a, "Pairing canceled", now); break;
+    case TB_PAIR_END_PAIRED: {
+        char t[TB_TOAST_BYTES];
+        snprintf(t, sizeof t, "Paired \xC2\xB7 %s", label);
+        toast_hold(a, t, now);
+        break;
     }
+    case TB_PAIR_END_TIMEOUT: if (shown) toast_hold(a, "Pairing timed out", now); break;
+    case TB_PAIR_END_WRONG_CODE: if (shown) toast_hold(a, "Pairing canceled \xC2\xB7 wrong code", now); break;
+    case TB_PAIR_END_CANCELED: if (shown) toast_hold(a, "Pairing canceled", now); break;
+    default: break;
+    }
+    release_held_alarm(a, now);
     settle(a, now);
+}
+
+void tb_app_set_paired(tb_app_t *a, uint8_t n, const char *names)
+{
+    char nm[TB_PAIRED_NAMES_BYTES];
+    tb_strlcpy(nm, n && names ? names : "", sizeof nm);
+    if (n == a->paired_count && !strcmp(nm, a->paired_names)) return;    /* unchanged: the ETag stays */
+    a->paired_count = n;
+    memcpy(a->paired_names, nm, sizeof nm);
+    a->rev++;
 }
 
 void tb_app_set_paired_count(tb_app_t *a, uint8_t n)
 {
     a->paired_count = n;
-    if (!n) a->menu.devices_confirm = false;
+    if (!n) a->paired_names[0] = '\0';
     a->rev++;
 }
 

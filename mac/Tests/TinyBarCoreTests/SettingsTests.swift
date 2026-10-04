@@ -169,7 +169,7 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(NameRules.appNameProblem(String(repeating: "x", count: 25)), .tooLong(limit: 24))
         XCTAssertEqual(NameRules.appNameProblem("Zoöm"), .unsupportedCharacters(["ö"]))
         XCTAssertEqual(NameRules.appNameProblem("Café Café"), .unsupportedCharacters(["é"]), "each character once")
-        XCTAssertEqual(NameRules.appNameProblem("Lisa’s 📞"), .unsupportedCharacters(["’", "📞"]))
+        XCTAssertEqual(NameRules.appNameProblem("Alex’s 📞"), .unsupportedCharacters(["’", "📞"]))
         XCTAssertEqual(NameRules.appNameProblem("a\tb"), .unsupportedCharacters(["\t"]))
 
         XCTAssertNil(NameRules.macNameProblem(""), "empty: send none, which is fine")
@@ -177,7 +177,7 @@ final class SettingsTests: XCTestCase {
         XCTAssertNil(NameRules.macNameProblem("Desk Mac"))
         XCTAssertNil(NameRules.macNameProblem(String(repeating: "m", count: 32)))
         XCTAssertEqual(NameRules.macNameProblem(String(repeating: "m", count: 33)), .tooLong(limit: 32))
-        XCTAssertEqual(NameRules.macNameProblem("Lisa’s Mac"), .unsupportedCharacters(["’"]))
+        XCTAssertEqual(NameRules.macNameProblem("Alex’s Mac"), .unsupportedCharacters(["’"]))
     }
 
     func test_validate() throws {
@@ -194,7 +194,7 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(settings.macNameToSend, "Desk Mac")
         XCTAssertEqual(settings.manualEndpoint, BarEndpoint(host: "10.0.4.42", port: 8080))
 
-        settings.macName = "Lisa’s Mac"
+        settings.macName = "Alex’s Mac"
         XCTAssertThrowsError(try settings.validate()) { XCTAssertEqual($0 as? SettingsError, .badMacName(.unsupportedCharacters(["’"]))) }
         settings.macName = nil
         settings.manualAddress = "tinybar.local/api"

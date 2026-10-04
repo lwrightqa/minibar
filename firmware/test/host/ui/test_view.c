@@ -339,7 +339,7 @@ TB_TEST(view_wifi_setup_screens)
     MAIN("Wi-Fi setup", "Connecting", "to Office-WiFi");
     TB_TRUE(V.head_dots);
     scene("setup_connected");
-    MAIN("Connected to Office-WiFi", "tinybar.local", "or 10.0.4.42 \xC2\xB7 open it on your phone for the Remote");
+    MAIN("TinyBar 2A1C \xC2\xB7 Connected to Office-WiFi", "tinybar.local", "or 10.0.4.42 \xC2\xB7 open it on your phone for the Remote");
     scene("setup_failed");
     MAIN("Couldn't connect to Office-WiFi", "Wrong password", "Tap to try again \xC2\xB7 Hold to skip");
 }
@@ -352,9 +352,14 @@ TB_TEST(view_splash_and_pairing)
     TB_EQ_STR(V.head, "TinyBar");
     scene("pairing");
     TB_EQ_INT(V.key, TB_KEY_CLOCK);
-    MAIN("Pairing \xC2\xB7 Mac", "482 913", "Type this code on that device \xC2\xB7 tap to cancel");
+    MAIN("Pairing \xC2\xB7 Mac", "482 913", "Type it on your Mac \xC2\xB7 tap to cancel");
     TB_EQ_INT(V.fit, UI_FIT_TIME);
-    SIDE("Code expires", "1:42", "", "");
+    SIDE("Code expires in", "1:42", "", "TinyBar 2A1C");
+    TB_EQ_INT(V.bar_permille, 150);             /* 18 s of 120 gone */
+    scene("pairing_phone");
+    MAIN("Pairing \xC2\xB7 Phone", "482 913", "Type it on your phone \xC2\xB7 tap to cancel");
+    scene("pairing_named");
+    MAIN("Pairing \xC2\xB7 Alex's MacBook Air", "482 913", "Type it on your Mac \xC2\xB7 tap to cancel");
 }
 
 /* ---------- overlays ---------- */

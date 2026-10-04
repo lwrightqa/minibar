@@ -4,7 +4,7 @@
 #include "cal_fixture.h"
 #include "cal_url.h"
 
-#define GOOGLE "https://calendar.google.com/calendar/ical/lwright%40example.com/private-8c1d5e2a9b7f40c3a6e1d2b3c4f53f2a/basic.ics"
+#define GOOGLE "https://calendar.google.com/calendar/ical/sam.lee%40example.com/private-8c1d5e2a9b7f40c3a6e1d2b3c4f53f2a/basic.ics"
 
 TB_TEST(url_google_secret_address)
 {
@@ -15,11 +15,11 @@ TB_TEST(url_google_secret_address)
     TB_EQ_STR(i.file, "basic.ics");
     TB_EQ_STR(i.ending, "3f2a");
     TB_TRUE(i.google);
-    TB_EQ_STR(i.self_email, "lwright@example.com");
+    TB_EQ_STR(i.self_email, "sam.lee@example.com");
     /* webcal://, spaces around, a #fragment, uppercase scheme and host */
-    TB_EQ_INT(cal_url_check("  webcal://Calendar.Google.com/calendar/ical/lwright%40example.com/private-8c1d5e2a9b7f40c3a6e1d2b3c4f53f2a/basic.ics#x \n", &i), CAL_URL_OK);
+    TB_EQ_INT(cal_url_check("  webcal://Calendar.Google.com/calendar/ical/sam.lee%40example.com/private-8c1d5e2a9b7f40c3a6e1d2b3c4f53f2a/basic.ics#x \n", &i), CAL_URL_OK);
     TB_EQ_STR(i.url, GOOGLE);
-    TB_EQ_INT(cal_url_check("HTTPS://calendar.google.com/calendar/ical/lwright%40example.com/private-8c1d5e2a9b7f40c3a6e1d2b3c4f53f2a/basic.ics", &i), CAL_URL_OK);
+    TB_EQ_INT(cal_url_check("HTTPS://calendar.google.com/calendar/ical/sam.lee%40example.com/private-8c1d5e2a9b7f40c3a6e1d2b3c4f53f2a/basic.ics", &i), CAL_URL_OK);
     TB_EQ_STR(i.url, GOOGLE);
     /* a group calendar's id */
     TB_EQ_INT(cal_url_check("https://calendar.google.com/calendar/ical/c_9f2b%40group.calendar.google.com/private-0a1b2c3d/basic.ics", &i), CAL_URL_OK);
@@ -41,9 +41,9 @@ TB_TEST(url_errors_in_the_mock_up_order)
     TB_EQ_INT(cal_url_check("https://cal endar.com/basic.ics", &i), CAL_URL_NOT_A_URL);
     TB_EQ_INT(cal_url_check("https://calendar.google.com:99999/x.ics", &i), CAL_URL_NOT_A_URL);
     TB_EQ_INT(cal_url_check("http://calendar.google.com/calendar/ical/a/private-b/basic.ics", &i), CAL_URL_HTTP);
-    TB_EQ_INT(cal_url_check("https://calendar.google.com/calendar/ical/lwright%40example.com/public/basic.ics", &i),
+    TB_EQ_INT(cal_url_check("https://calendar.google.com/calendar/ical/sam.lee%40example.com/public/basic.ics", &i),
               CAL_URL_PUBLIC);
-    TB_EQ_INT(cal_url_check("https://calendar.google.com/calendar/embed?src=lwright%40example.com", &i), CAL_URL_NOT_ICS);
+    TB_EQ_INT(cal_url_check("https://calendar.google.com/calendar/embed?src=sam.lee%40example.com", &i), CAL_URL_NOT_ICS);
     TB_EQ_INT(cal_url_check("https://example.com/calendar.ics.html", &i), CAL_URL_NOT_ICS);
     TB_EQ_INT(cal_url_check("https://example.com/calendar?file=basic.ics", &i), CAL_URL_NOT_ICS);  /* the query isn't the path */
     /* http:// is reported before /public/ and .ics, as in the mock-up */

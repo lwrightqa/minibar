@@ -38,6 +38,40 @@ void net_api_bind(tb_app_t *app)
     s_app = app;
 }
 
+static const char *kind_label(net_kind_t k);
+
+/* Tell core how many devices are paired and their names, most recently used first ("iPhone, Desk script, Mac"), for
+ * the Wi-Fi menu's Devices tile and Forget all (mock-up showForgetMenu: by last use, then by when paired). */
+static void paired_changed(void)
+{
+    if (!s_app) return;
+    const net_token_t *order[NET_TOKENS_MAX];
+    int n = 0;
+    for (int i = 0; i < NET_TOKENS_MAX; i++)
+        if (s_pair.tokens[i].used) order[n++] = &s_pair.tokens[i];
+    for (int i = 1; i < n; i++) {     /* insertion sort: at most 10 */
+        const net_token_t *t = order[i];
+        int k = i;
+        while (k > 0 && (order[k - 1]->last_used < t->last_used ||
+                         (order[k - 1]->last_used == t->last_used && order[k - 1]->paired_at < t->paired_at))) {
+            order[k] = order[k - 1];
+            k--;
+        }
+        order[k] = t;
+    }
+    char names[TB_PAIRED_NAMES_BYTES] = "";
+    size_t len = 0;
+    for (int i = 0; i < n; i++) {
+        const char *name = order[i]->name[0] ? order[i]->name : kind_label(order[i]->kind);
+        size_t need = strlen(name) + (i ? 2 : 0);
+        if (len + need >= sizeof names) break;      /* the tile shows two lines at most; the rest wouldn't show */
+        if (i) memcpy(names + len, ", ", 2), len += 2;
+        memcpy(names + len, name, strlen(name) + 1);
+        len += strlen(name);
+    }
+    tb_app_set_paired(s_app, (uint8_t)n, names);
+}
+
 void net_api_init(void)
 {
     net_macs_init(&s_macs);
@@ -49,7 +83,7 @@ void net_api_init(void)
     s_rev_base = 1000 + r % 900000;     /* a different start each boot, so an old ETag doesn't match by chance */
     s_rev_n = 0;
     s_rev_sig_set = false;
-    if (s_app) tb_app_set_paired_count(s_app, (uint8_t)net_pair_count(&s_pair));
+    paired_changed();
 }
 
 void net_api_set_auth(bool bearer)
@@ -1139,9 +1173,10 @@ static void h_pair_start(rt_t *r, cJSON *b)
     if (f == F_OK) {
         char t[TB_CLIENT_NAME_BYTES * 2];
         size_t n = clean(t, sizeof t, name);
-        if (n > 32 || strlen(name) > 256) { bad_value(r, "name", "\"name\" must be 1 to 32 characters."); return; }
+        /* api.md 4.6: a name that's sent is 1 to 32 characters (after cleaning: "" or only spaces is refused) */
+        if (n < 1 || n > 32 || strlen(name) > 256) { bad_value(r, "name", "\"name\" must be 1 to 32 characters."); return; }
         uint32_t bad[1];
-        if (n >= 1 && !tb_text_unsupported(t, bad, 1)) tb_strlcpy(label, t, sizeof label);   /* else the kind's word */
+        if (!tb_text_unsupported(t, bad, 1)) tb_strlcpy(label, t, sizeof label);   /* else the kind's word */
     }
     char pid[17];
     int retry = 0;
@@ -1160,7 +1195,9 @@ static void h_pair_start(rt_t *r, cJSON *b)
         { fail_retry(r, 429, "rate_limited", msg, NULL, retry); return; }
     }
     }
-    tb_app_pairing_show(s_app, s_pair.code, label, s_pair.expires, &r->now);
+    tb_pair_kind_t pk = kind == NET_KIND_MAC ? TB_PAIR_KIND_MAC : kind == NET_KIND_REMOTE ? TB_PAIR_KIND_PHONE
+                      : kind == NET_KIND_AUTOMATION ? TB_PAIR_KIND_SCRIPT : TB_PAIR_KIND_OTHER;
+    tb_app_pairing_show(s_app, s_pair.code, label, pk, &r->now);
     ok(r, 202);
     cJSON_AddStringToObject(r->o, "pairing_id", pid);
     cJSON_AddNumberToObject(r->o, "expires_in_s", NET_PAIR_CODE_MS / 1000);
@@ -1210,7 +1247,7 @@ static void h_pair(rt_t *r, cJSON *b)
     default: { fail(r, 500, "internal", "Pairing failed.", NULL); return; }
     }
     tb_app_pairing_end(s_app, TB_PAIR_END_PAIRED, t->name, &r->now);
-    tb_app_set_paired_count(s_app, (uint8_t)net_pair_count(&s_pair));
+    paired_changed();
     bool set_cookie = cookie && r->via != NET_VIA_USB;
     if (set_cookie)
         snprintf(r->resp->set_cookie, sizeof r->resp->set_cookie,
@@ -1254,7 +1291,7 @@ static void revoke(rt_t *r, const net_token_t *t)
     tb_strlcpy(client, t->client, sizeof client);
     net_pair_revoke(&s_pair, id);
     if (r->tok == t) r->tok = NULL;
-    tb_app_set_paired_count(s_app, (uint8_t)net_pair_count(&s_pair));
+    paired_changed();
     if (net_macs_forget_wifi(&s_macs, client)) push_macs(NULL, &r->now);
     char toast[TB_TOAST_BYTES];
     snprintf(toast, sizeof toast, "Removed %s", name);
@@ -1525,9 +1562,13 @@ static const route_t *find_route(rt_t *r, const char *method, const char *raw_pa
 /* Entry points                                                                                             */
 /* ======================================================================================================== */
 
-/* The pairing code's 2 minutes, run before any request too, so an expired code never answers. */
+/* The pairing code's 2 minutes, run before any request too, so an expired code never answers. They count from when
+ * the code appears on the bar (core's shown_at; decisions.md, Pairing): until then (the splash, the Keep holding
+ * screen) the expiry waits. */
 static void pair_tick(const tb_clock_t *now)
 {
+    if (s_pair.showing && s_app && s_app->pairing.active)
+        s_pair.expires = s_app->pairing.shown_at ? s_app->pairing.shown_at + NET_PAIR_CODE_MS : now->mono + NET_PAIR_CODE_MS;
     if (net_pair_tick(&s_pair, now) && s_app) tb_app_pairing_end(s_app, TB_PAIR_END_TIMEOUT, NULL, now);
 }
 
@@ -1580,6 +1621,7 @@ void net_api_handle(const net_req_t *req, net_resp_t *resp)
         r.from_cookie = true;
     }
     if (tok) r.tok = net_pair_check(&s_pair, tok, req->peer_ip, &r.now);
+    if (r.tok) paired_changed();    /* last use moved: Forget all lists the names most recently used first */
     if (req->via != NET_VIA_USB) {
         int wait = net_rate_take(&s_rate, req->peer_ip, s_bearer && !r.tok, r.now.mono);
         if (wait) {
@@ -1641,7 +1683,7 @@ static void usb_hello(rt_t *r, cJSON *b)
     if (f == F_TYPE) { bad_request(r, "name", "\"name\" must be a string."); return; }
     if (f == F_OK) {
         size_t n = clean(label, sizeof label, name);
-        if (n > 32 || strlen(name) > 256) { bad_value(r, "name", "\"name\" must be 1 to 32 characters."); return; }
+        if (n < 1 || n > 32 || strlen(name) > 256) { bad_value(r, "name", "\"name\" must be 1 to 32 characters."); return; }
         uint32_t bad[1];
         if (tb_text_unsupported(label, bad, 1)) label[0] = '\0';     /* the bar says "Mac" */
     }
@@ -1673,8 +1715,10 @@ static void usb_pair(rt_t *r, cJSON *b)
     const net_token_t *t = NULL;
     net_pair_err_t e = net_pair_usb(&s_pair, client, m && m->name[0] ? m->name : "Mac", &r->now, token, &t);
     if (e != NET_PAIR_OK || !t) { token_limit(r); return; }
+    /* Only a confirmation: a code another device asked for over Wi-Fi stays on the bar, valid, and info.pairing keeps
+     * saying "showing" (core shows this toast once that pairing ends). */
     tb_app_pairing_end(s_app, TB_PAIR_END_PAIRED_USB, t->name, &r->now);
-    tb_app_set_paired_count(s_app, (uint8_t)net_pair_count(&s_pair));
+    paired_changed();
     add_pair_reply(r, token, t);
     memset(token, 0, sizeof token);
 }
@@ -1790,10 +1834,14 @@ void net_api_pairing_canceled(const tb_clock_t *now)
 
 void net_api_forget_devices(const tb_clock_t *now)
 {
-    /* Every Wi-Fi call goes with its token; USB isn't affected (api.md 4.8). */
+    /* Every Wi-Fi call goes with its token; USB isn't affected (api.md 4.8). A call that ends says so after the
+     * mock-up's lead: "Forgot 3 devices · back to Busy". */
+    int n = net_pair_count(&s_pair);
     for (int i = 0; i < NET_TOKENS_MAX; i++)
         if (s_pair.tokens[i].used) net_macs_forget_wifi(&s_macs, s_pair.tokens[i].client);
     net_pair_forget_all(&s_pair);
-    if (s_app) tb_app_set_paired_count(s_app, 0);
-    push_macs(NULL, now);
+    paired_changed();
+    char lead[40];
+    snprintf(lead, sizeof lead, "Forgot %d device%s", n, n == 1 ? "" : "s");
+    push_macs(lead, now);
 }

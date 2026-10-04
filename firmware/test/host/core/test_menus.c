@@ -103,7 +103,7 @@ TB_TEST(menu_light_steps)
     p.has_brightness = true;
     p.v.display.brightness = 55;
     tb_app_remote_settings(&b->a, &p, NULL, &b->now);
-    TB_EQ_STR(b->a.toast, "Brightness 55%");
+    TB_EQ_STR(b->a.toast, "Light 55%");
     hold(b);
     tap_tile_named(b, TB_ACT_BRIGHT);
     TB_EQ_INT(b->a.set.display.brightness, 70);
@@ -148,15 +148,15 @@ TB_TEST(menu_wifi_and_power_submenus)
     bench_t *b = bench_new();
     hold(b);
     tap_tile_named(b, TB_ACT_WIFI);
-    TB_EQ_INT(b->a.menu.n, 3);
+    TB_EQ_INT(b->a.menu.n, 4);
     TB_EQ_STR(b->a.menu.tiles[0].label, "Network");
-    TB_EQ_STR(b->a.menu.tiles[0].value, "On");
-    TB_EQ_STR(b->a.menu.tiles[0].foot, "Office-WiFi \xC2\xB7 10.0.4.42");
+    TB_EQ_STR(b->a.menu.tiles[0].value, "Office-WiFi");
+    TB_EQ_STR(b->a.menu.tiles[0].foot, "TinyBar 2A1C\ntinybar.local \xC2\xB7 10.0.4.42");
     TB_EQ_INT(b->a.menu.tiles[0].style, TB_TILE_INFO);
-    TB_EQ_STR(b->a.menu.tiles[1].label, "Change");
-    TB_EQ_STR(b->a.menu.tiles[1].value, "Set up");
-    TB_EQ_STR(b->a.menu.tiles[1].foot, "show the QR code");
-    TB_EQ_STR(b->a.menu.tiles[2].value, "Back");
+    TB_EQ_STR(b->a.menu.tiles[2].label, "Change");
+    TB_EQ_STR(b->a.menu.tiles[2].value, "Set up");
+    TB_EQ_STR(b->a.menu.tiles[2].foot, "show the\nQR code");
+    TB_EQ_STR(b->a.menu.tiles[3].value, "Back");
     tap_tile(b, 0);                                     /* the read-only tile: the menu closes */
     TB_EQ_INT(b->a.menu.kind, TB_MENU_NONE);
     hold(b);
@@ -171,8 +171,8 @@ TB_TEST(menu_wifi_and_power_submenus)
     hold(b);
     tap_tile_named(b, TB_ACT_WIFI);
     TB_EQ_STR(b->a.menu.tiles[0].value, "None");
-    TB_EQ_STR(b->a.menu.tiles[0].foot, "not connected");
-    TB_EQ_STR(b->a.menu.tiles[1].label, "Set up");
+    TB_EQ_STR(b->a.menu.tiles[0].foot, "TinyBar 2A1C\nnot connected");
+    TB_EQ_STR(b->a.menu.tiles[2].label, "Set up");
     tap_tile_named(b, TB_ACT_CLOSE);
     /* power */
     hold(b);
@@ -187,35 +187,123 @@ TB_TEST(menu_wifi_and_power_submenus)
     TB_EQ_INT(fx_count(b, TB_FX_POWER_OFF), 1);
 }
 
-TB_TEST(menu_devices_tile)
+/* showWifiMenu() (pairing round, proposed): Network (two columns, read-only), Devices, Set up / Change, Back, on the
+ * quick menu's five columns. Network's value is the office network; its foot is the bar's name and its address. */
+TB_TEST(menu_wifi_layout)
 {
     bench_t *b = bench_new();
     hold(b);
     tap_tile_named(b, TB_ACT_WIFI);
-    TB_TRUE(tile_with(b, TB_ACT_DEVICES) == NULL);       /* nothing paired: no tile */
-    tap_tile_named(b, TB_ACT_CLOSE);
-    tb_app_set_paired_count(&b->a, 3);
+    TB_TRUE(b->a.menu.five);
+    TB_EQ_INT(b->a.menu.n, 4);
+    const tb_tile_t *t = b->a.menu.tiles;
+    TB_EQ_STR(t[0].label, "Network");
+    TB_EQ_STR(t[0].value, "Office-WiFi");
+    TB_EQ_STR(t[0].foot, "TinyBar 2A1C\ntinybar.local \xC2\xB7 10.0.4.42");
+    TB_TRUE(t[0].wide && t[0].foot_lines);
+    TB_EQ_INT(t[0].action, TB_ACT_NONE);
+    TB_EQ_STR(t[1].label, "Devices");
+    TB_EQ_STR(t[1].value, "None");                       /* nothing paired: the tile stays, read-only */
+    TB_EQ_STR(t[1].foot, "pair a phone\nor a Mac");
+    TB_EQ_INT(t[1].action, TB_ACT_NONE);
+    TB_EQ_INT(t[1].style, TB_TILE_INFO);
+    TB_EQ_STR(t[2].label, "Change");
+    TB_EQ_STR(t[2].value, "Set up");
+    TB_EQ_STR(t[2].foot, "show the\nQR code");
+    TB_EQ_INT(t[3].action, TB_ACT_CLOSE);
+    tap_tile(b, 1);                                      /* a read-only tile closes the menu, as Network does */
+    TB_EQ_INT(b->a.menu.kind, TB_MENU_NONE);
+    /* paired: a count, up to Full at 10 */
+    tb_app_set_paired(&b->a, 3, "iPhone, Desk script, Mac");
     hold(b);
     tap_tile_named(b, TB_ACT_WIFI);
-    TB_EQ_INT(b->a.menu.n, 4);
     TB_EQ_STR(tile_with(b, TB_ACT_DEVICES)->value, "3 paired");
-    TB_EQ_STR(tile_with(b, TB_ACT_DEVICES)->foot, "tap to forget all");
+    TB_EQ_STR(tile_with(b, TB_ACT_DEVICES)->foot, "tap to\nforget all");
+    TB_EQ_INT(tile_index(b, TB_ACT_DEVICES), 1);
+    tb_app_set_paired(&b->a, 10, "a, b");
+    bench_run(b, 50);
+    TB_EQ_STR(tile_with(b, TB_ACT_DEVICES)->value, "Full");
+}
+
+TB_TEST(menu_wifi_offline_and_link_down)
+{
+    bench_t *b = bench_new_opts(false, true);
+    hold(b);
+    tap_tile_named(b, TB_ACT_WIFI_SKIP);
+    hold(b);
+    tap_tile_named(b, TB_ACT_WIFI);
+    const tb_tile_t *t = b->a.menu.tiles;
+    TB_EQ_STR(t[0].value, "None");
+    TB_EQ_STR(t[0].foot, "TinyBar 2A1C\nnot connected");
+    TB_EQ_STR(t[1].foot, "set up Wi-Fi\nto pair");
+    TB_EQ_STR(t[2].label, "Set up");
+    /* the link dropped after setup: no address to show */
+    b = bench_new();
+    tb_app_wifi_link(&b->a, false, NULL, NULL, &b->now);
+    hold(b);
+    TB_EQ_STR(tile_with(b, TB_ACT_WIFI)->foot, "reconnecting");
+    tap_tile_named(b, TB_ACT_WIFI);
+    TB_EQ_STR(b->a.menu.tiles[0].value, "Office-WiFi");
+    TB_EQ_STR(b->a.menu.tiles[0].foot, "TinyBar 2A1C\nnot connected");
+}
+
+/* showForgetMenu(): Paired (names, most recently used first), Forget all (danger, 600 ms guard), Keep. */
+TB_TEST(menu_forget_all)
+{
+    bench_t *b = bench_new();
+    tb_app_set_paired(&b->a, 3, "iPhone, Desk script, Mac");
+    hold(b);
+    tap_tile_named(b, TB_ACT_WIFI);
     tap_tile_named(b, TB_ACT_DEVICES);
+    TB_EQ_INT(b->a.menu.kind, TB_MENU_FORGET);
+    TB_EQ_INT(b->a.menu.n, 3);
+    const tb_tile_t *t = b->a.menu.tiles;
+    TB_EQ_STR(t[0].label, "Paired");
+    TB_EQ_STR(t[0].value, "3 devices");
+    TB_EQ_STR(t[0].foot, "iPhone, Desk script, Mac");
+    TB_TRUE(t[0].foot_clamp2);
+    TB_EQ_INT(t[0].style, TB_TILE_INFO);
+    TB_EQ_STR(t[1].label, "Tap again");
+    TB_EQ_STR(t[1].value, "Forget all");
+    TB_EQ_STR(t[1].foot, "each needs a new code");
+    TB_EQ_INT(t[1].style, TB_TILE_DANGER);
+    TB_EQ_STR(t[2].label, "Cancel");
+    TB_EQ_STR(t[2].value, "Keep");
+    TB_EQ_STR(t[2].foot, "back to Wi-Fi");
+    TB_EQ_INT(t[2].style, TB_TILE_DONE);
+    /* a quick second tap is ignored */
+    tap_tile_named(b, TB_ACT_FORGET_ALL);
     TB_EQ_INT(fx_count(b, TB_FX_FORGET_DEVICES), 0);
-    TB_EQ_STR(tile_with(b, TB_ACT_DEVICES)->value, "Forget all");
-    TB_EQ_STR(tile_with(b, TB_ACT_DEVICES)->foot, "3 devices \xC2\xB7 tap again");
+    TB_EQ_INT(b->a.menu.kind, TB_MENU_FORGET);
+    /* Keep goes back to Wi-Fi and forgets nothing */
+    tap_tile_named(b, TB_ACT_KEEP_DEVICES);
+    TB_EQ_INT(b->a.menu.kind, TB_MENU_WIFI);
+    TB_EQ_INT(fx_count(b, TB_FX_FORGET_DEVICES), 0);
+    /* a deliberate second tap forgets them all */
     tap_tile_named(b, TB_ACT_DEVICES);
+    bench_run(b, 700);
+    tap_tile_named(b, TB_ACT_FORGET_ALL);
     TB_EQ_INT(fx_count(b, TB_FX_FORGET_DEVICES), 1);
     TB_EQ_STR(b->a.toast, "Forgot 3 devices");
     TB_EQ_INT(b->a.menu.kind, TB_MENU_NONE);
-    /* the confirmation doesn't survive closing the menu */
+    /* the 8 s close forgets nothing */
+    bench_clear_log(b);
     hold(b);
     tap_tile_named(b, TB_ACT_WIFI);
     tap_tile_named(b, TB_ACT_DEVICES);
-    tap_tile_named(b, TB_ACT_CLOSE);
+    bench_run(b, 8100);
+    TB_EQ_INT(b->a.menu.kind, TB_MENU_NONE);
+    TB_EQ_INT(fx_count(b, TB_FX_FORGET_DEVICES), 0);
+    /* one device: singular; the last one removed meanwhile turns the confirmation back into the Wi-Fi menu */
+    tb_app_set_paired(&b->a, 1, "Mac");
     hold(b);
     tap_tile_named(b, TB_ACT_WIFI);
-    TB_EQ_STR(tile_with(b, TB_ACT_DEVICES)->value, "3 paired");
+    tap_tile_named(b, TB_ACT_DEVICES);
+    TB_EQ_STR(b->a.menu.tiles[0].value, "1 device");
+    tb_app_set_paired(&b->a, 0, NULL);
+    bench_run(b, 50);
+    TB_EQ_INT(b->a.menu.kind, TB_MENU_WIFI);
+    TB_EQ_STR(b->a.menu.tiles[1].value, "None");
 }
 
 TB_TEST(menu_setup_screens)

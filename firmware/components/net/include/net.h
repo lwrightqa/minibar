@@ -29,12 +29,15 @@ esp_err_t net_usb_init(void);
 esp_err_t net_init(tb_app_t *app, const char *device_id);
 esp_err_t net_start(void);
 
-/* Stored office Wi-Fi credentials exist (else the bar starts on the QR code). */
-bool net_wifi_configured(void);
+/* How the Wi-Fi starts, for tb_app_init(): TB_WIFI_OFFLINE when Skip was the last choice (remembered in NVS, so an
+ * offline bar starts offline with the radio off), TB_WIFI_OK when a network is saved, else TB_WIFI_SETUP (the QR code).
+ * It only reads NVS, so it works before net_init(). */
+tb_wifi_mode_t net_wifi_start_mode(void);
 
 /* core's Wi-Fi effects (main forwards them). */
-void net_setup_begin(void);     /* TB_FX_WIFI_SETUP: start TinyBar-Setup (open), 192.168.4.1, DNS catch-all, page */
-void net_setup_skip(void);      /* TB_FX_WIFI_SKIP: stop it; stay offline (station off) */
+void net_setup_begin(void);     /* TB_FX_WIFI_SETUP: start TinyBar-Setup (open), 192.168.4.1, DNS catch-all, page;
+                                 * forgets a saved skip */
+void net_setup_skip(void);      /* TB_FX_WIFI_SKIP: stop it; stay offline (station off), and remember it */
 void net_setup_done(void);      /* TB_FX_WIFI_DONE: the Connected screen moved on; stop the setup network */
 
 /* settings.device.name changed: update the mDNS instance name. */

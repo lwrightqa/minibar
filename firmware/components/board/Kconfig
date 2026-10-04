@@ -55,6 +55,17 @@ menu "TinyBar board (Waveshare ESP32-S3-Touch-LCD-3.49 V2)"
             accelerometer's raw reading, a backlight duty sweep and every button and touch press, and plays the
             chime and both tick levels.
 
+    config TINYBAR_LCD_TURN_180
+        bool "Turn the picture 180 degrees (the bar starts upside down)"
+        default n
+        help
+            The layout is drawn with LVGL rotation 90 when the bar stands the normal way up, and 270 when it's
+            flipped. That 90 comes from Waveshare's 10_LVGL_V9_Test, whose rotated path was never run as shipped, so
+            which of the two is "up" is only known once the panel is seen. If the splash is upside down, turn this
+            on: it swaps 90 and 270 everywhere. With an IMU, CONFIG_TINYBAR_IMU_UP also decides which reading is
+            "flipped" (pick the opposite sign there instead if the picture is right but flips the wrong way); without
+            an IMU this is the only way to turn the picture.
+
     config TINYBAR_LCD_PCLK_MHZ
         int "QSPI clock for the panel (MHz)"
         range 10 80

@@ -24,7 +24,7 @@ final class QAHTTPTests: XCTestCase {
         let token = HTTPTransportTests.token
         let open = HTTPTransport(endpoint: server.endpoint, token: nil, appVersion: "1.0 (12)", timeout: 2)
         let paired = HTTPTransport(endpoint: server.endpoint, token: token, appVersion: "1.0 (12)", timeout: 2)
-        _ = try await open.hello(HelloRequest(client: ConnectionRig.client, name: "Lisa's Mac"))
+        _ = try await open.hello(HelloRequest(client: ConnectionRig.client, name: "Alex's Mac"))
         _ = try await open.pairStart(PairStartRequest(client: ConnectionRig.client))
         _ = try await open.pair(PairRequest(pairingID: "d407580a9215e992", code: "482913"))
         _ = try await paired.sendCall(CallRequest(client: ConnectionRig.client, session: "q8Zr2Lx0", seq: 7, active: false, leaving: true))

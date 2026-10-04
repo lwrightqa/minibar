@@ -20,9 +20,10 @@ typedef enum {
     TB_MENU_QUICK,          /* Light, Calendar (or Show again), Wi-Fi, Power, Done */
     TB_MENU_TIMER,          /* Skip, +5 (mid-phase only), Stop, Settings (or Show again), Done */
     TB_MENU_TIMER_SETTINGS, /* Auto-start, Ticking, Back */
-    TB_MENU_WIFI,           /* Network (read-only), Set up / Change, [Devices, api.md 4.8, proposed], Back */
+    TB_MENU_WIFI,           /* Network (read-only, two columns), Devices, Set up / Change, Back: the five-column grid */
     TB_MENU_POWER,          /* Restart, Power off, Back */
     TB_MENU_SETUP,          /* on the Wi-Fi setup screens: Skip, QR code, Done */
+    TB_MENU_FORGET,         /* Devices' confirmation: Paired (read-only), Forget all (danger), Keep (proposed) */
 } tb_menu_kind_t;
 
 typedef enum {
@@ -44,31 +45,40 @@ typedef enum {
     TB_ACT_TIMER_MENU,      /* Back to the timer menu */
     TB_ACT_AUTO,
     TB_ACT_TICK,
-    TB_ACT_DEVICES,         /* forget all paired devices; first tap asks, second confirms (api.md 4.8, proposed) */
+    TB_ACT_DEVICES,         /* the Devices tile: opens the Forget all confirmation (api.md 4.8, proposed) */
+    TB_ACT_FORGET_ALL,      /* forget every paired device (a tap in the first 600 ms is ignored) */
+    TB_ACT_KEEP_DEVICES,    /* back to the Wi-Fi menu without forgetting */
 } tb_action_t;
 /* A tap on a read-only tile (TB_ACT_NONE) closes the menu, as in the mock-up (the Network tile has no data-action). */
+
+#define TB_FORGET_GUARD_MS 600      /* showForgetMenu(): taps on Forget all this soon after it opens are ignored */
 
 typedef enum {
     TB_TILE_NORMAL = 0,     /* #1C1F24, muted label and foot, white value */
     TB_TILE_DONE,           /* #E8EBEE with dark text (Done, Back) */
-    TB_TILE_INFO,           /* read-only (Network) */
+    TB_TILE_INFO,           /* read-only (Network, Devices "None", Paired): the tile's fill, no edge */
+    TB_TILE_DANGER,         /* Forget all: Busy red #D01B3A, white label, value and foot, no edge */
 } tb_tile_style_t;
 
 typedef struct {
     tb_action_t action;
     tb_tile_style_t style;
     char label[24];         /* <b>: capitals in the UI ("LIGHT") */
-    char value[24];         /* <span>: "70%", "Sync", "Show again" */
+    char value[40];         /* <span>: "70%", "Sync", "Show again", a network name */
     bool value_two_lines;   /* <span class="two">: "Show again" wraps onto two lines */
-    char foot[64];          /* <small>: "tap to change", "synced 2m ago", "Office-WiFi · 10.0.4.42" */
+    bool wide;              /* spans two of the five columns (the Wi-Fi menu's Network tile) */
+    bool foot_lines;        /* the foot is "line\nline": two separate lines, each cut with "…" (never wraps) */
+    bool foot_clamp2;       /* the foot wraps onto at most two lines, the second cut with "…" (the device names) */
+    char foot[160];         /* <small>: "tap to change", "synced 2m ago", "TinyBar 2A1C\ntinybar.local · 10.0.4.42" */
 } tb_tile_t;
 
 typedef struct {
     tb_menu_kind_t kind;
     uint8_t n;
+    bool five;              /* laid out on the quick menu's five columns whatever the tile count (the Wi-Fi menu) */
     tb_tile_t tiles[TB_MENU_MAX_TILES];
     tb_ms_t closes_at;      /* monotonic; 0 when closed. Set when a menu opens or an action rebuilds it in place. */
-    bool devices_confirm;   /* the Devices tile is asking for its second tap */
+    tb_ms_t opened_at;      /* when this menu opened (the Forget all guard) */
 } tb_menu_t;
 
 #ifdef __cplusplus

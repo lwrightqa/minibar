@@ -86,10 +86,23 @@ const check = (c, what) => { if (!c) { fails++; console.log('FAIL', what); } els
   await sleep(300);
   check((await p.textContent('#pRead')) === 'Focus 1 of 4 · ready', 'stopped: ready');
   // Message
+  // Characters the bar can't draw are named as you type, and Show waits until they're gone (nothing is sent).
+  s = JSON.parse(await sim('/_sim/state'));
+  const idxBefore = s.idx;
   await p.fill('#msgInput', 'Pizza 🍕 time');
-  await p.click('#msgForm button');
+  await sleep(100);
+  check((await p.textContent('#msgErr')) === "TinyBar can't show 🍕. Remove it to show this message.", 'unsupported char named while typing: ' + await p.textContent('#msgErr'));
+  check(await p.isDisabled('#msgShow'), 'Show disabled while it has one');
+  await p.fill('#msgInput', 'Hi 👋🏽 🇺🇸 ✓');
+  await sleep(100);
+  check((await p.textContent('#msgErr')) === "TinyBar can't show 👋🏽, 🇺🇸 or ✓. Remove them to show this message.", 'several named: ' + await p.textContent('#msgErr'));
+  await p.press('#msgInput', 'Enter');
   await sleep(300);
-  check((await p.textContent('#msgErr')).includes("can't show this character: 🍕"), 'unsupported char message: ' + await p.textContent('#msgErr'));
+  s = JSON.parse(await sim('/_sim/state'));
+  check(s.idx === idxBefore, 'nothing sent while the field has them');
+  await p.fill('#msgInput', 'Don’t interrupt – deadline · café…');
+  await sleep(100);
+  check(!(await p.isVisible('#msgErr')) && !(await p.isDisabled('#msgShow')), 'curly quote, dash, Latin-1 and ellipsis are fine');
   await p.fill('#msgInput', 'Don’t interrupt – deadline');
   await p.click('#msgForm button');
   await sleep(300);

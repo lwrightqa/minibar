@@ -55,14 +55,16 @@ No cycles, and nothing depends on main. net doesn't call board: it posts `TB_EV_
 |---|---|---|---|---|---|
 | **app** | main | 1 | 5 | 12 KB, internal | core, ui, LVGL rendering and touch reading, the router (via `tb_bus_exec`), effects, saves |
 | esp_timer (IDF) | board | 0 | 22 | IDF | The 5 ms button poll (a timer callback, no task of its own) |
-| imu | board | 0 | 3 | 3 KB | QMI8658 at about 25 Hz; posts `TB_EV_ORIENTATION` after 0.5 s of a steady new orientation |
-| audio | board | 1 | 6 | 4 KB | Mixes the chime and tick PCM into I2S; one tick a second while ticking is on |
-| httpd (IDF) | net | 0 | 5 | 6 KB | HTTP handlers: parse, then `tb_bus_exec(router)`; serves the gzipped pages directly |
-| usb_rx | net | 0 | 4 | 4 KB | Reads "@tb " lines (2 KB max), `tb_bus_exec(net_api_usb_line)`, writes the reply |
-| net | net | 0 | 4 | 4 KB | Wi-Fi worker: saves credentials, scans, starts mDNS and SNTP once online, hands the setup page's calendar address over |
-| dns | net | 0 | 3 | 3 KB | Setup mode only: answers every name with 192.168.4.1 |
-| cal_sync | calendar | 0 | 2 | 10 KB, internal | HTTPS fetch streamed through the ICS reader; one at a time |
-| wifi, tcpip, mdns, sntp, sys_evt | IDF | 0 | IDF defaults | IDF | |
+| imu | board | 0 | 3 | 4 KB, internal | QMI8658 at about 25 Hz; posts `TB_EV_ORIENTATION` after 0.5 s of a steady new orientation |
+| audio | board | 1 | 6 | 4 KB, internal | Mixes the chime and tick PCM into I2S; one tick a second while ticking is on |
+| httpd (IDF) | net | 0 | 5 | 6 KB, **PSRAM** | HTTP handlers: parse, then `tb_bus_exec(router)`; serves the gzipped pages directly |
+| usb_rx | net | 0 | 4 | 4 KB, **PSRAM** | Reads "@tb " lines (2 KB max), `tb_bus_exec(net_api_usb_line)`, writes the reply |
+| net | net | 0 | 4 | 4 KB, internal | Wi-Fi worker: saves credentials and the Wi-Fi skip, scans, starts mDNS and SNTP once online, hands the setup page's calendar address over |
+| dns | net | 0 | 3 | 4 KB, **PSRAM** | Setup mode only: answers every name with 192.168.4.1 |
+| cal_sync | calendar | 0 | 2 | 10 KB, internal | HTTPS fetch streamed through the ICS reader; one at a time; blocks a tick every 32 KB read |
+| tiT (lwIP tcpip) | IDF | **0** (pinned) | 18 | 4 KB | |
+| sys_evt (event loop) | IDF | 0 | 20 | 5 KB | runs net's Wi-Fi and IP handlers |
+| wifi, mdns, sntp | IDF | 0 | IDF defaults | IDF | |
 | bringup | board | 0 | 2 | 4 KB | Only with `CONFIG_TINYBAR_BOARD_BRINGUP` (off): the hardware self-test |
 
 - **The app loop** (`main/app_task.c`) runs every 5 to 33 ms (what `lv_timer_handler` asks for):
@@ -75,13 +77,16 @@ No cycles, and nothing depends on main. net doesn't call board: it posts `TB_EV_
   4. `settings_store_poll`, feed the watchdog.
 
   A loop that used its whole event budget yields one tick, so a flood of requests can't starve core 1's idle task.
-  Every minute the log carries a health line (internal and PSRAM heap, the app task's stack left, dropped events),
-  and a loop slower than 250 ms is logged: both are for the first runs on the board.
+  The log carries a health line 15 s after start, right after the first calendar fetch (the internal-RAM peak), and
+  then every minute: internal heap (free, lowest, largest block), PSRAM, dropped events, frames and their rotate +
+  send time, and every task's unused stack by name. The frame time (LVGL's render plus the flush) is logged every
+  minute at INFO, and a loop slower than 250 ms is logged: all for the first runs on the board.
 - **LVGL has no OS layer** (`CONFIG_LV_OS_NONE`): only the app task calls it, and it holds `board_display_lock()`
   while it does, so anything that ever needs LVGL from elsewhere has one lock to take (nothing does today). Start-up
   calls LVGL from the main task before the app task exists. The flush callback blocks on the DMA semaphore inside the
   app task.
-- Wi-Fi and the network stack stay on core 0, the screen on core 1, so a slow TLS handshake never stalls a frame.
+- Wi-Fi and the network stack stay on core 0, the screen on core 1, so a slow TLS handshake never stalls a frame
+  (`CONFIG_LWIP_TCPIP_TASK_AFFINITY_CPU0`: lwIP's thread, at priority 18, would otherwise preempt the app task).
 - **Watchdog:** the task watchdog (10 s, panic and restart) watches both idle tasks, the app task, usb_rx, imu and
   audio. cal_sync isn't subscribed; it relies on its own limits (20 s per network step, 3 minutes per fetch).
   `board_power_off()` feeds the watchdog while it waits for PWR to be let go. A crash leaves a core dump in the
@@ -103,14 +108,19 @@ No cycles, and nothing depends on main. net doesn't call board: it posts `TB_EV_
 5. `lv_init()`, `board_display_init(flipped)`, `board_touch_init()`, `ui_init()`.
 6. `board_rtc_init()`: the system clock from the RTC if it holds a time TinyBar wrote. The clock counts as known if
    the RTC was trusted or the system clock already reads 2025 or later (it survives a restart and a deep sleep).
-7. `tb_app_init()` (booting = true: the splash), `settings_store_restore()`, `tb_app_flip(initial)`.
+7. `tb_app_init()` (booting = true: the splash) with how the Wi-Fi starts (`net_wifi_start_mode()`: a saved network,
+   a remembered Skip, or the QR code), `settings_store_restore()`, `tb_app_flip(initial)`.
 8. `app_task_start()`. From here only the app task touches the model, LVGL and the ui. The backlight comes on after
    the first frame reaches the panel (the initial `TB_FX_BACKLIGHT`).
 9. `board_buttons_init()`, `board_audio_init()`, `board_imu_start()`.
 10. `net_init()`, `net_start()` (station or setup mode, HTTP, the USB reader and its `ready` line; mDNS and SNTP once
     online), then `app_net_ready()`: Wi-Fi effects core queued before this (in practice none, since the 1.5 s splash
     outlasts net's start) are carried out now. `cal_sync_init()` posts the saved meetings, then waits for Wi-Fi.
-11. `esp_ota_mark_app_valid_cancel_rollback()` (later: only after a self-test passes).
+11. `esp_ota_mark_app_valid_cancel_rollback()`. There's no OTA in v1, so it guards nothing yet. **When OTA lands:**
+    mark the image valid only after a self-test (the panel and net started), and restart right after switching the
+    OTA partition, before any power off can happen: power off is a deep sleep, and with
+    `CONFIG_BOOTLOADER_SKIP_VALIDATE_IN_DEEP_SLEEP` the wake skips the image check that IDF's help says must not be
+    skipped after a partition switch.
 
 Nothing in start-up gives up on a failing part: a missing IMU, codec, RTC, touch controller or unreadable NVS leaves
 the bar working without it and says so in the log, and a failed network start leaves statuses and the Pomodoro
@@ -299,14 +309,29 @@ rendered at 640 × 172 in headless Chromium per `docs/testing.md`):
 - **Work login (PEAP/TTLS)** doesn't check the RADIUS server's certificate (office servers mostly use a private CA),
   and the Wi-Fi password is kept in plain NVS until encryption is agreed. Both are open decisions (section 13).
 - **Power off on USB** is a deep sleep: the USB serial port disappears, and comes back on the next PWR press.
+- **Skip is remembered** (`wifi/skipped` in NVS): an offline bar starts offline after Restart or power-on, with the
+  radio off and no TinyBar-Setup network, as the mock-up's `powerOn()` keeps offline mode. Set up (the QR code) and a
+  join that works clear it.
 
 ### Secrets
 
-The calendar address and the token hashes live in the `nvs_sec` partition, apart from ordinary settings. api.md
-section 15 asks for NVS encryption with the HMAC-based scheme, which **burns an HMAC key into an eFuse block on first
-boot and can't be undone** on that board. It is off in `sdkconfig.defaults` until the user agrees; switching it on is
-a config change (`CONFIG_NVS_ENCRYPTION`, `CONFIG_NVS_SEC_KEY_PROTECT_USING_HMAC`, the eFuse key id) plus
-`nvs_flash_secure_init_partition("nvs_sec")` in `settings_store_init()`.
+The calendar address and the token hashes live in the `nvs_sec` partition, apart from ordinary settings; the Wi-Fi
+password and a work login's username and password are in `nvs/wifi`. **All of it is plain text in flash today, and
+anyone with a laptop and a USB-C cable can read it in about a minute:** esptool resets the ESP32-S3 into download
+mode through the same USB Serial/JTAG port (RTS and DTR), with no button press and without opening the case, then
+reads the flash. A work login is often the person's company sign-in.
+
+- **NVS encryption** (api.md section 15, the HMAC-based scheme) **burns an HMAC key into an eFuse block on first boot
+  and can't be undone** on that board. It stops a passive dump only: without secure boot, someone could flash a
+  dumping firmware that uses the same HMAC key (the chip still holds it), read the secrets, and flash TinyBar back.
+  Switching it on is a config change (`CONFIG_NVS_ENCRYPTION`, `CONFIG_NVS_SEC_KEY_PROTECT_USING_HMAC`, the eFuse key
+  id) plus `nvs_flash_secure_init_partition("nvs_sec")` (and the default partition) in `settings_store_init()`.
+- **Full protection** needs flash encryption plus secure boot (signed images only), or disabling USB download mode and
+  JTAG in eFuse. All of these are irreversible, and they change how the bar is updated (the web flasher at 0x0 would
+  no longer work as-is).
+
+It's off in `sdkconfig.defaults` until the user decides; decisions.md asks the question, and it should be settled
+before the bar joins an office network with work-login credentials.
 
 ## 11. Memory plan
 
@@ -315,17 +340,20 @@ reports or estimated, and the real heap figures come from the health log line on
 
 | Where | What | Size |
 |---|---|---|
-| Internal SRAM, static (measured) | code that must run from RAM (IDF, Wi-Fi), `.data`, `.bss` | 164 KB of 342 KB DIRAM, so **178 KB is left for the heap**, plus the 16 KB IRAM block |
+| Internal SRAM, static (measured) | code that must run from RAM (IDF, Wi-Fi, the IRAM-safe I2C ISR), `.data`, `.bss` | **141 KB of 342 KB DIRAM, so 201 KB is left for the heap** (it was 164 KB and 178 KB before the review round), plus the 16 KB IRAM block |
 | Internal heap (estimated) | app task stack | 12 KB |
-| | task stacks: httpd 6, usb_rx 4, net 4, cal_sync 10, imu 3, audio 4, dns 3 | 34 KB |
+| | TinyBar's internal stacks: net 4, cal_sync 10, imu 4, audio 4 | 22 KB |
+| | IDF's task stacks: wifi about 6.5, sys_evt 5, mdns 4, esp_timer 3.5, tiT 4, two idle 1.5 each, two ipc 1.25 each, the timer task 2 | about 30 KB |
 | | display DMA chunk buffer (172 × 64 × 2) | 22 KB |
 | | I2S DMA buffers | about 4 KB |
 | | Wi-Fi and lwIP (what can't go to PSRAM with `SPIRAM_TRY_ALLOCATE_WIFI_LWIP`) | about 50 to 60 KB |
-| | LVGL's small objects (`LV_USE_CLIB_MALLOC`: malloc up to 4 KB stays internal) | about 20 to 40 KB |
+| | the bus queue (32 × about 140 B), small allocations under 4 KB (`SPIRAM_MALLOC_ALWAYSINTERNAL`: HTTP header copies, bus jobs, the calendar's small ones) | about 10 to 15 KB |
 | | IDF's 48 KB reserve for DMA and internal-only allocations (`SPIRAM_MALLOC_RESERVE_INTERNAL`) comes out of the same heap | |
-| | `g_app` (`tb_app_t`, mostly the 32 meetings) is static `.bss`, inside the 164 KB above; the bus queue (32 × about 140 B) is heap | 10.3 KB + 4.5 KB |
-| PSRAM (8 MB) | two full frame buffers and the rotation buffer (3 × 215 KB), the synthesized sounds (board: about 775 KB in all) | about 775 KB |
-| | LVGL's larger allocations, the hold track's 24 KB layer, the QR canvas | about 100 KB |
+| | **Total estimate** | about 155 to 175 KB of 201 KB, before fragmentation: the margin is real now but not large, so the health line's lowest free and largest block are what to watch on the board |
+| PSRAM (8 MB) | one full frame buffer and the rotation buffer (2 × 215 KB; the second draw buffer is gone, since the flush is synchronous), the synthesized sounds (about 130 KB) | about 560 KB (775 KB before) |
+| | everything LVGL allocates (`CONFIG_LV_USE_CUSTOM_MALLOC`, board/src/board_lv_mem.c): objects, styles, label text, the hold track's 24 KB layer, the QR canvas | about 120 to 140 KB |
+| | stacks of tasks that never write flash: httpd 6, usb_rx 4, dns 4 | 14 KB |
+| | `g_app` (`tb_app_t`, `EXT_RAM_BSS_ATTR`), and with `SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY` IDF also puts lwIP's and the Wi-Fi libraries' `.bss` here | 11 KB + 15 KB |
 | | TLS buffers (`MBEDTLS_EXTERNAL_MEM_ALLOC`, dynamic, 16 KB in + 4 KB out) | about 40 KB during a fetch |
 | | ICS reader (`cal_feed_t`, fixed whatever the feed's size) and the last list (8 KB) | 28.3 KB during a fetch, 8 KB always |
 | | HTTP and USB replies (≤ 8 KB each), cJSON trees (net puts cJSON in PSRAM), the meetings handed over | under 30 KB at a time |
@@ -339,18 +367,22 @@ on the board is too slow (the bar redraws a few times a second; the marquee and 
 only the few hottest functions, not the whole set.
 
 Task stacks were checked with `-fstack-usage`: the deepest frames on the app task are the router's setup handler
-(about 1 KB), `ui_update` (0.9 KB) and LVGL's drawing; 12 KB leaves room, and the health line reports what's left.
+(about 1 KB), `ui_update` (0.9 KB) and LVGL's drawing; 12 KB leaves room. The protocol-safe logger adds a 304 B frame
+on top of newlib's `vsnprintf` to every task that logs, so the review round raised the tight ones for the first runs
+(imu 4 KB, dns 4 KB, sys_evt 5 KB, tcpip 4 KB). The health line reports every task's margin by name.
 
 Large allocations should name their heap (`heap_caps_malloc(..., MALLOC_CAP_SPIRAM)`) rather than rely on the
-4 KB threshold. Stacks of tasks that do flash writes (NVS) must stay in internal RAM.
+4 KB threshold. Stacks of tasks that do flash writes (NVS) must stay in internal RAM, and so must the stacks of tasks
+that do I2C (the ISR is IRAM-safe and may read their buffers while the cache is off).
 
 ## 12. Persistence (NVS)
 
 | Partition / namespace | Key | Written by | When |
 |---|---|---|---|
 | `nvs` / `tinybar` | `settings` (version + `tb_settings_t`) | main | 2 s after the last settings change |
-| `nvs` / `tinybar` | `state` (own status, last status, message, today's tomatoes, focused time, date) | main | 2 s after a change; and before power off and restart |
+| `nvs` / `tinybar` | `state` (own status, last status, message, today's tomatoes, focused time, date) | main | 2 s after a change; and before power off and restart, always (with `settings`), so the focus minutes since the session started aren't lost (NVS skips an unchanged blob, so this costs no wear) |
 | `nvs` / `wifi` | ssid, security, username, password (plain until NVS encryption is agreed) | net | on a successful join |
+| `nvs` / `wifi` | `skipped`: Skip was the last Wi-Fi choice | net | on Skip; erased by Set up and a working join |
 | `nvs` / `cal` | `list`: the last good meetings list and its sync time, packed (`cal_store.h`; a few hundred bytes, at most 4.7 KB) | calendar | when the list changes |
 | `nvs_sec` / `calsec` | `url`: the calendar address (write-only to the outside) | calendar | on a successful check; erased on remove |
 | `nvs_sec` / `tokens` | `table`: token hashes and records | net | on pairing, revoke, forget all, and (rate-limited) last-used updates |
@@ -367,11 +399,14 @@ an hour per token.
 
 **Waiting for the user or the product manager:**
 
-1. **Pairing** (api.md 4, Proposed): built, default on (`TINYBAR_API_AUTH_BEARER`). The ui drew a proposed pairing
-   screen (dark surface, "Pairing · Mac", the code at 112 px, a "Code expires" countdown); it and the Devices tile
-   still need the UX designer's review (api.md 14.3).
-2. **NVS encryption** burns an eFuse key that can't be undone (section 10); off until the user agrees. Until then the
-   calendar address, token hashes and the Wi-Fi password sit in plain NVS.
+1. **Pairing** (api.md 4 and decisions.md "Pairing", Proposed): built, default on (`TINYBAR_API_AUTH_BEARER`), and
+   since the review round it follows the mock-up's pairing round: the pairing screen ("Code expires in", the bar's
+   name, the device-specific sub line, the progress bar), a flip cancels and flips, a code holds a ringing alarm and a
+   phase that ends under it, the 2 minutes count from when the code shows, the Wi-Fi menu (Network, Devices, Set up,
+   Back on five columns) and Forget all's own confirmation.
+2. **Stored secrets** (section 10): readable over the USB-C port with esptool in about a minute. NVS encryption alone
+   stops only a passive dump; full protection (flash encryption with secure boot, or USB download mode off) is
+   irreversible. Off until the user decides, which should be before the bar joins an office network with a work login.
 3. **First boot status:** the mock-up opens on a sample Pomodoro. The firmware uses **Clock** (idle), with Available
    as the status Stop returns to.
 4. **Today's tomatoes** reset at local midnight and survive restarts (the mock-up never sees midnight).
@@ -400,36 +435,52 @@ an hour per token.
 15. **The setup page's time zone always applies;** the Mac's `hello` only fills one in (section 6, "Time").
 16. **USB or battery** can't be told on the V2 board (no sense pin), and power off doesn't need to: it lets go of
     SYS_EN, and if the bar is still running a moment later it's on USB and goes into deep sleep.
-17. **LVGL out of IRAM** (section 11), for internal RAM.
+17. **LVGL out of IRAM** (section 11), for internal RAM; since the review round its allocations go to PSRAM too.
 18. **Restart** is a real reboot: like the mock-up's `restart()`, the Pomodoro run resets and today's tomatoes stay.
+19. **Skip is remembered** across restarts and power-on (section 10); **Message with nothing set stores "Hello"**, the
+    mock-up's fallback, so the API reports what the bar shows (decisions.md, Proposed).
 
 **Only the board can answer** (each component README's bring-up checklist says how to check):
 
-19. Whether opening or closing the USB port from macOS resets the bar (DTR/RTS), and the USB serial number.
-20. The IMU's address, axis and sign; the touch coordinates after a flip (both ways up); the touch controller's edges.
-21. The panel's colors and byte order, the frame time, and whether the marquee needs LVGL's direct render mode.
-22. The backlight's dark point (duty 164 of 255 is calculated from the schematic) and any flash at power-up.
-23. Audio: volume in an open office, pops when the amplifier switches, hiss, and clicks while NVS writes flash.
-24. Deep sleep: that PWR wakes it and that a held PWR doesn't; SYS_EN through a software restart; the RTC mark.
-25. Internal heap and stack headroom under Wi-Fi, TLS and HTTP load (the health line), and the watchdog under load.
-26. Wi-Fi: WPA3, PEAP/TTLS, captive-portal sheets on iOS and Android, the phone staying on the setup network while
+20. Whether opening or closing the USB port from macOS resets the bar (DTR/RTS), and the USB serial number.
+21. The IMU's address, axis and sign; which LVGL rotation is upright (90 is the example's never-run path:
+    `CONFIG_TINYBAR_LCD_TURN_180` swaps it); the touch coordinates after a flip (both ways up); the touch edges.
+22. The panel's colors and byte order, the frame time (now logged at INFO), and whether the marquee needs LVGL's
+    direct render mode.
+23. The backlight's dark point (duty 164 of 255 is calculated from the schematic) and any flash at power-up: on a
+    cold power-up BL_EN floats high through its pull-up until the expander is set, so the backlight may glow briefly
+    over an uninitialized panel (not after a deep-sleep wake). Boot time to SYS_EN high (the PSRAM test and the
+    bootloader's INFO log are off for it).
+24. Audio: volume in an open office, pops when the amplifier switches, hiss, and clicks while NVS writes flash.
+25. Deep sleep: that PWR wakes it and that a held PWR doesn't; SYS_EN through a software restart; the RTC mark.
+26. Internal heap and stack headroom under Wi-Fi, TLS and HTTP load (the health line), and the watchdog under load.
+27. Wi-Fi: WPA3, PEAP/TTLS, captive-portal sheets on iOS and Android, the phone staying on the setup network while
     the bar joins, mDNS renaming, SNTP behind office firewalls; TLS to Google and iCloud with the certificate bundle.
 
 ## 14. Testing
 
-What was run on 2026-10-04 at integration:
+What was run on 2026-10-04, after the review round's fixes:
 
-- **Firmware build:** `idf.py build` in the default `build/` directory, from a clean `sdkconfig`: no warnings at all
-  (TinyBar's code and the managed components). The merged image is `dist/tinybar-<version>.bin` (README, "Flash").
-- **Host tests** (`test/host/`, ctest, AddressSanitizer and UBSan): 5 runners, 343 tests, all passing:
-  core 129 (every cell of the controls table, Pomodoro and alarm scenarios, call and meeting priority, ticking,
-  menus, Remote operations, Wi-Fi and pairing screens, bookkeeping), calendar 59 (time zones against glibc, RRULE,
-  DST, overrides, streaming one byte at a time, garbage, a 9 MB feed), net 91 (every endpoint and error code of
-  api.md, USB lines, the Mac table, pairing), ui 29 (every screen's copy, overlays, the redraw key, the tomato frames
-  against the mock-up's pixel for pixel, the fonts' character sets and tabular digits), board 35 (backlight curve,
-  debouncing, flip detection, sound levels, RTC registers, touch mapping).
-- **ui host tools** (`components/ui/host`): the touch test through LVGL's input path, straight and flipped, passes;
-  the snapshot tool renders all 70 scenes.
-- **Pages:** the Playwright checks of the Remote and setup pages (`components/net/host/pages_*.test.js`) against the
-  fake bar (`host/fakebar.c`: the real router and core on Linux, with simulated Wi-Fi and calendar) pass at 390 px.
+- **Firmware build:** `idf.py build` from a clean configuration in a fresh `build-lead/` (its sdkconfig generated
+  from `sdkconfig.defaults` alone): no warnings at all (TinyBar's code and the managed components). App 2.02 MB
+  (0x203db0 bytes), 66% of the slot free; DIRAM 141 KB used statically, 201 KB free. The merged image is
+  `dist/tinybar-<version>.bin` (README, "Flash"), checked byte for byte against the build and with a valid hash.
+- **Host tests** (`test/host/`, ctest, AddressSanitizer and UBSan, no compiler warnings): 5 runners, 370 tests, all
+  passing: core 150 (every cell of the controls table, Pomodoro and alarm scenarios, call and meeting priority,
+  ticking, menus, Remote operations, Wi-Fi and pairing screens, bookkeeping, and the review round's rules: the Wi-Fi
+  skip remembered, the setup menu after setup, the calendar tile with the link down, "Hello", pairing with a flip, an
+  alarm and a phase end, a touch from before the code, USB pairing over a code, Forget all, and QA's sweep of every
+  control in every state and a way back from every screen), calendar 59 (time zones against glibc, RRULE, DST,
+  overrides, streaming one byte at a time, garbage, a 9 MB feed; the runner also works outside ctest), net 97 (every
+  endpoint and error code of api.md, USB lines, the Mac table, pairing, empty names, the pairing clock, the paired
+  names' order, Forget all), ui 29 (every screen's copy, overlays, the redraw key, the tomato frames against the
+  mock-up's pixel for pixel, the fonts' character sets and tabular digits), board 35 (backlight curve, debouncing, flip
+  detection, sound levels, RTC registers, touch mapping).
+- **ui host tools** (`components/ui/host`): the touch test (straight and flipped) and the layout test (the sub line
+  after the QR screen on its baseline and inside its column; the longest real copy in each slot without "…") pass; the
+  snapshot tool renders 79 scenes; `tools/compare.py` against the mock-up (`tools/ref_scenes.js`) finds every text
+  line of 76 scenes on the mock-up's baseline.
+- **Pages:** the Playwright checks of the Remote (64, including the message's characters named as you type) and the
+  setup page (20) against the fake bar (`host/fakebar.c`: the real router and core on Linux, with simulated Wi-Fi and
+  calendar) pass at 390 px.
 - **Not yet:** anything on the board. Then an end-to-end run of the controls table on the bar (QA).

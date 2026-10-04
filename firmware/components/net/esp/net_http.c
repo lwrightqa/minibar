@@ -298,6 +298,10 @@ esp_err_t net_http_start(void)
     c.max_resp_headers = 10;
     c.stack_size = 6144;
     c.core_id = 0;
+    /* The server task's stack goes to PSRAM, sparing 6 KB of internal RAM for Wi-Fi, lwIP and TLS (ARCHITECTURE.md
+     * section 11). It never touches flash: the router runs on the app task (tb_bus_exec), and the pages are read
+     * through the cache. */
+    c.task_caps = MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT;
     c.recv_wait_timeout = 5;
     c.send_wait_timeout = 5;
     esp_err_t err = httpd_start(&s_server, &c);

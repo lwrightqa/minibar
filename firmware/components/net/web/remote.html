@@ -199,7 +199,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
         <label class="field-label" for="msgInput">Custom message</label>
         <div class="msg-row">
           <input id="msgInput" type="text" maxlength="80" autocomplete="off" aria-describedby="msgErr">
-          <button class="btn" type="submit">Show</button>
+          <button class="btn" id="msgShow" type="submit">Show</button>
         </div>
         <p class="field-err" id="msgErr" hidden></p>
       </form>
@@ -705,13 +705,46 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
 
   let msgTouched = false;
   function msgErr(t) { $('msgErr').textContent = t; $('msgErr').hidden = !t; $('msgInput').setAttribute('aria-invalid', t ? 'true' : 'false'); }
-  $('msgInput').addEventListener('input', () => { msgTouched = true; msgErr(''); });
+
+  // Characters the bar can't show (api.md 8.2; decisions.md "Remote", proposed) are named under the field as you type,
+  // before anything is sent, and Show waits until they're gone. The rule is the firmware's tb_text_drawable() after
+  // the mapping in api.md 2.3: printable ASCII, Latin-1, the en and em dashes and the ellipsis; curly quotes become
+  // straight ones, dashes a hyphen, the ellipsis three dots, and control characters are dropped. The bar's own 400
+  // unsupported_chars stays the backstop.
+  const TEXT_MAP = { '\u2018': "'", '\u2019': "'", '\u201C': '"', '\u201D': '"', '\u2013': '-', '\u2014': '-', '\u2026': '...' };
+  const drawable = cp => (cp >= 0x20 && cp <= 0x7e) || (cp >= 0xa0 && cp <= 0xff) || cp === 0x2013 || cp === 0x2014 || cp === 0x2026;
+  const isControl = cp => cp < 0x20 || cp === 0x7f || (cp >= 0x80 && cp <= 0x9f);
+  const cleanText = t => [...t].map(ch => TEXT_MAP[ch] ?? (/[\t\n\r]/.test(ch) ? ' ' : ch)).filter(ch => !isControl(ch.codePointAt(0))).join('');
+  const textDrawable = t => [...cleanText(t)].every(ch => drawable(ch.codePointAt(0)));
+  // Each character the bar can't show, once, in the order typed; what you see as one character (an emoji with a skin
+  // tone, a flag) counts as one.
+  function unsupportedChars(t) {
+    let parts;
+    try { parts = [...new Intl.Segmenter('en', { granularity: 'grapheme' }).segment(t)].map(x => x.segment); } catch (e) { parts = [...t]; }
+    const out = [];
+    parts.forEach(g => { if (!textDrawable(g) && !out.includes(g)) out.push(g); });
+    return out;
+  }
+  function listChars(cs) {
+    if (cs.length === 1) return cs[0];
+    if (cs.length <= 5) return `${cs.slice(0, -1).join(', ')} or ${cs[cs.length - 1]}`;
+    return `${cs.slice(0, 5).join(', ')} and ${cs.length - 5} more`;
+  }
+  const cantShow = bad => `TinyBar can't show ${listChars(bad)}. Remove ${bad.length === 1 ? 'it' : 'them'} to show this message.`;
+  function checkMessage() {
+    const bad = unsupportedChars($('msgInput').value);
+    msgErr(bad.length ? cantShow(bad) : '');
+    $('msgShow').disabled = bad.length > 0;
+    return !bad.length;
+  }
+  $('msgInput').addEventListener('input', () => { msgTouched = true; checkMessage(); });
   $('msgForm').addEventListener('submit', async e => {
     e.preventDefault();
+    if (!checkMessage()) return;
     const text = $('msgInput').value.trim() || 'Hello';
     const r = await api('POST', '/message', { text });
     if (took(r)) { msgTouched = false; msgErr(''); return; }
-    if (r.j && r.j.error === 'unsupported_chars') msgErr(`TinyBar can't show ${r.j.chars.length === 1 ? 'this character' : 'these characters'}: ${r.j.chars.join(' ')}. Take ${r.j.chars.length === 1 ? 'it' : 'them'} out and try again.`);
+    if (r.j && r.j.error === 'unsupported_chars' && Array.isArray(r.j.chars) && r.j.chars.length) msgErr(cantShow(r.j.chars));
     else if (r.j && r.j.error === 'bad_value') msgErr('A message can be up to 80 characters.');
     else if (r.status) msgErr(errText(r));
   });

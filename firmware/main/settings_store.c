@@ -144,9 +144,13 @@ void settings_store_poll(const tb_app_t *a, tb_ms_t now)
     }
 }
 
+/* Before the power goes or the chip restarts: write both, whether or not a change is due. The state signature leaves
+ * out focused_ms (to spare flash), so a session's focus minutes would otherwise be lost, and the effects that queue a
+ * save may come after TB_FX_POWER_OFF in the same batch. It costs no flash wear: NVS compares a blob with what's stored
+ * and skips an unchanged write. */
 void settings_store_flush(const tb_app_t *a)
 {
-    if (s_settings_due) write_settings(a);
-    if (s_state_due) write_state(a);
+    write_settings(a);
+    write_state(a);
     s_settings_due = s_state_due = 0;
 }

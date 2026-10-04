@@ -58,7 +58,7 @@ TB_TEST(settings_name_counts_characters)
     memcpy(p.v.device.name + 48, "\xC3\xA9", 3);      /* 25 characters */
     TB_EQ_INT(tb_settings_check(&p, false, &f), TB_E_BAD_VALUE);
     TB_EQ_STR(f, "device.name");
-    strcpy(p.v.device.name, "Desk 4 \xE2\x80\x93 Lisa's bar");   /* 19 characters with an en dash */
+    strcpy(p.v.device.name, "Desk 4 \xE2\x80\x93 Alex's bar");   /* 19 characters with an en dash */
     TB_EQ_INT(tb_settings_check(&p, false, &f), TB_OK);
     p.v.device.name[0] = '\0';
     TB_EQ_INT(tb_settings_check(&p, false, &f), TB_E_BAD_VALUE);
