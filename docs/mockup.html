@@ -19,8 +19,10 @@
   --s-busy: #d1253a;
   --s-meeting: #5544d0;
   --s-focus: #dc7310;
+  --s-short: #0f8a80;
+  --s-long: #2563c0;
   --s-away: #4f5863;
-  --s-message: #0c7c88;
+  --s-message: #9b3a8e;
   --s-clock: #0b0c0e;
   --s-fg: #ffffff;
 
@@ -212,6 +214,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
   opacity: .85;
   font-variant-numeric: tabular-nums;
 }
+.sys > span { white-space: nowrap; }
 .sys .icons { display: flex; align-items: center; gap: .9cqw; }
 .sys svg { width: 2.6cqw; height: 2.6cqw; display: block; }
 .ctx-label {
@@ -244,7 +247,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
   height: 1cqw;
   background: rgba(0,0,0,.25);
 }
-.bar i { display: block; height: 100%; background: rgba(255,255,255,.92); width: 0; transition: width .9s linear; }
+.bar i { display: block; height: 100%; background: rgba(255,255,255,.92); width: 0; transition: width .3s linear; }
 .bar[hidden] { display: none; }
 
 .menu {
@@ -392,9 +395,59 @@ h1 .dot { color: var(--state); transition: color .3s; }
 .spec { font-family: var(--f-mono); font-size: 13px; }
 .note-small { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
 
+/* Pomodoro on the screen */
+.sys .pill {
+  padding: .15cqw .9cqw;
+  border-radius: 9cqw;
+  background: var(--pc);
+  box-shadow: 0 0 0 .2cqw rgba(255,255,255,.5);
+  font-weight: 500;
+  opacity: 1;
+}
+.word.blink { animation: blink 1.1s steps(2, jump-none) infinite; }
+@keyframes blink { 50% { opacity: .35; } }
+.dots i.now { background: linear-gradient(90deg, currentColor 50%, transparent 50%); }
+.lcd.alert::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  pointer-events: none;
+  animation: flash .55s ease-out 3;
+}
+@keyframes flash { from { opacity: .7; } to { opacity: 0; } }
+.tile[data-action] { cursor: pointer; }
+.tile[data-action]:hover { background: #2a2e36; }
+
+/* Pomodoro on the remote */
+.pomo { display: grid; gap: 12px; padding: 14px; border-radius: 16px; border: 1px solid var(--line); }
+.pomo-read {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.pomo-read b {
+  font-family: var(--f-screen);
+  font-weight: 800;
+  font-size: 34px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--pc);
+}
+.pomo-read span { font-size: 13px; color: var(--muted); text-align: right; }
+.row.fill > * { flex: 1; }
+.setting { display: grid; grid-template-columns: 88px minmax(0, 1fr); align-items: center; gap: 10px; }
+.setting > span { font-size: 13px; color: var(--muted); font-weight: 600; }
+.setting .seg button { padding: 6px 0; font-size: 13px; }
+.checks { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.check input { width: 16px; height: 16px; accent-color: var(--state); margin: 0; }
+
 @media (prefers-reduced-motion: reduce) {
   .device, .lcd, .bar i { transition: none; }
   .marquee.scroll .word { animation: none; padding-left: 0; }
+  .word.blink, .lcd.alert::after { animation: none; }
 }
 </style>
 
@@ -407,7 +460,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
 
   <section class="bench" aria-label="Device simulator">
     <div class="device" id="device">
-      <div class="screen" id="screen" tabindex="0" role="button" aria-label="TinyBar screen. Tap for next status, swipe to change, long-press for menu.">
+      <div class="screen" id="screen" tabindex="0" role="button" aria-label="TinyBar screen. Tap for next status or to pause the Pomodoro, swipe to change status, long-press for menu.">
         <div class="lcd" id="lcd"></div>
         <div class="bar" id="bar"><i id="barFill"></i></div>
         <div class="menu" id="menu" hidden></div>
@@ -416,7 +469,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
       <button class="hwbtn pwr" id="btnPwr" aria-label="PWR button: screen on or off"></button>
     </div>
     <div class="caption">
-      <span>Tap: next status · Swipe: back or forward · Hold: quick menu · Side buttons: BOOT and PWR</span>
+      <span id="hint">Tap: next status · Swipe: back or forward · Hold: quick menu · Side buttons: BOOT and PWR</span>
       <span class="gesture-log" id="log" aria-live="polite">Ready</span>
     </div>
   </section>
@@ -432,11 +485,51 @@ h1 .dot { color: var(--state); transition: color .3s; }
         <div class="status-grid" id="statusGrid"></div>
       </div>
       <div>
-        <span class="field-label" id="focusLabel">Focus length</span>
-        <div class="seg" id="focusSeg" role="group" aria-labelledby="focusLabel">
-          <button data-min="15">15 min</button>
-          <button data-min="25" aria-pressed="true">25 min</button>
-          <button data-min="50">50 min</button>
+        <span class="field-label">Pomodoro</span>
+        <div class="pomo" id="pomoBox">
+          <div class="pomo-read">
+            <b id="pTime">18:42</b>
+            <span id="pRead">Focus 2 of 4</span>
+          </div>
+          <div class="row fill">
+            <button class="btn" id="pStart" type="button">Pause</button>
+            <button class="btn ghost" id="pSkip" type="button">Skip</button>
+            <button class="btn ghost" id="pReset" type="button">Reset</button>
+          </div>
+          <div class="setting">
+            <span id="lFocus">Focus</span>
+            <div class="seg" data-k="focus" role="group" aria-labelledby="lFocus">
+              <button data-v="15">15</button><button data-v="25" aria-pressed="true">25</button><button data-v="50">50</button>
+            </div>
+          </div>
+          <div class="setting">
+            <span id="lShort">Short break</span>
+            <div class="seg" data-k="short" role="group" aria-labelledby="lShort">
+              <button data-v="5" aria-pressed="true">5</button><button data-v="10">10</button>
+            </div>
+          </div>
+          <div class="setting">
+            <span id="lLong">Long break</span>
+            <div class="seg" data-k="long" role="group" aria-labelledby="lLong">
+              <button data-v="15" aria-pressed="true">15</button><button data-v="20">20</button><button data-v="30">30</button>
+            </div>
+          </div>
+          <div class="setting">
+            <span id="lEvery">Long break after</span>
+            <div class="seg" data-k="every" role="group" aria-labelledby="lEvery">
+              <button data-v="3">3</button><button data-v="4" aria-pressed="true">4</button><button data-v="5">5</button>
+            </div>
+          </div>
+          <div class="checks">
+            <label class="check" for="pAuto"><input type="checkbox" id="pAuto"> Start next phase on its own</label>
+            <label class="check" for="pSound"><input type="checkbox" id="pSound" checked> Chime</label>
+          </div>
+          <div class="setting">
+            <span id="lSpeed">Demo speed</span>
+            <div class="seg" id="speedSeg" role="group" aria-labelledby="lSpeed">
+              <button data-v="1" aria-pressed="true">Real time</button><button data-v="60">60× faster</button>
+            </div>
+          </div>
         </div>
       </div>
       <form id="msgForm">
@@ -459,13 +552,14 @@ h1 .dot { color: var(--state); transition: color .3s; }
       <div>
         <h2>How you'd control it</h2>
         <dl class="kv">
-          <dt>Touch</dt><dd>Tap cycles status, a swipe steps back or forward, and holding opens a quick menu with brightness, Wi-Fi, calendar and sleep.</dd>
+          <dt>Touch</dt><dd>Tap cycles status, a swipe steps back or forward, and holding opens a quick menu with brightness, Wi-Fi, calendar and battery. On the Pomodoro screen, a tap starts or pauses the timer and holding opens timer options.</dd>
+          <dt>Pomodoro</dt><dd>25-minute focus sessions, 5-minute breaks and a 15-minute break after every fourth session, all adjustable. Focus shows in orange so people know not to interrupt; breaks turn the bar teal or blue to say it's a good moment. The timer keeps running when you switch to another status, with a small countdown in the corner, and the bar jumps back to it when a phase ends.</dd>
           <dt>Side buttons</dt><dd>BOOT jumps to the next status without looking. PWR turns the screen off and on, and holding it powers down.</dd>
           <dt>Phone remote</dt><dd>The device serves a small page at tinybar.local on your Wi-Fi, like the Remote panel on this page.</dd>
           <dt>Automations</dt><dd>An HTTP endpoint (and optionally MQTT for Home Assistant) so a calendar, Slack, Zoom or a shortcut can set the status.</dd>
           <dt>Calendar</dt><dd>Optionally reads a private calendar link and switches to "In a meeting" on its own.</dd>
           <dt>Tilt</dt><dd>The motion sensor flips the layout when you mount it upside down, so the buttons can go on either side.</dd>
-          <dt>Chime</dt><dd>The speaker plays a soft chime when a focus session ends.</dd>
+          <dt>Chime</dt><dd>The speaker plays a short chime when a focus session or break ends. The mock-up plays it in your browser.</dd>
         </dl>
       </div>
       <div>
@@ -479,7 +573,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
           <dt>Audio</dt><dd>ES8311 codec + speaker</dd>
           <dt>Power</dt><dd>USB-C or 3.7 V Li-ion</dd>
         </dl>
-        <p class="note-small">Meeting names, times and the battery level are sample data.</p>
+        <p class="note-small">Meeting names, times, the battery level and today's Pomodoro count are sample data.</p>
       </div>
     </div>
   </section>
@@ -494,11 +588,13 @@ h1 .dot { color: var(--state); transition: color .3s; }
     { id: 'available', name: 'Available' },
     { id: 'busy',      name: 'Busy' },
     { id: 'meeting',   name: 'In a meeting' },
-    { id: 'focus',     name: 'Focus' },
+    { id: 'pomodoro',  name: 'Pomodoro' },
     { id: 'away',      name: 'Away' },
     { id: 'message',   name: 'Message' },
     { id: 'clock',     name: 'Clock' },
   ];
+  const POMO = STATES.findIndex(x => x.id === 'pomodoro');
+  const PHASE_NAME = { focus: 'Focus', short: 'Short break', long: 'Long break' };
 
   const now = () => new Date();
   const addMin = (d, m) => new Date(d.getTime() + m * 60000);
@@ -508,6 +604,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
   const roundTo = (d, m) => { const ms = m * 60000; return new Date(Math.ceil(d.getTime() / ms) * ms); };
   const mmss = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
   const hm = mins => mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
+  const esc = t => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   // Sample timeline, anchored to when the page loaded.
   const t0 = now();
@@ -521,10 +618,30 @@ h1 .dot { color: var(--state); transition: color .3s; }
     awaySince: addMin(t0, -8),
   };
 
+  // Pomodoro timer. Times are in simulated milliseconds so the demo speed can fast-forward.
+  const pomo = {
+    set: { focus: 25, short: 5, long: 15, every: 4 },
+    auto: false,
+    sound: true,
+    speed: 1,
+    phase: 'focus',
+    round: 2,
+    remaining: (18 * 60 + 42) * 1000,
+    running: true,
+    waiting: false,
+    justEnded: null,
+    doneToday: 1,
+    focusedMs: 0,
+  };
+  const phaseLen = ph => pomo.set[ph] * 60000;
+  pomo.focusedMs = phaseLen('focus') + (phaseLen('focus') - pomo.remaining);
+  const remSec = () => Math.max(0, Math.ceil(pomo.remaining / 1000));
+  const isReady = () => !pomo.running && !pomo.waiting && pomo.phase === 'focus' && pomo.remaining === phaseLen('focus');
+  const pomoActive = () => pomo.running || pomo.waiting || !isReady();
+  const simEnd = () => new Date(Date.now() + pomo.remaining / pomo.speed);
+
   const s = {
-    idx: 1,
-    focusMin: 25,
-    focusStart: Date.now() - (25 * 60 - 18 * 60 - 42) * 1000,
+    idx: POMO,
     message: document.getElementById('msgInput').value,
     messageAt: t0,
     flipped: false,
@@ -534,15 +651,99 @@ h1 .dot { color: var(--state); transition: color .3s; }
   const $ = id => document.getElementById(id);
   const screen = $('screen'), lcd = $('lcd'), bar = $('bar'), barFill = $('barFill'), menu = $('menu'), device = $('device'), log = $('log');
 
+  // Chime through Web Audio; the device would play the same notes on its speaker.
+  let ac = null;
+  document.addEventListener('pointerdown', () => {
+    try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); } catch (e) {}
+  });
+  function chime(toBreak) {
+    if (!pomo.sound || !ac) return;
+    try {
+      const notes = toBreak ? [784, 988, 1175] : [1175, 988, 784];
+      notes.forEach((f, i) => {
+        const o = ac.createOscillator(), g = ac.createGain();
+        const t = ac.currentTime + i * 0.18;
+        o.type = 'sine';
+        o.frequency.value = f;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.18, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+        o.connect(g).connect(ac.destination);
+        o.start(t);
+        o.stop(t + 1);
+      });
+    } catch (e) {}
+  }
+
+  function flash() {
+    lcd.classList.remove('alert');
+    void lcd.offsetWidth;
+    lcd.classList.add('alert');
+    setTimeout(() => lcd.classList.remove('alert'), 1700);
+  }
+
+  function nextPhase(skipped) {
+    const ended = pomo.phase;
+    if (ended === 'focus') {
+      if (!skipped) pomo.doneToday++;
+      pomo.phase = pomo.round % pomo.set.every === 0 ? 'long' : 'short';
+    } else {
+      pomo.round = ended === 'long' ? 1 : pomo.round + 1;
+      pomo.phase = 'focus';
+    }
+    pomo.remaining = phaseLen(pomo.phase);
+    return ended;
+  }
+
+  function endPhase() {
+    const ended = nextPhase(false);
+    chime(ended === 'focus');
+    if (pomo.auto) { pomo.running = true; pomo.waiting = false; pomo.justEnded = null; }
+    else { pomo.running = false; pomo.waiting = true; pomo.justEnded = ended; }
+    if (s.off) togglePower();
+    s.idx = POMO;
+    hideMenu();
+    render();
+    flash();
+    say(ended === 'focus' ? 'timer: focus done, break time' : 'timer: break over');
+  }
+
+  function startPause(how) {
+    if (pomo.waiting) { pomo.waiting = false; pomo.justEnded = null; pomo.running = true; say(`${how}: ${PHASE_NAME[pomo.phase].toLowerCase()} started`); }
+    else { pomo.running = !pomo.running; say(`${how}: timer ${pomo.running ? 'running' : 'paused'}`); }
+    render();
+  }
+  function skip(how) {
+    nextPhase(true);
+    pomo.running = true; pomo.waiting = false; pomo.justEnded = null;
+    render();
+    say(`${how}: skipped to ${PHASE_NAME[pomo.phase].toLowerCase()}`);
+  }
+  function reset(how) {
+    Object.assign(pomo, { phase: 'focus', round: 1, remaining: phaseLen('focus'), running: false, waiting: false, justEnded: null });
+    render();
+    say(`${how}: timer reset`);
+  }
+
   const icons = `
     <span class="icons">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5.5 12.5a10 10 0 0 1 13 0"/><path d="M9 16a5 5 0 0 1 6 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/></svg>
       <svg viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="2" y="6" width="21" height="12" rx="2.5"/><rect x="5" y="9" width="12" height="6" rx="1" fill="currentColor" stroke="none"/><path d="M25.5 10v4" stroke-linecap="round"/></svg>
     </span>`;
 
+  // Top row of the side column. Off the Pomodoro screen, a running timer shows as a small pill.
+  function sysRow() {
+    let pill = '';
+    if (STATES[s.idx].id !== 'pomodoro' && pomoActive()) {
+      const label = pomo.waiting ? 'Done' : !pomo.running ? 'Paused' : mmss(remSec());
+      pill = `<span class="pill" style="--pc:${col(pomo.phase)}">${label}</span>`;
+    }
+    return `<div class="sys"><span>${fmt(now())}</span>${pill}${icons}</div>`;
+  }
+
   const side = (label, value, foot = '', valueClass = '') => `
     <aside class="side">
-      <div class="sys"><span>${fmt(now())}</span>${icons}</div>
+      ${sysRow()}
       <div>
         <div class="ctx-label">${label}</div>
         <div class="ctx-value ${valueClass}">${value}</div>
@@ -550,7 +751,49 @@ h1 .dot { color: var(--state); transition: color .3s; }
       </div>
     </aside>`;
 
-  const esc = t => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function pomoView() {
+    const { phase, round, set } = pomo;
+    const total = phaseLen(phase);
+    const nextRound = phase === 'long' ? 1 : round + 1;
+    let dots = '';
+    for (let k = 1; k <= set.every; k++) {
+      const on = k < round || (k === round && phase !== 'focus');
+      const cur = k === round && phase === 'focus';
+      dots += `<i class="${on ? 'on' : cur ? 'now' : ''}"></i>`;
+    }
+    const sideHtml = `
+      <aside class="side">
+        ${sysRow()}
+        <div>
+          <div class="ctx-label">Today</div>
+          <div class="dots">${dots}</div>
+          <div class="ctx-foot" style="margin-top:1cqw">${pomo.doneToday} done · ${hm(Math.round(pomo.focusedMs / 60000))} focused</div>
+        </div>
+      </aside>`;
+
+    if (pomo.waiting) {
+      const main = pomo.justEnded === 'focus'
+        ? `<div class="kicker">Focus ${round} of ${set.every} done</div><div class="word" style="font-size:12cqw">Break time</div><div class="sub">Tap to start a ${set[phase]} min ${phase === 'long' ? 'long' : 'short'} break</div>`
+        : `<div class="kicker">Break over</div><div class="word" style="font-size:12cqw">Back to it</div><div class="sub">Tap to start focus ${round} of ${set.every}</div>`;
+      return { main, side: sideHtml };
+    }
+
+    const ready = isReady();
+    const paused = !pomo.running;
+    let kicker = phase === 'focus' ? `Pomodoro · focus ${round} of ${set.every}` : `${PHASE_NAME[phase]} · then focus ${nextRound} of ${set.every}`;
+    if (ready) kicker = `Pomodoro · ready`;
+    else if (paused) kicker = `Paused · ${kicker}`;
+    let sub;
+    if (ready) sub = `Tap to start ${set.focus} min of focus`;
+    else if (paused) sub = 'Tap to resume';
+    else if (phase === 'focus') sub = `Please don't interrupt · break at ${fmt(simEnd())}`;
+    else sub = `Come say hi · back to work at ${fmt(simEnd())}`;
+    return {
+      main: `<div class="kicker">${kicker}</div><div class="word ${paused && !ready ? 'blink' : ''}" style="font-size:17cqw">${mmss(remSec())}</div><div class="sub">${sub}</div>`,
+      side: sideHtml,
+      bar: (total - pomo.remaining) / total * 100,
+    };
+  }
 
   function view(id) {
     const n = now();
@@ -576,26 +819,8 @@ h1 .dot { color: var(--state); transition: color .3s; }
           bar: pct,
         };
       }
-      case 'focus': {
-        const total = s.focusMin * 60;
-        const el = Math.min(total, (Date.now() - s.focusStart) / 1000);
-        const rem = total - el;
-        const breakAt = new Date(s.focusStart + total * 1000);
-        const done = rem <= 0;
-        return {
-          main: `<div class="kicker">Focus · session 2 of 4</div><div class="word" style="font-size:17cqw">${done ? 'Break' : mmss(rem)}</div><div class="sub">${done ? 'Session done, take five' : 'Break at ' + fmt(breakAt)}</div>`,
-          side: `
-            <aside class="side">
-              <div class="sys"><span>${fmt(n)}</span>${icons}</div>
-              <div>
-                <div class="ctx-label">Sessions today</div>
-                <div class="dots"><i class="on"></i><i class="on"></i><i></i><i></i></div>
-                <div class="ctx-foot" style="margin-top:1cqw">${s.focusMin} min each</div>
-              </div>
-            </aside>`,
-          bar: el / total * 100,
-        };
-      }
+      case 'pomodoro':
+        return pomoView();
       case 'away': {
         const gone = Math.round((n - sample.awaySince) / 60000);
         return {
@@ -613,15 +838,17 @@ h1 .dot { color: var(--state); transition: color .3s; }
       }
       case 'clock':
         return {
-          main: `<div class="kicker">${n.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</div><div class="word" style="font-size:17cqw">${fmtShort(n)}<span style="font-size:.32em;letter-spacing:.06em;margin-left:.15em">${ampm(n)}</span></div><div class="sub">Idle · no status set</div>`,
+          main: `<div class="kicker">${n.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</div><div class="word" style="font-size:17cqw">${fmtShort(n)}<span style="font-size:.32em;letter-spacing:.06em;margin-left:.15em">${ampm(n)}</span></div><div class="sub">Idle · ${pomo.doneToday} Pomodoro${pomo.doneToday === 1 ? '' : 's'} done today</div>`,
           side: side('Next up', 'Design review', fmt(sample.meetStart) + ' · in Room 4', 'small'),
         };
     }
   }
 
+  const screenColor = id => id === 'pomodoro' ? col(pomo.phase) : col(id);
+
   function render() {
     const st = STATES[s.idx];
-    const c = col(st.id);
+    const c = screenColor(st.id);
     const v = view(st.id);
     lcd.style.setProperty('--sc', c);
     document.documentElement.style.setProperty('--state', st.id === 'clock' ? col('meeting') : c);
@@ -629,14 +856,44 @@ h1 .dot { color: var(--state); transition: color .3s; }
     if (v.bar == null) { bar.hidden = true; }
     else { bar.hidden = false; barFill.style.width = v.bar.toFixed(2) + '%'; }
     document.querySelectorAll('.sbtn').forEach(b => b.setAttribute('aria-pressed', b.dataset.id === st.id));
+    $('hint').textContent = st.id === 'pomodoro'
+      ? 'Tap: start or pause timer · Swipe: change status · Hold: timer options · Side buttons: BOOT and PWR'
+      : 'Tap: next status · Swipe: back or forward · Hold: quick menu · Side buttons: BOOT and PWR';
+    updateRemote();
   }
 
-  function tick() {
-    // Only redraw the parts that change, so the marquee animation does not restart.
-    const id = STATES[s.idx].id;
-    if (id === 'message') {
-      const t = lcd.querySelector('.sys span');
-      if (t) t.textContent = fmt(now());
+  function updateRemote() {
+    const pc = col(pomo.phase);
+    const box = $('pomoBox');
+    box.style.setProperty('--pc', pc);
+    $('pTime').textContent = mmss(remSec());
+    const where = pomo.phase === 'focus' ? `Focus ${pomo.round} of ${pomo.set.every}` : PHASE_NAME[pomo.phase];
+    const state = pomo.waiting ? 'waiting for you' : isReady() ? 'ready' : pomo.running ? 'running' : 'paused';
+    $('pRead').textContent = `${where} · ${state}`;
+    $('pStart').textContent = pomo.waiting ? `Start ${pomo.phase === 'focus' ? 'focus' : 'break'}` : pomo.running ? 'Pause' : isReady() ? 'Start' : 'Resume';
+    const pb = document.querySelector('.sbtn[data-id="pomodoro"]');
+    if (pb) pb.style.setProperty('--c', pc);
+  }
+
+  // Redraw only when something visible changes, so the marquee keeps scrolling.
+  let lastKey = '', lastTs = Date.now();
+  function loop() {
+    const t = Date.now();
+    const dt = t - lastTs;
+    lastTs = t;
+    if (pomo.running) {
+      const d = dt * pomo.speed;
+      pomo.remaining -= d;
+      if (pomo.phase === 'focus') pomo.focusedMs += Math.min(d, d + pomo.remaining);
+      if (pomo.remaining <= 0) { endPhase(); lastKey = ''; return; }
+    }
+    const key = [s.idx, fmt(now()), pomo.phase, remSec(), pomo.running, pomo.waiting].join('|');
+    if (key === lastKey) return;
+    lastKey = key;
+    if (STATES[s.idx].id === 'message') {
+      const sys = lcd.querySelector('.sys');
+      if (sys) sys.outerHTML = sysRow();
+      updateRemote();
       return;
     }
     render();
@@ -644,7 +901,6 @@ h1 .dot { color: var(--state); transition: color .3s; }
 
   function go(i, how) {
     s.idx = (i + STATES.length) % STATES.length;
-    if (STATES[s.idx].id === 'focus' && how === 'remote') s.focusStart = Date.now();
     hideMenu();
     render();
     if (how) say(`${how}: ${STATES[s.idx].name}`);
@@ -659,20 +915,49 @@ h1 .dot { color: var(--state); transition: color .3s; }
     b.className = 'sbtn';
     b.type = 'button';
     b.dataset.id = st.id;
-    b.style.setProperty('--c', st.id === 'clock' ? '#3a4049' : col(st.id));
+    b.style.setProperty('--c', st.id === 'clock' ? '#3a4049' : screenColor(st.id));
     b.innerHTML = `<i></i>${st.name}`;
     b.addEventListener('click', () => { if (s.off) togglePower(); go(i, 'remote'); });
     grid.appendChild(b);
   });
 
-  $('focusSeg').addEventListener('click', e => {
+  function pickSeg(seg, btn) { seg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === btn)); }
+
+  document.querySelectorAll('.seg[data-k]').forEach(seg => {
+    seg.addEventListener('click', e => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      const k = seg.dataset.k, v = +b.dataset.v;
+      pickSeg(seg, b);
+      pomo.set[k] = v;
+      if (k === 'every') {
+        if (pomo.round > v) pomo.round = v;
+      } else if (pomo.phase === k) {
+        // Changing the length of the current phase restarts it at the new length.
+        pomo.remaining = phaseLen(k);
+      }
+      if (s.off) togglePower();
+      s.idx = POMO;
+      render();
+      say(`remote: ${k === 'every' ? `long break after ${v} sessions` : `${PHASE_NAME[k].toLowerCase()} set to ${v} min`}`);
+    });
+  });
+
+  $('speedSeg').addEventListener('click', e => {
     const b = e.target.closest('button');
     if (!b) return;
-    s.focusMin = +b.dataset.min;
-    s.focusStart = Date.now();
-    $('focusSeg').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
-    go(STATES.findIndex(x => x.id === 'focus'), 'remote');
+    pickSeg($('speedSeg'), b);
+    pomo.speed = +b.dataset.v;
+    say(pomo.speed > 1 ? 'demo: 1 minute per second' : 'demo: real time');
+    lastKey = '';
   });
+
+  const toPomo = fn => () => { if (s.off) togglePower(); s.idx = POMO; fn('remote'); };
+  $('pStart').addEventListener('click', toPomo(startPause));
+  $('pSkip').addEventListener('click', toPomo(skip));
+  $('pReset').addEventListener('click', toPomo(reset));
+  $('pAuto').addEventListener('change', e => { pomo.auto = e.target.checked; say(`remote: auto-start ${pomo.auto ? 'on' : 'off'}`); });
+  $('pSound').addEventListener('change', e => { pomo.sound = e.target.checked; say(`remote: chime ${pomo.sound ? 'on' : 'off'}`); });
 
   $('msgForm').addEventListener('submit', e => {
     e.preventDefault();
@@ -681,17 +966,34 @@ h1 .dot { color: var(--state); transition: color .3s; }
     go(STATES.findIndex(x => x.id === 'message'), 'remote');
   });
 
-  // Quick menu
+  // Quick menu. On the Pomodoro screen it holds timer options instead.
   function showMenu() {
-    menu.innerHTML = `
-      <div class="tile"><b>Brightness</b><span>70%</span><small>Swipe up or down</small></div>
-      <div class="tile"><b>Wi-Fi</b><span>Home</span><small>−54 dBm</small></div>
-      <div class="tile"><b>Calendar</b><span>Synced</span><small>2 min ago</small></div>
-      <div class="tile"><b>Battery</b><span>82%</span><small>About 9 h left</small></div>`;
+    if (STATES[s.idx].id === 'pomodoro') {
+      const next = pomo.phase === 'focus' ? (pomo.round % pomo.set.every === 0 ? 'long break' : 'short break') : 'focus';
+      menu.innerHTML = `
+        <div class="tile" data-action="skip"><b>Skip</b><span>Next</span><small>to ${next}</small></div>
+        <div class="tile" data-action="add"><b>Add time</b><span>+5 min</span><small>to this ${pomo.phase === 'focus' ? 'session' : 'break'}</small></div>
+        <div class="tile" data-action="reset"><b>Reset</b><span>${pomo.set.focus}:00</span><small>back to focus 1</small></div>
+        <div class="tile" data-action="auto"><b>Auto-start</b><span>${pomo.auto ? 'On' : 'Off'}</span><small>tap to switch</small></div>`;
+    } else {
+      menu.innerHTML = `
+        <div class="tile"><b>Brightness</b><span>70%</span><small>Swipe up or down</small></div>
+        <div class="tile"><b>Wi-Fi</b><span>Home</span><small>−54 dBm</small></div>
+        <div class="tile"><b>Calendar</b><span>Synced</span><small>2 min ago</small></div>
+        <div class="tile"><b>Battery</b><span>82%</span><small>About 9 h left</small></div>`;
+    }
     menu.hidden = false;
-    say('hold: quick menu');
+    say(STATES[s.idx].id === 'pomodoro' ? 'hold: timer options' : 'hold: quick menu');
   }
   function hideMenu() { menu.hidden = true; }
+
+  function menuAction(a) {
+    hideMenu();
+    if (a === 'skip') skip('menu');
+    else if (a === 'reset') reset('menu');
+    else if (a === 'add') { pomo.remaining += 5 * 60000; render(); say('menu: added 5 minutes'); }
+    else if (a === 'auto') { pomo.auto = !pomo.auto; $('pAuto').checked = pomo.auto; say(`menu: auto-start ${pomo.auto ? 'on' : 'off'}`); }
+  }
 
   // Touch gestures on the screen
   let p = null, held = false, holdTimer = null;
@@ -713,16 +1015,25 @@ h1 .dot { color: var(--state); transition: color .3s; }
     if (s.flipped) dx = -dx;
     p = null;
     if (held) return;
-    if (!menu.hidden) { hideMenu(); say('tap: menu closed'); return; }
+    if (!menu.hidden) {
+      const t = e.target.closest('[data-action]');
+      if (t) menuAction(t.dataset.action);
+      else { hideMenu(); say('tap: menu closed'); }
+      return;
+    }
     if (dx < -40) go(s.idx + 1, 'swipe');
     else if (dx > 40) go(s.idx - 1, 'swipe');
+    else if (STATES[s.idx].id === 'pomodoro') startPause('tap');
     else go(s.idx + 1, 'tap');
   });
   screen.addEventListener('pointercancel', () => { clearTimeout(holdTimer); p = null; });
   screen.addEventListener('keydown', e => {
     if (e.key === 'ArrowRight') { e.preventDefault(); go(s.idx + 1, 'swipe'); }
     else if (e.key === 'ArrowLeft') { e.preventDefault(); go(s.idx - 1, 'swipe'); }
-    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(s.idx + 1, 'tap'); }
+    else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (STATES[s.idx].id === 'pomodoro') startPause('tap'); else go(s.idx + 1, 'tap');
+    }
     else if (e.key === 'm') { menu.hidden ? showMenu() : hideMenu(); }
   });
 
@@ -745,6 +1056,6 @@ h1 .dot { color: var(--state); transition: color .3s; }
   $('menuBtn').addEventListener('click', () => { if (s.off) togglePower(); menu.hidden ? showMenu() : hideMenu(); });
 
   render();
-  setInterval(tick, 1000);
+  setInterval(loop, 200);
 })();
 </script>
