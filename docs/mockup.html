@@ -2067,8 +2067,8 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
         else if (cal.state !== 'ok') sd = side('Calendar', 'Not set up', 'add it on the Remote', 'small');
         else if (!cal.on) sd = side('Calendar', 'Off', 'turned off on the Remote', 'small');
         // Next up reads like Free until and Posted: the start time is the side value, and AM or PM leads the foot (in
-        // Bold Signal it follows the digits instead), then the title and place (titles on) or how soon it starts. A title in the foot gets about 25
-        // characters before the ellipsis; as the side value it got about 9.
+        // Bold Signal it follows the digits instead), then the title and place (titles on) or how soon it starts. A
+        // title in the foot gets about 25 characters before the ellipsis; as the side value it got about 9.
         else if (nx) sd = side('Next up', fmtShort(nx.start) + vAP(nx.start), fAP(nx.start) + (titleOf(nx)
           ? esc(titleOf(nx)) + (placeOf(nx) ? ' · ' + esc(placeOf(nx)) : '') : `meeting in ${hm(minsUp(nx.start - n))}`));
         else sd = side('Next up', 'Nothing', 'rest of today is free', 'small');
