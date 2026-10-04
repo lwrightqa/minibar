@@ -3671,17 +3671,35 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
   // bar's name and its real address, so bars in one office can be told apart (the network stays the value, so the
   // name never reads as the Wi-Fi's). Devices (Proposed) counts the paired devices and opens Forget all; with none
   // paired it's read-only and says where to pair (this bar's real address, where the Remote is), so a tap there closes
-  // the menu like a tap on Network. Each foot breaks where the markup does (LVGL: "\n").
+  // the menu like a tap on Network. "tinybar.local" is 75 px of the tile's 86.5 in Barlow 500 14 px, but a renamed
+  // host after a name clash ("tinybar-2.local", 90 px) isn't, so the foot takes the first that fits on one line: the
+  // host, the IP address (which the bar answers on too, api.md 2.2; up to about 13 characters fit), or "pair at its" /
+  // "IP address", pointing at the Network tile beside it. The firmware measures the same way (lv_text_get_size against
+  // the tile's content width). Each foot breaks where the markup does (LVGL: "\n").
   function showWifiMenu() {
     const off = s.wifi.mode === 'offline', n = tokens.length;
     const foot = `<span>${esc(BAR.name)}</span><span>${off ? 'not connected' : `${esc(BAR.host)} · ${esc(s.wifi.ip)}`}</span>`;
     const dev = n ? `<div class="tile" data-action="devices"><b>Devices</b><span>${n >= MAX_TOKENS ? 'Full' : `${n} paired`}</span><small>tap to<br>forget all</small></div>`
-      : `<div class="tile info"><b>Devices</b><span>None</span><small>${off ? 'set up Wi-Fi<br>to pair' : `pair at<br>${esc(BAR.host)}`}</small></div>`;
+      : `<div class="tile info"><b>Devices</b><span>None</span><small${off ? '>set up Wi-Fi<br>to pair' : ` data-where>pair at<br>${esc(BAR.host)}`}</small></div>`;
     fillMenu(`
       <div class="tile info wide"><b>Network</b><span>${off ? 'None' : esc(s.wifi.ssid)}</span><small>${foot}</small></div>
       ${dev}
       <div class="tile" data-action="wifisetup"><b>${off ? 'Set up' : 'Change'}</b><span>Set up</span><small>show the<br>QR code</small></div>
       <div class="tile done" data-action="close"><b>Close</b><span>Back</span><small>or wait 8 s</small></div>`, true);
+    const where = menu.querySelector('[data-where]');
+    if (where) {
+      const fits = t => {
+        const x = document.createElement('span');
+        x.style.whiteSpace = 'nowrap';
+        x.textContent = t;
+        where.appendChild(x);
+        const ok = x.getBoundingClientRect().width <= where.getBoundingClientRect().width + .5;
+        x.remove();
+        return ok;
+      };
+      const a = [BAR.host, s.wifi.ip].find(fits);
+      where.innerHTML = a ? `pair at<br>${esc(a)}` : 'pair at its<br>IP address';
+    }
     say('menu: Wi-Fi');
   }
   function showPowerMenu() {
