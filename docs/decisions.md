@@ -5,6 +5,7 @@ The running record of what has been decided, and why. The product manager keeps 
 ## Product
 
 - **What it is:** a status bar for a desk in an **open office** that tells the people nearby whether it's a good time to interrupt.
+- **Name: MiniBar (decided 2026-10-04).** The user renamed the project from TinyBar to **MiniBar**, written "MiniBar" wherever people read it (the splash screen, the Remote, the Mac app, the default bar name "MiniBar 2A1C", the setup network "MiniBar-Setup") and lowercase "minibar" in code, file names and network names (`minibar.local`, `_minibar._tcp`). The rename is applied across the firmware, the Mac app, the docs and the published pages once the current alignment round finishes, so the two don't edit the same files at once. Until then the code and older entries below still say TinyBar. The GitHub repository's own name is changed by the user in GitHub's settings.
 - **Hardware:** Waveshare ESP32-S3-Touch-LCD-3.49, **V2** board (V2 sticker on the case, "Rev1.1" silkscreen). The 3.49" 172 × 640 screen is used in landscape as 640 × 172.
 - **Power:** runs on **USB**. No battery for now (the 1,000 mAh cell the user tried is rated below the board's 1.2 A charge current).
 - **Firmware:** **ESP-IDF with LVGL 9**, started once the mock-up is final.
