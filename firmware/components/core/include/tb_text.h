@@ -27,22 +27,29 @@ bool tb_text_drawable(uint32_t cp);
 /*
  * api.md 2.3: copy src into dst (cap bytes, always NUL-terminated, cut on a UTF-8 boundary), removing control
  * characters and mapping typographic punctuation to what the fonts have (’ ‘ to ', “ ” to ", – — to -, … to ...).
- * Trims leading and trailing spaces. Invalid UTF-8 bytes are dropped. Returns the length in characters.
+ * Trims leading and trailing spaces. Invalid UTF-8 bytes are dropped. Tab, line feed and carriage return become a
+ * space (so "two\nlines" doesn't run the words together); every other control character (U+0000..U+001F, U+007F,
+ * U+0080..U+009F) is removed. Returns the length in characters ("..." counts as three).
  * (Note: the mapping turns – and — into "-" for typed text, as the API says; the bar's own copy may still use the
  * en dash, which the fonts carry.)
  */
 size_t tb_text_clean(char *dst, size_t cap, const char *src);
 
-/* Collect up to max distinct code points in s the fonts can't draw. Returns how many were found (may exceed max). */
+/* Collect up to max distinct code points in s the fonts can't draw, in order of first appearance. Returns how many
+ * distinct ones were found (may exceed max). An invalid UTF-8 byte counts as U+FFFD. */
 int tb_text_unsupported(const char *s, uint32_t *out, int max);
 
 /* Replace characters the fonts can't draw with "?" (calendar titles and locations, which aren't refused). */
 void tb_text_replace_unsupported(char *s, size_t cap);
 
+/* Copy src into dst (cap bytes), always NUL-terminated, never ending in half a UTF-8 character. NULL copies "". */
+void tb_strlcpy(char *dst, const char *src, size_t cap);
+
 /* Count UTF-8 characters. */
 size_t tb_utf8_len(const char *s);
 
-/* Cut s to at most n characters; if it was longer, keep n-1 and add "…" (the app name's 24-character rule). */
+/* Cut s to at most n characters; if it was longer, keep n-1 and add "…" (the app name's 24-character rule:
+ * c.app.slice(0, 23) + '…'). Keeps fewer characters if cap can't hold them plus the 3-byte ellipsis. */
 void tb_text_ellipsize(char *s, size_t cap, size_t n);
 
 #ifdef __cplusplus

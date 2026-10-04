@@ -46,6 +46,13 @@ typedef struct {
 /* What tb_pomo_start_waiting() did, for the toast ("Focus started", "Short break resumed"). */
 typedef enum { TB_POMO_NOTHING = 0, TB_POMO_STARTED, TB_POMO_RESUMED } tb_pomo_start_t;
 
+/* api.md 7.3 pomodoro.state: "ready", "running", "paused", "waiting" (the Remote's pRead line). */
+typedef enum { TB_POMO_ST_READY = 0, TB_POMO_ST_RUNNING, TB_POMO_ST_PAUSED, TB_POMO_ST_WAITING } tb_pomo_state_t;
+tb_pomo_state_t tb_pomo_state(const tb_pomo_t *p, const tb_settings_t *s);
+
+/* The timer menu's +5 and api.md 9.1 "extend": only mid-phase (not ready, not waiting). */
+bool tb_pomo_mid_phase(const tb_pomo_t *p, const tb_settings_t *s);
+
 /* A fresh, ready timer (focus 1, full length, not running), with today's tallies zeroed. */
 void tb_pomo_init(tb_pomo_t *p, const tb_settings_t *s, int32_t today_yyyymmdd);
 
@@ -71,8 +78,11 @@ void tb_pomo_reset_run(tb_pomo_t *p, const tb_settings_t *s);
  * (the caller then runs the end-of-phase logic, mock-up endPhase()). */
 bool tb_pomo_advance(tb_pomo_t *p, const tb_settings_t *s, tb_ms_t dt);
 
-/* Zero today's tallies when the local date changes (not in the mock-up, which never sees midnight). */
-void tb_pomo_roll_day(tb_pomo_t *p, int32_t today_yyyymmdd);
+/* Zero today's tallies when the local date changes (not in the mock-up, which never sees midnight). Only the tallies
+ * (done_today, focused_ms) reset: a run in progress across midnight carries on. day 0 means "not known yet" (no
+ * clock at the time): the tallies are then adopted by the first known day instead of being zeroed. today 0 (clock
+ * still unknown) changes nothing. Returns true if anything changed. */
+bool tb_pomo_roll_day(tb_pomo_t *p, int32_t today_yyyymmdd);
 
 /* Settings changed (Remote segments, api.md 10.2): a new length for the running phase restarts it at that length;
  * a long_every below the current round moves the round down and forgets skipped rounds above it. */

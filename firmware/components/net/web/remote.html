@@ -3,12 +3,833 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>TinyBar Remote</title>
+<!--
+  The Remote, served by the bar at tinybar.local (net builder). A port of the mock-up's Remote panel
+  (docs/mockup.html: #remoteMain, updateRemote(), updateAutoRemote(), the calendar and Mac cards) to docs/api.md:
+  it polls GET /api/v1/status every 2 s while visible (with If-None-Match), and every control is one API call whose
+  reply redraws the page. No external resources: system fonts, inline styles and script, tomato sprites as data URIs.
+  Pairing (api.md 4, Proposed): a 401 shows the pairing card; the bar sets an HttpOnly cookie, so the page never sees
+  the token. Times are shown in the bar's own time zone, and "ago" is worked out against the bar's clock.
+  Mock-up-only parts left out: Demo speed, Simulate, "Fill in a sample", the mock-up notes.
+-->
+<style>
+:root {
+  --bg: #eceef1; --surface: #ffffff; --ink: #15181c; --muted: #5a636e; --line: #d4d9df;
+  /* Bold Signal status colors (decisions.md "Spec: Bold Signal") */
+  --s-available: #0F7F3C; --s-busy: #D01B3A; --s-meeting: #8B3AE5; --s-focus: #B0590D; --s-short: #0B7A70;
+  --s-long: #12708F; --s-away: #545C65; --s-message: #C0198C; --s-call: #1450B4; --s-clock: #3a4049;
+  --state: var(--s-clock);
+  --f-screen: "Avenir Next Condensed", "Arial Narrow", "Roboto Condensed", "Helvetica Neue", sans-serif;
+  --f-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --f-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #101215; --surface: #191c21; --ink: #e8ebee; --muted: #9aa3ad; --line: #2a2f36; --s-clock: #5a626d; }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 440px; margin: 0 auto; padding: 16px 16px 48px; }
+.phone { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 18px; display: grid; gap: 16px; }
+.phone-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 8px; }
+.phone-head strong { font-family: var(--f-screen); font-stretch: condensed; font-size: 26px; font-weight: 800; letter-spacing: .02em; white-space: nowrap; }
+.phone-head span { font-family: var(--f-mono); font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.field-label { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; margin-bottom: 6px; display: block; }
+.status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sbtn { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: transparent; color: var(--ink); font: inherit; font-weight: 600; font-size: 14px; text-align: left; cursor: pointer; }
+.sbtn i { width: 12px; height: 12px; border-radius: 50%; background: var(--c); flex: none; }
+.sbtn:hover { border-color: var(--c); }
+.sbtn:focus-visible { outline: 2px solid var(--c); outline-offset: 2px; }
+.sbtn[aria-pressed="true"] { background: var(--c); border-color: var(--c); color: #fff; }
+.sbtn[aria-pressed="true"] i { background: #fff; }
+.seg { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.seg button { flex: 1; padding: 8px 0; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; font-variant-numeric: tabular-nums; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.seg button:focus-visible { outline: 2px solid var(--state); outline-offset: -2px; }
+.seg button:disabled { opacity: .45; cursor: not-allowed; }
+.msg-row { display: flex; gap: 8px; }
+.msg-row input { flex: 1; min-width: 0; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; font-size: 16px; }
+.msg-row input:focus-visible { outline: 2px solid var(--state); outline-offset: 1px; }
+.msg-row input[aria-invalid="true"] { border-color: var(--s-busy); }
+.btn { padding: 9px 14px; border-radius: 10px; border: 0; background: var(--ink); color: var(--surface); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.btn:focus-visible { outline: 2px solid var(--state); outline-offset: 2px; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.row.fill > * { flex: 1; }
+.note-small { font-size: 13px; color: var(--muted); margin: 0; }
+.setup { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.setup p { margin: 0; font-size: 14px; color: var(--muted); }
+.setup-msg { padding: 10px 12px; border-radius: 12px; font-size: 13px; border: 1px solid var(--line); }
+.setup-msg.err { border-color: var(--s-busy); }
+.field-err { margin: 6px 0 0; padding-left: 10px; border-left: 3px solid var(--s-busy); font-size: 13px; color: var(--ink); }
+.offnote { padding: 10px 12px; border-radius: 12px; border: 1px dashed var(--line); font-size: 13px; color: var(--muted); }
+.pomo { display: grid; gap: 12px; padding: 14px; border-radius: 16px; border: 1px solid var(--line); }
+.pomo-read { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.pomo-read b { display: flex; align-items: center; gap: 10px; font-family: var(--f-screen); font-stretch: condensed; font-weight: 800; font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; }
+.pomo-read b::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--pc); flex: none; }
+.pomo-read span { font-size: 13px; color: var(--muted); text-align: right; }
+.pomo-tomatoes { display: flex; gap: 6px; min-height: 30px; }
+.tomato { position: relative; display: block; width: 30px; height: 30px; }
+.tomato img { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+.tomato.ghost img { opacity: .3; }
+.setting { display: grid; grid-template-columns: 88px minmax(0, 1fr); align-items: center; gap: 10px; }
+.setting > span { font-size: 13px; color: var(--muted); font-weight: 600; }
+.setting .seg button { padding: 6px 0; font-size: 13px; }
+.checks { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.check input { width: 16px; height: 16px; accent-color: var(--state); margin: 0; }
+.check:has(input:disabled) { opacity: .55; cursor: not-allowed; }
+.auto-sec { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.auto-now { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; font-weight: 600; }
+.auto-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 14px; border-radius: 16px; border: 1px solid var(--line); min-width: 0; }
+.auto-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.auto-head b { font-size: 15px; }
+.badge { font-size: 11px; font-weight: 600; letter-spacing: .04em; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.badge.ok { border-color: var(--s-available); color: var(--ink); }
+.auto-card .auto-line { margin: 0; font-size: 13px; color: var(--muted); }
+.mask { font-family: var(--f-mono); font-size: 12px; overflow-wrap: anywhere; }
+details.help summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: var(--muted); display: grid; gap: 3px; }
+.auto-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; margin-bottom: 8px; border-radius: 12px; border: 1px solid var(--c); }
+.auto-banner > div { display: grid; min-width: 0; }
+.auto-banner b { font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.auto-banner b::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--c); flex: none; }
+.auto-banner small { font-size: 12px; color: var(--muted); }
+.auto-banner .btn { flex: none; }
+.devices { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.devices li { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; }
+.devices li div { display: grid; min-width: 0; }
+.devices small { color: var(--muted); font-size: 12px; }
+.code-input { letter-spacing: .3em; font-variant-numeric: tabular-nums; }
+[hidden] { display: none !important; }
+</style>
 </head>
 <body>
-<!-- Owner: net builder. Placeholder. Port the mock-up's Remote panel (docs/mockup.html, #remoteMain and its script:
-     updateRemote, updateAutoRemote, the status grid, Pomodoro, message, Automatic status, Connect your Mac) to talk to
-     /api/v1/ (poll GET /api/v1/status every 2 s while visible, pair with "cookie": true). No external resources. -->
-<p>TinyBar Remote is being built.</p>
+<div class="wrap">
+  <main class="phone" aria-label="TinyBar Remote">
+    <div class="phone-head">
+      <strong id="phoneTitle">Remote</strong>
+      <span id="phoneAddr"></span>
+    </div>
+    <div class="offnote" id="offNote" role="status" hidden></div>
+
+    <!-- Pairing (api.md 4, Proposed): shown when the bar answers 401 -->
+    <div class="auto-card" id="pairCard" hidden>
+      <div class="auto-head"><b>Pair this phone</b></div>
+      <p class="note-small">Only phones and computers paired with this TinyBar can change it, so nobody else on the office Wi-Fi can. TinyBar shows a code on its screen; type it here.</p>
+      <div>
+        <label class="field-label" for="pairName">Name for this phone (optional)</label>
+        <div class="msg-row"><input id="pairName" type="text" maxlength="32" autocomplete="off" placeholder="Phone"></div>
+      </div>
+      <button class="btn" id="pairStart" type="button">Show a code on TinyBar</button>
+      <div id="pairCodeBox" hidden>
+        <label class="field-label" for="pairCode">Type the code on your TinyBar</label>
+        <div class="msg-row">
+          <input id="pairCode" class="code-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="000 000">
+          <button class="btn" id="pairGo" type="button">Pair</button>
+        </div>
+      </div>
+      <div class="setup-msg" id="pairMsg" role="status" hidden></div>
+    </div>
+
+    <div id="remoteMain" class="setup" hidden>
+      <div>
+        <span class="field-label">Status</span>
+        <div class="auto-banner" id="autoBanner" hidden>
+          <div><b id="abTitle"></b><small id="abSub"></small></div>
+          <button class="btn ghost" id="abBtn" type="button">Set aside</button>
+        </div>
+        <div class="status-grid" id="statusGrid"></div>
+      </div>
+      <div>
+        <span class="field-label">Pomodoro</span>
+        <div class="pomo" id="pomoBox">
+          <div class="pomo-read">
+            <b id="pTime">25:00</b>
+            <span id="pRead">Focus 1 of 4 · ready</span>
+          </div>
+          <div class="pomo-tomatoes" id="pTomatoes" aria-hidden="true"></div>
+          <div class="row fill">
+            <button class="btn" id="pStart" type="button">Start</button>
+            <button class="btn ghost" id="pSkip" type="button">Skip</button>
+            <button class="btn ghost" id="pStop" type="button">Stop</button>
+          </div>
+          <div class="setting">
+            <span id="lFocus">Focus</span>
+            <div class="seg" data-k="focus_min" role="group" aria-labelledby="lFocus">
+              <button data-v="15">15</button><button data-v="25">25</button><button data-v="50">50</button>
+            </div>
+          </div>
+          <div class="setting">
+            <span id="lShort">Short break</span>
+            <div class="seg" data-k="short_min" role="group" aria-labelledby="lShort">
+              <button data-v="5">5</button><button data-v="10">10</button>
+            </div>
+          </div>
+          <div class="setting">
+            <span id="lLong">Long break</span>
+            <div class="seg" data-k="long_min" role="group" aria-labelledby="lLong">
+              <button data-v="15">15</button><button data-v="20">20</button><button data-v="30">30</button>
+            </div>
+          </div>
+          <div class="setting">
+            <span id="lEvery">Long break after</span>
+            <div class="seg" data-k="long_every" role="group" aria-labelledby="lEvery">
+              <button data-v="3">3</button><button data-v="4">4</button><button data-v="5">5</button>
+            </div>
+          </div>
+          <div class="checks">
+            <label class="check" for="pAuto"><input type="checkbox" id="pAuto"> Start next phase on its own</label>
+            <label class="check" for="pSound"><input type="checkbox" id="pSound"> Chime</label>
+            <label class="check" for="pTick"><input type="checkbox" id="pTick"> Ticking during focus</label>
+          </div>
+          <div class="setting">
+            <span id="lTick">Ticking</span>
+            <div class="seg" id="tickSeg" role="group" aria-labelledby="lTick">
+              <button data-v="soft">Soft</button><button data-v="medium">Medium</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <form id="msgForm">
+        <label class="field-label" for="msgInput">Custom message</label>
+        <div class="msg-row">
+          <input id="msgInput" type="text" maxlength="80" autocomplete="off" aria-describedby="msgErr">
+          <button class="btn" type="submit">Show</button>
+        </div>
+        <p class="field-err" id="msgErr" hidden></p>
+      </form>
+      <div>
+        <span class="field-label">Automatic status</span>
+        <div class="auto-sec">
+          <p class="note-small">Your calendar and your Mac can set the status for you, separately or together. Whatever you pick yourself wins until the call or meeting ends.</p>
+          <div class="auto-now"><span id="autoNow" aria-live="polite">Showing your status</span><button class="btn ghost" id="autoShowAgain" type="button" hidden>Show again</button></div>
+
+          <div class="auto-card" id="calCard">
+            <div class="auto-head"><b>Calendar</b><span class="badge" id="calBadge">Not set up</span></div>
+            <label class="check" for="calOn"><input type="checkbox" id="calOn"> Calendar meetings</label>
+            <p class="auto-line" id="calLine"></p>
+            <div id="calSaved" hidden>
+              <div class="mask" id="calMask"></div>
+              <div class="row" id="calActions">
+                <button class="btn ghost" id="calSync" type="button">Sync now</button>
+                <button class="btn ghost" id="calReplace" type="button">Replace</button>
+                <button class="btn ghost" id="calRemove" type="button">Remove</button>
+              </div>
+              <div class="setup-msg" id="calConfirm" hidden>
+                <p style="margin:0 0 8px">Remove your calendar? The bar stops showing meetings and Next up.</p>
+                <div class="row"><button class="btn" id="calRemoveYes" type="button">Remove calendar</button><button class="btn ghost" id="calRemoveNo" type="button">Keep it</button></div>
+              </div>
+            </div>
+            <div class="setup" id="calForm">
+              <label class="field" for="calInput"><span class="field-label">Secret address in iCal format</span></label>
+              <div class="msg-row" id="calInputRow">
+                <input id="calInput" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" aria-describedby="calMsg">
+                <button class="btn ghost" id="calShow" type="button" aria-pressed="false">Show</button>
+              </div>
+              <details class="help">
+                <summary>Where do I find it?</summary>
+                <ol>
+                  <li>On a computer, open Google Calendar. The phone app doesn't have this setting.</li>
+                  <li>Click the gear, then Settings.</li>
+                  <li>On the left, under Settings for my calendars, click your calendar.</li>
+                  <li>Click Integrate calendar.</li>
+                  <li>Under "Secret address in iCal format", click the copy button, then paste the address here.</li>
+                </ol>
+                <p class="note-small" style="margin-top:6px">Google Calendar › Settings › your calendar › Integrate calendar › "Secret address in iCal format". Keep it private: anyone with it can read your calendar. TinyBar only reads it and never shows it again after you save it. If the setting is missing, your work account may have it turned off; ask IT.</p>
+              </details>
+              <div class="row">
+                <button class="btn" id="calSave" type="button">Add</button>
+                <button class="btn ghost" id="calCancel" type="button" hidden>Cancel</button>
+              </div>
+            </div>
+            <div class="setup-msg" id="calMsg" role="status" hidden></div>
+            <label class="check" for="calTitles"><input type="checkbox" id="calTitles"> Show meeting titles</label>
+            <p class="note-small" id="calTitlesNote">Off: the bar and this page show meeting times only. Everyone near your desk can read titles, and events marked Private never show one.</p>
+          </div>
+
+          <div class="auto-card" id="macCard">
+            <div class="auto-head"><b>Connect your Mac</b></div>
+            <label class="check" for="macOn"><input type="checkbox" id="macOn"> Calls from your Mac</label>
+            <p class="auto-line" id="macLine"></p>
+            <p class="note-small">The TinyBar menu-bar app sets On a call whenever your Mac's mic or camera is in use, so Slack huddles and Google Meet calls show up even when they aren't on your calendar. It talks to TinyBar over USB when the bar is powered from your Mac, otherwise over Wi-Fi.</p>
+            <p class="note-small" id="macPairNote">To use it over Wi-Fi, choose Pair with a code in the Mac app. This TinyBar shows the code.</p>
+          </div>
+
+          <div class="auto-card" id="devCard" hidden>
+            <div class="auto-head"><b>Paired devices</b><span class="badge" id="devCount"></span></div>
+            <ul class="devices" id="devList"></ul>
+            <div class="setup-msg" id="devMsg" role="status" hidden></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const API = '/api/v1';
+  const STATES = [
+    { id: 'available', name: 'Available' }, { id: 'busy', name: 'Busy' }, { id: 'meeting', name: 'In a meeting' },
+    { id: 'pomodoro', name: 'Pomodoro' }, { id: 'away', name: 'Away' }, { id: 'message', name: 'Message' }, { id: 'clock', name: 'Clock' },
+  ];
+  const PHASE_NAME = { focus: 'Focus', short: 'Short break', long: 'Long break' };
+  const css = getComputedStyle(document.documentElement);
+  const colorOf = k => css.getPropertyValue('--s-' + k).trim();
+
+  // ---------- state from the bar ----------
+  let st = null, etag = '', fetchedAt = 0, skew = 0;   // status, its ETag, when it came (performance.now()), bar clock - ours
+  let info = null, set = null, cal = null;              // GET info, settings, calendar
+  let lastCalKey = '', lastRev = -1, paired = true, pairingId = null;
+  const ui = { calReplacing: false, calConfirm: false, calChecking: false, calSyncing: false, busy: false };
+
+  // ---------- time, in the bar's own zone and against its clock ----------
+  const barNow = () => Date.now() + skew;
+  const parse = iso => iso ? Date.parse(iso) : NaN;
+  // fmt(): "2:04 PM" from the bar's own RFC 3339 time (its local time is in the string).
+  function fmt(iso) {
+    const m = iso && /T(\d\d):(\d\d)/.exec(iso);
+    if (!m) return '';
+    const h = +m[1];
+    return `${h % 12 || 12}:${m[2]} ${h < 12 ? 'AM' : 'PM'}`;
+  }
+  const mmss = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  const minsUp = ms => Math.max(1, Math.ceil(ms / 60000));
+  const ago = iso => { const m = Math.floor((barNow() - parse(iso)) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : `at ${fmt(iso)}`; };
+  const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
+
+  // ---------- the API ----------
+  async function api(method, path, body, extraHeaders) {
+    const opt = { method, headers: Object.assign({}, extraHeaders || {}), cache: 'no-store', credentials: 'same-origin' };
+    if (body !== undefined && body !== null) { opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(body); }
+    let r;
+    try { r = await fetch(API + path, opt); } catch (e) { offline(true); return { status: 0, j: null }; }
+    offline(false);
+    let j = null;
+    if (r.status !== 304) { try { j = await r.json(); } catch (e) { j = null; } }
+    if (r.status === 401) showPairing();
+    return { status: r.status, j, etag: r.headers.get('ETag') };
+  }
+  function offline(on) {
+    const n = $('offNote');
+    n.textContent = on ? "Can't reach TinyBar right now. If it's powered off, press PWR on the side of the bar to turn it on. It also has to be on this Wi-Fi network." : '';
+    n.hidden = !on;
+  }
+  // Every change in sections 8 and 9 answers with the whole status: draw from it.
+  function took(r) {
+    if (r.status === 200 && r.j && r.j.rev !== undefined) { gotStatus(r.j, `"r${r.j.rev}"`); return true; }
+    return r.status >= 200 && r.status < 300;
+  }
+  function gotStatus(j, tag) {
+    st = j;
+    etag = tag || etag;
+    fetchedAt = performance.now();
+    if (j.time) skew = parse(j.time) - Date.now();
+    if (j.rev !== lastRev) { lastRev = j.rev; loadSettings(); }
+    const ck = JSON.stringify(j.calendar);
+    if (ck !== lastCalKey) { lastCalKey = ck; loadCalendar(); }
+    render();
+  }
+  async function poll() {
+    if (document.hidden || !paired) return;
+    const r = await api('GET', '/status', null, etag ? { 'If-None-Match': etag } : null);
+    if (r.status === 200 && r.j) { paired = true; gotStatus(r.j, r.etag); showMain(); }
+    else if (r.status === 304) render();
+  }
+  async function loadInfo() {
+    const r = await api('GET', '/info');
+    if (r.status === 200) { info = r.j; head(); }
+  }
+  async function loadSettings() {
+    const r = await api('GET', '/settings');
+    if (r.status === 200) { set = r.j.settings; render(); }
+  }
+  async function loadCalendar() {
+    const r = await api('GET', '/calendar');
+    if (r.status === 200) { cal = r.j.calendar; render(); }
+  }
+  async function loadDevices() {
+    if (!info || info.auth !== 'bearer') { $('devCard').hidden = true; return; }
+    const r = await api('GET', '/clients');
+    if (r.status !== 200) return;
+    const list = $('devList');
+    list.textContent = '';
+    r.j.clients.forEach(c => {
+      const li = document.createElement('li');
+      const d = document.createElement('div');
+      const b = document.createElement('b');
+      b.textContent = c.self ? `${c.name} (this phone)` : c.name;
+      const sm = document.createElement('small');
+      sm.textContent = `${c.scope === 'call' ? 'Calls only' : 'Full control'} · paired over ${c.paired_via === 'usb' ? 'USB' : 'Wi-Fi'}${c.last_used ? ` · last used ${fmt(c.last_used)}` : ''}`;
+      d.append(b, sm);
+      const btn = document.createElement('button');
+      btn.className = 'btn ghost';
+      btn.type = 'button';
+      btn.textContent = c.self ? 'Forget this phone' : 'Remove';
+      btn.addEventListener('click', async () => {
+        const rr = await api('DELETE', c.self ? '/clients/self' : `/clients/${c.token_id}`);
+        if (rr.status === 200) {
+          if (c.self) { paired = false; showPairing(); return; }
+          devMsg(`Removed ${c.name}.`);
+          loadDevices();
+        } else devMsg(errText(rr), true);
+      });
+      li.append(d, btn);
+      list.append(li);
+    });
+    $('devCount').textContent = `${r.j.clients.length} of ${r.j.max}`;
+    $('devCard').hidden = false;
+  }
+  function devMsg(t, err) { const m = $('devMsg'); m.textContent = t; m.hidden = !t; m.classList.toggle('err', !!err); }
+  // The bar's message for an error reply, or a plain fallback.
+  const errText = r => r.status === 0 ? "Can't reach TinyBar." : (r.j && r.j.message) || `Something went wrong (${r.status}).`;
+
+  function head() {
+    $('phoneAddr').textContent = info ? `${info.name} · ${info.host}` : location.host;
+    document.title = info ? `${info.name} · Remote` : 'TinyBar Remote';
+  }
+  function showMain() { $('pairCard').hidden = true; $('remoteMain').hidden = false; }
+
+  // ---------- pairing ----------
+  function showPairing() {
+    paired = false;
+    $('remoteMain').hidden = true;
+    $('pairCard').hidden = false;
+  }
+  function pairMsg(t, err) { const m = $('pairMsg'); m.textContent = t; m.hidden = !t; m.classList.toggle('err', !!err); }
+  $('pairStart').addEventListener('click', async () => {
+    const name = $('pairName').value.trim();
+    const body = { kind: 'remote', scope: 'full' };
+    if (name) body.name = name;
+    const r = await api('POST', '/pair/start', body);
+    if (r.status === 202) {
+      pairingId = r.j.pairing_id;
+      $('pairCodeBox').hidden = false;
+      $('pairCode').value = '';
+      $('pairCode').focus();
+      pairMsg(`TinyBar shows a ${r.j.code_length}-digit code for 2 minutes. Look at its screen and type the code here.`);
+    } else if (r.j && r.j.error === 'pairing_busy') pairMsg(`Another device is pairing right now. Try again in ${r.j.retry_after_s} seconds.`, true);
+    else if (r.j && r.j.error === 'rate_limited') pairMsg(`Too many pairings didn't finish. Try again in ${r.j.retry_after_s} seconds.`, true);
+    else if (r.j && r.j.error === 'token_limit') pairMsg('TinyBar already has 10 paired devices. Remove one from a device that is paired, or hold the bar and use Wi-Fi › Devices to forget them all.', true);
+    else if (r.j && r.j.error === 'in_setup') pairMsg('TinyBar is on its Wi-Fi setup screens. Finish setup on the bar first.', true);
+    else pairMsg(errText(r), true);
+  });
+  async function pairGo() {
+    const code = $('pairCode').value.replace(/[\s-]/g, '');
+    if (!/^\d{6}$/.test(code)) { pairMsg('Type the 6 digits on the bar.', true); return; }
+    const r = await api('POST', '/pair', { pairing_id: pairingId, code, cookie: true });
+    if (r.status === 200) {
+      pairMsg('');
+      $('pairCodeBox').hidden = true;
+      paired = true;
+      etag = '';
+      showMain();
+      poll();
+      loadDevices();
+    } else if (r.j && r.j.error === 'wrong_code') {
+      pairMsg(r.j.attempts_left ? `That code doesn't match. ${r.j.attempts_left} ${r.j.attempts_left === 1 ? 'try' : 'tries'} left.` : "That code doesn't match, and that was the last try. Show a new code.", true);
+      if (!r.j.attempts_left) $('pairCodeBox').hidden = true;
+    } else if (r.j && r.j.error === 'not_pairing') { pairMsg('That code has expired or was canceled on the bar. Show a new one.', true); $('pairCodeBox').hidden = true; }
+    else if (r.j && r.j.error === 'rate_limited') pairMsg('One try a second, please.', true);
+    else pairMsg(errText(r), true);
+  }
+  $('pairGo').addEventListener('click', pairGo);
+  $('pairCode').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); pairGo(); } });
+
+  // ---------- tomatoes (the mock-up's sprites and its ripening, built once on the phone) ----------
+  const IMG_RIPE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAADgUlEQVR4nO2WzWsbRxjGfzMrybHlRJZNUGoTO1/CqKHQlNA0kFNrSg4tJtAm8bXQnIrJOYUeTNI/wKSnHEpcaOMakkObEoLTWzB1C6kpjuyYNDgOwoqw3LUlBX3sTg672kjW7lquDj00LyzS7M77PM88884HvI7/OESL+apVLNkK+crCMa5MxlqAaE0AABO3DrUK4RnK43G+X5mMbX3XTF5dBPwUxM+e4NexEgATcykME74aSTtgN5f6gHSVFMCZEsO02t/dOsDSj795cmxXOA7wR5f2OS+X/j7I4o0ZBs+fZPHGDACD508SP/TE6fPz16tN8TRTuQ32xc+eAMBUCileQXiM1JdjWweudg0A8GaswPuLGVYWjvHtgxQA129a3z77ZNlJ+PJcmvHoANKW/cU/y748fgLU7d5e9kSKBCW8N7/WQP54ahaAw5++y+ULjzi1/yATcylLRKQfpEAqfxFeRahu9/bSEy1y5OPDaCEN5meYmEvVFJVNAoxOzTIyBWM/pNDshX20s0wyHwJgPDrA6PqychPhpkrd7XuDzs4iiXODBKNdFN86Q8/QBafDeKQfKQTH+3IAzD4LW0L0p06f+4ke8hshHuVDmDbL6HqjE64OaED8w34Cu4KEL/5CGFibBu3+dZS9vjLTSbuv4HRkg6yuMY7liBQCYW7SvqcE+RBS4YjYGq4CAm0Gpqwv/u4PPicLhB5MArB3KEFmOolhL5LuiMHpyAYagvSaQEmBBBLhEklbhFu4bsWmKXl8ZwWjbKCPnSJ77xrZe9ca+u0dSqDZjlZ/M7pESYG5FXMnDgAY0sooZnPw0zeEIh2U9AIVl761IsyKQmBNY0UJDEeBuwWuAsyyQGtTPPw+SfxoJ+b+KCW94HzP/f7ULY30Wv0wVUWzuT2PAm8HlO3AxuomrG56AlRjs1BPXlH17eHuDkb1xjzXGpjPBTGMV8DVx4+88KL+XXX0C7kgSO9cTwf+TId5O5ZvINrdocjolm6z0mhtuewC6TH/4L0Vq+oud3xfDhkQnoR+5HPr7QAMd7Uz8GTBlc/3LKgeRO/E6mugdn4DQlFRwrF8J+SwzYWkunb/eL4bqSwhW4urogRGKei0/9LbnP/DXe1+8HiqqgkF1mECWFuqfQeovQvULTO74GpG7svT7FXaEmLXhV9Vg3PoNIW/07u8fxX+e9zX8T+Ol86jXDVytxGEAAAAAElFTkSuQmCC';
+  const IMG_UNRIPE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAADHElEQVR4nO2XzWsTURTFf2+msVVRkZbGr6ZgDa1CYxUkuHDtQt1YkFhcuBDxXyh2ozT4H4jLSkVLF4KYjW5cF0Ft/aLUWAwJadIk1tqWatJ5Ll7mtUlmkpEgLvRAFnnz3jn3nnvfnQT+4y9DNHleNstlNCOenO0lOrm/CYrmAgBg7HGgWQpXSJePfh6d3F+95uVcBVrqRRCMhHlxawmA+9PLANy8lNZkTz74gbQtClBTkrHHAeYmplw1GjWOJg5dPwxA23bJ10wncxNTBCNhTR6MhNnrz1IqKspXdz970vHSuTX2BSNhx40umdbVaOhANHYCgO5giSu9b0nO9upy2A149WICAMOUDA8uMPp0ACEEUkpGLrypq1MvAPkwHtJfhnpmasS32n/7WpwzXe2Mv/tWEQTAzfOvXbXcmlCL93X2U7J+ADPcn17eIpwmGjtRznKKyxMQnfRhmIpg36EfLCRbEUIw+nSAkQtvpFMQTlHJ8dl+BHDsgAqiu3WI9m3n9IY7z46r9SOqPeY/mhg+i+Gz03rPg9l+1tdKZFJtSKn2OZXD9Rra4qEd9wDI/3xOsvgIAFO0kPg+h1lOtyNskFvO6MAULNp2KHq7FE6oOwe2Yo95mqKVJ7PxHIDAriCpVXXVJBYdu/10nASfuZ3k4ry6OpbEf3CdTKrNldd1FL9PKjtn1m6QK8bIFWOAyt7GwZ1qNhjCRAiBEILk4rzXnIAGDpjGNjasnzrr6gBs8QpYqt7CEJVzWzpPY+cAyiQziZeEAqdqHtvWAwgMXeOFfFoJW7Jmern1gbsDhgBLklrZtNRuumpIKVlZ/w5bhS2JMDZF+46XnGWcFr98atEu5As5Ckt58oVczT5RPp5bzrC6slIbmCXrNiC4OCCEIBH3EegpaiJhCLK5DJ0dfrKFLKK87gVu9VdJuJyxp1z3EWfrvCAR9wHK/sGut456btdQlOe3JvkT4tDgGtqdm4j7PLth7xXCvfEqNBo8l4B+6dQbqfpAud5HBzbszOvqeP0prQOxRez3PWw6VfXS8cT/u7/lvbV98/83/uMfwi8XOVSvwQBOXQAAAABJRU5ErkJggg==';
+  const RIPEN_FRAMES = 24;
+  let ripenFrames = null;
+  const rgbToHsl = (r, g, b) => {
+    r /= 255; g /= 255; b /= 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
+    if (mx === mn) return [0, 0, l];
+    const d = mx - mn, sat = l > .5 ? d / (2 - mx - mn) : d / (mx + mn);
+    const h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return [h * 60, sat, l];
+  };
+  const hslToRgb = (h, sat, l) => {
+    h = ((h % 360) + 360) % 360 / 360;
+    if (sat === 0) return [l * 255, l * 255, l * 255];
+    const q = l < .5 ? l * (1 + sat) : l + sat - l * sat, pp = 2 * l - q;
+    const f = t => { t = (t + 1) % 1; return t < 1 / 6 ? pp + (q - pp) * 6 * t : t < .5 ? q : t < 2 / 3 ? pp + (q - pp) * (2 / 3 - t) * 6 : pp; };
+    return [f(h + 1 / 3) * 255, f(h) * 255, f(h - 1 / 3) * 255];
+  };
+  function ripenPixel(G, R, i, r) {
+    const [h1, s1, l1] = rgbToHsl(G[i], G[i + 1], G[i + 2]);
+    let [h2, s2, l2] = rgbToHsl(R[i], R[i + 1], R[i + 2]);
+    if (s1 < .08 || s2 < .08) return [0, 1, 2].map(k => G[i + k] + (R[i + k] - G[i + k]) * r);
+    if (h2 > 180) h2 -= 360;
+    const mute = 1 - .25 * Math.sin(Math.PI * r);
+    return hslToRgb(h1 + (h2 - h1) * r, (s1 + (s2 - s1) * r) * mute, l1 + (l2 - l1) * r);
+  }
+  (async function buildRipenFrames() {
+    try {
+      const load = src => { const im = new Image(); im.src = src; return im.decode().then(() => im); };
+      const [gi, ri] = await Promise.all([load(IMG_UNRIPE), load(IMG_RIPE)]);
+      const W = gi.naturalWidth, H = gi.naturalHeight;
+      const cv = document.createElement('canvas');
+      cv.width = W; cv.height = H;
+      const cx = cv.getContext('2d', { willReadFrequently: true });
+      const read = im => { cx.clearRect(0, 0, W, H); cx.drawImage(im, 0, 0); return cx.getImageData(0, 0, W, H).data; };
+      const G = read(gi), R = read(ri);
+      const skin = [];
+      let minX = W, maxX = 0, maxY = 0;
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const i = (y * W + x) * 4;
+        if (Math.abs(G[i] - R[i]) + Math.abs(G[i + 1] - R[i + 1]) + Math.abs(G[i + 2] - R[i + 2]) > 40) {
+          skin.push([x, y, i]);
+          minX = Math.min(minX, x); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+        }
+      }
+      const bx = (minX + maxX) / 2, by = maxY;
+      const far = Math.max(...skin.map(([x, y]) => Math.hypot(x - bx, (y - by) * 1.15)));
+      const noise = (x, y) => { const v = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return v - Math.floor(v); };
+      const start = skin.map(([x, y]) => {
+        const d = Math.hypot(x - bx, (y - by) * 1.15) / far;
+        const lobes = Math.sin(Math.atan2(y - by, x - bx) * 5 + 1.3) * .03 * d;
+        return Math.min(.85, Math.max(0, .78 * d + lobes + .02 * (noise(x, y) - .5)));
+      });
+      const SPAN = .34, STEPS = 5;
+      const frames = [];
+      for (let f = 0; f < RIPEN_FRAMES; f++) {
+        const p = f / (RIPEN_FRAMES - 1);
+        const out = cx.createImageData(W, H);
+        out.data.set(G);
+        skin.forEach(([, , i], k) => {
+          let r = (p * (.85 + SPAN) - start[k]) / SPAN;
+          r = Math.round(Math.max(0, Math.min(1, r)) * STEPS) / STEPS;
+          if (r === 0) return;
+          const c = r === 1 ? [R[i], R[i + 1], R[i + 2]] : ripenPixel(G, R, i, r);
+          out.data[i] = c[0]; out.data[i + 1] = c[1]; out.data[i + 2] = c[2]; out.data[i + 3] = R[i + 3];
+        });
+        cx.putImageData(out, 0, 0);
+        frames.push(cv.toDataURL('image/png'));
+      }
+      ripenFrames = frames;
+      lastTomatoKey = '';
+      render();
+    } catch (e) {
+      ripenFrames = null;
+    }
+  })();
+  function tomato(kind, p = 1) {
+    if (kind === 'ghost') return `<span class="tomato ghost"><img src="${IMG_RIPE}" alt=""></span>`;
+    if (kind === 'ripe') return `<span class="tomato"><img src="${IMG_RIPE}" alt=""></span>`;
+    const t = Math.max(0, Math.min(1, p));
+    if (ripenFrames) return `<span class="tomato"><img src="${ripenFrames[Math.round(t * (RIPEN_FRAMES - 1))]}" alt=""></span>`;
+    return `<span class="tomato"><img src="${IMG_UNRIPE}" alt=""><img src="${IMG_RIPE}" alt="" style="opacity:${t.toFixed(2)}"></span>`;
+  }
+  // tomatoRow(): the current set; the one in progress ripens. (The API doesn't say which rounds were skipped, so
+  // every earlier round of the set shows ripe.)
+  function tomatoRow(p, remaining, focusLen) {
+    const prog = 1 - remaining / focusLen;
+    let out = '';
+    for (let k = 1; k <= p.rounds; k++) {
+      if (k < p.round || (k === p.round && p.phase !== 'focus')) out += tomato('ripe');
+      else if (k === p.round) out += tomato('ripening', p.state === 'waiting' ? 0 : prog);
+      else out += tomato('ghost');
+    }
+    return out;
+  }
+  let lastTomatoKey = '';
+
+  // ---------- drawing ----------
+  // The Pomodoro's seconds left now: counted down here from the last reply while it runs.
+  function remainingNow() {
+    const p = st.pomodoro;
+    if (p.state !== 'running') return p.remaining_s;
+    return Math.max(0, p.remaining_s - (performance.now() - fetchedAt) / 1000);
+  }
+  // The automatic statuses as the mock-up's autoTop(), asideKind(), callNow() and meetNow() see them.
+  function autoState() {
+    const c = st.call, m = st.meeting, src = st.sources;
+    const callNow = c.active && src.mac ? c : null;
+    const meetNow = m.active && src.calendar && m.current ? m.current : null;
+    const a = st.showing === 'call' ? 'call' : st.showing === 'meeting' ? 'meeting' : null;
+    const k = callNow && c.aside ? 'call' : meetNow && m.aside ? 'meeting' : null;
+    return { a, k, callNow, meetNow };
+  }
+  function colorKeyNow() {
+    if (st.showing === 'call') return 'call';
+    if (st.showing === 'meeting') return 'meeting';
+    if (st.own.status === 'pomodoro') return st.pomodoro.phase;
+    return st.own.status;
+  }
+  function pickSeg(seg, v) { seg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.v === String(v)))); }
+
+  function render() {
+    if (!st) return;
+    document.documentElement.style.setProperty('--state', colorOf(colorKeyNow()) || colorOf('clock'));
+    // Status buttons: your own status is the pressed one, even while a call or meeting shows.
+    document.querySelectorAll('.sbtn').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.id === st.own.status));
+      b.style.setProperty('--c', colorOf(b.dataset.id === 'pomodoro' ? st.pomodoro.phase : b.dataset.id));
+    });
+    // Pomodoro
+    const p = st.pomodoro, rem = remainingNow();
+    $('pomoBox').style.setProperty('--pc', colorOf(p.phase));
+    $('pTime').textContent = mmss(Math.ceil(rem));
+    const focusLen = set ? set.pomodoro.focus_min * 60 : p.length_s;
+    const tk = `${p.phase}|${p.round}|${p.rounds}|${p.state}|${ripenFrames ? Math.round(Math.max(0, Math.min(1, 1 - rem / focusLen)) * 23) : rem}`;
+    if (tk !== lastTomatoKey) { lastTomatoKey = tk; $('pTomatoes').innerHTML = tomatoRow(p, p.phase === 'focus' ? rem : focusLen, focusLen); }
+    const where = p.phase === 'focus' ? `Focus ${p.round} of ${p.rounds}` : PHASE_NAME[p.phase] || p.phase;
+    const state = p.state === 'waiting' ? 'waiting for you' : p.state === 'ready' ? 'ready' : p.state === 'running' ? 'running'
+      : p.paused_by === 'call' || p.paused_by === 'meeting' ? `paused for the ${p.paused_by}` : 'paused';
+    $('pRead').textContent = `${where} · ${state}`;
+    $('pStart').textContent = p.state === 'waiting' ? `Start ${p.phase === 'focus' ? 'focus' : 'break'}` : p.state === 'running' ? 'Pause' : p.state === 'ready' ? 'Start' : 'Resume';
+    if (set) {
+      document.querySelectorAll('.seg[data-k]').forEach(seg => pickSeg(seg, set.pomodoro[seg.dataset.k]));
+      $('pAuto').checked = set.pomodoro.auto_start;
+      $('pSound').checked = set.pomodoro.chime;
+      $('pTick').checked = set.pomodoro.ticking;
+      pickSeg($('tickSeg'), set.pomodoro.tick_volume);
+      // The volume choice is dimmed and disabled while ticking is off, so it never reads as "ticking at Soft".
+      $('tickSeg').querySelectorAll('button').forEach(b => { b.disabled = !set.pomodoro.ticking; });
+      $('tickSeg').setAttribute('aria-disabled', String(!set.pomodoro.ticking));
+    }
+    // The message field shows the last message until you type.
+    if (!msgTouched && st.message.text) { $('msgInput').value = st.message.text; }
+    renderAuto();
+  }
+
+  function renderAuto() {
+    const { a, k, callNow, meetNow } = autoState();
+    const now = barNow();
+    $('autoNow').textContent = a ? (a === 'call' ? 'Showing On a call · from your Mac' : 'Showing In a meeting · from your calendar')
+      : st.showing === 'setup' ? 'TinyBar is on its Wi-Fi setup screens'
+      : k ? `Showing your status · you set the ${k} aside` : 'Showing your status';
+    $('autoShowAgain').hidden = !k;
+    const ev = a || k, shown = !!a;
+    $('autoBanner').hidden = !ev;
+    if (ev) {
+      $('autoBanner').style.setProperty('--c', colorOf(ev === 'call' ? 'call' : 'meeting'));
+      if (ev === 'call') {
+        const c = st.call;
+        $('abTitle').textContent = shown ? `On a call${c.app ? ' · ' + c.app : ''} · ${minsUp(now - parse(c.since))} min` : 'On a call · set aside on the bar';
+        $('abSub').textContent = !shown ? 'Your own status shows until the call ends.'
+          : meetNow ? `From your Mac, during a meeting until ${fmt(meetNow.end)}.` : 'From your Mac. Showing on the bar until the call ends.';
+      } else {
+        const m = meetNow;
+        $('abTitle').textContent = shown ? `In a meeting until ${fmt(m.end)}` : 'In a meeting · set aside on the bar';
+        $('abSub').textContent = !shown ? `Your own status shows until it ends at ${fmt(m.end)}.`
+          : m.title ? `${m.title} · from your calendar` : 'From your calendar.';
+      }
+      $('abBtn').textContent = shown ? 'Set aside' : 'Show again';
+    }
+    // Calendar
+    const saved = cal ? cal.saved : st.calendar.saved, none = !saved;
+    const checking = ui.calChecking || st.calendar.syncing && ui.calSyncing;
+    $('calBadge').textContent = ui.calChecking ? 'Checking…' : none ? 'Not set up' : 'Connected';
+    $('calBadge').className = 'badge' + (!none && !ui.calChecking ? ' ok' : '');
+    $('calOn').checked = st.sources.calendar;
+    $('calOn').disabled = none;
+    const left = st.meeting.left_today, leftText = left ? `${left} meeting${left === 1 ? '' : 's'} left today` : 'no more meetings today';
+    const lastSync = st.calendar.last_sync;
+    let line = none && ui.calChecking ? 'Not set up yet.'
+      : none ? 'Not set up. Add your secret address below; the switch then turns on, meetings show as In a meeting, and Next up fills in.'
+      : `Synced ${lastSync ? ago(lastSync) : 'not yet'} · ${leftText}` + (st.sources.calendar ? '' : ". Calendar meetings is off, so the bar won't show meetings.");
+    if (!none && cal && cal.error) line += ` Last try didn't work: ${cal.error.message || cal.error.error}`;
+    $('calLine').textContent = line;
+    $('calSaved').hidden = none || ui.calReplacing;
+    $('calForm').hidden = !(none || ui.calReplacing);
+    $('calSave').textContent = none ? 'Add' : 'Save';
+    $('calSave').disabled = ui.calChecking;
+    $('calCancel').hidden = !ui.calReplacing;
+    $('calMask').textContent = cal && cal.address ? `${cal.address.host}/…/${cal.address.file} · ending ${cal.address.ending}` : '';
+    $('calConfirm').hidden = !ui.calConfirm;
+    $('calActions').hidden = ui.calConfirm;
+    $('calSync').disabled = checking;
+    $('calTitles').checked = set ? set.automatic.meeting_titles : false;
+    $('calTitles').disabled = none;
+    // Messages sit right under the address field while it's open, otherwise under the saved address.
+    const msgAt = $('calForm').hidden ? $('calSaved') : $('calInputRow');
+    if (msgAt.nextElementSibling !== $('calMsg')) msgAt.after($('calMsg'));
+    // Mac
+    $('macOn').checked = st.sources.mac;
+    const m0 = st.macs[0];
+    const via = m0 && m0.via === 'usb' ? 'USB' : 'Wi-Fi';
+    $('macLine').textContent = (!st.sources.mac ? 'Off. The bar ignores calls from your Mac. ' : '')
+      + (m0 && m0.connected ? `Connected over ${via}${m0.active ? ` · on a call${st.call.app ? ` (${st.call.app})` : ''}` : ''} · heard from it just now`
+        : m0 ? `Not connected · last heard ${fmt(m0.last_heard) || 'a while ago'}` : 'Not connected yet');
+    $('macPairNote').hidden = !info || info.auth !== 'bearer';
+  }
+
+  // ---------- controls ----------
+  const grid = $('statusGrid');
+  STATES.forEach(s => {
+    const b = document.createElement('button');
+    b.className = 'sbtn';
+    b.type = 'button';
+    b.dataset.id = s.id;
+    b.innerHTML = '<i></i>';
+    b.append(s.name);
+    b.addEventListener('click', async () => {
+      const r = await api('POST', '/status', { status: s.id });
+      if (took(r)) return;
+      if (r.j && r.j.error === 'no_message') { msgErr('Type a message here first.'); $('msgInput').focus(); }
+      else if (r.j && r.j.error === 'in_setup') offlineNote('TinyBar is on its Wi-Fi setup screens. Finish setup or skip it on the bar first.');
+      else if (r.status) offlineNote(errText(r));
+    });
+    grid.appendChild(b);
+  });
+  function offlineNote(t) { const n = $('offNote'); n.textContent = t; n.hidden = !t; setTimeout(() => { if (n.textContent === t) n.hidden = true; }, 6000); }
+
+  async function patch(p) {
+    const r = await api('PATCH', '/settings', p);
+    if (r.status === 200) { set = r.j.settings; render(); poll(); }
+    else if (r.status) offlineNote(errText(r));
+    return r;
+  }
+  document.querySelectorAll('.seg[data-k]').forEach(seg => {
+    seg.addEventListener('click', e => {
+      const b = e.target.closest('button');
+      if (b) patch({ pomodoro: { [seg.dataset.k]: +b.dataset.v } });
+    });
+  });
+  const pomo = action => async () => { const r = await api('POST', '/pomodoro', { action }); if (!took(r) && r.status) offlineNote(errText(r)); };
+  $('pStart').addEventListener('click', pomo('toggle'));
+  $('pSkip').addEventListener('click', pomo('skip'));
+  $('pStop').addEventListener('click', pomo('stop'));
+  $('pAuto').addEventListener('change', e => patch({ pomodoro: { auto_start: e.target.checked } }));
+  $('pSound').addEventListener('change', e => patch({ pomodoro: { chime: e.target.checked } }));
+  $('pTick').addEventListener('change', e => patch({ pomodoro: { ticking: e.target.checked } }));
+  $('tickSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b && !b.disabled) patch({ pomodoro: { tick_volume: b.dataset.v } }); });
+
+  let msgTouched = false;
+  function msgErr(t) { $('msgErr').textContent = t; $('msgErr').hidden = !t; $('msgInput').setAttribute('aria-invalid', t ? 'true' : 'false'); }
+  $('msgInput').addEventListener('input', () => { msgTouched = true; msgErr(''); });
+  $('msgForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const text = $('msgInput').value.trim() || 'Hello';
+    const r = await api('POST', '/message', { text });
+    if (took(r)) { msgTouched = false; msgErr(''); return; }
+    if (r.j && r.j.error === 'unsupported_chars') msgErr(`TinyBar can't show ${r.j.chars.length === 1 ? 'this character' : 'these characters'}: ${r.j.chars.join(' ')}. Take ${r.j.chars.length === 1 ? 'it' : 'them'} out and try again.`);
+    else if (r.j && r.j.error === 'bad_value') msgErr('A message can be up to 80 characters.');
+    else if (r.status) msgErr(errText(r));
+  });
+
+  $('abBtn').addEventListener('click', async () => { const r = await api('POST', '/aside', { aside: $('abBtn').textContent === 'Set aside' }); if (!took(r) && r.status) offlineNote(errText(r)); });
+  $('autoShowAgain').addEventListener('click', async () => { const r = await api('POST', '/aside', { aside: false }); if (!took(r) && r.status) offlineNote(errText(r)); });
+  $('calOn').addEventListener('change', e => patch({ automatic: { calendar: e.target.checked } }));
+  $('calTitles').addEventListener('change', e => patch({ automatic: { meeting_titles: e.target.checked } }));
+  $('macOn').addEventListener('change', e => patch({ automatic: { mac: e.target.checked } }));
+
+  // ---------- calendar ----------
+  // checkIcal(): the format checks run on the phone first (the bar runs the same ones); then the bar fetches the
+  // address once to check it with the calendar's server.
+  function checkIcal(raw) {
+    const v = raw.trim();
+    if (!v) return { err: 'Paste your secret address first.' };
+    let u = null;
+    try { u = new URL(v); } catch (e) {}
+    if (!u || !/^(https|http|webcal):$/.test(u.protocol) || !u.hostname.includes('.'))
+      return { err: "That isn't a web address. Copy the whole address, starting with https://." };
+    if (u.protocol === 'http:') return { err: "That address starts with http://, so it isn't encrypted. Use the https:// address Google gives you." };
+    if (/\/public\//.test(u.pathname)) return { err: "That's your calendar's public address, which only works if the calendar is public. Copy the Secret address in iCal format instead; it's further down the same page." };
+    if (!/\.ics$/i.test(u.pathname)) return { err: "That isn't a calendar address. The secret address ends in .ics (Google's ends in basic.ics)." };
+    return { url: v, google: /(^|\.)google\.com$/i.test(u.hostname) };
+  }
+  function calMsg(text, isErr) {
+    const el = $('calMsg');
+    el.textContent = text;
+    el.hidden = !text;
+    el.classList.toggle('err', !!isErr);
+    $('calInput').setAttribute('aria-invalid', isErr ? 'true' : 'false');
+  }
+  function maskCalInput() { $('calInput').type = 'password'; $('calShow').textContent = 'Show'; $('calShow').setAttribute('aria-pressed', 'false'); }
+  const CHECK_TEXT = {
+    calendar_rejected: "Google didn't recognize that address. It may have been reset in Google Calendar. Copy the current secret address and paste it again.",
+    calendar_unreachable: "TinyBar couldn't reach the calendar's server. Try again in a minute.",
+    not_a_calendar: "That address didn't send back a calendar. Copy the Secret address in iCal format.",
+    offline: "TinyBar isn't online, so it can't check the address.",
+  };
+  async function waitFor(done, every = 1000, limit = 40) {
+    for (let i = 0; i < limit; i++) {
+      await new Promise(r => setTimeout(r, every));
+      const r = await api('GET', '/calendar');
+      if (r.status !== 200) continue;
+      cal = r.j.calendar;
+      if (done(cal)) return cal;
+    }
+    return null;
+  }
+  $('calSave').addEventListener('click', async () => {
+    const chk = checkIcal($('calInput').value);
+    if (chk.err) { calMsg(chk.err, true); return; }
+    ui.calChecking = true;
+    calMsg('Checking the address with Google Calendar…');
+    render();
+    const r = await api('PUT', '/calendar', { url: chk.url });
+    if (r.status !== 202) { ui.calChecking = false; calMsg(errText(r), true); render(); return; }
+    cal = r.j.calendar;
+    const c = await waitFor(x => x.check && x.check.state !== 'checking');
+    ui.calChecking = false;
+    if (c && c.check && c.check.state === 'saved') {
+      ui.calReplacing = false; ui.calConfirm = false;
+      $('calInput').value = ''; maskCalInput();
+      const left = c.left_today || 0;
+      calMsg(`Saved. ${cap(left ? `${left} meeting${left === 1 ? '' : 's'} left today` : 'no more meetings today')}.${chk.google ? '' : " This isn't a Google address, but TinyBar can read any iCal feed."}`);
+    } else if (c && c.check) {
+      calMsg(CHECK_TEXT[c.check.error] || c.check.message || "That address didn't work.", true);
+    } else {
+      calMsg('TinyBar is still checking. Look at the bar; it says when the calendar is synced.');
+    }
+    poll();
+    render();
+  });
+  $('calInput').addEventListener('input', () => { if ($('calMsg').classList.contains('err')) calMsg(''); });
+  $('calInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('calSave').click(); } });
+  $('calShow').addEventListener('click', () => {
+    const i = $('calInput'), show = i.type === 'password';
+    i.type = show ? 'text' : 'password';
+    $('calShow').textContent = show ? 'Hide' : 'Show';
+    $('calShow').setAttribute('aria-pressed', String(show));
+  });
+  $('calReplace').addEventListener('click', () => { ui.calReplacing = true; ui.calConfirm = false; $('calInput').value = ''; maskCalInput(); calMsg(''); render(); $('calInput').focus(); });
+  $('calCancel').addEventListener('click', () => { ui.calReplacing = false; $('calInput').value = ''; maskCalInput(); calMsg(''); render(); });
+  $('calRemove').addEventListener('click', () => { ui.calConfirm = true; calMsg(''); render(); });
+  $('calRemoveNo').addEventListener('click', () => { ui.calConfirm = false; calMsg('Kept your calendar.'); render(); });
+  $('calRemoveYes').addEventListener('click', async () => {
+    const r = await api('DELETE', '/calendar');
+    ui.calConfirm = false;
+    if (r.status === 200) { cal = r.j.calendar; $('calInput').value = ''; maskCalInput(); calMsg('Calendar removed.'); poll(); }
+    else calMsg(errText(r), true);
+    render();
+  });
+  $('calSync').addEventListener('click', async () => {
+    if (ui.calSyncing) return;
+    const r = await api('POST', '/calendar/sync');
+    if (r.status !== 202) { calMsg(r.j && r.j.error === 'offline' ? "TinyBar isn't online, so it can't sync." : errText(r), true); return; }
+    ui.calSyncing = true;
+    render();
+    const c = await waitFor(x => !x.syncing);
+    ui.calSyncing = false;
+    if (c && !c.error) { const left = c.left_today || 0; calMsg(`Calendar synced. ${cap(left ? `${left} meeting${left === 1 ? '' : 's'} left today` : 'no more meetings today')}.`); }
+    else if (c && c.error) calMsg(CHECK_TEXT[c.error.error] || c.error.message || "Couldn't sync the calendar.", true);
+    poll();
+    render();
+  });
+
+  // ---------- start ----------
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
+  setInterval(poll, 2000);
+  setInterval(() => { if (st && !document.hidden) render(); }, 1000);   // the countdown and "12 min" between polls
+  (async () => {
+    head();
+    await loadInfo();
+    const r = await api('GET', '/status');
+    if (r.status === 200) { gotStatus(r.j, r.etag); showMain(); loadDevices(); }
+    else if (r.status === 401) showPairing();
+  })();
+})();
+</script>
 </body>
 </html>

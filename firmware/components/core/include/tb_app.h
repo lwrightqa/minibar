@@ -19,8 +19,26 @@
  *   state    tb_app_t fields below, read by ui (to draw) and net (to answer GET /api/v1/status). Read-only outside core.
  *   outputs  tb_app_take_effects(): what the rest of the firmware must do (sound, backlight, rotation, power, Wi-Fi
  *            setup, calendar sync, saving). main/app_task.c dispatches them.
- *   rev      bumped whenever anything the screen or GET /api/v1/status shows changes (api.md 7.3 rev and ETag).
- *            ui also redraws when the displayed minute or the timer's second changes (mock-up loop() key).
+ *   rev      bumped whenever anything the screen or GET /api/v1/status shows changes (api.md 7.3 rev and ETag),
+ *            except the countdowns (the timer's remaining time, focused time) and the clock. Every entry point ends
+ *            by comparing a signature of the visible state, so rev can't be forgotten. ui also redraws when the
+ *            displayed minute or the timer's second changes (mock-up loop() key).
+ *
+ * Where the firmware departs from the mock-up (each is marked "Firmware:" in tb_app.c):
+ *   - There is no "powered off" state to simulate: TB_FX_POWER_OFF ends the run (deep sleep), and the next start is a
+ *     fresh boot. After it, core ignores every input (powered_off).
+ *   - The IMU reports an absolute orientation. A change during the splash or Powering off only turns the layout.
+ *   - The wall clock may be unknown (tb_clock_t.valid): meetings then don't count, and "since" is filled in once the
+ *     clock is known.
+ *   - Sync now from the quick menu really fetches: the tile shows "Sync…" and the toast comes with the result
+ *     (TB_CALEV_SYNCED, or TB_CALEV_SYNC_FAILED).
+ *   - The Remote's message also wakes a dark screen, like its status buttons do.
+ *   - Settings changed through the API each show a toast (api.md 10.2), including the ones the mock-up's Remote
+ *     changed silently (lengths, chime) and brightness, which the mock-up's Remote doesn't have.
+ *   - Ticking is also silent while "Powering off" shows.
+ *   - Menus refresh their tiles while open (a "synced 2m ago" foot ages; a tile that no longer applies goes).
+ *   - Today's tomatoes reset at local midnight.
+ *   - The pairing screen and the Devices tile (api.md 4.8, proposed).
  */
 #pragma once
 
@@ -46,10 +64,21 @@ extern "C" {
 #define TB_CONNECTED_MS        3000    /* the Connected screen moves on by itself */
 #define TB_MAC_TIMEOUT_S       90      /* api.md 5.2 (enforced by net's Mac table, reported here through set_call) */
 #define TB_CAL_SYNC_EVERY_S    600     /* about every 10 minutes (calendar's task runs it) */
+#define TB_ADD_MIN             5       /* the timer menu's +5 */
+#define TB_TITLE_TOAST_CHARS   24      /* withTitle(): a meeting title in a toast is cut to 24 characters */
+
+/* Light tile steps (api.md 10.1: from any other value the next tap goes to the next of these above it). */
+#define TB_BRIGHT_LEVELS {40, 70, 100}
+
+/* The tile argument of tb_app_pointer() for LVGL's LV_EVENT_PRESS_LOST (the mock-up's pointercancel): pass
+ * pressed = false and tile = TB_TILE_LOST. The press is forgotten and nothing is recognized. */
+#define TB_TILE_NONE (-1)
+#define TB_TILE_LOST (-2)
 
 /* ---------- Effects: what core asks the rest of the firmware to do ---------- */
 typedef enum {
-    TB_FX_CHIME = 1,        /* arg 1: to a break (784, 988, 1175 Hz), 0: back to focus (1175, 988, 784 Hz) */
+    TB_FX_CHIME = 1,        /* arg 1: to a break (784, 988, 1175 Hz), 0: back to focus (1175, 988, 784 Hz). Only
+                             * queued when the chime setting is on and nothing is quiet() (core checks both). */
     TB_FX_TICKING,          /* arg 0 off, 1 soft, 2 medium: level, emitted when it changes (ticking() rules) */
     TB_FX_BACKLIGHT,        /* arg 0..100: percent; 0 = dark screen (PWR press) */
     TB_FX_ROTATE,           /* arg 1 = flipped 180 degrees */
@@ -60,9 +89,10 @@ typedef enum {
     TB_FX_WIFI_DONE,        /* the Connected screen was dismissed: setup is over, stop the setup network */
     TB_FX_CAL_SYNC,         /* Sync now from the quick menu */
     TB_FX_SAVE_SETTINGS,    /* settings changed: persist (main debounces NVS writes) */
-    TB_FX_SAVE_STATE,       /* own status, last status, message or today's tomatoes changed: persist */
-    TB_FX_PAIRING_CANCELED, /* a tap, swipe, hold, BOOT or PWR canceled the pairing screen (net ends the pairing) */
-    TB_FX_FORGET_DEVICES,   /* the Devices tile was confirmed: revoke every token */
+    TB_FX_SAVE_STATE,       /* own status, last status, message, today's tomatoes or the timer's run/pause changed */
+    TB_FX_PAIRING_CANCELED, /* a tap, swipe, hold, BOOT or PWR canceled the pairing screen (net ends the pairing;
+                             * it must not call tb_app_pairing_end() for it, core already said "Pairing canceled") */
+    TB_FX_FORGET_DEVICES,   /* the Devices tile was confirmed: revoke every token (core already toasted) */
 } tb_effect_kind_t;
 
 typedef struct {
@@ -77,18 +107,25 @@ typedef enum { TB_HOLD_NONE = 0, TB_HOLD_KEEP_HOLDING, TB_HOLD_POWERING_OFF } tb
 
 typedef enum {
     TB_PAIR_END_PAIRED = 0,     /* "Paired · Mac" */
-    TB_PAIR_END_PAIRED_USB,     /* "Paired · Mac · over USB" */
+    TB_PAIR_END_PAIRED_USB,     /* "Paired · Mac · over USB" (shown even though USB pairing has no code screen) */
     TB_PAIR_END_TIMEOUT,        /* "Pairing timed out" */
     TB_PAIR_END_WRONG_CODE,     /* "Pairing canceled · wrong code" */
     TB_PAIR_END_CANCELED,       /* "Pairing canceled" */
 } tb_pair_end_t;
 
-/* Calendar events that show a toast (mock-up saveCalendar, removeCalendar, the Sync buttons). */
+/*
+ * Calendar events that show a toast (mock-up saveCalendar, removeCalendar, the Sync buttons).
+ * ORDER (calendar builder): for a check that passed, post TB_EV_CAL_MEETINGS first (so the toast can count today's
+ * meetings), then TB_EV_CAL_EVENT(SAVED), then TB_EV_CAL_STATUS. Core treats SAVED as a first address (which turns
+ * Calendar meetings on) when no address was saved before it; SAVED and REMOVED set cal_saved themselves.
+ * Background syncs post no event: only Sync now (menu or API) reports SYNCED or SYNC_FAILED.
+ */
 typedef enum {
     TB_CALEV_SAVED = 1,         /* an address passed its check: "Calendar synced · 3 meetings left today" */
     TB_CALEV_SETUP_FAILED,      /* the setup page's address failed: "Calendar address didn't work · add it on the Remote" */
-    TB_CALEV_REMOVED,           /* "Calendar removed" */
+    TB_CALEV_REMOVED,           /* "Calendar removed"; Calendar meetings and Show meeting titles go off */
     TB_CALEV_SYNCED,            /* Sync now finished: "Calendar synced" */
+    TB_CALEV_SYNC_FAILED,       /* Sync now failed: "Couldn't sync the calendar" (new copy, not in the mock-up) */
 } tb_cal_event_t;
 
 /* Pomodoro actions from the API (api.md 9.1). */
@@ -118,8 +155,9 @@ typedef struct {
     bool booting;                   /* s.booting: splash */
     tb_ms_t boot_until;
     bool powering_off;              /* "Powering off" is up; the power goes at hold_since + TB_POWERING_OFF_MS */
+    bool powered_off;               /* TB_FX_POWER_OFF was sent: core ignores everything from here (s.powered false) */
     tb_hold_t hold;                 /* the PWR hold overlay */
-    tb_ms_t pwr_down_at;            /* 0 when PWR is up */
+    tb_ms_t pwr_down_at;            /* 0 when PWR is up (or the press doesn't count) */
     tb_ms_t hold_since;
 
     /* alarm */
@@ -157,9 +195,14 @@ typedef struct {
     tb_menu_t menu;
     char toast[TB_TOAST_BYTES];     /* "" = none */
     tb_ms_t toast_until;
+    /* A meeting title inside the toast (withTitle()): byte offset and length, 0/0 when none. The title is already cut
+     * to 24 characters with "…"; ui may cut it further (keep fewer characters, trim, add "…") while the pill would
+     * still reach the info column, measuring with lv_text_get_width. */
+    uint8_t toast_title_off, toast_title_len;
     char pending_toast[TB_TOAST_BYTES]; /* an announcement that waits for the screen to be free */
+    uint8_t pending_title_off, pending_title_len;
     struct {
-        bool active;
+        bool active;                /* a code is out (it shows when tb_app_pairing_visible()) */
         char code[8];               /* "482913"; the UI shows it as "482 913" */
         char who[TB_CLIENT_NAME_BYTES];   /* "Mac", "iPhone" */
         tb_ms_t expires;
@@ -168,12 +211,21 @@ typedef struct {
 
     /* gesture recognizer state */
     tb_gesture_state_t gesture;
+    bool ptr_live;                  /* the press counts (the mock-up's p != null): not dark or starting at pointerdown */
 
     uint32_t rev;
 
     /* effects not yet taken */
     tb_effect_t fx[TB_EFFECTS_MAX];
     uint8_t n_fx;
+    uint16_t fx_dropped;            /* effects lost to a full queue (should stay 0: the app task drains every loop) */
+
+    /* bookkeeping (core only) */
+    tb_ms_t last_mono;              /* the previous tick, for the timer's dt */
+    int64_t last_wall_min;          /* the minute the day roll-over was last checked */
+    int16_t bl_level;               /* last TB_FX_BACKLIGHT sent, -1 = none yet */
+    uint32_t sig_state, sig_rev;    /* signatures of the saved state and of everything visible */
+    tb_settings_t set_saved;        /* settings as last handed to TB_FX_SAVE_SETTINGS */
 } tb_app_t;
 
 /* ---------- Life cycle ---------- */
@@ -194,35 +246,45 @@ int tb_app_take_effects(tb_app_t *a, tb_effect_t *out, int max);
 
 /* ---------- Inputs from the bar ---------- */
 
-/* A touch sample in logical screen coordinates. tile: the menu tile under (x, y) at this sample, -1 if none
- * (ui hit-tests its tile rectangles). Runs the gesture recognizer and acts on taps, swipes and holds. */
+/* A touch sample in logical screen coordinates. tile: the menu tile under (x, y) at this sample, TB_TILE_NONE if
+ * none (ui hit-tests its tile rectangles; the release sample's tile is the one tapped). pressed = false with
+ * tile = TB_TILE_LOST: the press was lost. Runs the gesture recognizer and acts on taps, swipes and holds. */
 void tb_app_pointer(tb_app_t *a, bool pressed, int16_t x, int16_t y, int8_t tile, const tb_clock_t *now);
 /* Let a hold fire while the finger rests (no new samples). The app task calls it every loop. */
 void tb_app_pointer_poll(tb_app_t *a, const tb_clock_t *now);
 void tb_app_button(tb_app_t *a, tb_button_t b, const tb_clock_t *now);
 /* The IMU's orientation. initial = true at boot: just set the layout, no flip semantics. Otherwise a change of
- * orientation is a flip: turn the layout, wake, silence, set aside, start what the Pomodoro waits for. */
+ * orientation is a flip: turn the layout, wake, silence, set aside, start what the Pomodoro waits for. The same
+ * orientation again does nothing. */
 void tb_app_flip(tb_app_t *a, bool flipped, bool initial, const tb_clock_t *now);
 
 /* ---------- Inputs from the Remote and the API (net's router; api.md sections 8 to 10) ---------- */
-/* Each returns TB_OK or an error; on TB_OK the bar shows the same confirmation the mock-up's Remote does. */
+/* Each returns TB_OK or an error and changes nothing on error; on TB_OK the bar shows the same confirmation the
+ * mock-up's Remote does. All answer TB_E_POWERED_OFF during the splash and Powering off; status, message, aside and
+ * pomodoro answer TB_E_IN_SETUP on the Wi-Fi setup screens. */
+/* back_at "HH:MM" (24 h) and note (1..40 characters): only with TB_ST_AWAY; NULL or "" = left out. */
 tb_err_t tb_app_remote_status(tb_app_t *a, tb_status_t st, const char *back_at, const char *note, bool set_aside,
                               const tb_clock_t *now);
+/* text: cleaned here again (tb_text_clean), 1..80 characters. net refuses undrawable characters before calling
+ * (unsupported_chars); any left are shown as "?". */
 tb_err_t tb_app_remote_message(tb_app_t *a, const char *text, bool set_aside, const tb_clock_t *now);
 tb_err_t tb_app_remote_aside(tb_app_t *a, bool aside, const tb_clock_t *now);
+/* minutes: for TB_POMO_EXTEND only, 1..60 (net passes 5 when the request leaves it out). */
 tb_err_t tb_app_remote_pomodoro(tb_app_t *a, tb_pomo_action_t act, int minutes, bool set_aside, const tb_clock_t *now);
 tb_err_t tb_app_remote_settings(tb_app_t *a, const tb_settings_patch_t *p, const char **field, const tb_clock_t *now);
-/* The time zone from the setup page or the Mac's hello (api.md 6.6: only if none is set yet). No toast; queues
- * TB_FX_SAVE_SETTINGS (main then applies TZ). */
+/* The time zone from the setup page or the Mac's hello (api.md 6.6: only if none is set yet; PATCH device.time_zone
+ * changes it later). No toast; queues TB_FX_SAVE_SETTINGS (main then applies TZ). */
 void tb_app_set_time_zone(tb_app_t *a, const char *iana, const tb_clock_t *now);
 
 /* ---------- Automatic sources ---------- */
-/* The bar's call changed (net's Mac table). call == NULL or !call->active: no call. lead names why it ended when
- * the caller knows ("Lost contact with your Mac"), else NULL ("Call ended"). */
+/* The bar's call changed (net's Mac table). call == NULL or !call->active: no call. lead names why it ended when the
+ * caller knows ("Lost contact with your Mac"), else NULL ("Call ended"). Call ids must be nonzero and new for each
+ * call (0 is stored as 1). */
 void tb_app_set_call(tb_app_t *a, const tb_call_t *call, const char *lead, const tb_clock_t *now);
 /* Whether any Mac is connected (the status row's Mac icon), and over which link. */
 void tb_app_set_mac_link(tb_app_t *a, tb_link_t link, const tb_clock_t *now);
-/* Today's and tomorrow's meetings that count, sorted by start (calendar; at most TB_MEETINGS_MAX). */
+/* Today's and tomorrow's meetings that count, sorted by start (calendar; at most TB_MEETINGS_MAX). Ids must be
+ * nonzero (0 is stored as 1). */
 void tb_app_set_meetings(tb_app_t *a, const tb_meeting_t *m, int n, const tb_clock_t *now);
 /* Calendar status for the menus and screens. */
 void tb_app_set_calendar(tb_app_t *a, bool saved, bool checking, tb_epoch_t last_sync, const tb_clock_t *now);
@@ -239,7 +301,10 @@ void tb_app_wifi_failed(tb_app_t *a, const char *ssid, const char *error_text, c
 void tb_app_wifi_link(tb_app_t *a, bool up, const char *ip, const char *host, const tb_clock_t *now);
 
 /* ---------- Pairing screen (net; api.md 4.8, proposed) ---------- */
+/* A code is out. The screen shows it once the power screens are gone (never on the Wi-Fi setup screens), waking a
+ * dark screen and closing an open menu. A tap, swipe, hold, BOOT or PWR press cancels it (TB_FX_PAIRING_CANCELED). */
 void tb_app_pairing_show(tb_app_t *a, const char *code, const char *who, tb_ms_t expires, const tb_clock_t *now);
+/* The pairing ended for a reason net knows. who: the client's label for "Paired · Mac" (NULL: the one shown). */
 void tb_app_pairing_end(tb_app_t *a, tb_pair_end_t why, const char *who, const tb_clock_t *now);
 void tb_app_set_paired_count(tb_app_t *a, uint8_t n);
 
@@ -254,22 +319,40 @@ tb_auto_t tb_app_aside_kind(const tb_app_t *a, const tb_clock_t *now);
 tb_showing_t tb_app_showing(const tb_app_t *a, const tb_clock_t *now);
 /* calData(): meeting data shows (address saved, Calendar meetings on, Wi-Fi not skipped). */
 bool tb_app_cal_data(const tb_app_t *a);
-/* currentEvent() / nextEvent() / todays().length, by the mock-up's rules. NULL when none. */
+/* callNow(): a call is on and Calls from your Mac is on (aside or not). */
+bool tb_app_call_now(const tb_app_t *a);
+/* meetNow(): the current meeting when calData(), else NULL (aside or not). */
+const tb_meeting_t *tb_app_meet_now(const tb_app_t *a, const tb_clock_t *now);
+/* currentEvent() / nextEvent() / todays().length, by the mock-up's rules. NULL when none (or the clock is unknown). */
 const tb_meeting_t *tb_app_current_meeting(const tb_app_t *a, const tb_clock_t *now);
 const tb_meeting_t *tb_app_next_meeting(const tb_app_t *a, const tb_clock_t *now);
 int tb_app_meetings_left(const tb_app_t *a, const tb_clock_t *now);
+/* leftText(): "3 meetings left today", "1 meeting left today", "no more meetings today". */
+char *tb_app_left_text(const tb_app_t *a, const tb_clock_t *now, char *buf, size_t cap);
 /* titleOf() / placeOf(): "" unless Show meeting titles is on and the event isn't private (and a location that's a
  * web address is left out). */
 const char *tb_app_title_of(const tb_app_t *a, const tb_meeting_t *m);
 const char *tb_app_place_of(const tb_app_t *a, const tb_meeting_t *m);
+/* The call screen's app name (api.md 5.2): up to 24 characters ("…" after 23), or "" when none was sent or it has
+ * characters the fonts can't draw (the kicker is then "From your Mac" alone). Returns buf. */
+const char *tb_app_call_label(const tb_app_t *a, char *buf, size_t cap);
 /* quiet(): a call is on or a calendar meeting is in progress (no sound, even if set aside). */
 bool tb_app_quiet(const tb_app_t *a, const tb_clock_t *now);
+/* ticking(): one tick a second now (the level is a->ticking_level). */
+bool tb_app_ticking(const tb_app_t *a, const tb_clock_t *now);
+/* api.md 7.3 pomodoro.paused_by: TB_AUTO_CALL or TB_AUTO_MEETING while the call or meeting that paused the timer is
+ * still on (the Remote's "paused for the call"), else TB_AUTO_NONE ("you" when the state is paused, null otherwise). */
+tb_auto_t tb_app_paused_by(const tb_app_t *a, const tb_clock_t *now);
 /* screenFree(): not dark, not booting, no menu, no setup or power screen, no pairing screen. */
 bool tb_app_screen_free(const tb_app_t *a);
 /* onWifiScreen(). */
 bool tb_app_on_wifi_screen(const tb_app_t *a);
+/* The pairing screen is up (a code is out and nothing it waits for is showing). */
+bool tb_app_pairing_visible(const tb_app_t *a);
 /* The color key the screen is painted in right now (status, phase, call, meeting, clock or setup). */
 tb_color_key_t tb_app_color_key(const tb_app_t *a, const tb_clock_t *now);
+/* STATES[i].name: "Available", "Busy", "In a meeting", "Pomodoro", "Away", "Message", "Clock". */
+const char *tb_status_name(tb_status_t st);
 
 #ifdef __cplusplus
 }

@@ -2,7 +2,7 @@
 # On the device: an ESP-IDF component. On Linux: view/ alone for the host tests (tb_ui_view), and with LVGL_DIR set,
 # the LVGL layer too (tb_ui) for the snapshot tool in host/. Owner: ui builder.
 set(TB_UI_VIEW_SRCS view/ui_view.c view/ui_theme.c)
-set(TB_UI_LVGL_SRCS src/ui.c src/ui_fonts.c)
+set(TB_UI_LVGL_SRCS src/ui.c src/ui_fonts.c src/ui_icons.c)
 file(GLOB TB_UI_FONT_SRCS ${CMAKE_CURRENT_LIST_DIR}/fonts/*.c)
 set(TB_REPO_ASSETS ${CMAKE_CURRENT_LIST_DIR}/../../../assets)
 
@@ -26,8 +26,10 @@ if(ESP_PLATFORM)
     set_source_files_properties(${gen} PROPERTIES GENERATED TRUE)
     target_sources(${COMPONENT_LIB} PRIVATE ${gen})
 else()
-    add_library(tb_ui_view STATIC ${TB_UI_VIEW_SRCS})
-    target_include_directories(tb_ui_view PUBLIC include)
+    # On the host the view library also carries the named scenes (host/ui_scenes.c) that the snapshot tool renders
+    # and the view tests check.
+    add_library(tb_ui_view STATIC ${TB_UI_VIEW_SRCS} host/ui_scenes.c)
+    target_include_directories(tb_ui_view PUBLIC include host)
     target_link_libraries(tb_ui_view PUBLIC tb_core)
     target_compile_options(tb_ui_view PRIVATE -Wall -Wextra -Werror=implicit-function-declaration)
     if(TARGET lvgl)
@@ -38,5 +40,6 @@ else()
         add_library(tb_ui STATIC ${TB_UI_LVGL_SRCS} ${TB_UI_FONT_SRCS} ${gen})
         target_include_directories(tb_ui PUBLIC include PRIVATE src)
         target_link_libraries(tb_ui PUBLIC tb_ui_view lvgl)
+        target_compile_options(tb_ui PRIVATE -Wall -Wextra)
     endif()
 endif()

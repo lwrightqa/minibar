@@ -10,7 +10,10 @@
 void tb_fx(tb_app_t *a, tb_effect_kind_t kind, int32_t arg);
 /* bump(): something visible changed. */
 static inline void tb_bump(tb_app_t *a) { a->rev++; }
-/* Build a menu's tiles for the current state (showMenu and friends). */
+/* Open a menu of this kind (showMenu and friends): its tiles for the current state, and the 8 s close timer.
+ * TB_MENU_NONE closes it. */
 void tb_menu_build(tb_app_t *a, tb_menu_kind_t kind, const tb_clock_t *now);
+/* Refill the open menu's tiles from the current state, keeping its kind, timer and Devices confirmation. */
+void tb_menu_fill(tb_app_t *a, const tb_clock_t *now);
 /* Copy a string into a fixed buffer, always NUL-terminated. */
 void tb_strlcpy(char *dst, const char *src, size_t cap);

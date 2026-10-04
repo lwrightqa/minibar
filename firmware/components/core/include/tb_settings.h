@@ -64,6 +64,9 @@ tb_err_t tb_settings_check(const tb_settings_patch_t *p, bool calendar_saved, co
 /* Copy the patched fields into s. Call only after tb_settings_check() returned TB_OK. */
 void tb_settings_apply(tb_settings_t *s, const tb_settings_patch_t *p);
 
+/* Field by field (no memcmp: the struct has padding). */
+bool tb_settings_equal(const tb_settings_t *a, const tb_settings_t *b);
+
 /* Clamp every field into range (used after loading an older NVS blob). Returns true if anything changed. */
 bool tb_settings_sanitize(tb_settings_t *s);
 

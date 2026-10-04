@@ -8,6 +8,7 @@
 
 #include "tb_internal.h"
 #include "tb_settings.h"
+#include "tb_text.h"
 
 void tb_settings_defaults(tb_settings_t *s, const char *device_id)
 {
@@ -49,11 +50,15 @@ tb_err_t tb_settings_check(const tb_settings_patch_t *p, bool calendar_saved, co
         BAD("pomodoro.tick_volume");
     if (p->has_brightness && !in_range(p->v.display.brightness, 10, 100)) BAD("display.brightness");
     if (p->has_name) {
-        size_t n = strlen(p->v.device.name);   /* TODO(core): count characters, not bytes (1..24) */
-        if (n < 1 || n > TB_DEVICE_NAME_BYTES - 1) BAD("device.name");
+        /* 1 to 24 characters (api.md 2.5), counted as characters, not bytes: "Café" is 4. The buffer holds 24
+         * characters of up to 3 bytes each, so a name that fits the count always fits the bytes. */
+        size_t bytes = strnlen(p->v.device.name, sizeof(p->v.device.name));
+        if (bytes >= sizeof(p->v.device.name)) BAD("device.name");
+        size_t n = tb_utf8_len(p->v.device.name);
+        if (n < 1 || n > TB_DEVICE_NAME_CHARS) BAD("device.name");
     }
     if (p->has_time_zone) {
-        size_t n = strlen(p->v.device.time_zone);
+        size_t n = strnlen(p->v.device.time_zone, sizeof(p->v.device.time_zone));
         if (n < 1 || n > TB_TZ_NAME_BYTES - 1) BAD("device.time_zone");
     }
     if (p->has_calendar && p->v.automatic.calendar && !calendar_saved) {
@@ -114,4 +119,15 @@ bool tb_settings_sanitize(tb_settings_t *s)
     s->device.name[sizeof(s->device.name) - 1] = '\0';
     s->device.time_zone[sizeof(s->device.time_zone) - 1] = '\0';
     return changed;
+}
+
+bool tb_settings_equal(const tb_settings_t *a, const tb_settings_t *b)
+{
+    return a->pomodoro.focus_min == b->pomodoro.focus_min && a->pomodoro.short_min == b->pomodoro.short_min &&
+           a->pomodoro.long_min == b->pomodoro.long_min && a->pomodoro.long_every == b->pomodoro.long_every &&
+           a->pomodoro.auto_start == b->pomodoro.auto_start && a->pomodoro.chime == b->pomodoro.chime &&
+           a->pomodoro.ticking == b->pomodoro.ticking && a->pomodoro.tick_volume == b->pomodoro.tick_volume &&
+           a->display.brightness == b->display.brightness && a->automatic.calendar == b->automatic.calendar &&
+           a->automatic.mac == b->automatic.mac && a->automatic.meeting_titles == b->automatic.meeting_titles &&
+           !strcmp(a->device.name, b->device.name) && !strcmp(a->device.time_zone, b->device.time_zone);
 }

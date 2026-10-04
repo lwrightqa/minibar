@@ -1,6 +1,6 @@
 /*
- * ui_fonts.h: the generated Barlow fonts by role (ui_theme.h ui_font_role_t). Owner: ui builder.
- * Until fonts/ has the converted files, every role falls back to LVGL's Montserrat 14.
+ * ui_fonts.h: the Bold Signal fonts by role (ui_theme.h ui_font_role_t). Owner: ui builder.
+ * The fonts are generated into ../fonts/ by ../tools/build_fonts.sh (see ../fonts/README.md).
  */
 #pragma once
 

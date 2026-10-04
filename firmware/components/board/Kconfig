@@ -1,0 +1,65 @@
+menu "TinyBar board (Waveshare ESP32-S3-Touch-LCD-3.49 V2)"
+
+    choice TINYBAR_IMU_UP
+        prompt "IMU axis that points up when the bar stands the normal way up"
+        default TINYBAR_IMU_UP_Y_POS
+        help
+            The bar stands on a long edge, so gravity runs along the panel's short side: one of the QMI8658's X or Y
+            axes, depending on how the chip sits on the board. Pick the axis that reads about +1000 mg when the
+            layout is drawn the right way up without a flip (display rotation 90). The boot log prints the raw
+            reading ("IMU at start: x=... y=... z=... mg") to find it; see components/board/README.md. If the splash
+            is upside down when the bar stands still, the sign is wrong: pick the opposite one.
+
+        config TINYBAR_IMU_UP_X_POS
+            bool "+X"
+        config TINYBAR_IMU_UP_X_NEG
+            bool "-X"
+        config TINYBAR_IMU_UP_Y_POS
+            bool "+Y"
+        config TINYBAR_IMU_UP_Y_NEG
+            bool "-Y"
+    endchoice
+
+    config TINYBAR_BL_ZERO_DUTY
+        int "LCD_BL duty (of 255) at which the backlight goes dark"
+        range 64 255
+        default 164
+        help
+            GPIO 42 dims the AP3032 backlight driver through its feedback pin: the longer the pin is high, the
+            dimmer, and from the V2 schematic the light goes out at about 64% high (164 of 255). Brightness levels
+            are spread over 0..this duty. Measure it at bring-up (README) and set it here.
+
+    config TINYBAR_AUDIO_VOLUME
+        int "Speaker volume (esp_codec_dev scale: 0..100 is -50..0 dB on the ES8311 DAC)"
+        range 0 100
+        default 75
+        help
+            The chime and the ticks are synthesized at the mock-up's digital levels (chime -13 dBFS, Soft tick -31,
+            Medium -23), so this one setting sets how loud the bar is. It's an open office: start low and tune it
+            on the real bar.
+
+    config TINYBAR_AUDIO_AMP_GATE
+        bool "Switch the speaker amplifier off while silent"
+        default y
+        help
+            EXIO7 (NS_MODE) is the NS4150B amplifier's CTRL pin, pulled low (off) on the board. With this on, the
+            amplifier is switched on 40 ms before a sound and off 1.5 s after the last one (it stays on while focus
+            ticking is on), so the speaker can't hiss in a quiet office. Off: on all the time, as Waveshare's
+            examples leave it.
+
+    config TINYBAR_BOARD_BRINGUP
+        bool "Board bring-up self-test (logs, backlight sweep, sounds; never ship it)"
+        default n
+        help
+            For the first runs on a new board (components/board/README.md): logs the devices on the I2C bus, the
+            accelerometer's raw reading, a backlight duty sweep and every button and touch press, and plays the
+            chime and both tick levels.
+
+    config TINYBAR_LCD_PCLK_MHZ
+        int "QSPI clock for the panel (MHz)"
+        range 10 80
+        default 40
+        help
+            40 MHz, as in Waveshare's 10_LVGL_V9_Test.
+
+endmenu

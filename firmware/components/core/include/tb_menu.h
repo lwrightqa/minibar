@@ -46,6 +46,7 @@ typedef enum {
     TB_ACT_TICK,
     TB_ACT_DEVICES,         /* forget all paired devices; first tap asks, second confirms (api.md 4.8, proposed) */
 } tb_action_t;
+/* A tap on a read-only tile (TB_ACT_NONE) closes the menu, as in the mock-up (the Network tile has no data-action). */
 
 typedef enum {
     TB_TILE_NORMAL = 0,     /* #1C1F24, muted label and foot, white value */
@@ -59,14 +60,14 @@ typedef struct {
     char label[24];         /* <b>: capitals in the UI ("LIGHT") */
     char value[24];         /* <span>: "70%", "Sync", "Show again" */
     bool value_two_lines;   /* <span class="two">: "Show again" wraps onto two lines */
-    char foot[48];          /* <small>: "tap to change", "synced 2m ago" */
+    char foot[64];          /* <small>: "tap to change", "synced 2m ago", "Office-WiFi · 10.0.4.42" */
 } tb_tile_t;
 
 typedef struct {
     tb_menu_kind_t kind;
     uint8_t n;
     tb_tile_t tiles[TB_MENU_MAX_TILES];
-    tb_ms_t closes_at;      /* monotonic; 0 when closed */
+    tb_ms_t closes_at;      /* monotonic; 0 when closed. Set when a menu opens or an action rebuilds it in place. */
     bool devices_confirm;   /* the Devices tile is asking for its second tap */
 } tb_menu_t;
 

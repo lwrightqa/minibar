@@ -16,15 +16,18 @@ extern "C" {
 /* api.md 7.1 time_source */
 typedef enum { NET_TIME_NONE = 0, NET_TIME_NTP, NET_TIME_RTC, NET_TIME_MAC } net_time_source_t;
 
-/* api.md 7.3 "wifi" and 7.1 "wifi". */
+/* api.md 7.3 "wifi" and 7.1 "wifi". SETUP while the setup screens show (the TinyBar-Setup network is up). */
 typedef enum { NET_WIFI_CONNECTED = 0, NET_WIFI_OFFLINE, NET_WIFI_SETUP } net_wifi_state_t;
 typedef struct {
     net_wifi_state_t state;
-    char ssid[TB_SSID_BYTES];       /* "" when not connected */
-    char ip[TB_IP_BYTES];
+    bool sta_up;                    /* joined the office Wi-Fi and has an address (also during "Set up again") */
+    char ssid[TB_SSID_BYTES];       /* "" when not joined */
+    char ip[TB_IP_BYTES];           /* the station's IPv4, "" when not joined */
     char host[64];                  /* "tinybar.local" or the name mDNS ended up with */
-    int8_t rssi;                    /* dBm; 0 when not connected */
+    int8_t rssi;                    /* dBm; 0 when not joined */
 } net_wifi_info_t;
+
+#define NET_SETUP_IP "192.168.4.1"
 
 /* One network the setup page can offer (api.md 13.1). */
 typedef enum { NET_SEC_OPEN = 0, NET_SEC_PASSWORD, NET_SEC_WORK_LOGIN } net_security_t;
@@ -49,21 +52,24 @@ const char *net_port_fw_version(void);
 tb_clock_t net_port_now(void);
 net_time_source_t net_port_time_source(void);
 /* The Mac's hello time (api.md 6.6): set the clock if there was no network time in the last 24 h and it's more than
- * 2 s off. Returns true if the clock was set. */
+ * 2 s off. Returns true if the clock was set (time_source becomes "mac"). */
 bool net_port_set_time_from_mac(tb_epoch_t t);
-/* Apply a time zone (IANA). Returns false if the zone isn't in the table. */
-bool net_port_set_time_zone(const char *iana);
+/* The IANA zone is in the bar's table (calendar/cal_tz.h). */
 bool net_port_time_zone_known(const char *iana);
 
 /* ---------- Wi-Fi ---------- */
 void net_port_wifi(net_wifi_info_t *out);
 /* The setup network's scan, strongest first (cached; refreshed in the background). Returns the count. */
 int net_port_setup_networks(net_scan_entry_t *out, int max);
-/* Start joining (api.md 13.2). Returns false if a join is already running. */
-bool net_port_setup_join(const char *ssid, const char *username, const char *password);
+/* Start joining (api.md 13.2); a join already running is replaced. calendar_url ("" or NULL for none) is handed to
+ * the calendar service once the bar is online. Credentials are saved only once the join works. Returns false if
+ * the Wi-Fi driver refused. */
+bool net_port_setup_join(const char *ssid, const char *username, const char *password, const char *calendar_url);
 void net_port_setup_status(net_join_status_t *out);
 
-/* ---------- calendar (calendar/cal_sync.h on the device) ---------- */
+/* ---------- calendar (calendar/cal_sync.h and cal_url.h on the device) ---------- */
+/* The address's format (cal_url_err_t: 0 fine, else the error). */
+int net_port_cal_check(const char *url);
 /* 0 started (202); otherwise the cal_url_err_t format error. */
 int net_port_cal_put(const char *url, bool from_setup);
 /* 0 removed, -1 none saved. */

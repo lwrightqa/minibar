@@ -41,10 +41,15 @@ typedef struct {
 } tb_gesture_state_t;
 
 void tb_gesture_reset(tb_gesture_state_t *g);
-/* Feed one sample (pressed or released, position, time). Returns the gesture recognized by this sample, if any. */
+/* Feed one sample (pressed or released, position, time). Returns the gesture recognized by this sample, if any.
+ * A release carries the point where the finger lifted (LVGL's last point). If the hold was due but no poll fired it
+ * yet (a late sample), the release reports TB_GEST_HOLD instead of a tap, as the mock-up's 550 ms timer would have. */
 tb_gesture_t tb_gesture_feed(tb_gesture_state_t *g, bool pressed, int16_t x, int16_t y, tb_ms_t now);
 /* Call regularly while a finger is down (the app task's loop) so the hold fires on time without new samples. */
 tb_gesture_t tb_gesture_poll(tb_gesture_state_t *g, tb_ms_t now);
+/* The press was lost (LVGL's LV_EVENT_PRESS_LOST, the mock-up's pointercancel): forget it, recognize nothing.
+ * Returns TB_GEST_CANCEL if a press was in progress, else TB_GEST_NONE. */
+tb_gesture_t tb_gesture_cancel(tb_gesture_state_t *g);
 
 #ifdef __cplusplus
 }

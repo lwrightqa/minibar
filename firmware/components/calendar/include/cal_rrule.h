@@ -1,15 +1,18 @@
 /*
- * cal_rrule.h: RFC 5545 recurrence rules, the subset Google Calendar writes. Pure C.
+ * cal_rrule.h: RFC 5545 recurrence rules, the subset calendar apps write. Pure C.
  *
  * Owner: calendar builder.
  *
- * Required: FREQ=DAILY, WEEKLY (with BYDAY and WKST), MONTHLY, YEARLY; INTERVAL; COUNT; UNTIL (a DATE, a local
- * DATE-TIME or a UTC DATE-TIME). MONTHLY must also handle BYMONTHDAY=n and BYDAY with an ordinal (2TU, -1FR), which
- * Google writes for "monthly on the second Tuesday" and "on the last Friday". Anything else (BYSETPOS, BYWEEKNO,
- * BYYEARDAY, BYHOUR...) makes cal_rrule_parse() return false, and the event's first instance is used alone.
+ * Supported: FREQ=DAILY, WEEKLY, MONTHLY, YEARLY; INTERVAL; COUNT; UNTIL (a DATE, a local DATE-TIME or a UTC
+ * DATE-TIME); WKST; BYDAY (plain days, and with an ordinal such as 2TU or -1FR for MONTHLY and YEARLY, as Google
+ * writes for "monthly on the second Tuesday" and "on the last Friday"); BYMONTHDAY (1..31, -1..-31); BYMONTH; and
+ * BYSETPOS (Outlook's "last weekday of the month" is BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1). Anything else (BYWEEKNO,
+ * BYYEARDAY, BYHOUR, BYMINUTE, BYSECOND, FREQ=HOURLY and finer, RSCALE) makes cal_rrule_parse() return false, and
+ * the event's first instance is used alone.
  *
  * Expansion works in the event's own local civil time (so a 9:00 weekly meeting stays at 9:00 across a DST change)
- * and starts at DTSTART, so COUNT is honored; it stops at the window's end, UNTIL or COUNT.
+ * and starts at DTSTART, so COUNT is honored. DTSTART is always the first instance, as RFC 5545 says, even if it
+ * doesn't match the rule. Expansion stops at the window's end, UNTIL or COUNT.
  */
 #pragma once
 
@@ -19,6 +22,10 @@
 extern "C" {
 #endif
 
+#define CAL_RRULE_BYDAY_MAX      16
+#define CAL_RRULE_BYMONTHDAY_MAX 31
+#define CAL_RRULE_BYSETPOS_MAX   8
+
 typedef enum { CAL_FREQ_NONE = 0, CAL_FREQ_DAILY, CAL_FREQ_WEEKLY, CAL_FREQ_MONTHLY, CAL_FREQ_YEARLY } cal_freq_t;
 
 typedef struct {
@@ -26,29 +33,36 @@ typedef struct {
     uint16_t interval;          /* default 1 */
     int32_t count;              /* 0 = no COUNT */
     bool has_until;
-    bool until_is_utc;          /* UNTIL ended in Z */
-    cal_civil_t until;          /* UTC civil if until_is_utc, else local civil (a DATE has 23:59:59) */
-    uint8_t byday_mask;         /* WEEKLY: bit d (0 = Sunday) */
-    int8_t byday_ord[7];        /* MONTHLY/YEARLY BYDAY ordinals per weekday: 0 none, 1..5, -1..-5 */
+    bool until_is_utc;          /* UNTIL ended in Z: compare instants */
+    tb_epoch_t until_utc;       /* when until_is_utc */
+    cal_civil_t until;          /* the local civil limit otherwise (a DATE becomes 23:59:59 that day) */
+    uint8_t n_byday;
+    struct { int8_t ord; uint8_t wd; } byday[CAL_RRULE_BYDAY_MAX];   /* ord 0 = every such weekday; wd 0 = Sunday */
     uint8_t n_bymonthday;
-    int8_t bymonthday[8];       /* 1..31 or -1..-31 */
+    int8_t bymonthday[CAL_RRULE_BYMONTHDAY_MAX];  /* 1..31 or -1..-31 */
+    uint16_t bymonth_mask;      /* bit m for month m (1..12), 0 = none */
+    uint8_t n_bysetpos;
+    int16_t bysetpos[CAL_RRULE_BYSETPOS_MAX];     /* 1..366 or -1..-366 */
     uint8_t wkst;               /* 0 = Sunday ... default 1 = Monday */
 } cal_rrule_t;
 
-/* Parse an RRULE value ("FREQ=WEEKLY;BYDAY=MO,WE;UNTIL=20261231T235959Z"). False if unsupported. */
+/* Parse an RRULE value ("FREQ=WEEKLY;BYDAY=MO,WE;UNTIL=20261231T235959Z"). Case-insensitive. False if malformed or
+ * unsupported (out is then cleared). */
 bool cal_rrule_parse(const char *value, cal_rrule_t *out);
 
-/* Called for each occurrence's local start. Return false to stop early. */
+/* Called for each occurrence's local start (in the event's zone). Return false to stop early. */
 typedef bool (*cal_occ_fn)(void *ctx, const cal_civil_t *local_start);
 
 /*
  * Walk the occurrences of r from dtstart (local civil time in tz), calling fn for each one whose UTC start is before
  * window_end and whose UTC end (start + duration_s) is after window_start. Occurrences before the window are still
- * counted toward COUNT. Stops after max_steps candidate dates as a safety net against hostile feeds (100000 is
- * plenty: a daily rule from 1990 is under 14000). Returns the number of occurrences passed to fn.
+ * counted toward COUNT. Without COUNT, whole periods before the window are skipped arithmetically, so a daily rule
+ * from 1990 costs nothing. *steps (optional, in and out) is a budget of periods to examine, a safety net against
+ * hostile feeds: it is decreased as periods are examined, and the walk stops when it reaches 0. Returns the number
+ * of occurrences passed to fn, or -1 if the budget ran out first (occurrences found before that were passed).
  */
 int cal_rrule_expand(const cal_rrule_t *r, const cal_civil_t *dtstart, const cal_tz_t *tz, int32_t duration_s,
-                     tb_epoch_t window_start, tb_epoch_t window_end, uint32_t max_steps, cal_occ_fn fn, void *ctx);
+                     tb_epoch_t window_start, tb_epoch_t window_end, uint32_t *steps, cal_occ_fn fn, void *ctx);
 
 #ifdef __cplusplus
 }

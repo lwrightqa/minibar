@@ -8,6 +8,9 @@
  * token_id; compared in constant time. At most 10. A new pairing with the same `client` replaces the old token.
  * Codes: 6 digits, shown on the bar for 2 minutes, one at a time, 3 tries. Back-off: after two failed pairings in a
  * row, pair/start is refused for 30 s, then 1, 2, 4 minutes... up to 1 hour; success resets it; kept in RAM only.
+ * POST /api/v1/pair is limited to one request a second in total.
+ * Storage: the table is saved through net_port_tokens_save() as a versioned blob on every pairing, revoke and forget,
+ * and when a token's last_used moves on by an hour or more (flash wear: at most once an hour per token).
  */
 #pragma once
 
@@ -21,6 +24,10 @@ extern "C" {
 #define NET_TOKEN_LEN       47      /* "tb1_" + 43 */
 #define NET_PAIR_CODE_MS    120000
 #define NET_PAIR_TRIES      3
+#define NET_PAIR_CODE_LEN   6
+#define NET_PAIR_LOCK_FIRST_MS  30000
+#define NET_PAIR_LOCK_MAX_MS    3600000
+#define NET_TOKEN_BLOB_MAX  2600    /* the saved table's largest size */
 
 typedef enum { NET_SCOPE_CALL = 0, NET_SCOPE_FULL } net_scope_t;
 typedef enum { NET_KIND_MAC = 0, NET_KIND_REMOTE, NET_KIND_AUTOMATION, NET_KIND_OTHER } net_kind_t;
@@ -33,10 +40,11 @@ typedef struct {
     net_kind_t kind;
     net_scope_t scope;
     char client[65];
-    tb_epoch_t paired_at;
+    tb_epoch_t paired_at;           /* 0 when the clock was unknown */
     tb_link_t paired_via;
-    tb_epoch_t last_used;
-    uint32_t last_ip;
+    tb_epoch_t last_used;           /* 0 = unknown */
+    uint32_t last_ip;               /* network order; 0 = only used over USB */
+    tb_epoch_t saved_used;          /* RAM: last_used as last saved (flash wear) */
 } net_token_t;
 
 typedef enum {
@@ -53,7 +61,7 @@ typedef struct {
     /* the code on screen */
     bool showing;
     char pairing_id[17];
-    char code[7];
+    char code[NET_PAIR_CODE_LEN + 1];
     uint8_t tries_left;
     tb_ms_t expires;
     char name[TB_CLIENT_NAME_BYTES];
@@ -63,31 +71,44 @@ typedef struct {
     /* back-off (RAM only) */
     uint8_t failures_in_row;
     tb_ms_t locked_until;
-    tb_ms_t last_pair_call;
+    tb_ms_t last_pair_call;         /* the last POST /api/v1/pair that was let through; -1 = none */
 } net_pair_t;
 
+/* Empty state, then the saved table (net_port_tokens_load). */
 void net_pair_init(net_pair_t *p);
-/* pair/start: show a code. *retry_after_s is set for BUSY and RATE_LIMITED. */
+/* pair/start: show a code. *retry_after_s is set for BUSY and RATE_LIMITED. name: the label for the screen and the
+ * list (already defaulted from kind by the caller). client may be NULL or "". */
 net_pair_err_t net_pair_start(net_pair_t *p, const char *name, net_kind_t kind, net_scope_t scope, const char *client,
                               const tb_clock_t *now, char pairing_id_out[17], int *retry_after_s);
-/* pair: check the code (spaces and dashes ignored); on success write the token and its record. */
+/* pair: check the code (spaces and dashes ignored); on success write the token and its record. A wrong code costs a
+ * try; the last one ends the pairing (attempts_left 0) and counts as a failed pairing. RATE_LIMITED: more than one
+ * call a second (retry_after_s 1). */
 net_pair_err_t net_pair_finish(net_pair_t *p, const char *pairing_id, const char *code, uint32_t peer_ip,
                                const tb_clock_t *now, char token_out[NET_TOKEN_LEN + 1], const net_token_t **rec,
                                int *attempts_left);
-/* USB pair: a call-scope token without a code. */
-net_pair_err_t net_pair_usb(net_pair_t *p, const char *client, const tb_clock_t *now, char token_out[NET_TOKEN_LEN + 1],
-                            const net_token_t **rec);
+/* USB pair: a call-scope token without a code (api.md 6.6). name: the Mac's label ("Mac" if NULL or ""). */
+net_pair_err_t net_pair_usb(net_pair_t *p, const char *client, const char *name, const tb_clock_t *now,
+                            char token_out[NET_TOKEN_LEN + 1], const net_token_t **rec);
 /* Look a token up (constant-time hash compare); updates last_used and last_ip. NULL if unknown or revoked. */
 const net_token_t *net_pair_check(net_pair_t *p, const char *token, uint32_t peer_ip, const tb_clock_t *now);
+const net_token_t *net_pair_find(const net_pair_t *p, const char *token_id);
 bool net_pair_revoke(net_pair_t *p, const char *token_id);
 void net_pair_forget_all(net_pair_t *p);
 int net_pair_count(const net_pair_t *p);
 /* Cancel the code on screen (a tap on the pairing screen). Counts as a failed pairing. */
-void net_pair_cancel(net_pair_t *p);
+void net_pair_cancel(net_pair_t *p, const tb_clock_t *now);
 /* Expire the code after 2 minutes. Returns true if it just expired (the "Pairing timed out" toast). */
 bool net_pair_tick(net_pair_t *p, const tb_clock_t *now);
 /* "idle", "showing" or "locked" (api.md 7.1 pairing). */
 const char *net_pair_state(const net_pair_t *p, const tb_clock_t *now);
+/* Seconds until a code shows again is possible (0 when not locked). */
+int net_pair_locked_s(const net_pair_t *p, const tb_clock_t *now);
+
+/* The saved table (exposed for tests). Returns the blob size, 0 on error. */
+size_t net_pair_serialize(const net_pair_t *p, uint8_t *out, size_t cap);
+bool net_pair_deserialize(net_pair_t *p, const uint8_t *in, size_t n);
+/* "tb1_" + base64url of 32 bytes (exposed for tests). */
+void net_pair_format_token(const uint8_t raw[32], char out[NET_TOKEN_LEN + 1]);
 
 #ifdef __cplusplus
 }

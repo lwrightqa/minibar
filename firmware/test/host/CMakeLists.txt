@@ -29,6 +29,7 @@ add_subdirectory(${FW}/components/core core)
 add_subdirectory(${FW}/components/calendar calendar)
 add_subdirectory(${FW}/components/net net)
 add_subdirectory(${FW}/components/ui ui)
+add_subdirectory(${FW}/components/board board)
 
 enable_testing()
 
@@ -48,3 +49,4 @@ tb_test_module(core tb_core)
 tb_test_module(calendar tb_calendar tb_core)
 tb_test_module(net tb_net_proto tb_calendar tb_core)
 tb_test_module(ui tb_ui_view tb_core)
+tb_test_module(board tb_board_logic)

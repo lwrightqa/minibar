@@ -5,12 +5,15 @@ set(TB_NET_PROTO_SRCS
     proto/net_api.c
     proto/net_macs.c
     proto/net_pair.c
+    proto/net_util.c
 )
 
 if(ESP_PLATFORM)
     idf_component_register(
         SRCS ${TB_NET_PROTO_SRCS}
              "esp/net_main.c"
+             "esp/net_wifi.c"
+             "esp/net_dns.c"
              "esp/net_http.c"
              "esp/net_usb.c"
              "esp/net_port_esp.c"
@@ -18,7 +21,8 @@ if(ESP_PLATFORM)
         PRIV_INCLUDE_DIRS "esp"
         REQUIRES core calendar esp_common
         PRIV_REQUIRES bus json esp_wifi esp_netif esp_event esp_http_server wpa_supplicant lwip nvs_flash
-                      esp_driver_usb_serial_jtag esp_timer esp_app_format mbedtls log espressif__mdns)
+                      esp_driver_usb_serial_jtag esp_timer esp_app_format mbedtls log espressif__mdns
+                      bootloader_support freertos)
 
     # The Remote and setup pages, gzipped at build time and embedded (served with Content-Encoding: gzip).
     foreach(page remote setup)
@@ -40,4 +44,9 @@ else()
     target_include_directories(tb_net_proto PUBLIC include ${IDF_PATH}/components/json/cJSON)
     target_link_libraries(tb_net_proto PUBLIC tb_core tb_calendar)
     target_compile_options(tb_net_proto PRIVATE -Wall -Wextra -Werror=implicit-function-declaration)
+    # A bar on Linux for testing the Remote and setup pages in a browser (not a test; see host/fakebar.c).
+    add_executable(tb_fakebar host/fakebar.c)
+    target_link_libraries(tb_fakebar PRIVATE tb_net_proto tb_calendar tb_core)
+    target_compile_definitions(tb_fakebar PRIVATE TB_WEB_DIR="${CMAKE_CURRENT_SOURCE_DIR}/web")
+    target_compile_options(tb_fakebar PRIVATE -Wall -Wextra)
 endif()
