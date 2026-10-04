@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  TinyBar.app's Info.plist. scripts/build-app.sh fills in __BUNDLE_ID__,
+  __VERSION__ and __BUILD__.
+
+  Deliberately absent: NSMicrophoneUsageDescription and NSCameraUsageDescription.
+  The app only reads whether the mic and camera are in use, never opens them,
+  and must never be able to ask for them (docs/mac-app.md criterion 30).
+-->
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>TinyBar</string>
+	<key>CFBundleIdentifier</key>
+	<string>__BUNDLE_ID__</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>TinyBar</string>
+	<key>CFBundleDisplayName</key>
+	<string>TinyBar</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>__VERSION__</string>
+	<key>CFBundleVersion</key>
+	<string>__BUILD__</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.productivity</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<!-- Menu bar only: no Dock icon, no app menu. -->
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Shows On a call on your TinyBar when this Mac's mic or camera is in use. It never listens or records.</string>
+	<!-- macOS 15 and later ask for Local Network access with this text the
+	     first time the app reaches the bar over Wi-Fi (Apple TN3179). -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>TinyBar connects to your TinyBar on this network to show when you're on a call.</string>
+	<!-- Browsing for an unlisted Bonjour service type fails on macOS 15. -->
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_tinybar._tcp</string>
+	</array>
+	<!-- The bar serves plain HTTP on the local network (api.md 4.10). -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+</dict>
+</plist>

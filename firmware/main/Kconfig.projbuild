@@ -1,0 +1,26 @@
+menu "TinyBar"
+
+    choice TINYBAR_API_AUTH
+        prompt "API authorization (docs/api.md section 4)"
+        default TINYBAR_API_AUTH_BEARER
+        help
+            Pairing is Proposed in api.md and waits for the user's OK. With "none", info and the mDNS TXT record say
+            auth=none, tokens are ignored, and the pairing endpoints answer as api.md 4.1 describes.
+
+        config TINYBAR_API_AUTH_BEARER
+            bool "Pairing with a code, bearer tokens and scopes"
+        config TINYBAR_API_AUTH_NONE
+            bool "No pairing (anyone on the Wi-Fi can use the API)"
+    endchoice
+
+    config TINYBAR_RELEASE
+        bool "Release build (log at Warning, so the USB port stays quiet)"
+        default n
+
+    config TINYBAR_APP_TASK_STACK
+        int "App task stack (bytes)"
+        default 12288
+        help
+            The app task runs core, the ui, LVGL rendering and the router (HTTP and USB requests through tb_bus_exec).
+
+endmenu

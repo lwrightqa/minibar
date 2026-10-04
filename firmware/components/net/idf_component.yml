@@ -1,0 +1,4 @@
+dependencies:
+  idf: ">=5.4.2,<5.5"
+  # tinybar.local, _tinybar._tcp and _http._tcp (api.md section 3).
+  espressif/mdns: "~1.14.0"

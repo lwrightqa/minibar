@@ -1,0 +1,5 @@
+## LVGL 9.5: 9.6 adds freetype, libpng, libjpeg-turbo and lz4 dependencies we don't need.
+dependencies:
+  idf: ">=5.4.2,<5.5"
+  lvgl/lvgl:
+    version: "~9.5.0"

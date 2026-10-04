@@ -1,0 +1,7 @@
+# Build directories (everyone builds in their own: build-<name>/), and what the component manager downloads.
+build/
+build-*/
+managed_components/
+sdkconfig
+sdkconfig.old
+# dependencies.lock is committed: it pins the exact component versions.

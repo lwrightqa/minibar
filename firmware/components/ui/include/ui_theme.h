@@ -1,0 +1,103 @@
+/*
+ * ui_theme.h: Bold Signal as numbers: colors, positions, baselines and type sizes on the 640 x 172 screen.
+ * Source: docs/decisions.md "Spec: Bold Signal", docs/mockup.html (BOLD_SIGNAL and the "Signal layout" CSS),
+ * scratchpad directions.json id "signal". Pure C (no LVGL types), so the view model and the host tools share it.
+ *
+ * Owner: ui builder.
+ */
+#pragma once
+
+#include <stdint.h>
+
+#include "tb_types.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* ---------- Colors (0xRRGGBB) ---------- */
+/* Status fields, by tb_color_key_t. White text on each is 4.91:1 or better. */
+extern const uint32_t UI_STATUS_COLOR[TB_KEY_COUNT];
+/* Info column tints: the status color about 24% toward black (lv_color_darken(status, 61)). The clock's column is a
+ * raised panel, lighter than its field. Setup has no column. */
+extern const uint32_t UI_TINT_COLOR[TB_KEY_COUNT];
+#define UI_COLOR_TEXT        0xFFFFFF   /* all text on a status field, at full opacity */
+#define UI_COLOR_MUTED       0xDFE5EA   /* only on the tint and on dark surfaces */
+#define UI_COLOR_DARK        0x0E1013   /* Clock field, menus, hold screen */
+#define UI_COLOR_TILE        0x1C1F24
+#define UI_COLOR_TILE_DONE   0xE8EBEE
+#define UI_COLOR_TILE_DONE_TEXT 0x4A525C
+#define UI_COLOR_TOAST       0x1C1F24
+#define UI_COLOR_TOAST_EDGE  0x4A515C   /* 1 px inset edge, so a toast shows on the clock's near-black */
+#define UI_PROGRESS_DARKEN   90         /* track = lv_color_darken(status, 90); fill white */
+#define UI_TINT_DARKEN       61
+
+/* ---------- Layout (screen pixels) ---------- */
+#define UI_W                 640
+#define UI_H                 172
+#define UI_MAIN_X0           0
+#define UI_MAIN_X1           448        /* the status field */
+#define UI_MAIN_TEXT_X       24         /* text inset left */
+#define UI_MAIN_TEXT_W       404        /* to x 428 (20 px right inset) */
+#define UI_SIDE_X0           448        /* info column x 448..640, 192 px */
+#define UI_SIDE_INSET        16
+#define UI_SIDE_TEXT_W       160
+#define UI_RADIUS            8          /* tiles, pill, toasts */
+#define UI_PROGRESS_Y        166        /* 6 px, y 166..172 */
+#define UI_PROGRESS_H        6
+
+/* Fixed baselines (a label's y = baseline - its font's ascent). */
+#define UI_BASE_KICKER       30
+#define UI_BASE_SUB          152
+#define UI_BASE_SYS          30         /* info column status row, level with the kicker */
+#define UI_BASE_LABEL        92
+#define UI_BASE_VALUE        130
+#define UI_BASE_FOOT         152
+/* Headline: capitals centered on y 86 at every size. */
+#define UI_HEAD_CAP_CENTER_Y 86
+#define UI_BASE_HEAD_112     125
+#define UI_BASE_HEAD_100     121
+#define UI_BASE_HEAD_78      113
+#define UI_BASE_HEAD_62      107        /* the CSS centers .7 em caps on 86, which gives 108 for 62 px; the spec says 107:
+                                           check on the board and keep one */
+/* Tomatoes: 32 px at 1:1, 8 px gaps, y 102..134 in the info column; the alarm screen's tomato is 64 px (2x). */
+#define UI_TOMATO_PX         32
+#define UI_TOMATO_GAP        8
+#define UI_TOMATO_Y          102
+#define UI_TOMATO_BIG_PX     64
+/* Wi-Fi setup: QR 132 px (4 px modules) at x 24..156 centered on y 86; text from x 180; title baseline 82; the two
+ * steps (16 px on a 20 px pitch) at 110 and 130; kicker 30 and foot 152 as usual. */
+#define UI_QR_X              24
+#define UI_QR_PX             132
+#define UI_SETUP_TEXT_X      180
+#define UI_SETUP_TITLE_BASE  82
+#define UI_SETUP_STEP1_BASE  110
+#define UI_SETUP_STEP2_BASE  130
+/* Toast: 8 px above the bottom (y 129..164), centered on the status field (x 224, max 432 px wide) while the info
+ * column shows, else on the screen. LV_ALIGN_BOTTOM_MID with x -96, y -8. Flipped: 8 px from the top. */
+#define UI_TOAST_BOTTOM_GAP  8
+#define UI_TOAST_MAX_W       432
+
+/* ---------- Type: what each role uses (font files are generated; see fonts/README.md) ---------- */
+typedef enum {
+    UI_FONT_HEAD_112 = 0,   /* Barlow Condensed 700, tabular digits: timer, clock, BUSY */
+    UI_FONT_HEAD_100,       /* AVAILABLE, ON A CALL */
+    UI_FONT_HEAD_78,        /* IN A MEETING, BACK AT 1:30; the splash */
+    UI_FONT_HEAD_62,        /* titles, messages, BREAK TIME, setup titles (full character set) */
+    UI_FONT_VALUE_46,       /* info value; also the hold screen's title */
+    UI_FONT_VALUE_28,       /* word values ("Rest of day"), tile values */
+    UI_FONT_AMPM_36,        /* AM/PM after the clock (size to be measured from the mock-up) */
+    UI_FONT_AMPM_17,        /* AM/PM after a side value */
+    UI_FONT_SUB_19,         /* Barlow 500 */
+    UI_FONT_STEP_16,        /* Barlow 500 (setup steps), with a 700 cut for the network name */
+    UI_FONT_STEP_16_BOLD,
+    UI_FONT_KICK_15,        /* Barlow 700, caps, 1.5 px tracking */
+    UI_FONT_SYS_15,         /* Barlow 600, tabular: status-row time, the pill, toasts */
+    UI_FONT_FOOT_14,        /* Barlow 500: foot, tile feet, setup foot, hold line */
+    UI_FONT_LABEL_12,       /* Barlow 700, caps, 1.2 px tracking: labels, chips, tile labels */
+    UI_FONT_COUNT
+} ui_font_role_t;
+
+#ifdef __cplusplus
+}
+#endif

@@ -1,0 +1,17 @@
+# TinyBar partition table, 16 MB flash.
+# Name,     Type, SubType,  Offset,   Size,     Flags
+#
+# nvs      settings, Wi-Fi credentials, own status, today's tomatoes, the calendar's saved copy
+# nvs_sec  secrets kept apart so they can be encrypted: the calendar address and paired-token hashes
+#          (NVS encryption is off until the user agrees to burn the HMAC eFuse key; see ARCHITECTURE.md)
+# otadata  which OTA slot boots; two app slots so updates are possible later
+# coredump the last crash, read back over USB with idf.py coredump-info
+# The Remote and setup pages are embedded in the app image (gzipped), so an update changes them atomically and no
+# web-assets partition is needed. About 2.7 MB stays free at the end for later use.
+nvs,        data, nvs,      0x9000,   0x6000,
+otadata,    data, ota,      0xF000,   0x2000,
+phy_init,   data, phy,      0x11000,  0x1000,
+nvs_sec,    data, nvs,      0x12000,  0x6000,
+coredump,   data, coredump, 0x18000,  0x10000,
+ota_0,      app,  ota_0,    0x30000,  0x600000,
+ota_1,      app,  ota_1,    0x630000, 0x600000,
