@@ -3108,6 +3108,8 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     $('toast').hidden = true;
     toastHoldUntil = 0;
     if (s.ringing) { s.ringing = false; pomo.heldAlarm = 'pairing'; }
+    // The code stops the flash too, including one already under way, so the code never shows in the alarm's color.
+    lcd.classList.remove('alert');
     bump();
     lastKey = '';
     render();
@@ -3255,6 +3257,8 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     out: () => "That code didn't match, so TinyBar canceled pairing. Show a new code to try again.",
     gone: () => 'That code has expired or was canceled on TinyBar. Show a new code to try again.',
     noanswer: () => `${BAR.name} didn't answer. Make sure it's on, then try again.`,
+    // 409 token_limit from pair: a safeguard only, since the code holds a place (api.md 4.3); the pairing has ended.
+    full: () => askErrText({ error: 'token_limit' }),
   };
   // Redraws the pairing prompt from the state, in place, so typing in the field is never disturbed. The busy and
   // back-off waits count down live, and the button comes back by itself when they're over. Every refusal follows the
@@ -3283,7 +3287,7 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     $('pairLine').hidden = !!e;
     setText($('pairErr'), e ? PAIR_ERR[e.kind](e) : '');
     $('pairErr').hidden = !e;
-    const dead = !!e && (e.kind === 'out' || e.kind === 'gone'), d = digitsOf($('pairInput').value);
+    const dead = !!e && ['out', 'gone', 'full'].includes(e.kind), d = digitsOf($('pairInput').value);
     $('pairInput').disabled = dead;
     $('pairInput').setAttribute('aria-invalid', e && ((e.kind === 'wrong' && !d) || e.kind === 'out') ? 'true' : 'false');
     $('pairGo').hidden = dead;
@@ -3328,7 +3332,7 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
       return;
     }
     phone.err = r.error === 'wrong_code' ? (r.attempts_left > 0 ? { kind: 'wrong', left: r.attempts_left } : { kind: 'out' })
-      : r.error === 'not_pairing' ? { kind: 'gone' } : { kind: 'noanswer' };
+      : r.error === 'not_pairing' ? { kind: 'gone' } : r.error === 'token_limit' ? { kind: 'full' } : { kind: 'noanswer' };
     if (phone.err.kind !== 'noanswer') $('pairInput').value = '';
     updatePhonePair();
     if (phone.err.kind === 'wrong' || phone.err.kind === 'noanswer') $('pairInput').focus(); else $('pairNew').focus();
@@ -3353,7 +3357,7 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     if (tok) tok.used = now();
     // A code that's gone from the bar replaces whatever the prompt said about it (a wrong code with tries left, or no
     // answer while the bar was off); once the bar answers again with the code still up, "didn't answer" goes.
-    if (phone.token || phone.step !== 'code' || !phone.pid || (phone.err && ['out', 'gone'].includes(phone.err.kind))) return;
+    if (phone.token || phone.step !== 'code' || !phone.pid || (phone.err && ['out', 'gone', 'full'].includes(phone.err.kind))) return;
     if (!(pair.code && pair.id === phone.pid)) {
       const typing = document.activeElement === $('pairInput');
       phone.err = { kind: 'gone' };
