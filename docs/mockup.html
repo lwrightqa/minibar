@@ -238,8 +238,10 @@ h1 .dot { color: var(--state); transition: color .3s; }
 .ctx-value.small { font-size: 3.6cqw; line-height: 1.05; }
 .ctx-foot { font-size: 2cqw; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tomatoes { display: flex; gap: 1cqw; margin-top: .8cqw; }
-.tomatoes .tomato { flex: 0 1 4.7cqw; min-width: 0; aspect-ratio: 1; display: block; }
-.tomato .gh { fill: rgba(0,0,0,.22); }
+.tomato { position: relative; display: block; }
+.tomato img { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; image-rendering: pixelated; }
+.tomato.ghost img, .tomato img.faint { opacity: .35; }
+.tomatoes .tomato { flex: 0 1 5cqw; min-width: 0; aspect-ratio: 1; }
 
 .bar {
   position: absolute;
@@ -255,7 +257,8 @@ h1 .dot { color: var(--state); transition: color .3s; }
   inset: 0;
   background: rgba(8,9,11,.94);
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   gap: 1.6cqw;
   padding: 3cqw;
   font-family: var(--f-body);
@@ -271,9 +274,9 @@ h1 .dot { color: var(--state); transition: color .3s; }
   justify-content: space-between;
   min-width: 0;
 }
-.tile b { font-family: var(--f-screen); font-weight: 700; font-size: 2.2cqw; letter-spacing: .12em; text-transform: uppercase; color: #9aa3ad; }
-.tile span { font-family: var(--f-screen); font-weight: 800; font-size: 5cqw; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tile small { font-size: 1.9cqw; color: #9aa3ad; }
+.tile b { font-family: var(--f-screen); font-weight: 700; font-size: 2cqw; letter-spacing: .1em; text-transform: uppercase; color: #9aa3ad; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile span { font-family: var(--f-screen); font-weight: 800; font-size: 4.4cqw; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile small { font-size: 1.8cqw; line-height: 1.25; color: #9aa3ad; }
 
 .caption {
   display: flex;
@@ -409,7 +412,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
 .endrow { display: flex; align-items: center; gap: 2.4cqw; min-width: 0; }
 .endrow .tomato { width: 12cqw; height: 12cqw; flex: none; }
 .endrow .word { min-width: 0; }
-.pill .tomato { width: 2.1cqw; height: 2.1cqw; display: inline-block; vertical-align: -.35cqw; margin-right: .5cqw; }
+.pill .tomato { width: 2.3cqw; height: 2.3cqw; display: inline-block; vertical-align: -.4cqw; margin-right: .5cqw; }
 .lcd.alert::after {
   content: "";
   position: absolute;
@@ -419,8 +422,31 @@ h1 .dot { color: var(--state); transition: color .3s; }
   animation: flash .55s ease-out 3;
 }
 @keyframes flash { from { opacity: .7; } to { opacity: 0; } }
-.tile[data-action] { cursor: pointer; }
+.tile[data-action] { cursor: pointer; box-shadow: inset 0 0 0 .25cqw #3a3f48; }
 .tile[data-action]:hover { background: #2a2e36; }
+.tile.info { background: transparent; box-shadow: none; }
+.tile.done { background: #e8ebee; color: #111316; }
+.tile.done b { color: #4a525c; }
+
+/* Brief on-screen confirmation, so every gesture shows what it did. */
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 2.6cqw;
+  transform: translateX(-50%);
+  background: rgba(8,9,11,.88);
+  color: #fff;
+  padding: .7cqw 2.2cqw;
+  border-radius: 3cqw;
+  font-family: var(--f-body);
+  font-weight: 600;
+  font-size: 2.4cqw;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.device.flipped .toast { bottom: auto; top: 2.6cqw; transform: translateX(-50%) rotate(180deg); }
+.device.flipped .bar { bottom: auto; top: 0; transform: rotate(180deg); }
+.lcd { filter: brightness(var(--bright, 1)); }
 
 /* Pomodoro on the remote */
 .pomo { display: grid; gap: 12px; padding: 14px; border-radius: 16px; border: 1px solid var(--line); }
@@ -441,7 +467,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
 .pomo-read span { font-size: 13px; color: var(--muted); text-align: right; }
 .pomo-tomatoes { display: flex; gap: 6px; }
 .pomo-tomatoes .tomato { width: 30px; height: 30px; display: block; }
-.pomo-tomatoes .tomato .gh { fill: var(--line); }
+.pomo-tomatoes .tomato.ghost img, .pomo-tomatoes .tomato img.faint { opacity: .3; }
 .row.fill > * { flex: 1; }
 .setting { display: grid; grid-template-columns: 88px minmax(0, 1fr); align-items: center; gap: 10px; }
 .setting > span { font-size: 13px; color: var(--muted); font-weight: 600; }
@@ -470,6 +496,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
         <div class="lcd" id="lcd"></div>
         <div class="bar" id="bar"><i id="barFill"></i></div>
         <div class="menu" id="menu" hidden></div>
+        <div class="toast" id="toast" hidden></div>
       </div>
       <button class="hwbtn boot" id="btnBoot" aria-label="BOOT button: next status"></button>
       <button class="hwbtn pwr" id="btnPwr" aria-label="PWR button: screen on or off"></button>
@@ -501,7 +528,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
           <div class="row fill">
             <button class="btn" id="pStart" type="button">Pause</button>
             <button class="btn ghost" id="pSkip" type="button">Skip</button>
-            <button class="btn ghost" id="pReset" type="button">Reset</button>
+            <button class="btn ghost" id="pStop" type="button">Stop</button>
           </div>
           <div class="setting">
             <span id="lFocus">Focus</span>
@@ -549,7 +576,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
       <div>
         <span class="field-label">Try the hardware</span>
         <div class="row">
-          <button class="btn ghost" id="flipBtn" type="button">Flip device</button>
+          <button class="btn ghost" id="flipBtn" type="button">Flip the bar</button>
           <button class="btn ghost" id="menuBtn" type="button">Open quick menu</button>
         </div>
       </div>
@@ -559,14 +586,14 @@ h1 .dot { color: var(--state); transition: color .3s; }
       <div>
         <h2>How you'd control it</h2>
         <dl class="kv">
-          <dt>Touch</dt><dd>Tap cycles status, a swipe steps back or forward, and holding opens a quick menu with brightness, Wi-Fi, calendar and battery. On the Pomodoro screen, a tap starts or pauses the timer and holding opens timer options.</dd>
-          <dt>Pomodoro</dt><dd>25-minute focus sessions, 5-minute breaks and a 15-minute break after every fourth session, all adjustable. Focus shows in orange so people know not to interrupt; breaks turn the bar teal or blue to say it's a good moment. Each finished session earns a ripe tomato, and the one in progress ripens from green to red as you focus. The timer keeps running when you switch to another status, with a small countdown in the corner, and the bar jumps back to it when a phase ends.</dd>
-          <dt>Side buttons</dt><dd>BOOT jumps to the next status without looking. PWR turns the screen off and on, and holding it powers down.</dd>
+          <dt>Touch</dt><dd>Tap cycles status, a swipe steps back or forward, and holding opens a quick menu with brightness, Wi-Fi, calendar and battery. On the Pomodoro screen, a tap starts or pauses the timer and holding opens timer options. A dark screen wakes on the first tap, and every action shows a short confirmation.</dd>
+          <dt>Pomodoro</dt><dd>25-minute focus sessions, 5-minute breaks and a 15-minute break after every fourth session, all adjustable. Focus shows in orange so people know not to interrupt; breaks turn the bar teal or blue to say it's a good moment. Each finished session earns a red tomato, upcoming sessions show as faded tomatoes, and the one in progress fills with red from the bottom up as you focus. The timer keeps running when you switch to another status, with a small countdown in the corner, and the bar jumps back to it when a phase ends.</dd>
+          <dt>Side buttons</dt><dd>BOOT jumps to the next status without looking. PWR turns the screen off and on, and holding it powers down. If the screen is dark or an alarm is ringing, the first press of either button only wakes the screen or silences the alarm.</dd>
           <dt>Phone remote</dt><dd>The device serves a small page at tinybar.local on your Wi-Fi, like the Remote panel on this page.</dd>
           <dt>Automations</dt><dd>An HTTP endpoint (and optionally MQTT for Home Assistant) so a calendar, Slack, Zoom or a shortcut can set the status.</dd>
           <dt>Calendar</dt><dd>Optionally reads a private calendar link and switches to "In a meeting" on its own.</dd>
-          <dt>Tilt</dt><dd>The motion sensor flips the layout when you mount it upside down, so the buttons can go on either side.</dd>
-          <dt>Chime</dt><dd>The speaker plays a short chime when a focus session or break ends. The mock-up plays it in your browser.</dd>
+          <dt>Flip</dt><dd>Turning the bar over always does three things: the layout turns the right way up, any alarm goes quiet, and the Pomodoro starts whatever it's waiting for (the next session or break, or a paused timer). A timer that's already running is left alone, so a flip never skips anything.</dd>
+          <dt>Alarm</dt><dd>When a session or break ends, the bar flashes and chimes every few seconds until you tap, press a button or flip it, and gives up after a minute. With auto-start on, it chimes once and carries on. The mock-up plays the chime in your browser.</dd>
         </dl>
       </div>
       <div>
@@ -603,48 +630,13 @@ h1 .dot { color: var(--state); transition: color .3s; }
   const POMO = STATES.findIndex(x => x.id === 'pomodoro');
   const PHASE_NAME = { focus: 'Focus', short: 'Short break', long: 'Long break' };
 
-  // 15 x 15 pixel tomato. On the device this becomes a 2x LVGL image (30 x 30 px).
-  const TOMATO = [
-    '......gg.......',
-    '.......g.......',
-    '...gggGGGggg...',
-    '..KgGGgGgGGgK..',
-    '.KRRgRRgRRgRRK.',
-    'KRWHRRRRRRRRRRK',
-    'KRWRRRRRRRRRRDK',
-    'KHRRRRRRRRRRRDK',
-    'KRRRRRRRRRRRRDK',
-    'KRRRRRRRRRRRDDK',
-    '.KRRRRRRRRRRDK.',
-    '.KDRRRRRRRRDDK.',
-    '..KDDRRRRDDDK..',
-    '...KKDDDDDKK...',
-    '.....KKKKK.....',
-  ];
-  const RIPE   = { K: '#3a0f0b', R: '#e5432c', D: '#b02a1b', H: '#ff8c6e', W: '#ffe1d6', G: '#4caf50', g: '#2e7d32' };
-  const UNRIPE = { R: '#8cc65c', D: '#5b9a3d', H: '#bde59f', W: '#eef9e2' };
-  const mix = (a, b, t) => '#' + [1, 3, 5].map(i => {
-    const x = parseInt(a.substr(i, 2), 16), y = parseInt(b.substr(i, 2), 16);
-    return Math.round(x + (y - x) * t).toString(16).padStart(2, '0');
-  }).join('');
-
-  // kind: 'ripe' (session done), 'ripening' (in progress, p = 0..1), 'ghost' (still to come)
+  // Tomato sprite made with PixelLab (32 x 32). Upcoming sessions are faded; the current one fills with red from the bottom up.
+  const IMG_RIPE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAD0ElEQVR4nO2W32tbZRjHP+97mtQt2dI0ZpktNm61lkyEDqRzsJtplQ4sRdD9YHcydyESvNqFghfF+QeE3e2iXQVdLawMnah03q3FgmxVatOVOmqlGrM0S20qTXbO68U5OUmanDQjF164Bw4nOed5v9/v+z3P+7wvPI7/OESD41WjWLIR8pX4YS6OhRqAaEwAAKMTBxuFcAzlcNnvL46Ftj+rZ1xZNNVS0HXyCN8P5QAYnV1FN+CjMwkb7NpiO5AokALYn0Q3zP+fTjzD4hc/OHLsVDg28Osf7LcfLv56gIWr03SfPsrC1WkAuk8fpevgPTvnq0/+rIunnsqtsK/r5BEADKWQogjhMNOaHDs6cKklDMCh0CYvLyRZiR9m+PYqAFeume/efnPZHvDhqQQxfxhpyX7vwXJNnloC1I22Nvb6tnBJeGkuVUG+ND4DQOdbvXx8/i7Hnj7A6OyqKcLXAVIgVW0RTkWobrS1EfBv8exAJ5pbg7lpRmdXS4rKIgGi4zOcGYehz1fRrIX9vDfPfNYNQMwfJppeVtVEVFOlvmt/Cq93i8ipblz+FrZeeINA33k7IebrQArBi+0bAMz87jGFZH6zc25FAmTX3dzNujEslmi60omqDmhA12sdND3hwvP+13iA1CRot66grPWVnJy3cgX9vnXWMhoxTEekEAjjb3btzUHWjVTYIrZHVQFNzTqGLC/+1lfeYQ1w3x4DINgXITk5j24tklafTr9vHQ1BIiVQUiCBiCfHvCWiWlRtxYYhWfpmBT2vkxk6xtrNy6zdvFyRF+yLoFmOFu7JjERJgbEd81EcANBlcURh1gB/TPxIsC9SzLMcsO8GZeS6raC6BVUFGHmB1qz45bN5QgFF51S67P0Scfu3hrDJn5t6UJY31d1qcTtuBc67oZLmd0xmzBRVAqKjyq6KsVZuPl+c32Dr7voFzG240C3vCpuKEIIL56IEAt6K/M1NSTKtEQh4uXAuirDas2FI4hsukM79ztGBOwkPug66Du+eGGBfcA8j14c523ucZFrjfsokTaY1Nv8xx5ztPc7I9WH2BfcQPTFQBHP4/uDcilWhy/WEsuzvP4QhBalv55yBLBJdCkKvmvmTI8sYAgZbdhG+F6/KV3MvuNQSxlCKnlDWftgkTKKB+7my5C+fdPNQmXB6zsXPabMND7budiSHHQ4khgCE4E7CbLU9oaxNMhFoLst9aLn8019eu+qdCq806jqQxPzmtitV8QxQehYoW2ZWwZXYXpOn3qO0KcSqi1pVDfamUxf+o57lncu5MdzH8T+OfwE+bnUhgOBNnQAAAABJRU5ErkJggg==';
   function tomato(kind, p = 1) {
-    const pal = { ...RIPE };
-    if (kind === 'ripening') for (const k in UNRIPE) pal[k] = mix(UNRIPE[k], RIPE[k], Math.max(0, Math.min(1, p)));
-    let rects = '';
-    TOMATO.forEach((row, y) => {
-      for (let x = 0; x < row.length;) {
-        const c = row[x];
-        let w = 1;
-        while (row[x + w] === c) w++;
-        if (c !== '.') rects += kind === 'ghost'
-          ? `<rect class="gh" x="${x}" y="${y}" width="${w}" height="1"/>`
-          : `<rect x="${x}" y="${y}" width="${w}" height="1" fill="${pal[c]}"/>`;
-        x += w;
-      }
-    });
-    return `<svg class="tomato" viewBox="0 0 15 15" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
+    if (kind === 'ghost') return `<span class="tomato ghost"><img src="${IMG_RIPE}" alt=""></span>`;
+    if (kind === 'ripe') return `<span class="tomato"><img src="${IMG_RIPE}" alt=""></span>`;
+    const t = Math.max(0, Math.min(1, p));
+    return `<span class="tomato"><img class="faint" src="${IMG_RIPE}" alt=""><img src="${IMG_RIPE}" alt="" style="clip-path:inset(${((1 - t) * 100).toFixed(1)}% 0 0 0)"></span>`;
   }
 
   function tomatoRow() {
@@ -709,6 +701,11 @@ h1 .dot { color: var(--state); transition: color .3s; }
     messageAt: t0,
     flipped: false,
     off: false,
+    lastStatus: 1,
+    ringing: false,
+    ringUntil: 0,
+    nextRing: 0,
+    bright: 0.7,
   };
 
   const $ = id => document.getElementById(id);
@@ -758,34 +755,69 @@ h1 .dot { color: var(--state); transition: color .3s; }
     return ended;
   }
 
+  // When a phase ends without auto-start, the alarm repeats until it is answered, for at most a minute.
   function endPhase() {
     const ended = nextPhase(false);
     chime(ended === 'focus');
     if (pomo.auto) { pomo.running = true; pomo.waiting = false; pomo.justEnded = null; }
-    else { pomo.running = false; pomo.waiting = true; pomo.justEnded = ended; }
-    if (s.off) togglePower();
+    else {
+      pomo.running = false; pomo.waiting = true; pomo.justEnded = ended;
+      s.ringing = true; s.ringUntil = Date.now() + 60000; s.nextRing = Date.now() + 4000;
+    }
+    wake();
     s.idx = POMO;
     hideMenu();
     render();
     flash();
-    say(ended === 'focus' ? 'timer: focus done, break time' : 'timer: break over');
+    say(ended === 'focus' ? 'timer: focus done, alarm ringing' : 'timer: break over, alarm ringing');
+  }
+
+  function silence() {
+    const was = s.ringing;
+    s.ringing = false;
+    return was;
+  }
+
+  // Start whatever is waiting: the next phase, a fresh session, or a paused timer.
+  // Returns a short description, or null when the timer was already running.
+  function startWaiting() {
+    if (pomo.running) return null;
+    const verb = pomo.waiting || isReady() ? 'started' : 'resumed';
+    pomo.waiting = false; pomo.justEnded = null; pomo.running = true;
+    return `${PHASE_NAME[pomo.phase]} ${verb}`;
   }
 
   function startPause(how) {
-    if (pomo.waiting) { pomo.waiting = false; pomo.justEnded = null; pomo.running = true; say(`${how}: ${PHASE_NAME[pomo.phase].toLowerCase()} started`); }
-    else { pomo.running = !pomo.running; say(`${how}: timer ${pomo.running ? 'running' : 'paused'}`); }
+    silence();
+    const started = startWaiting();
+    if (started) { say(`${how}: ${started.toLowerCase()}`); toast(started); }
+    else { pomo.running = false; say(`${how}: timer paused`); toast('Paused'); }
     render();
   }
   function skip(how) {
+    silence();
     nextPhase(true);
     pomo.running = true; pomo.waiting = false; pomo.justEnded = null;
     render();
     say(`${how}: skipped to ${PHASE_NAME[pomo.phase].toLowerCase()}`);
   }
-  function reset(how) {
+  // Stop ends the run (today's tomatoes stay) and goes back to the status you had before.
+  function stop(how) {
+    silence();
     Object.assign(pomo, { phase: 'focus', round: 1, remaining: phaseLen('focus'), running: false, waiting: false, justEnded: null });
+    s.idx = s.lastStatus;
     render();
-    say(`${how}: timer reset`);
+    toast('Pomodoro stopped');
+    say(`${how}: Pomodoro stopped, back to ${STATES[s.idx].name}`);
+  }
+
+  let toastTimer = null;
+  function toast(text) {
+    const el = $('toast');
+    el.textContent = text;
+    el.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.hidden = true; }, 1600);
   }
 
   const battery = `<svg viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="2" y="6" width="21" height="12" rx="2.5"/><rect x="5" y="9" width="12" height="6" rx="1" fill="currentColor" stroke="none"/><path d="M25.5 10v4" stroke-linecap="round"/></svg>`;
@@ -800,7 +832,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
     let pill = '';
     if (STATES[s.idx].id !== 'pomodoro' && pomoActive()) {
       const label = pomo.waiting ? 'Done' : !pomo.running ? 'Paused' : mmss(remSec());
-      pill = `<span class="pill" style="--pc:${col(pomo.phase)}">${tomato(pomo.phase === 'focus' ? 'ripening' : 'ripe', 1 - pomo.remaining / phaseLen('focus'))}${label}</span>`;
+      pill = `<span class="pill" style="--pc:${col(pomo.phase)}">${tomato('ripe')}${label}</span>`;
     }
     if (!pill) return `<div class="sys"><span>${fmt(now())}</span>${icons}</div>`;
     return `<div class="sys"><span>${fmtShort(now())}</span>${pill}<span class="icons">${battery}</span></div>`;
@@ -832,8 +864,8 @@ h1 .dot { color: var(--state); transition: color .3s; }
 
     if (pomo.waiting) {
       const main = pomo.justEnded === 'focus'
-        ? `<div class="kicker">Focus ${round} of ${set.every} done</div><div class="endrow">${tomato('ripe')}<div class="word" style="font-size:9.5cqw">Break time</div></div><div class="sub">Tap to start a ${set[phase]} min ${phase === 'long' ? 'long' : 'short'} break</div>`
-        : `<div class="kicker">Break over</div><div class="endrow">${tomato('ripening', 0)}<div class="word" style="font-size:9.5cqw">Back to it</div></div><div class="sub">Tap to start focus ${round} of ${set.every}</div>`;
+        ? `<div class="kicker">Focus ${round} of ${set.every} done</div><div class="endrow">${tomato('ripe')}<div class="word" style="font-size:9.5cqw">Break time</div></div><div class="sub">Flip or tap to start a ${set[phase]} min ${phase === 'long' ? 'long' : 'short'} break</div>`
+        : `<div class="kicker">Break over</div><div class="endrow">${tomato('ripe')}<div class="word" style="font-size:9.5cqw">Back to it</div></div><div class="sub">Flip or tap to start focus ${round} of ${set.every}</div>`;
       return { main, side: sideHtml };
     }
 
@@ -843,8 +875,8 @@ h1 .dot { color: var(--state); transition: color .3s; }
     if (ready) kicker = `Pomodoro · ready`;
     else if (paused) kicker = `Paused · ${kicker}`;
     let sub;
-    if (ready) sub = `Tap to start ${set.focus} min of focus`;
-    else if (paused) sub = 'Tap to resume';
+    if (ready) sub = `Flip or tap to start ${set.focus} min of focus`;
+    else if (paused) sub = 'Flip or tap to resume';
     else if (phase === 'focus') sub = `Please don't interrupt · break at ${fmt(simEnd())}`;
     else sub = `Come say hi · back to work at ${fmt(simEnd())}`;
     return {
@@ -916,7 +948,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
     else { bar.hidden = false; barFill.style.width = v.bar.toFixed(2) + '%'; }
     document.querySelectorAll('.sbtn').forEach(b => b.setAttribute('aria-pressed', b.dataset.id === st.id));
     $('hint').textContent = st.id === 'pomodoro'
-      ? 'Tap: start or pause timer · Swipe: change status · Hold: timer options · Side buttons: BOOT and PWR'
+      ? 'Tap: start or pause · Flip: start next phase · Swipe: change status · Hold: timer options'
       : 'Tap: next status · Swipe: back or forward · Hold: quick menu · Side buttons: BOOT and PWR';
     updateRemote();
   }
@@ -939,6 +971,10 @@ h1 .dot { color: var(--state); transition: color .3s; }
   let lastKey = '', lastTs = Date.now();
   function loop() {
     const t = Date.now();
+    if (s.ringing) {
+      if (t > s.ringUntil) { s.ringing = false; say('alarm: stopped after a minute'); }
+      else if (t >= s.nextRing) { chime(pomo.phase !== 'focus'); flash(); s.nextRing = t + 4000; }
+    }
     const dt = t - lastTs;
     lastTs = t;
     if (pomo.running) {
@@ -960,7 +996,9 @@ h1 .dot { color: var(--state); transition: color .3s; }
   }
 
   function go(i, how) {
+    silence();
     s.idx = (i + STATES.length) % STATES.length;
+    if (!['pomodoro', 'clock'].includes(STATES[s.idx].id)) s.lastStatus = s.idx;
     hideMenu();
     render();
     if (how) say(`${how}: ${STATES[s.idx].name}`);
@@ -1012,10 +1050,10 @@ h1 .dot { color: var(--state); transition: color .3s; }
     lastKey = '';
   });
 
-  const toPomo = fn => () => { if (s.off) togglePower(); s.idx = POMO; fn('remote'); };
+  const toPomo = fn => () => { wake(); s.idx = POMO; fn('remote'); };
   $('pStart').addEventListener('click', toPomo(startPause));
   $('pSkip').addEventListener('click', toPomo(skip));
-  $('pReset').addEventListener('click', toPomo(reset));
+  $('pStop').addEventListener('click', () => { wake(); stop('remote'); });
   $('pAuto').addEventListener('change', e => { pomo.auto = e.target.checked; say(`remote: auto-start ${pomo.auto ? 'on' : 'off'}`); });
   $('pSound').addEventListener('change', e => { pomo.sound = e.target.checked; say(`remote: chime ${pomo.sound ? 'on' : 'off'}`); });
 
@@ -1027,38 +1065,59 @@ h1 .dot { color: var(--state); transition: color .3s; }
   });
 
   // Quick menu. On the Pomodoro screen it holds timer options instead.
+  // Every tile either does something or is styled as read-only, Done always closes,
+  // and the menu closes itself after 8 seconds untouched.
+  let menuTimer = null;
   function showMenu() {
+    const done = `<div class="tile done" data-action="close"><b>Close</b><span>Done</span><small>or wait 8 s</small></div>`;
     if (STATES[s.idx].id === 'pomodoro') {
       const next = pomo.phase === 'focus' ? (pomo.round % pomo.set.every === 0 ? 'long break' : 'short break') : 'focus';
+      const midPhase = !pomo.waiting && !isReady();
       menu.innerHTML = `
         <div class="tile" data-action="skip"><b>Skip</b><span>Next</span><small>to ${next}</small></div>
-        <div class="tile" data-action="add"><b>Add time</b><span>+5 min</span><small>to this ${pomo.phase === 'focus' ? 'session' : 'break'}</small></div>
-        <div class="tile" data-action="reset"><b>Reset</b><span>${pomo.set.focus}:00</span><small>back to focus 1</small></div>
-        <div class="tile" data-action="auto"><b>Auto-start</b><span>${pomo.auto ? 'On' : 'Off'}</span><small>tap to switch</small></div>`;
+        ${midPhase ? `<div class="tile" data-action="add"><b>Add time</b><span>+5</span><small>min to this ${pomo.phase === 'focus' ? 'session' : 'break'}</small></div>` : ''}
+        <div class="tile" data-action="stop"><b>Stop</b><span>End</span><small>keeps tomatoes</small></div>
+        <div class="tile" data-action="auto"><b>Auto</b><span>${pomo.auto ? 'On' : 'Off'}</span><small>start next phase</small></div>
+        ${done}`;
     } else {
       menu.innerHTML = `
-        <div class="tile"><b>Brightness</b><span>70%</span><small>Swipe up or down</small></div>
-        <div class="tile"><b>Wi-Fi</b><span>Home</span><small>−54 dBm</small></div>
-        <div class="tile"><b>Calendar</b><span>Synced</span><small>2 min ago</small></div>
-        <div class="tile"><b>Battery</b><span>82%</span><small>About 9 h left</small></div>`;
+        <div class="tile" data-action="bright"><b>Brightness</b><span>${Math.round(s.bright * 100)}%</span><small>tap to change</small></div>
+        <div class="tile" data-action="sync"><b>Calendar</b><span>Sync</span><small>last synced 2 min ago</small></div>
+        <div class="tile info"><b>Battery</b><span>82%</span><small>Wi-Fi: Home</small></div>
+        ${done}`;
     }
     menu.hidden = false;
+    armMenuTimer();
     say(STATES[s.idx].id === 'pomodoro' ? 'hold: timer options' : 'hold: quick menu');
   }
-  function hideMenu() { menu.hidden = true; }
+  function armMenuTimer() {
+    clearTimeout(menuTimer);
+    menuTimer = setTimeout(() => { if (!menu.hidden) { hideMenu(); say('menu: closed after 8 s'); } }, 8000);
+  }
+  function hideMenu() { menu.hidden = true; clearTimeout(menuTimer); }
 
   function menuAction(a) {
+    if (a === 'bright') {
+      const levels = [0.4, 0.7, 1];
+      s.bright = levels[(levels.indexOf(s.bright) + 1) % levels.length];
+      screen.style.setProperty('--bright', 0.45 + s.bright * 0.55);
+      showMenu();
+      say(`menu: brightness ${Math.round(s.bright * 100)}%`);
+      return;
+    }
     hideMenu();
-    if (a === 'skip') skip('menu');
-    else if (a === 'reset') reset('menu');
-    else if (a === 'add') { pomo.remaining += 5 * 60000; render(); say('menu: added 5 minutes'); }
-    else if (a === 'auto') { pomo.auto = !pomo.auto; $('pAuto').checked = pomo.auto; say(`menu: auto-start ${pomo.auto ? 'on' : 'off'}`); }
+    if (a === 'close') say('menu: closed');
+    else if (a === 'sync') { toast('Calendar synced'); say('menu: calendar synced'); }
+    else if (a === 'skip') skip('menu');
+    else if (a === 'stop') stop('menu');
+    else if (a === 'add') { pomo.remaining += 5 * 60000; render(); toast('+5 min'); say('menu: added 5 minutes'); }
+    else if (a === 'auto') { pomo.auto = !pomo.auto; $('pAuto').checked = pomo.auto; toast(`Auto-start ${pomo.auto ? 'on' : 'off'}`); say(`menu: auto-start ${pomo.auto ? 'on' : 'off'}`); }
   }
 
   // Touch gestures on the screen
   let p = null, held = false, holdTimer = null;
   screen.addEventListener('pointerdown', e => {
-    if (s.off) return;
+    if (s.off) { p = null; return; }
     p = { x: e.clientX, y: e.clientY };
     held = false;
     clearTimeout(holdTimer);
@@ -1070,7 +1129,8 @@ h1 .dot { color: var(--state); transition: color .3s; }
   });
   screen.addEventListener('pointerup', e => {
     clearTimeout(holdTimer);
-    if (!p || s.off) { p = null; return; }
+    if (s.off) { wake('tap'); p = null; return; }
+    if (!p) return;
     let dx = e.clientX - p.x;
     if (s.flipped) dx = -dx;
     p = null;
@@ -1084,6 +1144,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
     if (dx < -40) go(s.idx + 1, 'swipe');
     else if (dx > 40) go(s.idx - 1, 'swipe');
     else if (STATES[s.idx].id === 'pomodoro') startPause('tap');
+    else if (silence()) { toast('Alarm off'); say('tap: alarm off'); render(); }
     else go(s.idx + 1, 'tap');
   });
   screen.addEventListener('pointercancel', () => { clearTimeout(holdTimer); p = null; });
@@ -1097,7 +1158,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
     else if (e.key === 'm') { menu.hidden ? showMenu() : hideMenu(); }
   });
 
-  // Hardware buttons
+  // Hardware buttons. Any button first answers a ringing alarm or wakes a dark screen.
   function togglePower() {
     s.off = !s.off;
     screen.classList.toggle('off', s.off);
@@ -1105,15 +1166,38 @@ h1 .dot { color: var(--state); transition: color .3s; }
     hideMenu();
     say(s.off ? 'PWR: screen off' : 'PWR: screen on');
   }
-  $('btnBoot').addEventListener('click', () => { if (s.off) togglePower(); go(s.idx + 1, 'BOOT'); });
-  $('btnPwr').addEventListener('click', togglePower);
+  function wake(how) {
+    if (!s.off) return false;
+    togglePower();
+    if (how) say(`${how}: screen on`);
+    return true;
+  }
+  $('btnBoot').addEventListener('click', () => {
+    if (wake('BOOT')) return;
+    if (silence()) { say('BOOT: alarm off'); toast('Alarm off'); render(); return; }
+    go(s.idx + 1, 'BOOT');
+  });
+  $('btnPwr').addEventListener('click', () => {
+    if (silence()) { say('PWR: alarm off'); toast('Alarm off'); render(); return; }
+    togglePower();
+  });
 
+  // Flipping the bar over always does three things: turns the layout the right way up,
+  // silences any alarm, and starts whatever the Pomodoro is waiting for. A running timer is left alone.
   $('flipBtn').addEventListener('click', () => {
     s.flipped = !s.flipped;
     device.classList.toggle('flipped', s.flipped);
-    say(s.flipped ? 'tilt: mounted upside down, layout flipped' : 'tilt: upright');
+    wake();
+    hideMenu();
+    const quieted = silence();
+    const started = startWaiting();
+    if (started) s.idx = POMO;
+    render();
+    const msg = started || `${PHASE_NAME[pomo.phase]} already running`;
+    toast(quieted ? `Alarm off · ${msg}` : msg);
+    say(`flip: layout turned${quieted ? ', alarm off' : ''}, ${msg.toLowerCase()}`);
   });
-  $('menuBtn').addEventListener('click', () => { if (s.off) togglePower(); menu.hidden ? showMenu() : hideMenu(); });
+  $('menuBtn').addEventListener('click', () => { wake(); menu.hidden ? showMenu() : hideMenu(); });
 
   render();
   setInterval(loop, 200);
