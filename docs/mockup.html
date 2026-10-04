@@ -1,0 +1,750 @@
+<title>TinyBar Screen Mock-up</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800&family=Schibsted+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one working bench. The device sits on top at true 640:172 proportions; the phone remote and notes sit underneath. */
+:root {
+  --bg: #eceef1;
+  --surface: #ffffff;
+  --ink: #15181c;
+  --muted: #5a636e;
+  --line: #d4d9df;
+  --chassis: #1c1f24;
+  --chassis-edge: #34383f;
+  --lcd-off: #050607;
+
+  /* Screen palette: the LCD is a physical object, so it looks the same in both page themes. */
+  --s-available: #12924a;
+  --s-busy: #d1253a;
+  --s-meeting: #5544d0;
+  --s-focus: #dc7310;
+  --s-away: #4f5863;
+  --s-message: #0c7c88;
+  --s-clock: #0b0c0e;
+  --s-fg: #ffffff;
+
+  --state: var(--s-busy);
+
+  --f-screen: "Big Shoulders Display", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101215; --surface: #191c21; --ink: #e8ebee; --muted: #9aa3ad; --line: #2a2f36;
+    --chassis: #07080a; --chassis-edge: #262a30; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101215; --surface: #191c21; --ink: #e8ebee; --muted: #9aa3ad; --line: #2a2f36;
+  --chassis: #07080a; --chassis-edge: #262a30; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.wrap {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding-inline: 20px;
+  padding-block: 32px 64px;
+  display: grid;
+  gap: 40px;
+}
+@media (max-width: 480px) { .wrap { padding-inline: 16px; padding-block: 20px 48px; gap: 32px; } }
+
+header { display: grid; gap: 6px; }
+.eyebrow {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+h1 {
+  font-family: var(--f-screen);
+  font-weight: 800;
+  font-size: clamp(40px, 7vw, 64px);
+  line-height: .95;
+  letter-spacing: .01em;
+  margin: 0;
+  text-wrap: balance;
+}
+h1 .dot { color: var(--state); transition: color .3s; }
+.lede { margin: 6px 0 0; max-width: 62ch; color: var(--muted); }
+
+/* ---------- Device ---------- */
+.bench { display: grid; gap: 14px; justify-items: center; }
+.device {
+  position: relative;
+  width: 100%;
+  max-width: 900px;
+  padding: 2.2% 2.6%;
+  background: var(--chassis);
+  border-radius: 18px;
+  box-shadow:
+    inset 0 0 0 1px var(--chassis-edge),
+    0 1px 0 rgba(255,255,255,.04) inset,
+    0 24px 50px -24px rgba(0,0,0,.55);
+  transition: transform .6s cubic-bezier(.5,0,.2,1);
+}
+.device.flipped { transform: rotate(180deg); }
+.hwbtn {
+  position: absolute;
+  right: -5px;
+  width: 6px;
+  height: 14%;
+  border-radius: 0 3px 3px 0;
+  background: var(--chassis-edge);
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.hwbtn:hover, .hwbtn:focus-visible { background: var(--state); outline: none; }
+.hwbtn.boot { top: 22%; }
+.hwbtn.pwr { top: 44%; }
+.hwlabel {
+  position: absolute;
+  right: 6px;
+  font-family: var(--f-mono);
+  font-size: 9px;
+  letter-spacing: .1em;
+  color: #6b7280;
+  pointer-events: none;
+}
+.hwlabel.boot { top: calc(22% + 1px); }
+.hwlabel.pwr { top: calc(44% + 1px); }
+
+.screen {
+  container-type: inline-size;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 640 / 172;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--lcd-off);
+  color: var(--s-fg);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: pan-y;
+  outline-offset: 4px;
+}
+.screen:focus-visible { outline: 2px solid var(--state); }
+.lcd {
+  position: absolute;
+  inset: 0;
+  background: var(--sc);
+  transition: background .35s, transform .6s cubic-bezier(.5,0,.2,1), opacity .25s;
+  display: grid;
+  grid-template-columns: 1fr 29%;
+}
+.device.flipped .lcd { transform: rotate(180deg); }
+.screen.off .lcd { opacity: 0; }
+
+.main {
+  min-width: 0;
+  padding: 2.6cqw 3.2cqw;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: .4cqw;
+}
+.kicker {
+  font-family: var(--f-screen);
+  font-weight: 700;
+  font-size: 2.3cqw;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  opacity: .82;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.word {
+  font-family: var(--f-screen);
+  font-weight: 800;
+  line-height: .84;
+  letter-spacing: .005em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+.word.title { text-transform: none; line-height: .95; }
+.sub {
+  font-family: var(--f-body);
+  font-weight: 500;
+  font-size: 2.9cqw;
+  opacity: .9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.marquee { overflow: hidden; }
+.marquee .word { display: inline-block; overflow: visible; text-overflow: clip; text-transform: none; }
+.marquee.scroll .word { animation: marquee var(--dur, 10s) linear infinite; padding-left: 100%; }
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+
+.side {
+  min-width: 0;
+  background: rgba(0,0,0,.2);
+  padding: 2.6cqw 2.8cqw;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.sys {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1cqw;
+  font-family: var(--f-mono);
+  font-size: 1.9cqw;
+  opacity: .85;
+  font-variant-numeric: tabular-nums;
+}
+.sys .icons { display: flex; align-items: center; gap: .9cqw; }
+.sys svg { width: 2.6cqw; height: 2.6cqw; display: block; }
+.ctx-label {
+  font-family: var(--f-screen);
+  font-weight: 700;
+  font-size: 2cqw;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  opacity: .75;
+}
+.ctx-value {
+  font-family: var(--f-screen);
+  font-weight: 800;
+  font-size: 6.4cqw;
+  line-height: .95;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ctx-value.small { font-size: 3.6cqw; line-height: 1.05; }
+.ctx-foot { font-size: 2cqw; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dots { display: flex; gap: 1.1cqw; margin-top: .8cqw; }
+.dots i { width: 2.4cqw; height: 2.4cqw; border-radius: 50%; border: .35cqw solid currentColor; opacity: .9; }
+.dots i.on { background: currentColor; }
+
+.bar {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 1cqw;
+  background: rgba(0,0,0,.25);
+}
+.bar i { display: block; height: 100%; background: rgba(255,255,255,.92); width: 0; transition: width .9s linear; }
+.bar[hidden] { display: none; }
+
+.menu {
+  position: absolute;
+  inset: 0;
+  background: rgba(8,9,11,.94);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.6cqw;
+  padding: 3cqw;
+  font-family: var(--f-body);
+}
+.menu[hidden] { display: none; }
+.device.flipped .menu { transform: rotate(180deg); }
+.tile {
+  border-radius: 1.4cqw;
+  background: #1d2026;
+  padding: 2cqw;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+.tile b { font-family: var(--f-screen); font-weight: 700; font-size: 2.2cqw; letter-spacing: .12em; text-transform: uppercase; color: #9aa3ad; }
+.tile span { font-family: var(--f-screen); font-weight: 800; font-size: 5cqw; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile small { font-size: 1.9cqw; color: #9aa3ad; }
+
+.caption {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 20px;
+  width: 100%;
+  max-width: 900px;
+  font-family: var(--f-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+.gesture-log { color: var(--ink); }
+
+/* ---------- Remote + notes ---------- */
+.lower {
+  display: grid;
+  grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+@media (max-width: 820px) { .lower { grid-template-columns: minmax(0, 1fr); } }
+
+.phone {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 18px;
+  display: grid;
+  gap: 16px;
+}
+.phone-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.phone-head strong { font-family: var(--f-screen); font-size: 24px; font-weight: 800; letter-spacing: .02em; }
+.phone-head span { font-family: var(--f-mono); font-size: 11px; color: var(--muted); }
+.field-label { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; margin-bottom: 6px; display: block; }
+.status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sbtn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.sbtn i { width: 12px; height: 12px; border-radius: 50%; background: var(--c); flex: none; }
+.sbtn:hover { border-color: var(--c); }
+.sbtn:focus-visible { outline: 2px solid var(--c); outline-offset: 2px; }
+.sbtn[aria-pressed="true"] { background: var(--c); border-color: var(--c); color: #fff; }
+.sbtn[aria-pressed="true"] i { background: #fff; }
+
+.seg { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.seg button {
+  flex: 1;
+  padding: 8px 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.seg button:focus-visible { outline: 2px solid var(--state); outline-offset: -2px; }
+
+.msg-row { display: flex; gap: 8px; }
+.msg-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+}
+.msg-row input:focus-visible { outline: 2px solid var(--state); outline-offset: 1px; }
+.btn {
+  padding: 9px 14px;
+  border-radius: 10px;
+  border: 0;
+  background: var(--ink);
+  color: var(--surface);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.btn:focus-visible { outline: 2px solid var(--state); outline-offset: 2px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.notes { display: grid; gap: 28px; min-width: 0; }
+.notes h2 {
+  font-family: var(--f-screen);
+  font-weight: 800;
+  font-size: 28px;
+  letter-spacing: .02em;
+  margin: 0 0 10px;
+  text-transform: uppercase;
+}
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 10px 18px; margin: 0; }
+.kv dt { font-weight: 700; }
+.kv dd { margin: 0; color: var(--muted); }
+@media (max-width: 480px) {
+  .kv { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .kv dd { margin-bottom: 10px; }
+}
+.spec { font-family: var(--f-mono); font-size: 13px; }
+.note-small { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .device, .lcd, .bar i { transition: none; }
+  .marquee.scroll .word { animation: none; padding-left: 0; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Mock-up · Waveshare ESP32-S3-Touch-LCD-3.49</div>
+    <h1>TinyBar<span class="dot">.</span></h1>
+    <p class="lede">A desk-side status bar that tells people whether to interrupt you. This page simulates the 640 × 172 screen so you can try the layouts and controls before any firmware gets written.</p>
+  </header>
+
+  <section class="bench" aria-label="Device simulator">
+    <div class="device" id="device">
+      <div class="screen" id="screen" tabindex="0" role="button" aria-label="TinyBar screen. Tap for next status, swipe to change, long-press for menu.">
+        <div class="lcd" id="lcd"></div>
+        <div class="bar" id="bar"><i id="barFill"></i></div>
+        <div class="menu" id="menu" hidden></div>
+      </div>
+      <button class="hwbtn boot" id="btnBoot" aria-label="BOOT button: next status"></button>
+      <button class="hwbtn pwr" id="btnPwr" aria-label="PWR button: screen on or off"></button>
+    </div>
+    <div class="caption">
+      <span>Tap: next status · Swipe: back or forward · Hold: quick menu · Side buttons: BOOT and PWR</span>
+      <span class="gesture-log" id="log" aria-live="polite">Ready</span>
+    </div>
+  </section>
+
+  <section class="lower">
+    <div class="phone" aria-label="Phone remote mock-up">
+      <div class="phone-head">
+        <strong>Remote</strong>
+        <span>tinybar.local</span>
+      </div>
+      <div>
+        <span class="field-label">Status</span>
+        <div class="status-grid" id="statusGrid"></div>
+      </div>
+      <div>
+        <span class="field-label" id="focusLabel">Focus length</span>
+        <div class="seg" id="focusSeg" role="group" aria-labelledby="focusLabel">
+          <button data-min="15">15 min</button>
+          <button data-min="25" aria-pressed="true">25 min</button>
+          <button data-min="50">50 min</button>
+        </div>
+      </div>
+      <form id="msgForm">
+        <label class="field-label" for="msgInput">Custom message</label>
+        <div class="msg-row">
+          <input id="msgInput" type="text" maxlength="80" value="Recording a podcast, please knock gently">
+          <button class="btn" type="submit">Show</button>
+        </div>
+      </form>
+      <div>
+        <span class="field-label">Try the hardware</span>
+        <div class="row">
+          <button class="btn ghost" id="flipBtn" type="button">Flip device</button>
+          <button class="btn ghost" id="menuBtn" type="button">Open quick menu</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <div>
+        <h2>How you'd control it</h2>
+        <dl class="kv">
+          <dt>Touch</dt><dd>Tap cycles status, a swipe steps back or forward, and holding opens a quick menu with brightness, Wi-Fi, calendar and sleep.</dd>
+          <dt>Side buttons</dt><dd>BOOT jumps to the next status without looking. PWR turns the screen off and on, and holding it powers down.</dd>
+          <dt>Phone remote</dt><dd>The device serves a small page at tinybar.local on your Wi-Fi, like the Remote panel on this page.</dd>
+          <dt>Automations</dt><dd>An HTTP endpoint (and optionally MQTT for Home Assistant) so a calendar, Slack, Zoom or a shortcut can set the status.</dd>
+          <dt>Calendar</dt><dd>Optionally reads a private calendar link and switches to "In a meeting" on its own.</dd>
+          <dt>Tilt</dt><dd>The motion sensor flips the layout when you mount it upside down, so the buttons can go on either side.</dd>
+          <dt>Chime</dt><dd>The speaker plays a soft chime when a focus session ends.</dd>
+        </dl>
+      </div>
+      <div>
+        <h2>Hardware it uses</h2>
+        <dl class="kv spec">
+          <dt>Display</dt><dd>3.49" IPS, 172 × 640, AXS15231B over QSPI</dd>
+          <dt>Touch</dt><dd>AXS15231B over I²C</dd>
+          <dt>MCU</dt><dd>ESP32-S3R8, 8 MB PSRAM, 16 MB flash</dd>
+          <dt>Clock</dt><dd>PCF85063 RTC, synced over NTP</dd>
+          <dt>Motion</dt><dd>QMI8658 6-axis IMU</dd>
+          <dt>Audio</dt><dd>ES8311 codec + speaker</dd>
+          <dt>Power</dt><dd>USB-C or 3.7 V Li-ion</dd>
+        </dl>
+        <p class="note-small">Meeting names, times and the battery level are sample data.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const css = getComputedStyle(document.documentElement);
+  const col = n => css.getPropertyValue('--s-' + n).trim();
+
+  const STATES = [
+    { id: 'available', name: 'Available' },
+    { id: 'busy',      name: 'Busy' },
+    { id: 'meeting',   name: 'In a meeting' },
+    { id: 'focus',     name: 'Focus' },
+    { id: 'away',      name: 'Away' },
+    { id: 'message',   name: 'Message' },
+    { id: 'clock',     name: 'Clock' },
+  ];
+
+  const now = () => new Date();
+  const addMin = (d, m) => new Date(d.getTime() + m * 60000);
+  const fmt = d => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const fmtShort = d => fmt(d).replace(/\s?[AP]M$/, '');
+  const ampm = d => fmt(d).slice(-2);
+  const roundTo = (d, m) => { const ms = m * 60000; return new Date(Math.ceil(d.getTime() / ms) * ms); };
+  const mmss = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  const hm = mins => mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
+
+  // Sample timeline, anchored to when the page loaded.
+  const t0 = now();
+  const sample = {
+    busySince: addMin(t0, -12),
+    meetStart: addMin(t0, -18),
+    meetEnd: addMin(t0, 42),
+    nextMeet: roundTo(addMin(t0, 75), 30),
+    freeUntil: roundTo(addMin(t0, 40), 30),
+    awayBack: roundTo(addMin(t0, 25), 5),
+    awaySince: addMin(t0, -8),
+  };
+
+  const s = {
+    idx: 1,
+    focusMin: 25,
+    focusStart: Date.now() - (25 * 60 - 18 * 60 - 42) * 1000,
+    message: document.getElementById('msgInput').value,
+    messageAt: t0,
+    flipped: false,
+    off: false,
+  };
+
+  const $ = id => document.getElementById(id);
+  const screen = $('screen'), lcd = $('lcd'), bar = $('bar'), barFill = $('barFill'), menu = $('menu'), device = $('device'), log = $('log');
+
+  const icons = `
+    <span class="icons">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5.5 12.5a10 10 0 0 1 13 0"/><path d="M9 16a5 5 0 0 1 6 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/></svg>
+      <svg viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="2" y="6" width="21" height="12" rx="2.5"/><rect x="5" y="9" width="12" height="6" rx="1" fill="currentColor" stroke="none"/><path d="M25.5 10v4" stroke-linecap="round"/></svg>
+    </span>`;
+
+  const side = (label, value, foot = '', valueClass = '') => `
+    <aside class="side">
+      <div class="sys"><span>${fmt(now())}</span>${icons}</div>
+      <div>
+        <div class="ctx-label">${label}</div>
+        <div class="ctx-value ${valueClass}">${value}</div>
+        ${foot ? `<div class="ctx-foot">${foot}</div>` : ''}
+      </div>
+    </aside>`;
+
+  const esc = t => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  function view(id) {
+    const n = now();
+    switch (id) {
+      case 'available':
+        return {
+          main: `<div class="kicker">Status</div><div class="word" style="font-size:14.5cqw">Available</div><div class="sub">Come on in</div>`,
+          side: side('Free until', fmtShort(sample.freeUntil), ampm(sample.freeUntil) + ' · then Design review'),
+        };
+      case 'busy': {
+        const mins = Math.round((n - sample.busySince) / 60000);
+        return {
+          main: `<div class="kicker">Status</div><div class="word" style="font-size:17cqw">Busy</div><div class="sub">Heads down, message me instead</div>`,
+          side: side('Busy for', hm(mins), 'since ' + fmt(sample.busySince)),
+        };
+      }
+      case 'meeting': {
+        const left = Math.max(0, Math.round((sample.meetEnd - n) / 60000));
+        const pct = Math.min(100, (n - sample.meetStart) / (sample.meetEnd - sample.meetStart) * 100);
+        return {
+          main: `<div class="kicker">In a meeting · ${fmtShort(sample.meetStart)}–${fmt(sample.meetEnd)}</div><div class="word title" style="font-size:9.5cqw">Design review</div><div class="sub">Next: 1:1 with Sam at ${fmt(sample.nextMeet)}</div>`,
+          side: side('Ends in', hm(left), 'at ' + fmt(sample.meetEnd)),
+          bar: pct,
+        };
+      }
+      case 'focus': {
+        const total = s.focusMin * 60;
+        const el = Math.min(total, (Date.now() - s.focusStart) / 1000);
+        const rem = total - el;
+        const breakAt = new Date(s.focusStart + total * 1000);
+        const done = rem <= 0;
+        return {
+          main: `<div class="kicker">Focus · session 2 of 4</div><div class="word" style="font-size:17cqw">${done ? 'Break' : mmss(rem)}</div><div class="sub">${done ? 'Session done, take five' : 'Break at ' + fmt(breakAt)}</div>`,
+          side: `
+            <aside class="side">
+              <div class="sys"><span>${fmt(n)}</span>${icons}</div>
+              <div>
+                <div class="ctx-label">Sessions today</div>
+                <div class="dots"><i class="on"></i><i class="on"></i><i></i><i></i></div>
+                <div class="ctx-foot" style="margin-top:1cqw">${s.focusMin} min each</div>
+              </div>
+            </aside>`,
+          bar: el / total * 100,
+        };
+      }
+      case 'away': {
+        const gone = Math.round((n - sample.awaySince) / 60000);
+        return {
+          main: `<div class="kicker">Away</div><div class="word" style="font-size:13cqw">Back at ${fmtShort(sample.awayBack)}</div><div class="sub">Grabbing lunch</div>`,
+          side: side('Gone for', hm(gone), 'left at ' + fmt(sample.awaySince)),
+        };
+      }
+      case 'message': {
+        const text = esc(s.message || 'Hello');
+        const long = s.message.length > 22;
+        return {
+          main: `<div class="kicker">Message</div><div class="marquee ${long ? 'scroll' : ''}" style="--dur:${Math.max(6, s.message.length * 0.32)}s"><div class="word" style="font-size:10cqw">${text}</div></div><div class="sub">Set from the remote</div>`,
+          side: side('Posted', fmtShort(s.messageAt), ampm(s.messageAt) + ' today'),
+        };
+      }
+      case 'clock':
+        return {
+          main: `<div class="kicker">${n.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</div><div class="word" style="font-size:17cqw">${fmtShort(n)}<span style="font-size:.32em;letter-spacing:.06em;margin-left:.15em">${ampm(n)}</span></div><div class="sub">Idle · no status set</div>`,
+          side: side('Next up', 'Design review', fmt(sample.meetStart) + ' · in Room 4', 'small'),
+        };
+    }
+  }
+
+  function render() {
+    const st = STATES[s.idx];
+    const c = col(st.id);
+    const v = view(st.id);
+    lcd.style.setProperty('--sc', c);
+    document.documentElement.style.setProperty('--state', st.id === 'clock' ? col('meeting') : c);
+    lcd.innerHTML = `<div class="main">${v.main}</div>${v.side}`;
+    if (v.bar == null) { bar.hidden = true; }
+    else { bar.hidden = false; barFill.style.width = v.bar.toFixed(2) + '%'; }
+    document.querySelectorAll('.sbtn').forEach(b => b.setAttribute('aria-pressed', b.dataset.id === st.id));
+  }
+
+  function tick() {
+    // Only redraw the parts that change, so the marquee animation does not restart.
+    const id = STATES[s.idx].id;
+    if (id === 'message') {
+      const t = lcd.querySelector('.sys span');
+      if (t) t.textContent = fmt(now());
+      return;
+    }
+    render();
+  }
+
+  function go(i, how) {
+    s.idx = (i + STATES.length) % STATES.length;
+    if (STATES[s.idx].id === 'focus' && how === 'remote') s.focusStart = Date.now();
+    hideMenu();
+    render();
+    if (how) say(`${how}: ${STATES[s.idx].name}`);
+  }
+
+  function say(t) { log.textContent = t; }
+
+  // Remote panel
+  const grid = $('statusGrid');
+  STATES.forEach((st, i) => {
+    const b = document.createElement('button');
+    b.className = 'sbtn';
+    b.type = 'button';
+    b.dataset.id = st.id;
+    b.style.setProperty('--c', st.id === 'clock' ? '#3a4049' : col(st.id));
+    b.innerHTML = `<i></i>${st.name}`;
+    b.addEventListener('click', () => { if (s.off) togglePower(); go(i, 'remote'); });
+    grid.appendChild(b);
+  });
+
+  $('focusSeg').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    s.focusMin = +b.dataset.min;
+    s.focusStart = Date.now();
+    $('focusSeg').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    go(STATES.findIndex(x => x.id === 'focus'), 'remote');
+  });
+
+  $('msgForm').addEventListener('submit', e => {
+    e.preventDefault();
+    s.message = $('msgInput').value.trim() || 'Hello';
+    s.messageAt = now();
+    go(STATES.findIndex(x => x.id === 'message'), 'remote');
+  });
+
+  // Quick menu
+  function showMenu() {
+    menu.innerHTML = `
+      <div class="tile"><b>Brightness</b><span>70%</span><small>Swipe up or down</small></div>
+      <div class="tile"><b>Wi-Fi</b><span>Home</span><small>−54 dBm</small></div>
+      <div class="tile"><b>Calendar</b><span>Synced</span><small>2 min ago</small></div>
+      <div class="tile"><b>Battery</b><span>82%</span><small>About 9 h left</small></div>`;
+    menu.hidden = false;
+    say('hold: quick menu');
+  }
+  function hideMenu() { menu.hidden = true; }
+
+  // Touch gestures on the screen
+  let p = null, held = false, holdTimer = null;
+  screen.addEventListener('pointerdown', e => {
+    if (s.off) return;
+    p = { x: e.clientX, y: e.clientY };
+    held = false;
+    clearTimeout(holdTimer);
+    holdTimer = setTimeout(() => { held = true; showMenu(); }, 550);
+  });
+  screen.addEventListener('pointermove', e => {
+    if (!p) return;
+    if (Math.abs(e.clientX - p.x) > 10 || Math.abs(e.clientY - p.y) > 10) clearTimeout(holdTimer);
+  });
+  screen.addEventListener('pointerup', e => {
+    clearTimeout(holdTimer);
+    if (!p || s.off) { p = null; return; }
+    let dx = e.clientX - p.x;
+    if (s.flipped) dx = -dx;
+    p = null;
+    if (held) return;
+    if (!menu.hidden) { hideMenu(); say('tap: menu closed'); return; }
+    if (dx < -40) go(s.idx + 1, 'swipe');
+    else if (dx > 40) go(s.idx - 1, 'swipe');
+    else go(s.idx + 1, 'tap');
+  });
+  screen.addEventListener('pointercancel', () => { clearTimeout(holdTimer); p = null; });
+  screen.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight') { e.preventDefault(); go(s.idx + 1, 'swipe'); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); go(s.idx - 1, 'swipe'); }
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(s.idx + 1, 'tap'); }
+    else if (e.key === 'm') { menu.hidden ? showMenu() : hideMenu(); }
+  });
+
+  // Hardware buttons
+  function togglePower() {
+    s.off = !s.off;
+    screen.classList.toggle('off', s.off);
+    bar.style.visibility = s.off ? 'hidden' : '';
+    hideMenu();
+    say(s.off ? 'PWR: screen off' : 'PWR: screen on');
+  }
+  $('btnBoot').addEventListener('click', () => { if (s.off) togglePower(); go(s.idx + 1, 'BOOT'); });
+  $('btnPwr').addEventListener('click', togglePower);
+
+  $('flipBtn').addEventListener('click', () => {
+    s.flipped = !s.flipped;
+    device.classList.toggle('flipped', s.flipped);
+    say(s.flipped ? 'tilt: mounted upside down, layout flipped' : 'tilt: upright');
+  });
+  $('menuBtn').addEventListener('click', () => { if (s.off) togglePower(); menu.hidden ? showMenu() : hideMenu(); });
+
+  render();
+  setInterval(tick, 1000);
+})();
+</script>
