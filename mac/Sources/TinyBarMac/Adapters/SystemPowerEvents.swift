@@ -52,6 +52,14 @@ final class SystemPowerEvents: PowerEventSource, @unchecked Sendable {
 
     init() {}
 
+    /// `start()` hands IOKit an unretained pointer to this object, so it must
+    /// deregister before it goes away, as the other adapters do. (The main
+    /// actor's observer cleanup then finds no `self`; the observers' blocks
+    /// hold only weak references, so that's harmless.)
+    deinit {
+        stop()
+    }
+
     func start(handler: @escaping @Sendable (PowerEvent) async -> Void) {
         let registered = work.sync { () -> Bool in
             guard self.handler == nil else { return rootPort != 0 }

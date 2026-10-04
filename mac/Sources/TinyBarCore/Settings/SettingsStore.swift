@@ -40,10 +40,13 @@ public final class UserDefaultsSettingsStore: SettingsStore, @unchecked Sendable
     }
 
     public func load() -> AppSettings? {
-        unimplemented()
+        guard let data = defaults.data(forKey: key) else { return nil }
+        return try? JSONDecoder().decode(AppSettings.self, from: data)
     }
 
     public func save(_ settings: AppSettings) throws {
-        unimplemented()
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        defaults.set(try encoder.encode(settings), forKey: key)
     }
 }

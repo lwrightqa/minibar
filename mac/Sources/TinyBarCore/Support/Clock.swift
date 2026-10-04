@@ -3,15 +3,26 @@ import Foundation
 /// The app's source of time, injected everywhere so tests can run the start and
 /// end delays, heartbeats, back-offs and pauses without waiting.
 ///
-/// Times are wall-clock `Date`s because the app shows them ("Paused until
-/// 3:15 PM", "Can't reach TinyBar since 2:04 PM") and pauses end at midnight.
+/// **`now()` is monotonic.** It starts at the Mac's wall-clock time when the
+/// clock is made, then moves only with real elapsed time (including time the
+/// Mac spends asleep), so setting the Mac's clock, or a large NTP step, never
+/// stretches or skips a delay, a heartbeat, a retry or a grace period, and
+/// never changes `elapsed_s`.
+///
+/// **Wall-clock time** is `now()` plus `wallClockOffset()`. Use it only for
+/// what's shown ("Paused until 3:15 PM", "since 2:04 PM") and for finding
+/// midnight; `wallClock(_:)` and `fromWallClock(_:)` convert. The offset is 0
+/// until the Mac's clock is changed.
 public protocol TinyClock: Sendable {
-    /// The current time.
+    /// The app's monotonic time (see above).
     func now() -> Date
 
-    /// Suspends until `deadline`. Returns at once if it has passed. Throws
-    /// `CancellationError` if the task is cancelled while waiting.
+    /// Suspends until `now()` reaches `deadline`. Returns at once if it has
+    /// passed. Throws `CancellationError` if the task is cancelled while waiting.
     func sleep(until deadline: Date) async throws
+
+    /// How far the Mac's wall clock is ahead of `now()`, in seconds.
+    func wallClockOffset() -> TimeInterval
 }
 
 extension TinyClock {
@@ -19,23 +30,54 @@ extension TinyClock {
     public func sleep(seconds: TimeInterval) async throws {
         try await sleep(until: now().addingTimeInterval(seconds))
     }
+
+    /// A time from `now()` as the Mac's clock shows it.
+    public func wallClock(_ date: Date) -> Date {
+        date.addingTimeInterval(wallClockOffset())
+    }
+
+    /// A time on the Mac's clock (midnight, a saved pause) as this clock's time.
+    public func fromWallClock(_ date: Date) -> Date {
+        date.addingTimeInterval(-wallClockOffset())
+    }
+
+    /// The Mac's clock now.
+    public func wallNow() -> Date {
+        wallClock(now())
+    }
 }
 
-/// The real clock.
+/// The real clock: `ContinuousClock` (which keeps counting while the Mac
+/// sleeps, and never jumps), anchored to the wall clock at launch.
 public struct SystemClock: TinyClock {
-    public init() {}
+    private let startDate: Date
+    private let startInstant: ContinuousClock.Instant
+
+    public init() {
+        startInstant = ContinuousClock.now
+        startDate = Date()
+    }
 
     public func now() -> Date {
-        Date()
+        startDate.addingTimeInterval(SystemClock.seconds(ContinuousClock.now - startInstant))
     }
 
     public func sleep(until deadline: Date) async throws {
-        let seconds = deadline.timeIntervalSinceNow
-        guard seconds > 0 else {
+        let target = startInstant + .seconds(deadline.timeIntervalSince(startDate))
+        guard target > ContinuousClock.now else {
             try Task.checkCancellation()
             return
         }
-        try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+        try await Task.sleep(until: target, clock: .continuous)
+    }
+
+    public func wallClockOffset() -> TimeInterval {
+        Date().timeIntervalSince(now())
+    }
+
+    static func seconds(_ duration: Duration) -> TimeInterval {
+        let parts = duration.components
+        return TimeInterval(parts.seconds) + TimeInterval(parts.attoseconds) / 1e18
     }
 }
 
@@ -44,6 +86,7 @@ public struct SystemClock: TinyClock {
 /// `sleep(until:)` suspends until `advance(by:)` or `advance(to:)` passes the
 /// deadline. Sleepers wake in deadline order. Use `waitForSleepers(_:)` to let
 /// the code under test reach its next sleep before advancing.
+/// `changeWallClock(by:)` sets the "Mac's clock" without moving `now()`.
 public final class ManualClock: TinyClock, @unchecked Sendable {
     private struct Sleeper {
         let id: UUID
@@ -53,6 +96,7 @@ public final class ManualClock: TinyClock, @unchecked Sendable {
 
     private struct State {
         var now: Date
+        var wallClockOffset: TimeInterval = 0
         var sleepers: [Sleeper] = []
     }
 
@@ -67,6 +111,16 @@ public final class ManualClock: TinyClock, @unchecked Sendable {
 
     public func now() -> Date {
         state.withLock { $0.now }
+    }
+
+    public func wallClockOffset() -> TimeInterval {
+        state.withLock { $0.wallClockOffset }
+    }
+
+    /// The Mac's clock is set forward (positive) or back (negative). `now()`
+    /// and the sleepers don't notice.
+    public func changeWallClock(by seconds: TimeInterval) {
+        state.withLock { $0.wallClockOffset += seconds }
     }
 
     /// How many tasks are waiting in `sleep(until:)`.

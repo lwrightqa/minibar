@@ -99,4 +99,16 @@ public enum AppPaths {
         }
         return nil
     }
+
+    /// Folders macOS guards with a Files & Folders prompt for an app that
+    /// isn't sandboxed: Desktop, Documents, Downloads, iCloud Drive, cloud
+    /// storage providers, and other volumes. Reading an app's Info.plist in
+    /// one of them would make TinyBar ask, so its name and bundle ID come from
+    /// LaunchServices instead.
+    public static func isInProtectedFolder(_ path: String, home: String) -> Bool {
+        let home = home.hasSuffix("/") ? String(home.dropLast()) : home
+        let folders = ["Desktop", "Documents", "Downloads", "Library/Mobile Documents", "Library/CloudStorage"]
+            .map { home + "/" + $0 + "/" } + ["/Volumes/"]
+        return folders.contains { path.hasPrefix($0) }
+    }
 }

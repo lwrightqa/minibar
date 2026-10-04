@@ -243,6 +243,19 @@ public struct CallDetector: Sendable {
         return events
     }
 
+    /// Starts fresh (after the Mac wakes, docs/mac-app.md "Other situations"):
+    /// forgets the current call without an event (the bar was told
+    /// `leaving` before the sleep), the delays in progress and the snapshot.
+    /// Settings, the pause, the seen apps and the `call_id` count stay.
+    public mutating func reset() {
+        call = nil
+        pendingSince = nil
+        idleSince = nil
+        micStarts = [:]
+        snapshot = .idle
+        observation = .idle
+    }
+
     /// Takes the next `call_id` for a call that doesn't come from detection
     /// (Settings' test call), so it never repeats a detected call's ID.
     public mutating func reserveCallID() -> UInt32 {

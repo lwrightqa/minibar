@@ -30,6 +30,20 @@ public struct UndoState: Hashable, Sendable {
     }
 }
 
+/// A platform monitor that couldn't start. The engine tries it again every
+/// minute; until then the menu says so, because calls may go unseen.
+public struct MonitorProblems: OptionSet, Hashable, Sendable {
+    public let rawValue: Int
+    public init(rawValue: Int) { self.rawValue = rawValue }
+
+    /// CoreAudio's process list (and its device-level fallback) couldn't be read.
+    public static let mic = MonitorProblems(rawValue: 1 << 0)
+    /// CoreMediaIO's camera list couldn't be read.
+    public static let camera = MonitorProblems(rawValue: 1 << 1)
+    /// IOKit's USB device notifications couldn't be set up.
+    public static let usb = MonitorProblems(rawValue: 1 << 2)
+}
+
 /// Everything the UI shows, in one value. The engine publishes a new one
 /// whenever anything changes; `MenuPresenter` turns it into the menu.
 public struct EngineState: Hashable, Sendable {
@@ -47,6 +61,8 @@ public struct EngineState: Hashable, Sendable {
     /// The Bonjour browser reported Local Network denied (macOS 15+). Shown
     /// in Privacy with its button.
     public var localNetworkBlocked: Bool
+    /// Monitors that couldn't start (shown as Needs you for the mic and camera).
+    public var monitorProblems: MonitorProblems
 
     public init(
         settings: AppSettings,
@@ -57,7 +73,8 @@ public struct EngineState: Hashable, Sendable {
         seenApps: [SeenApp] = [],
         undo: UndoState = UndoState(),
         loginItem: LoginItemStatus = .notRegistered,
-        localNetworkBlocked: Bool = false
+        localNetworkBlocked: Bool = false,
+        monitorProblems: MonitorProblems = []
     ) {
         self.settings = settings
         self.observation = observation
@@ -68,6 +85,15 @@ public struct EngineState: Hashable, Sendable {
         self.undo = undo
         self.loginItem = loginItem
         self.localNetworkBlocked = localNetworkBlocked
+        self.monitorProblems = monitorProblems
+    }
+
+    /// The monitor problems that stop calls being seen: the mic always, the
+    /// camera only while it counts.
+    public var detectionProblems: MonitorProblems {
+        var problems = monitorProblems.intersection(.mic)
+        if monitorProblems.contains(.camera), settings.detection.cameraCounts { problems.insert(.camera) }
+        return problems
     }
 
     /// Detection is paused at `now`.

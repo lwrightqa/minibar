@@ -1,4 +1,5 @@
 #if os(macOS)
+import AppKit
 import CoreAudio
 import Darwin
 import Foundation
@@ -24,8 +25,15 @@ import TinyBarCore
 ///   per process object for the life of the process.
 /// - Listeners (`AudioObjectAddPropertyListenerBlock`, on `queue`): the system
 ///   object's process list, and each process object's "is running input". Plus
-///   a once-a-second re-read as a safety net. `onChange` is called only when
-///   the list differs from the last one reported.
+///   a re-read every `safetyNetInterval` (1 second, docs/mac-app.md "Signals")
+///   as a safety net. `onChange` is called only when the list differs from
+///   the last one reported.
+/// - CoreAudio delivers its notifications through the main run loop unless
+///   `kAudioHardwarePropertyRunLoop` is set to NULL (AudioHardware.h), so a
+///   blocked main thread (an open panel, a Keychain prompt) would delay them
+///   to the next re-read. The first monitor made sets it to NULL, before any
+///   other CoreAudio call, so CoreAudio uses its own notification thread. The
+///   setting is process-wide; TinyBar does no other audio.
 ///
 /// **Fallback.** If the system object doesn't have the process list (it
 /// should on every macOS 14 and later; the scratch type-check against the
@@ -56,6 +64,13 @@ final class CoreAudioMicMonitor: MicActivitySource, @unchecked Sendable {
 
     let mode: Mode
 
+    /// How often the safety-net re-read runs. Each one costs an IPC round trip
+    /// to coreaudiod per process object (dozens on a typical Mac). *Measure*
+    /// Energy Impact on a Mac (criterion 36); if it shows, 2 seconds still
+    /// meets criterion 33's start delay + 2 s, since the listeners carry the
+    /// normal case.
+    static let safetyNetInterval: Double = 1
+
     private let work = AdapterQueue(label: "TinyBar.mic")
 
     // Everything below is touched only on `work.queue`.
@@ -68,9 +83,26 @@ final class CoreAudioMicMonitor: MicActivitySource, @unchecked Sendable {
     private var identities: [AudioObjectID: MicProcess] = [:]
 
     init() {
+        Self.useOwnNotificationThread()
         mode = CoreAudioProperty.has(CoreAudioProperty.system, kAudioHardwarePropertyProcessObjectList)
             ? .perProcess
             : .deviceLevel
+    }
+
+    /// Sets `kAudioHardwarePropertyRunLoop` to NULL once per process: CoreAudio
+    /// then creates its own thread for notifications instead of using the
+    /// main run loop. *Unverified on a Mac* (AudioHardware.h documents it).
+    private static let ownNotificationThread: Void = {
+        var runLoop: CFRunLoop? = nil
+        var address = CoreAudioProperty.address(kAudioHardwarePropertyRunLoop)
+        _ = withUnsafePointer(to: &runLoop) { pointer in
+            AudioObjectSetPropertyData(CoreAudioProperty.system, &address, 0, nil,
+                                       UInt32(MemoryLayout<CFRunLoop?>.size), pointer)
+        }
+    }()
+
+    private static func useOwnNotificationThread() {
+        _ = ownNotificationThread
     }
 
     deinit {
@@ -85,7 +117,7 @@ final class CoreAudioMicMonitor: MicActivitySource, @unchecked Sendable {
             self.onChange = onChange
             installListListener()
             syncObjectListeners()
-            timer = work.repeatingTimer(every: 1) { [weak self] in
+            timer = work.repeatingTimer(every: Self.safetyNetInterval) { [weak self] in
                 self?.refresh()
             }
             refresh()
@@ -320,8 +352,22 @@ enum ProcessIdentity {
     static func micProcess(pid: pid_t, bundleID: String?) -> MicProcess {
         let path = executablePath(of: pid)
         let appPath = path.flatMap { AppPaths.outermostAppPath($0) }
-        let appBundleID = appPath.flatMap { Bundle(path: $0)?.bundleIdentifier }
-        let name = appPath.map(finderName(ofApp:)) ?? path.flatMap { $0.split(separator: "/").last.map(String.init) }
+        var appBundleID: String?
+        var appName: String?
+        if let appPath {
+            let home = FileManager.default.homeDirectoryForCurrentUser.path
+            if AppPaths.isInProtectedFolder(appPath, home: home) {
+                // Reading its Info.plist there would bring up a Files &
+                // Folders prompt: ask LaunchServices about the running app.
+                let running = NSWorkspace.shared.runningApplications.first { $0.bundleURL?.path == appPath }
+                appBundleID = running?.bundleIdentifier
+                appName = running?.localizedName ?? Self.nameFromPath(appPath)
+            } else {
+                appBundleID = Bundle(path: appPath)?.bundleIdentifier
+                appName = finderName(ofApp: appPath)
+            }
+        }
+        let name = appName ?? path.flatMap { $0.split(separator: "/").last.map(String.init) }
         return MicProcess(
             pid: pid,
             bundleID: bundleID,
@@ -341,6 +387,13 @@ enum ProcessIdentity {
         }
         guard length > 0 else { return nil }
         return String(decoding: buffer.prefix(Int(length)), as: UTF8.self)
+    }
+
+    /// "Foo" for ".../Foo.app", without reading anything.
+    static func nameFromPath(_ appPath: String) -> String {
+        var name = appPath.split(separator: "/").last.map(String.init) ?? appPath
+        if name.lowercased().hasSuffix(".app") { name = String(name.dropLast(4)) }
+        return name
     }
 
     /// The app's name as Finder shows it ("zoom.us", "Google Chrome").

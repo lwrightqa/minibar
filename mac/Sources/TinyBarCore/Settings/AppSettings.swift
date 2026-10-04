@@ -95,23 +95,71 @@ public struct AppSettings: Hashable, Sendable, Codable {
 
     /// Checks every value (detection ranges, names, the address).
     public func validate() throws(SettingsError) {
-        unimplemented()
+        try detection.validate()
+        if let macName, let problem = NameRules.macNameProblem(macName) { throw .badMacName(problem) }
+        if let manualAddress {
+            let trimmed = manualAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty, BarEndpoint(userInput: trimmed) == nil { throw .badAddress(manualAddress) }
+        }
+    }
+
+    /// Settings › Advanced › Address, parsed. `nil` when empty (automatic)
+    /// or not an address.
+    public var manualEndpoint: BarEndpoint? {
+        guard let manualAddress else { return nil }
+        return BarEndpoint(userInput: manualAddress)
+    }
+
+    /// The name sent for this Mac: `nil` when empty, trimmed otherwise.
+    public var macNameToSend: String? {
+        guard let macName else { return nil }
+        let trimmed = NameRules.trimmed(macName)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     /// Restore Defaults on the General tab: launch at login, the delays, the
     /// camera and the name switches. Lists, the bar and the install ID stay.
     public mutating func restoreGeneralDefaults() {
-        unimplemented()
+        let defaults = DetectionSettings.defaults
+        launchAtLogin = true
+        detection.startDelay = defaults.startDelay
+        detection.endDelay = defaults.endDelay
+        detection.countCamera = defaults.countCamera
+        detection.sendAppName = defaults.sendAppName
     }
 
     /// Restore Defaults on the Apps tab: the lists and the counting mode.
     public mutating func restoreAppsDefaults() {
-        unimplemented()
+        detection.catalog = DetectionSettings.defaults.catalog
+        detection.mode = DetectionSettings.defaults.mode
     }
 
     /// Restore Defaults on the Connection tab: Wi-Fi on, Advanced cleared. The
     /// bar isn't forgotten (mac-app-ux.md 6.4).
     public mutating func restoreConnectionDefaults() {
-        unimplemented()
+        useWiFi = true
+        manualAddress = nil
+        macName = nil
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case installID, detection, launchAtLogin, useWiFi, manualAddress, macName, bar, pause
+        case didShowWelcome, didExplainLocalNetwork
+    }
+
+    /// Reads saved settings. A field a newer version added gets its default;
+    /// only the install ID must be there (without it, they aren't this app's).
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        installID = try container.decode(String.self, forKey: .installID)
+        detection = try container.decodeIfPresent(DetectionSettings.self, forKey: .detection) ?? .defaults
+        launchAtLogin = try container.decodeIfPresent(Bool.self, forKey: .launchAtLogin) ?? true
+        useWiFi = try container.decodeIfPresent(Bool.self, forKey: .useWiFi) ?? true
+        manualAddress = try container.decodeIfPresent(String.self, forKey: .manualAddress)
+        macName = try container.decodeIfPresent(String.self, forKey: .macName)
+        bar = try? container.decodeIfPresent(KnownBar.self, forKey: .bar)
+        pause = (try? container.decodeIfPresent(PauseState.self, forKey: .pause)) ?? .notPaused
+        didShowWelcome = try container.decodeIfPresent(Bool.self, forKey: .didShowWelcome) ?? false
+        didExplainLocalNetwork = try container.decodeIfPresent(Bool.self, forKey: .didExplainLocalNetwork) ?? false
     }
 }

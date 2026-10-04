@@ -16,6 +16,11 @@ public enum TinyBarAPI {
         "TinyBarMac/\(appVersion) (api \(version))"
     }
 
+    /// `Accept-Language` for HTTP requests: fixed, so URLSession's default
+    /// (the user's preferred languages) never goes out on the office network.
+    public static let acceptLanguage = "en"
+
+
     /// Defaults the bar starts with; the app always uses the values from the
     /// latest reply (api.md 5.3).
     public enum Defaults {

@@ -69,6 +69,20 @@ public struct BarEndpoint: Hashable, Sendable, Codable, CustomStringConvertible 
     }
 
     public var description: String { port == 80 ? host : "\(host):\(port)" }
+
+    /// Whether macOS lets the app reach this address over plain HTTP. The
+    /// app's Info.plist allows only local networking under App Transport
+    /// Security (`NSAllowsLocalNetworking`): `.local` names, single-label
+    /// names and IP addresses. A dotted DNS name like
+    /// `tinybar.office.example.com` or `tinybar.lan` is refused by URLSession
+    /// (NSURLErrorAppTransportSecurityRequiresSecureConnection), so the
+    /// address fields refuse it first.
+    public var isAllowedOverPlainHTTP: Bool {
+        let labels = host.split(separator: ".")
+        if labels.count <= 1 { return true }
+        if host.lowercased().hasSuffix(".local") { return true }
+        return labels.allSatisfy { $0.allSatisfy(\.isASCIIDigit) }
+    }
 }
 
 extension Character {
@@ -129,8 +143,10 @@ public protocol USBLinkTransport: Transport {
 
     /// api.md 6.2, steps 2 and 3: sends `hello` every 2 seconds until a reply
     /// says `"device": "TinyBar"`, for up to 10 seconds. Log lines and other
-    /// output in between are ignored. Throws `BarError.notATinyBar` on time-out,
-    /// and `BarError.api` with `unsupported_api` if the bar refuses the version.
+    /// output in between are ignored, and so are error replies (`busy`,
+    /// `bad_json`…) except `unsupported_api`, which throws `BarError.api` at
+    /// once. On time-out: `BarError.api` with the last error reply if there
+    /// was one (a TinyBar that wasn't ready), else `BarError.notATinyBar`.
     func handshake(_ request: HelloRequest) async throws -> InfoReply
 
     /// The USB `pair` command (api.md 6.6): a Wi-Fi token without a code.
@@ -178,11 +194,16 @@ public struct DefaultTransportFactory: TransportFactory {
         self.appVersion = appVersion
     }
 
+    /// Throws `SerialPortError` if the port can't be opened (`.busy`: a
+    /// flasher has it), and `BarError.notATinyBar` for anything but
+    /// Espressif's USB Serial/JTAG, which the app never opens (criterion 16).
     public func openUSB(_ device: SerialDevice) throws -> any USBLinkTransport {
-        unimplemented()
+        guard device.isEspressifSerialJTAG else { throw BarError.notATinyBar }
+        let port = try SerialPort(path: device.calloutPath)
+        return USBTransport(port: port, device: device, clock: clock)
     }
 
     public func makeWiFi(endpoint: BarEndpoint, token: String?) -> any WiFiLinkTransport {
-        unimplemented()
+        HTTPTransport(endpoint: endpoint, token: token, appVersion: appVersion)
     }
 }

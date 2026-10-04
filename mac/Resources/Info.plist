@@ -38,11 +38,11 @@
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>Shows On a call on your TinyBar when this Mac's mic or camera is in use. It never listens or records.</string>
+	<string>Shows On a call on your TinyBar when this Mac’s mic or camera is in use. It never listens or records.</string>
 	<!-- macOS 15 and later ask for Local Network access with this text the
 	     first time the app reaches the bar over Wi-Fi (Apple TN3179). -->
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>TinyBar connects to your TinyBar on this network to show when you're on a call.</string>
+	<string>TinyBar connects to your TinyBar on this network to show when you’re on a call.</string>
 	<!-- Browsing for an unlisted Bonjour service type fails on macOS 15. -->
 	<key>NSBonjourServices</key>
 	<array>

@@ -81,6 +81,7 @@ The tooltip is the menu's first status line, or the second when that one says wh
 - macOS is blocking Local Network access and USB isn't connected (Wi-Fi can't work).
 - Your bar no longer recognizes this Mac (its pairing was removed) and USB isn't connected.
 - The bar and the app speak different API versions (`unsupported_api`).
+- *Proposed (lead developer, 2026-10-04), copy for the UX designer to confirm:* the Mac can't watch the mic, or the camera while it counts, because its monitor didn't start (CoreAudio's or CoreMediaIO's list couldn't be read). Line 1 says "Can’t tell when the mic is in use" (or "the camera", or "the mic or camera") unless a call is on, and the tooltip says the same. The app tries again every minute and logs the error. No fix item: there's nothing the person can change.
 
 Not connected is deliberately calm: a laptop away from the office is normal, not an error.
 
@@ -486,6 +487,7 @@ Shown in place of the help line under the field or button they're about, in the 
 | Local Network blocked | macOS is blocking TinyBar from your local network, so Wi-Fi can't work. | **Open Local Network Settings…** |
 | Nothing at a typed address | Nothing answered at 10.0.4.42. | Field stays, **Connect** again |
 | A typed address isn't a TinyBar | That address isn't a TinyBar. | |
+| A typed DNS name macOS won't reach over plain HTTP (not `.local`, not an IP address; App Transport Security) *(Proposed, lead developer, 2026-10-04; also under Settings › Connection › Address)* | Use TinyBar's .local name or its IP address. | Field stays |
 | Wrong code, tries left (`wrong_code`) | That code didn't match. 2 tries left. / That code didn't match. 1 try left. | Field cleared and focused |
 | Wrong code, none left | That code didn't match, so TinyBar canceled pairing. Show a new code to try again. | **Show a New Code** |
 | Code expired, canceled on the bar or already used (`not_pairing`) | That code has expired or was canceled on TinyBar. Show a new code to try again. | **Show a New Code** |
@@ -642,6 +644,8 @@ and never asks for Local Network access.
 | Can't reach | ○ Can't reach it since 2:04 PM | **Connect…**, **Forget This TinyBar…** |
 | Paired, but the bar refuses this Mac | ○ It doesn't recognize this Mac | **Pair Again…**, **Forget This TinyBar…** |
 | The bar doesn't use pairing | ● Connected over Wi-Fi · no pairing needed | **Send Test Call** |
+
+*Proposed (lead developer, 2026-10-04), the rows the table doesn't cover, for the UX designer to confirm:* Looking (the 15-second grace): ○ Looking for TinyBar…, with **Send Test Call** (dimmed: "Connect TinyBar first.") and **Forget This TinyBar…**. Wi-Fi off and not plugged in: ○ It isn’t plugged in. Wi-Fi can't reach it here: ○ Wi-Fi can’t reach it here. Both with **Connect…** and **Forget This TinyBar…**. Local Network blocked: ○ Wi-Fi is blocked in Privacy settings, with **Forget This TinyBar…** (Privacy has the button). Firmware or app too old: ○ It needs a firmware update, or ○ This app needs an update for it, with **Forget This TinyBar…**.
 
 The dot is filled (●) when connected and hollow (○) when not, in the system green or secondary color: the shape and the words carry it, not the color.
 

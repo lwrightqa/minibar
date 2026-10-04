@@ -7,11 +7,15 @@ import TinyBarCore
 ///
 /// - `status` maps `SMAppService.Status`: `.enabled`, `.notRegistered`,
 ///   `.requiresApproval`, `.notFound`. Unknown future cases → `.failed`.
-/// - `register()` / `unregister()` catch the thrown error and report what
-///   macOS did: after a failure, `.requiresApproval` or `.notFound` if the
-///   status now says so; `.notFound` too if the app isn't in an Applications
-///   folder (mac-app-ux.md 6.2: "Move TinyBar to your Applications folder");
-///   else `.failed(error.localizedDescription)`.
+/// - `register()`: already enabled → `.enabled` without registering again
+///   (which can throw `kSMErrorAlreadyRegistered`); not in an Applications
+///   folder (a first launch from `build/`, or an App Translocation path) →
+///   `.notFound` without registering, so no login item points at a path that
+///   moves or disappears (mac-app-ux.md 6.2: "Move TinyBar to your
+///   Applications folder"). Otherwise it registers, and after a failure
+///   reports `.enabled`, `.requiresApproval` or `.notFound` if the status now
+///   says so, else `.failed(error.localizedDescription)`.
+/// - `unregister()` catches the thrown error the same way.
 /// - `openSystemSettings()`: `SMAppService.openSystemSettingsLoginItems()`.
 /// - *Unverified:* that an ad-hoc-signed app registers reliably, that it
 ///   survives a rebuild, and which errors `register()` throws on a Mac whose
@@ -25,6 +29,8 @@ final class MainAppLoginItem: LoginItemService, @unchecked Sendable {
 
     func register() -> LoginItemStatus {
         let service = SMAppService.mainApp
+        if service.status == .enabled { return .enabled }
+        guard Self.isInApplicationsFolder else { return .notFound }
         do {
             try service.register()
             return Self.map(service.status)
@@ -64,6 +70,7 @@ final class MainAppLoginItem: LoginItemService, @unchecked Sendable {
 
     private static func failure(_ error: any Error, status: SMAppService.Status) -> LoginItemStatus {
         switch status {
+        case .enabled: return .enabled
         case .requiresApproval: return .requiresApproval
         case .notFound: return .notFound
         default: break

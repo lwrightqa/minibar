@@ -8,9 +8,36 @@ public enum NameProblem: Hashable, Sendable {
     /// Characters the bar's fonts can't draw: "TinyBar can't show “é”."
     case unsupportedCharacters([Character])
 
-    /// The help line under the field.
+    /// The help line under the field (curly quotes and apostrophes, as in
+    /// mac-app-ux.md 2).
     public var message: String {
-        unimplemented()
+        switch self {
+        case .empty:
+            return "Type a name."
+        case .tooLong(let limit):
+            return "Use \(limit) characters or fewer."
+        case .unsupportedCharacters(let characters):
+            // At most three, so the line stays short.
+            let shown = characters.prefix(3).map(NameProblem.quoted)
+            let list: String
+            switch shown.count {
+            case 0: list = "some of these characters"
+            case 1: list = shown[0]
+            default: list = shown.dropLast().joined(separator: ", ") + " or " + shown[shown.count - 1]
+            }
+            return "TinyBar can\u{2019}t show \(list)."
+        }
+    }
+
+    /// “é”, or U+0009 for a character that would be invisible in quotes.
+    private static func quoted(_ character: Character) -> String {
+        let scalars = character.unicodeScalars
+        if scalars.count == 1, let scalar = scalars.first,
+           scalar.properties.generalCategory == .control || scalar.properties.isWhitespace
+            || scalar.properties.generalCategory == .format {
+            return "U+" + String(format: "%04X", scalar.value)
+        }
+        return "\u{201C}\(character)\u{201D}"
     }
 }
 

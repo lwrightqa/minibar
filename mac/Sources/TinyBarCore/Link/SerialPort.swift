@@ -240,17 +240,19 @@ public final class SerialPort: @unchecked Sendable {
         let fdToClose: Int32? = state.withLock { state in
             guard !state.closing else { return nil }
             state.closing = true
-            guard state.users == 0, state.fd >= 0 else { return nil }
-            defer { state.fd = -1 }
-            return state.fd
-        }
-        if let fdToClose {
-            finishClosing(fdToClose)
-        } else if state.withLock({ $0.fd >= 0 }) {
-            // A read or write is waiting in poll: wake it; the last one closes.
+            guard state.fd >= 0 else { return nil }
+            if state.users == 0 {
+                defer { state.fd = -1 }
+                return state.fd
+            }
+            // A read or write is waiting in poll: wake it, and the last one
+            // out closes. Written under the lock, so the pipe can't be closed
+            // under it.
             var byte: UInt8 = 1
             _ = Posix.write(wakeWrite, &byte, 1)
+            return nil
         }
+        if let fdToClose { finishClosing(fdToClose) }
     }
 
     /// `errno` values that mean the device went away (unplugged, or the other
@@ -275,6 +277,13 @@ public final class PseudoTerminal: @unchecked Sendable {
     /// The device side, held open (see above).
     private var deviceFD: Int32 = -1
 
+    /// The device side's current terminal settings, as `SerialPort` left them.
+    func deviceSettings() throws -> termios {
+        var settings = termios()
+        guard tcgetattr(deviceFD, &settings) == 0 else { throw SerialPortError.configureFailed(errno: errno) }
+        return settings
+    }
+
     /// Opens a new pair (`posix_openpt`, `grantpt`, `unlockpt`, `ptsname`).
     public init() throws {
         let fd = try Posix.openPseudoTerminal()
@@ -289,6 +298,15 @@ public final class PseudoTerminal: @unchecked Sendable {
             throw SerialPortError.openFailed(errno: code)
         }
         _ = Posix.fcntl(deviceFD, F_SETFD, FD_CLOEXEC)
+        // A real serial port doesn't echo, but a new terminal does: turn it
+        // off, so what the fake bar writes before the port is opened (a boot
+        // log) doesn't come back to it. Everything else stays as the kernel
+        // set it, for `SerialPort` to change.
+        var settings = termios()
+        if tcgetattr(deviceFD, &settings) == 0 {
+            settings.c_lflag &= ~tcflag_t(ECHO | ECHONL)
+            _ = tcsetattr(deviceFD, TCSANOW, &settings)
+        }
     }
 
     deinit {

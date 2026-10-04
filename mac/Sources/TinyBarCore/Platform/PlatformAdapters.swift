@@ -4,7 +4,9 @@ import Foundation
 // implements each protocol with Apple's frameworks; tests use fakes.
 //
 // Rules for every adapter:
-// - `start` may be called once; `stop` is idempotent.
+// - `start` may be called again after it throws (the engine retries a monitor
+//   that failed to start every minute) and, for `BarDiscovery`, after `stop`
+//   (the browser runs only while Wi-Fi is wanted). `stop` is idempotent.
 // - Callbacks may come on any thread. They're `@Sendable`; the engine hops
 //   to the main actor itself.
 // - No adapter ever opens the mic or camera, creates an IO proc, an
@@ -125,7 +127,9 @@ public enum DiscoveryError: Hashable, Sendable {
 /// engine starts it only when Wi-Fi is allowed and the UI has explained why.
 public protocol BarDiscovery: AnyObject, Sendable {
     /// Calls `onChange` with every bar currently found, whenever the set
-    /// changes, and `onError` when browsing fails.
+    /// changes, and `onError` when browsing fails. After `.localNetworkDenied`,
+    /// calls `onChange` again (with the bars found, possibly none) once
+    /// browsing works, so the app knows access was allowed.
     func start(
         onChange: @escaping @Sendable ([DiscoveredBar]) -> Void,
         onError: @escaping @Sendable (DiscoveryError) -> Void

@@ -105,6 +105,16 @@ public enum PauseState: Hashable, Sendable, Codable {
         case .notPaused, .untilResumed: return nil
         }
     }
+
+    /// The same pause with its end moved by `seconds`: to the Mac's clock for
+    /// saving and back for detection (`TinyClock.wallClockOffset()`).
+    public func shifted(by seconds: TimeInterval) -> PauseState {
+        switch self {
+        case .until(let end): return .until(end.addingTimeInterval(seconds))
+        case .restOfToday(let end): return .restOfToday(endsAt: end.addingTimeInterval(seconds))
+        case .notPaused, .untilResumed: return self
+        }
+    }
 }
 
 /// The three choices in Pause Detection ▸.
@@ -114,7 +124,8 @@ public enum PauseChoice: Hashable, Sendable, CaseIterable {
     case untilResumed
 
     /// The pause this choice makes at `now` (midnight in `timeZone` for the
-    /// rest of today).
+    /// rest of today). `now` is the Mac's clock (`TinyClock.wallNow()`), so
+    /// midnight is the real one.
     public func pauseState(at now: Date, timeZone: TimeZone) -> PauseState {
         switch self {
         case .oneHour:

@@ -53,25 +53,40 @@ public enum FixItem: Hashable, Sendable {
     }
 }
 
+/// An app in the counting items: who it is (for the engine), and the name
+/// the menu uses for it.
+public struct CountedApp: Hashable, Sendable {
+    public var identity: AppIdentity
+    /// The call app's short name ("Zoom", as in "On a call · Zoom · 3m"), or
+    /// the app's own name for any other app ("GarageBand").
+    public var name: String
+
+    public init(identity: AppIdentity, name: String) {
+        self.identity = identity
+        self.name = name
+    }
+}
+
 /// The counting items (mac-app-ux.md 4.5).
 public enum CountingItem: Hashable, Sendable {
-    /// "Don't Count Slack".
-    case dontCount(AppIdentity)
-    /// "Don't Count ▸" with one item per app, when two or more counted apps use the mic.
-    case dontCountSubmenu([AppIdentity])
+    /// "Don’t Count Slack".
+    case dontCount(CountedApp)
+    /// "Don’t Count ▸" with one item per app (titled with `name`), when two
+    /// or more counted apps use the mic.
+    case dontCountSubmenu([CountedApp])
     /// "Count Slack Again" (undo), while the app is still using the mic.
-    case countAgain(AppIdentity)
-    /// "Don't Count the Camera", during a call from the camera alone.
+    case countAgain(CountedApp)
+    /// "Don’t Count the Camera", during a call from the camera alone.
     case dontCountCamera
     /// "Count the Camera Again" (undo), while the camera is still in use.
     case countCameraAgain
 
     public var title: String {
         switch self {
-        case .dontCount(let app): return "Don't Count \(app.displayName)"
-        case .dontCountSubmenu: return "Don't Count"
-        case .countAgain(let app): return "Count \(app.displayName) Again"
-        case .dontCountCamera: return "Don't Count the Camera"
+        case .dontCount(let app): return "Don\u{2019}t Count \(app.name)"
+        case .dontCountSubmenu: return "Don\u{2019}t Count"
+        case .countAgain(let app): return "Count \(app.name) Again"
+        case .dontCountCamera: return "Don\u{2019}t Count the Camera"
         case .countCameraAgain: return "Count the Camera Again"
         }
     }

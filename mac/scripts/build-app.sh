@@ -14,6 +14,13 @@
 #   SIGN_IDENTITY  "-" for ad-hoc signing (default), or a Developer ID Application identity
 #   UNIVERSAL      1 to build for arm64 and x86_64
 #   OUT_DIR        where TinyBar.app goes (default build/)
+#   STABLE_ADHOC_REQUIREMENT
+#                  1 to give an ad-hoc build the designated requirement
+#                  'identifier "$BUNDLE_ID"' instead of its cdhash, so the
+#                  Keychain keeps trusting rebuilds and doesn't ask "TinyBar
+#                  wants to use your confidential information" after each one.
+#                  Weaker: any ad-hoc app that claims this identifier would be
+#                  trusted with TinyBar's tokens. Unverified on a Mac.
 #
 # The result is build/TinyBar.app. Copy it to /Applications before turning on
 # Start at login (SMAppService wants the app there).
@@ -70,7 +77,12 @@ echo "Signing with ${SIGN_IDENTITY/#-/an ad-hoc signature}…"
 if [[ "$SIGN_IDENTITY" == "-" ]]; then
   # Ad hoc: no Team ID, so IT can only allow it by hash, and the hash changes
   # with every build (README, For IT).
-  codesign --force --sign - --timestamp=none "$APP"
+  if [[ "${STABLE_ADHOC_REQUIREMENT:-0}" == "1" ]]; then
+    codesign --force --sign - --timestamp=none \
+      --requirements "=designated => identifier \"$BUNDLE_ID\"" "$APP"
+  else
+    codesign --force --sign - --timestamp=none "$APP"
+  fi
 else
   # Developer ID: hardened runtime, no entitlements (no audio-input or camera).
   codesign --force --sign "$SIGN_IDENTITY" --options runtime --timestamp "$APP"

@@ -10,16 +10,27 @@ import TinyBarCore
 ///
 /// - Read: `SecItemCopyMatching` with `kSecReturnData` and `kSecMatchLimitOne`;
 ///   `errSecItemNotFound` → `nil`.
-/// - Write: `SecItemUpdate`; on `errSecItemNotFound`, `SecItemAdd`.
+/// - Write: `SecItemUpdate`; on `errSecItemNotFound`, `SecItemAdd`. On any
+///   other failure (the item's access list doesn't trust this build, or the
+///   person chose Deny), the old item is deleted and a new one added, which
+///   this build then owns, so the next launch doesn't pair again.
 /// - Delete: `SecItemDelete`; `errSecItemNotFound` isn't an error.
 /// - The file-based login keychain, not the data-protection keychain:
 ///   `kSecUseDataProtectionKeychain` needs a keychain-access-groups
-///   entitlement, which an ad-hoc signature can't carry.
-/// - *Unverified:* whether an ad-hoc-signed app that's been rebuilt (a new
-///   code signature) gets a "TinyBar wants to use your confidential
-///   information" prompt when reading an item a previous build stored. If the
-///   read fails instead, the engine treats it as "no token" and pairs again
-///   over USB.
+///   entitlement, which an ad-hoc signature can't carry. The file-based
+///   keychain ignores `kSecAttrAccessible` (Apple TN3137), so "this device
+///   only" isn't enforced; it's set anyway, for if the item ever moves.
+/// - **Blocking:** the item's access list trusts the build that created it
+///   by its designated requirement, which for an ad-hoc signature is its
+///   cdhash, new with every build. After a rebuild, macOS shows "TinyBar wants
+///   to use your confidential information stored in “TinyBar”", and the call
+///   waits until it's answered. So no method here may run on the main
+///   thread: the core calls them from the connection actor and, for pairing,
+///   from a detached task. `scripts/build-app.sh` can sign ad-hoc builds with
+///   an identifier-based requirement instead (`STABLE_ADHOC_REQUIREMENT=1`),
+///   and the README says to choose Always Allow. *Unverified* on a Mac:
+///   whether `SecItemDelete` prompts too, and whether an identifier-based
+///   requirement keeps the access list matching across rebuilds.
 final class KeychainTokenStore: TokenStore, @unchecked Sendable {
     struct KeychainError: Error, CustomStringConvertible {
         var operation: String
@@ -59,17 +70,20 @@ final class KeychainTokenStore: TokenStore, @unchecked Sendable {
         case errSecSuccess:
             return
         case errSecItemNotFound:
-            var item = query
-            item[kSecValueData as String] = data
-            item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-            item[kSecAttrLabel as String] = "TinyBar"
-            item[kSecAttrDescription as String] = "TinyBar pairing"
-            let added = SecItemAdd(item as CFDictionary, nil)
-            guard added == errSecSuccess else {
-                throw KeychainError(operation: "add", status: added)
-            }
+            break
         default:
-            throw KeychainError(operation: "update", status: status)
+            // Not allowed to change the old item (another build made it, or
+            // Deny was chosen): replace it with one this build owns.
+            _ = SecItemDelete(query as CFDictionary)
+        }
+        var item = query
+        item[kSecValueData as String] = data
+        item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        item[kSecAttrLabel as String] = "TinyBar"
+        item[kSecAttrDescription as String] = "TinyBar pairing"
+        let added = SecItemAdd(item as CFDictionary, nil)
+        guard added == errSecSuccess else {
+            throw KeychainError(operation: status == errSecItemNotFound ? "add" : "update", status: added)
         }
     }
 

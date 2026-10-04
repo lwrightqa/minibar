@@ -28,7 +28,7 @@ import TinyBarCore
 /// - Local Network denied: the browser (or a resolving connection) waits with
 ///   `NWError.dns(kDNSServiceErr_PolicyDenied)` (-65570); reported once as
 ///   `.localNetworkDenied`. If the person later allows it, the browser carries
-///   on by itself. *Unverified:* the exact error on macOS 15 and 26 (Apple
+///   on by itself, and reports the list (possibly empty) once it's `.ready`. *Unverified:* the exact error on macOS 15 and 26 (Apple
 ///   TN3179), and that UDP resolution behaves as described.
 /// - Other failures: reported as `.failed`, and the browser starts again
 ///   after 10 seconds.
@@ -135,7 +135,12 @@ final class BonjourBarBrowser: BarDiscovery, @unchecked Sendable {
         guard running else { return }
         switch state {
         case .ready:
-            reportedDenied = false
+            if reportedDenied {
+                // Local Network access was allowed after all: say so, even
+                // if no bar has been found yet, so "blocked" clears.
+                reportedDenied = false
+                onChange?(lastReported ?? [])
+            }
         case .waiting(let error):
             report(error)
         case .failed(let error):

@@ -1097,7 +1097,7 @@ The networks the bar can see, strongest first.
 | `time_zone` | IANA name | no | The page sends the phone's (`Intl.DateTimeFormat().resolvedOptions().timeZone`). |
 
 ```json
-{"ssid": "Office-Corp", "username": "lwright", "password": "correct horse battery staple", "calendar_url": null, "time_zone": "America/Los_Angeles"}
+{"ssid": "Office-Corp", "username": "alex", "password": "correct horse battery staple", "calendar_url": null, "time_zone": "America/Los_Angeles"}
 ```
 
 Answers `202` at once and starts connecting; the bar shows its Connecting screen.
@@ -1201,7 +1201,7 @@ The mock-up's "How the Mac app talks to TinyBar" and `decisions.md` need these b
 - **Which link:** USB when a TinyBar answers `hello` on it, else Wi-Fi if paired, one at a time (6.8). Send the full state right after every switch.
 - **Heartbeat:** send on every change and every `heartbeat_s` (30) seconds, idle or not; keep `seq` going up within a `session`; send `"leaving": true` on quit and on `NSWorkspace.willSleepNotification` and `willPowerOffNotification`, and a fresh state on `didWakeNotification`. Only one request in flight at a time.
 - **Pairing:** when the bar is on USB and the app has no token, pair over USB at once (6.6). Over Wi-Fi only, pair with the code (4.2), showing "Look at your TinyBar and type the code it shows".
-- **Keychain:** one generic-password item per bar: service `TinyBar`, account = `device_id`, accessible after first unlock on this device only (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`).
+- **Keychain:** one generic-password item per bar: service `TinyBar`, account = `device_id`, accessible after first unlock on this device only (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`). *(Note 2026-10-04, Mac app only, no change to the wire format: an ad-hoc-signed app can't use the data-protection keychain, and the file-based login keychain it uses ignores this attribute (Apple TN3137), so "this device only" isn't enforced there. The item stays in the user's login keychain.)*
 - **On `401`,** first check `GET /api/v1/info`: if its `device_id` isn't the paired bar's, the address now belongs to another bar (an office network can hand the same address to a different device), so find the right bar again and keep the token. Only when the paired bar itself refuses the token, delete it and ask to pair again. Check `device_id` in every `call` reply for the same reason.
 - **Discovery:** browse `_tinybar._tcp` (for example with `NWBrowser`) and match `id` to the paired `device_id` (section 3). macOS 15 asks the user for **Local Network** access: add `NSLocalNetworkUsageDescription` and list `_tinybar._tcp` under `NSBonjourServices` in Info.plist. Without that permission, Wi-Fi fails silently, so the app explains it.
 - **USB:** find and open the port as in 6.1 to 6.3. Never touch DTR or RTS, and offer Pause USB for flashing.
