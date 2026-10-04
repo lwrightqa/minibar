@@ -24,6 +24,7 @@
   --s-away: #4f5863;
   --s-message: #9b3a8e;
   --s-clock: #0b0c0e;
+  --s-setup: #1d3557;
   --s-fg: #ffffff;
 
   --state: var(--s-busy);
@@ -486,6 +487,135 @@ h1 .dot { color: var(--state); transition: color .3s; }
   text-transform: uppercase;
 }
 .splash .tomato { width: 10cqw; height: 10cqw; }
+/* Wi-Fi setup screens */
+.wsetup {
+  grid-column: 1 / -1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 3.2cqw;
+  padding: 2.6cqw 3.2cqw;
+}
+.wsetup .qr { height: 21cqw; aspect-ratio: 1; flex: none; background: #fff; border-radius: 1.2cqw; padding: .9cqw; }
+.wsetup .qr svg { display: block; width: 100%; height: 100%; }
+.wsetup .wtext { min-width: 0; display: flex; flex-direction: column; gap: .5cqw; }
+.wsetup ol { margin: .4cqw 0 0; padding-left: 3cqw; font-family: var(--f-body); font-size: 2.6cqw; line-height: 1.35; }
+.wsetup .wfoot { font-family: var(--f-body); font-size: 2cqw; opacity: .75; }
+.dots-anim::after { content: "…"; display: inline-block; width: 1.2em; text-align: left; animation: dots 1.2s steps(4, end) infinite; overflow: hidden; vertical-align: bottom; }
+@keyframes dots { from { width: 0; } to { width: 1.2em; } }
+.setup { display: grid; gap: 12px; }
+.setup p { margin: 0; font-size: 14px; color: var(--muted); }
+.nets { display: grid; gap: 6px; border: 0; margin: 0; padding: 0; }
+.net {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.net input { margin: 0; accent-color: var(--ink); }
+.net small { color: var(--muted); font-size: 12px; }
+.net:has(input:checked) { border-color: var(--ink); }
+.field { display: grid; gap: 4px; }
+.field input, .field select {
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  min-width: 0;
+}
+.field input:focus-visible, .field select:focus-visible { outline: 2px solid var(--state); outline-offset: 1px; }
+.setup-msg { padding: 10px 12px; border-radius: 12px; font-size: 13px; border: 1px solid var(--line); }
+.setup-msg.err { border-color: var(--s-busy); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Style panel */
+.style-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 18px;
+  display: grid;
+  gap: 16px;
+}
+.style-panel h2, .flows h2 {
+  font-family: var(--f-screen);
+  font-weight: 800;
+  font-size: 28px;
+  letter-spacing: .02em;
+  margin: 0;
+  text-transform: uppercase;
+}
+.style-head { display: grid; gap: 4px; }
+.style-head p { margin: 0; color: var(--muted); font-size: 14px; max-width: 70ch; }
+.style-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; align-items: start; }
+.swatches { display: flex; flex-wrap: wrap; gap: 10px 14px; grid-column: 1 / -1; }
+.sw { display: grid; justify-items: center; gap: 4px; font-size: 12px; color: var(--muted); cursor: pointer; }
+.sw input { width: 46px; height: 32px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: transparent; cursor: pointer; }
+.style-out { margin: 0; padding: 12px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); font-family: var(--f-mono); font-size: 12px; overflow-x: auto; white-space: pre; }
+.screen { font-synthesis: none; }
+.ripen { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; border-top: 1px solid var(--line); padding-top: 16px; }
+.ripen-big { width: 96px; height: 96px; flex: none; }
+.ripen-big .tomato { width: 100%; height: 100%; }
+.ripen-ctrl { display: grid; gap: 10px; flex: 1 1 280px; min-width: 0; }
+.ripen-ctrl input[type="range"] { width: 100%; accent-color: var(--s-busy); }
+.ripen-ctrl .note-small { margin: 0; }
+.ripen-stages { display: flex; flex-wrap: wrap; gap: 8px; }
+.stage {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.stage .tomato { width: 28px; height: 28px; }
+.stage[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); }
+.stage:focus-visible { outline: 2px solid var(--state); outline-offset: 2px; }
+
+/* Flow diagrams and the controls table */
+.flows { display: grid; gap: 28px; }
+.flows > p { margin: -12px 0 0; color: var(--muted); max-width: 70ch; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+table.controls { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 13px; }
+table.controls th, table.controls td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.controls thead th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+table.controls tbody th { font-weight: 700; white-space: nowrap; }
+table.controls tr:last-child th, table.controls tr:last-child td { border-bottom: 0; }
+table.controls td.none { color: var(--muted); }
+.fig { margin: 0; display: grid; gap: 10px; }
+.fig-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); padding: 14px; }
+.fig svg { display: block; width: 100%; min-width: 760px; height: auto; }
+.fig figcaption { font-size: 14px; color: var(--muted); max-width: 78ch; }
+.fig figcaption b { color: var(--ink); }
+.dg-box { fill: var(--bg); stroke: var(--ink); stroke-width: 1.2; }
+.dg-box.alarm { stroke-dasharray: 5 4; }
+.dg-box.focus { stroke: var(--s-focus); stroke-width: 2.2; }
+.dg-box.brk { stroke: var(--s-short); stroke-width: 2.2; }
+.dg-box.info { stroke: var(--muted); stroke-dasharray: 2 3; }
+.dg-box.done { fill: var(--ink); }
+.dg-group { fill: none; stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 4 4; }
+.dg-k { fill: var(--muted); font: 600 10px var(--f-body); letter-spacing: .08em; }
+.dg-t { fill: var(--ink); font: 600 13px var(--f-body); }
+.dg-t.inv { fill: var(--bg); }
+.dg-g { fill: var(--muted); font: 600 11px var(--f-body); letter-spacing: .06em; }
+.dg-e { stroke: var(--muted); stroke-width: 1.4; fill: none; }
+.dg-e.dash { stroke-dasharray: 5 4; }
+.dg-l { fill: var(--muted); font: 11px var(--f-body); }
+.dg-arrow { fill: var(--muted); }
+
 .offnote { padding: 10px 12px; border-radius: 12px; border: 1px dashed var(--line); font-size: 13px; color: var(--muted); }
 
 /* Pomodoro on the remote */
@@ -548,13 +678,61 @@ h1 .dot { color: var(--state); transition: color .3s; }
     </div>
   </section>
 
+  <section class="style-panel" aria-labelledby="styleTitle">
+    <div class="style-head">
+      <div class="eyebrow">Mock-up only · not on the device</div>
+      <h2 id="styleTitle">Style</h2>
+      <p>Try fonts and colors on the screen. Your choices stay in this browser. Copy them when you've found a look you like, and send them to me for the firmware.</p>
+    </div>
+    <div class="style-grid">
+      <label class="field"><span class="field-label">Headline font</span><select id="fHead"></select></label>
+      <label class="field"><span class="field-label">Text font</span><select id="fText"></select></label>
+      <div class="swatches" id="swatches"></div>
+      <div class="ripen">
+        <div class="ripen-big" id="ripenBig" aria-hidden="true"></div>
+        <div class="ripen-ctrl">
+          <label class="field" for="ripenRange"><span class="field-label">Tomato ripening · <span id="ripenPct">40%</span> through a session</span>
+            <input type="range" id="ripenRange" min="0" max="100" value="40"></label>
+          <div class="ripen-stages" id="ripenStages" role="group" aria-label="USDA ripeness stages"></div>
+          <p class="note-small">Stage names are the USDA's ripeness classes for fresh tomatoes. Tap one to jump to it.</p>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <button class="btn" id="styleCopy" type="button">Copy settings</button>
+      <button class="btn ghost" id="styleReset" type="button">Reset to defaults</button>
+      <span class="note-small" id="styleMsg" aria-live="polite"></span>
+    </div>
+    <pre class="style-out" id="styleOut" hidden></pre>
+  </section>
+
   <section class="lower">
     <div class="phone" aria-label="Phone remote mock-up">
       <div class="phone-head">
-        <strong>Remote</strong>
-        <span>tinybar.local</span>
+        <strong id="phoneTitle">Remote</strong>
+        <span id="phoneAddr">tinybar.local</span>
       </div>
-      <div class="offnote" id="offNote" hidden>TinyBar is powered off, so this page can't reach it. Press PWR on the side of the bar to turn it on.</div>
+      <div class="offnote" id="offNote" hidden></div>
+
+      <div class="setup" id="setupView" hidden>
+        <p>You're on TinyBar's own network. Choose the Wi-Fi it should use.</p>
+        <div class="setup-msg" id="setupMsg" hidden></div>
+        <fieldset class="nets" id="nets">
+          <legend class="field-label">Network</legend>
+          <label class="net"><input type="radio" name="net" value="Office-WiFi" checked><span>Office-WiFi</span><small>password</small></label>
+          <label class="net"><input type="radio" name="net" value="Office-Corp"><span>Office-Corp</span><small>work login</small></label>
+          <label class="net"><input type="radio" name="net" value="Office-Guest"><span>Office-Guest</span><small>sign-in page</small></label>
+          <label class="net"><input type="radio" name="net" value="Printer-Direct"><span>Printer-Direct</span><small>weak signal</small></label>
+        </fieldset>
+        <div class="setup-msg" id="guestWarn" hidden>This network needs a sign-in web page, which TinyBar can't fill in. Ask IT whether there's a network for devices.</div>
+        <label class="field" id="userField" hidden><span class="field-label">Work username</span><input id="wUser" type="text" autocomplete="off"></label>
+        <label class="field" id="passField"><span class="field-label">Password</span><input id="wPass" type="password" autocomplete="off"></label>
+        <label class="field"><span class="field-label">Calendar link (optional)</span><input id="wCal" type="url" placeholder="Paste a calendar feed link"></label>
+        <button class="btn" id="wConnect" type="button">Connect</button>
+        <p class="note-small">In the mock-up, any password of 8 or more characters works and shorter ones fail, so you can see the error screen.</p>
+      </div>
+
+      <div id="remoteMain" class="setup">
       <div>
         <span class="field-label">Status</span>
         <div class="status-grid" id="statusGrid"></div>
@@ -615,12 +793,14 @@ h1 .dot { color: var(--state); transition: color .3s; }
           <button class="btn" type="submit">Show</button>
         </div>
       </form>
+      </div>
       <div>
         <span class="field-label">Try the hardware</span>
         <div class="row">
           <button class="btn ghost" id="flipBtn" type="button">Flip the bar</button>
           <button class="btn ghost" id="menuBtn" type="button">Open quick menu</button>
           <button class="btn ghost" id="pwrHoldBtn" type="button">Hold PWR 3 s</button>
+          <button class="btn ghost" id="wifiSetupBtn" type="button">First-time Wi-Fi setup</button>
         </div>
       </div>
     </div>
@@ -629,10 +809,11 @@ h1 .dot { color: var(--state); transition: color .3s; }
       <div>
         <h2>How you'd control it</h2>
         <dl class="kv">
-          <dt>Touch</dt><dd>Tap cycles status, a swipe steps back or forward, and holding opens a quick menu with brightness, Wi-Fi, calendar and battery. On the Pomodoro screen, a tap starts or pauses the timer and holding opens timer options. A dark screen wakes on the first tap, and every action shows a short confirmation.</dd>
-          <dt>Pomodoro</dt><dd>25-minute focus sessions, 5-minute breaks and a 15-minute break after every fourth session, all adjustable. Focus shows in orange so people know not to interrupt; breaks turn the bar teal or blue to say it's a good moment. Each finished session earns a red tomato, upcoming sessions show as faded tomatoes, and the one in progress fills with red from the bottom up as you focus. The timer keeps running when you switch to another status, with a small countdown in the corner, and the bar jumps back to it when a phase ends.</dd>
+          <dt>Touch</dt><dd>Tap cycles status, a swipe steps back or forward, and holding opens a quick menu with light, calendar, Wi-Fi and power. On the Pomodoro screen, a tap starts or pauses the timer and holding opens timer options. A dark screen wakes on the first tap, and every action shows a short confirmation.</dd>
+          <dt>Pomodoro</dt><dd>25-minute focus sessions, 5-minute breaks and a 15-minute break after every fourth session, all adjustable. Focus shows in orange so people know not to interrupt; breaks turn the bar teal or blue to say it's a good moment. Each finished session earns a red tomato, upcoming sessions show as faded tomatoes, and the one in progress ripens like a real tomato as you focus: color breaks at the bottom and spreads up to the stem, through yellow and orange to red. The timer keeps running when you switch to another status, with a small countdown in the corner, and the bar jumps back to it when a phase ends.</dd>
           <dt>Side buttons</dt><dd>BOOT jumps to the next status without looking. A press of PWR turns the screen off and on, holding it for 3 seconds powers the bar off, and a press turns it back on. If the screen is dark or an alarm is ringing, the first press of either button only wakes the screen or silences the alarm.</dd>
           <dt>Power</dt><dd>On battery, the software is what keeps the bar switched on, so it also handles switching off: hold PWR for 3 seconds, or use Power in the quick menu, which also has Restart. A watchdog restarts the bar if the software ever freezes, so it can't get stuck on, and it shuts itself down before the battery runs flat. On USB the bar always has power, so powering off puts it into a deep sleep until you press PWR. While it's off, the Remote page can't reach it and says so.</dd>
+          <dt>Wi-Fi setup</dt><dd>On first start the bar shows a QR code. Scanning it joins your phone to the bar's own network, where a page lets you choose the office Wi-Fi, enter the password and paste a calendar link. You can also skip Wi-Fi; statuses and the Pomodoro work without it.</dd>
           <dt>Phone remote</dt><dd>The device serves a small page at tinybar.local on your Wi-Fi, like the Remote panel on this page.</dd>
           <dt>Automations</dt><dd>An HTTP endpoint (and optionally MQTT for Home Assistant) so a calendar, Slack, Zoom or a shortcut can set the status.</dd>
           <dt>Calendar</dt><dd>Optionally reads a private calendar link and switches to "In a meeting" on its own.</dd>
@@ -655,8 +836,36 @@ h1 .dot { color: var(--state); transition: color .3s; }
       </div>
     </div>
   </section>
+
+  <section class="flows" aria-labelledby="flowsTitle">
+    <h2 id="flowsTitle">How the controls work</h2>
+    <p>Every control does something in every state, and every screen has a way back. The table covers gestures and buttons; the diagrams show the Pomodoro cycle, the menus, power and Wi-Fi setup.</p>
+    <div class="table-wrap">
+      <table class="controls">
+        <thead><tr><th scope="col">Control</th><th scope="col">Status screen</th><th scope="col">Pomodoro screen</th><th scope="col">Alarm ringing</th><th scope="col">Screen dark</th><th scope="col">Powered off</th></tr></thead>
+        <tbody><tr><th scope="row">Tap</th><td>Next status</td><td>Start or pause</td><td>Silences it (on the Pomodoro screen, also starts the next phase)</td><td>Wakes the screen</td><td class="none">Nothing</td></tr><tr><th scope="row">Swipe</th><td>Previous or next status</td><td>Changes status</td><td>Silences it and changes status</td><td>Wakes the screen</td><td class="none">Nothing</td></tr><tr><th scope="row">Hold</th><td>Quick menu</td><td>Timer menu</td><td>Silences it and opens the menu</td><td>Wakes the screen</td><td class="none">Nothing</td></tr><tr><th scope="row">Flip</th><td>Turns the layout; starts what the Pomodoro is waiting for</td><td>Same; a running timer is left alone</td><td>Silences it and starts the next phase</td><td>Wakes the screen, then same</td><td class="none">Nothing</td></tr><tr><th scope="row">BOOT</th><td>Next status</td><td>Next status</td><td>Silences it</td><td>Wakes the screen</td><td class="none">Nothing</td></tr><tr><th scope="row">PWR press</th><td>Screen off</td><td>Screen off</td><td>Silences it</td><td>Screen on</td><td>Starts up</td></tr><tr><th scope="row">PWR hold 3 s</th><td>Power off</td><td>Power off</td><td>Power off</td><td>Power off</td><td class="none">—</td></tr></tbody>
+      </table>
+    </div>
+    <figure class="fig">
+      <div class="fig-scroll"><svg viewBox="0 0 990 290" role="img" aria-label="Pomodoro cycle: Ready, focus, alarm, break, alarm, and back to focus; a tap pauses focus."><defs><marker id="ah-pomo" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z"/></marker></defs><rect class="dg-box " x="20" y="60" width="110" height="48" rx="8"/><text class="dg-k" x="75.0" y="78" text-anchor="middle">POMODORO</text><text class="dg-t" x="75.0" y="95" text-anchor="middle">Ready</text><rect class="dg-box focus" x="210" y="60" width="130" height="48" rx="8"/><text class="dg-k" x="275.0" y="78" text-anchor="middle">FOCUS</text><text class="dg-t" x="275.0" y="95" text-anchor="middle">25 min</text><rect class="dg-box alarm" x="420" y="60" width="140" height="48" rx="8"/><text class="dg-k" x="490.0" y="78" text-anchor="middle">ALARM</text><text class="dg-t" x="490.0" y="95" text-anchor="middle">Break time</text><rect class="dg-box brk" x="640" y="60" width="150" height="48" rx="8"/><text class="dg-k" x="715.0" y="78" text-anchor="middle">BREAK</text><text class="dg-t" x="715.0" y="95" text-anchor="middle">5 or 15 min</text><rect class="dg-box alarm" x="870" y="60" width="110" height="48" rx="8"/><text class="dg-k" x="925.0" y="78" text-anchor="middle">ALARM</text><text class="dg-t" x="925.0" y="95" text-anchor="middle">Back to it</text><rect class="dg-box " x="210" y="220" width="130" height="48" rx="8"/><text class="dg-k" x="275.0" y="238" text-anchor="middle">TIMER</text><text class="dg-t" x="275.0" y="255" text-anchor="middle">Paused</text><path class="dg-e" d="M130 84 L208 84" marker-end="url(#ah-pomo)"/><text class="dg-l" x="170" y="76" text-anchor="middle">tap or flip</text><path class="dg-e" d="M340 84 L418 84" marker-end="url(#ah-pomo)"/><text class="dg-l" x="380" y="76" text-anchor="middle">timer ends</text><path class="dg-e" d="M560 84 L638 84" marker-end="url(#ah-pomo)"/><text class="dg-l" x="600" y="74" text-anchor="middle">tap, flip</text><text class="dg-l" x="600" y="87" text-anchor="middle">or button</text><path class="dg-e" d="M790 84 L868 84" marker-end="url(#ah-pomo)"/><text class="dg-l" x="830" y="76" text-anchor="middle">timer ends</text><path class="dg-e" d="M925 108 L925 172 L300 172 L300 110" marker-end="url(#ah-pomo)"/><text class="dg-l" x="612" y="166" text-anchor="middle">tap, flip or button starts the next focus</text><path class="dg-e" d="M235 108 L235 218" marker-end="url(#ah-pomo)"/><text class="dg-l" x="227" y="168" text-anchor="end">tap</text><path class="dg-e" d="M262 220 L262 110" marker-end="url(#ah-pomo)"/><text class="dg-l" x="270" y="204" text-anchor="start">tap or flip</text><path class="dg-e dash" d="M275 60 L275 30 L715 30 L715 58" marker-end="url(#ah-pomo)"/><text class="dg-l" x="495" y="24" text-anchor="middle">with auto-start on, the alarm screens are skipped</text></svg></div>
+      <figcaption><b>Pomodoro cycle.</b> Sessions and breaks end on their own, and the alarm screens wait for a tap, a flip or either button unless auto-start is on. Every fourth break is a long one. Skip and Stop are in the timer menu, and Stop returns to the status you had before.</figcaption>
+    </figure>
+    <figure class="fig">
+      <div class="fig-scroll"><svg viewBox="0 0 990 380" role="img" aria-label="Menu tree: holding a status screen opens Light, Calendar, Wi-Fi, Power and Done; Wi-Fi and Power open sub-menus; holding the Pomodoro screen opens Skip, plus 5 minutes, Stop, Auto-start and Done."><defs><marker id="ah-menu" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z"/></marker></defs><rect class="dg-box " x="20" y="40" width="180" height="40" rx="8"/><text class="dg-t" x="110.0" y="64.5" text-anchor="middle">Hold on a status screen</text><rect class="dg-group" x="222" y="32" width="626" height="56" rx="12"/><text class="dg-g" x="230" y="25">QUICK MENU</text><rect class="dg-box " x="230" y="40" width="110" height="40" rx="8"/><text class="dg-t" x="285.0" y="64.5" text-anchor="middle">Light</text><rect class="dg-box " x="355" y="40" width="110" height="40" rx="8"/><text class="dg-t" x="410.0" y="64.5" text-anchor="middle">Calendar</text><rect class="dg-box " x="480" y="40" width="110" height="40" rx="8"/><text class="dg-t" x="535.0" y="64.5" text-anchor="middle">Wi-Fi</text><rect class="dg-box " x="605" y="40" width="110" height="40" rx="8"/><text class="dg-t" x="660.0" y="64.5" text-anchor="middle">Power</text><rect class="dg-box done" x="730" y="40" width="110" height="40" rx="8"/><text class="dg-t inv" x="785.0" y="64.5" text-anchor="middle">Done</text><path class="dg-e" d="M200 60 L220 60" marker-end="url(#ah-menu)"/><rect class="dg-group" x="252" y="132" width="376" height="56" rx="12"/><text class="dg-g" x="260" y="125">WI-FI</text><rect class="dg-box info" x="260" y="140" width="110" height="40" rx="8"/><text class="dg-t" x="315.0" y="164.5" text-anchor="middle">Network</text><rect class="dg-box " x="385" y="140" width="110" height="40" rx="8"/><text class="dg-t" x="440.0" y="164.5" text-anchor="middle">Set up again</text><rect class="dg-box done" x="510" y="140" width="110" height="40" rx="8"/><text class="dg-t inv" x="565.0" y="164.5" text-anchor="middle">Back</text><path class="dg-e" d="M535 80 L535 130" marker-end="url(#ah-menu)"/><text class="dg-l" x="543" y="110" text-anchor="start">tap</text><rect class="dg-group" x="592" y="222" width="376" height="56" rx="12"/><text class="dg-g" x="600" y="215">POWER</text><rect class="dg-box " x="600" y="230" width="110" height="40" rx="8"/><text class="dg-t" x="655.0" y="254.5" text-anchor="middle">Restart</text><rect class="dg-box " x="725" y="230" width="110" height="40" rx="8"/><text class="dg-t" x="780.0" y="254.5" text-anchor="middle">Power off</text><rect class="dg-box done" x="850" y="230" width="110" height="40" rx="8"/><text class="dg-t inv" x="905.0" y="254.5" text-anchor="middle">Back</text><path class="dg-e" d="M660 80 L660 220" marker-end="url(#ah-menu)"/><text class="dg-l" x="668" y="110" text-anchor="start">tap</text><rect class="dg-box " x="20" y="320" width="180" height="40" rx="8"/><text class="dg-t" x="110.0" y="344.5" text-anchor="middle">Hold on the Pomodoro screen</text><rect class="dg-group" x="222" y="312" width="626" height="56" rx="12"/><text class="dg-g" x="230" y="305">TIMER MENU</text><rect class="dg-box " x="230" y="320" width="110" height="40" rx="8"/><text class="dg-t" x="285.0" y="344.5" text-anchor="middle">Skip</text><rect class="dg-box " x="355" y="320" width="110" height="40" rx="8"/><text class="dg-t" x="410.0" y="344.5" text-anchor="middle">+5 min</text><rect class="dg-box " x="480" y="320" width="110" height="40" rx="8"/><text class="dg-t" x="535.0" y="344.5" text-anchor="middle">Stop</text><rect class="dg-box " x="605" y="320" width="110" height="40" rx="8"/><text class="dg-t" x="660.0" y="344.5" text-anchor="middle">Auto-start</text><rect class="dg-box done" x="730" y="320" width="110" height="40" rx="8"/><text class="dg-t inv" x="785.0" y="344.5" text-anchor="middle">Done</text><path class="dg-e" d="M200 340 L220 340" marker-end="url(#ah-menu)"/></svg></div>
+      <figcaption><b>Menus.</b> Holding the screen opens a row of tiles. Bordered tiles act when tapped, the dotted Network tile is read-only, and the filled tile closes the menu, which also closes itself after 8 seconds. Set up again shows the Wi-Fi QR code. On the Pomodoro screen, +5 min only appears while a session or break is running.</figcaption>
+    </figure>
+    <figure class="fig">
+      <div class="fig-scroll"><svg viewBox="0 0 990 200" role="img" aria-label="Power states: a PWR press turns the screen off; holding PWR for 3 seconds powers off; a PWR press starts the bar again."><defs><marker id="ah-power" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z"/></marker></defs><rect class="dg-box " x="30" y="40" width="140" height="44" rx="8"/><text class="dg-t" x="100.0" y="66.5" text-anchor="middle">Screen off</text><rect class="dg-box " x="300" y="40" width="140" height="44" rx="8"/><text class="dg-t" x="370.0" y="66.5" text-anchor="middle">On</text><rect class="dg-box " x="570" y="40" width="140" height="44" rx="8"/><text class="dg-t" x="640.0" y="66.5" text-anchor="middle">Powering off</text><rect class="dg-box " x="830" y="40" width="130" height="44" rx="8"/><text class="dg-t" x="895.0" y="66.5" text-anchor="middle">Off</text><rect class="dg-box " x="570" y="140" width="140" height="44" rx="8"/><text class="dg-t" x="640.0" y="166.5" text-anchor="middle">Starting up</text><path class="dg-e" d="M300 54 L172 54" marker-end="url(#ah-power)"/><text class="dg-l" x="235" y="46" text-anchor="middle">PWR press</text><path class="dg-e" d="M170 72 L298 72" marker-end="url(#ah-power)"/><text class="dg-l" x="235" y="96" text-anchor="middle">tap or any button</text><path class="dg-e" d="M440 62 L568 62" marker-end="url(#ah-power)"/><text class="dg-l" x="505" y="54" text-anchor="middle">hold PWR 3 s</text><path class="dg-e" d="M710 62 L828 62" marker-end="url(#ah-power)"/><text class="dg-l" x="770" y="54" text-anchor="middle">about 1 s</text><path class="dg-e" d="M895 84 L895 162 L712 162" marker-end="url(#ah-power)"/><text class="dg-l" x="903" y="125" text-anchor="start">PWR press</text><path class="dg-e" d="M570 162 L370 162 L370 86" marker-end="url(#ah-power)"/><text class="dg-l" x="470" y="156" text-anchor="middle">about 1.5 s</text></svg></div>
+      <figcaption><b>Power.</b> A press of PWR only turns the screen off. Holding it for 3 seconds, or Power off in the menu, cuts the power, and a press starts the bar again. Restart goes straight to Starting up. On USB, Off is a deep sleep, because the board can't cut its own USB power.</figcaption>
+    </figure>
+    <figure class="fig">
+      <div class="fig-scroll"><svg viewBox="0 0 990 210" role="img" aria-label="Wi-Fi setup: the QR screen leads to connecting, then connected and your status; a failed connection goes to an error screen and a tap returns to the QR code; Skip goes offline."><defs><marker id="ah-wifi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z"/></marker></defs><rect class="dg-box " x="30" y="30" width="140" height="48" rx="8"/><text class="dg-k" x="100.0" y="48" text-anchor="middle">QR CODE</text><text class="dg-t" x="100.0" y="65" text-anchor="middle">Set up Wi-Fi</text><rect class="dg-box " x="300" y="30" width="140" height="48" rx="8"/><text class="dg-k" x="370.0" y="48" text-anchor="middle">WI-FI</text><text class="dg-t" x="370.0" y="65" text-anchor="middle">Connecting</text><rect class="dg-box " x="570" y="30" width="140" height="48" rx="8"/><text class="dg-k" x="640.0" y="48" text-anchor="middle">CONNECTED</text><text class="dg-t" x="640.0" y="65" text-anchor="middle">tinybar.local</text><rect class="dg-box " x="830" y="30" width="130" height="48" rx="8"/><text class="dg-t" x="895.0" y="58.5" text-anchor="middle">Your status</text><rect class="dg-box " x="30" y="150" width="140" height="48" rx="8"/><text class="dg-k" x="100.0" y="168" text-anchor="middle">NO WI-FI</text><text class="dg-t" x="100.0" y="185" text-anchor="middle">Offline</text><rect class="dg-box " x="300" y="150" width="140" height="48" rx="8"/><text class="dg-k" x="370.0" y="168" text-anchor="middle">ERROR</text><text class="dg-t" x="370.0" y="185" text-anchor="middle">Couldn't connect</text><path class="dg-e" d="M170 54 L298 54" marker-end="url(#ah-wifi)"/><text class="dg-l" x="235" y="46" text-anchor="middle">Connect on phone</text><path class="dg-e" d="M440 54 L568 54" marker-end="url(#ah-wifi)"/><text class="dg-l" x="505" y="46" text-anchor="middle">joins</text><path class="dg-e" d="M710 54 L828 54" marker-end="url(#ah-wifi)"/><text class="dg-l" x="770" y="46" text-anchor="middle">after 3 s or tap</text><path class="dg-e" d="M370 78 L370 148" marker-end="url(#ah-wifi)"/><text class="dg-l" x="378" y="118" text-anchor="start">wrong password or no signal</text><path class="dg-e" d="M300 174 L235 174 L235 68 L172 68" marker-end="url(#ah-wifi)"/><text class="dg-l" x="243" y="128" text-anchor="start">tap</text><path class="dg-e" d="M65 78 L65 148" marker-end="url(#ah-wifi)"/><text class="dg-l" x="57" y="118" text-anchor="end">Skip</text><path class="dg-e" d="M135 150 L135 80" marker-end="url(#ah-wifi)"/><text class="dg-l" x="143" y="118" text-anchor="start">Wi-Fi menu</text></svg></div>
+      <figcaption><b>Wi-Fi setup.</b> On first start, or after Set up again, the bar shows a QR code that joins your phone to its own TinyBar-Setup network, where a page lets you pick the office network and enter the password, plus a work username if the network needs one. If it can't connect, the bar says why and a tap returns to the QR code. Skip, in the hold menu, uses the bar without Wi-Fi: statuses and the Pomodoro still work, but the calendar and Remote don't.</figcaption>
+    </figure>
+  </section>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script>
 (() => {
   const css = getComputedStyle(document.documentElement);
@@ -674,13 +883,100 @@ h1 .dot { color: var(--state); transition: color .3s; }
   const POMO = STATES.findIndex(x => x.id === 'pomodoro');
   const PHASE_NAME = { focus: 'Focus', short: 'Short break', long: 'Long break' };
 
-  // Tomato sprite made with PixelLab (32 x 32). Upcoming sessions are faded; the current one fills with red from the bottom up.
+  // Tomato sprites made with PixelLab (32 x 32). Finished sessions are red, upcoming ones faded red,
+  // and the current one ripens from green to red as the session runs.
   const IMG_RIPE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAD0ElEQVR4nO2W32tbZRjHP+97mtQt2dI0ZpktNm61lkyEDqRzsJtplQ4sRdD9YHcydyESvNqFghfF+QeE3e2iXQVdLawMnah03q3FgmxVatOVOmqlGrM0S20qTXbO68U5OUmanDQjF164Bw4nOed5v9/v+z3P+7wvPI7/OESD41WjWLIR8pX4YS6OhRqAaEwAAKMTBxuFcAzlcNnvL46Ftj+rZ1xZNNVS0HXyCN8P5QAYnV1FN+CjMwkb7NpiO5AokALYn0Q3zP+fTjzD4hc/OHLsVDg28Osf7LcfLv56gIWr03SfPsrC1WkAuk8fpevgPTvnq0/+rIunnsqtsK/r5BEADKWQogjhMNOaHDs6cKklDMCh0CYvLyRZiR9m+PYqAFeume/efnPZHvDhqQQxfxhpyX7vwXJNnloC1I22Nvb6tnBJeGkuVUG+ND4DQOdbvXx8/i7Hnj7A6OyqKcLXAVIgVW0RTkWobrS1EfBv8exAJ5pbg7lpRmdXS4rKIgGi4zOcGYehz1fRrIX9vDfPfNYNQMwfJppeVtVEVFOlvmt/Cq93i8ipblz+FrZeeINA33k7IebrQArBi+0bAMz87jGFZH6zc25FAmTX3dzNujEslmi60omqDmhA12sdND3hwvP+13iA1CRot66grPWVnJy3cgX9vnXWMhoxTEekEAjjb3btzUHWjVTYIrZHVQFNzTqGLC/+1lfeYQ1w3x4DINgXITk5j24tklafTr9vHQ1BIiVQUiCBiCfHvCWiWlRtxYYhWfpmBT2vkxk6xtrNy6zdvFyRF+yLoFmOFu7JjERJgbEd81EcANBlcURh1gB/TPxIsC9SzLMcsO8GZeS6raC6BVUFGHmB1qz45bN5QgFF51S67P0Scfu3hrDJn5t6UJY31d1qcTtuBc67oZLmd0xmzBRVAqKjyq6KsVZuPl+c32Dr7voFzG240C3vCpuKEIIL56IEAt6K/M1NSTKtEQh4uXAuirDas2FI4hsukM79ztGBOwkPug66Du+eGGBfcA8j14c523ucZFrjfsokTaY1Nv8xx5ztPc7I9WH2BfcQPTFQBHP4/uDcilWhy/WEsuzvP4QhBalv55yBLBJdCkKvmvmTI8sYAgZbdhG+F6/KV3MvuNQSxlCKnlDWftgkTKKB+7my5C+fdPNQmXB6zsXPabMND7budiSHHQ4khgCE4E7CbLU9oaxNMhFoLst9aLn8019eu+qdCq806jqQxPzmtitV8QxQehYoW2ZWwZXYXpOn3qO0KcSqi1pVDfamUxf+o57lncu5MdzH8T+OfwE+bnUhgOBNnQAAAABJRU5ErkJggg==';
+  const IMG_UNRIPE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAADj0lEQVR4nO2WX2hTVxzHP/fetHVaUadrlCoWa0Nc6GBTbFaG9g8V/7GJMOpqocwiexI62j3JnsbedOuz26KxtGUwpU6HUhmKD1st/qNojLWdcaNoqLV/tEkbkhwfbnuaNPfeXsnDHvQLIeee8zvf7/f+zu+ce+At/mcoWc4X2XKp2Yg/GPqSlovbsqDIzgAkNS60xbKisIIw+cnxo93b5vfZmZcGh5UDV+1Wzv/gAeCnvkEAju26Jsn+vBFNFQWYtyQav5+apP/XXlONhQpHEu85/oHsHLy5mGBHD+46L8GOHgDcdV6KN0dkzB/NfbZ07FRuRvpctVszglRNlWZeR2PBDDT5ywCo2rKOTz2/EXh8gFPBpwB0+fQ3/rxxkZzw/Y5rfO3/GEESBZUfG/621LEyIE70VrB6ySocag67N3USeHwAXyCMqgq6fBG5tu46L41f5bCnqBBfIMyxXVdo8pehoCJI0tpw3VTLrAhF17395Kp5lLxXOdPViS8QTiuq5nYvibigtaGHbzogfLFSEqwudBAeSgLQ5C+jteG6MDJh5EqcufsZAB+u0f+X5Llx5pfLgOZ2LwAe92Icqsatvgk0h8Lxg3M1cKK3AoDA/ahlJgwzoCkaHudOAIrePQjAk4luxqeCMua/0Vt6rKqxthwGRgelMd10zkwrKuvBCJbnAGLOrHPpdhzaMiJTA7qxleWERv6S4xtXFLNxZnM8ifwr+wuLchkKmZ+WpkfxvfAlAELP2xmevMlI5E5GzLoVH2X0pYrbgXUGAITC5HRQZiM43J1SmNnD0EBo5BkbVhbQFz4PwD7P2bTxyw/yAH39U1FV8kva8+nbNbItSBoaMF2Csdg4k/EXcwQi/UCcL56K+bEKKo3VpfYNhB5N83IqxnQ8wfOpMZ1EUWg5fARnQb4h0cDoIM6CfFoOH0FR9OWKJxOWBQgWNfCwP0aJKxeAptq9dF65Stu5k9TXVPFoPGQ454vKCtrOncRZkE99TRXxxIQciyWMjZgdxfIb4HIt4pMXxQD0LP/H8m1m4R3bAIB/OEAiLmisLqV07c+GepbfglQTAA5tLvzbvTfSgr+7sEW2x6N66hVUDlV7TMXBxjZUUHnYH0OQ5P1N72QIxhMizVjgflTOO1TtWYje3oVkNhNG5maP2dRtpqBSX1HC5vWnF9Sxe5VOM5IqbISZO4At/te9y5teLrPkfYs3GK8AdjZDCxfyW+YAAAAASUVORK5CYII=';
+  // Ripening the way a real tomato does: color breaks at the blossom end (the bottom), spreads up
+  // toward the stem, and passes through yellow and orange on its way to red. The shoulders by the stem
+  // turn last, and the front is a little blotchy so it reads as pixel art. Each pixel steps through four
+  // shades (green, yellow, orange, red) taken from its own green and red versions, so the sprite's shading
+  // survives. The frames are built once from the two sprites; the firmware would ship the same frames as images.
+  const RIPEN_FRAMES = 24;
+  let ripenFrames = null;
+  const rgbToHsl = (r, g, b) => {
+    r /= 255; g /= 255; b /= 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
+    if (mx === mn) return [0, 0, l];
+    const d = mx - mn, sat = l > .5 ? d / (2 - mx - mn) : d / (mx + mn);
+    const h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return [h * 60, sat, l];
+  };
+  const hslToRgb = (h, sat, l) => {
+    h = ((h % 360) + 360) % 360 / 360;
+    if (sat === 0) return [l * 255, l * 255, l * 255];
+    const q = l < .5 ? l * (1 + sat) : l + sat - l * sat, pp = 2 * l - q;
+    const f = t => { t = (t + 1) % 1; return t < 1 / 6 ? pp + (q - pp) * 6 * t : t < .5 ? q : t < 2 / 3 ? pp + (q - pp) * (2 / 3 - t) * 6 : pp; };
+    return [f(h + 1 / 3) * 255, f(h) * 255, f(h - 1 / 3) * 255];
+  };
+  // One pixel partway between its green and red versions, taking the hue path through yellow and orange.
+  function ripenPixel(G, R, i, r) {
+    const [h1, s1, l1] = rgbToHsl(G[i], G[i + 1], G[i + 2]);
+    let [h2, s2, l2] = rgbToHsl(R[i], R[i + 1], R[i + 2]);
+    if (s1 < .08 || s2 < .08) return [0, 1, 2].map(k => G[i + k] + (R[i + k] - G[i + k]) * r);
+    if (h2 > 180) h2 -= 360;
+    return hslToRgb(h1 + (h2 - h1) * r, s1 + (s2 - s1) * r, l1 + (l2 - l1) * r);
+  }
+  (async function buildRipenFrames() {
+    try {
+      const load = src => { const im = new Image(); im.src = src; return im.decode().then(() => im); };
+      const [gi, ri] = await Promise.all([load(IMG_UNRIPE), load(IMG_RIPE)]);
+      const W = gi.naturalWidth, H = gi.naturalHeight;
+      const cv = document.createElement('canvas');
+      cv.width = W; cv.height = H;
+      const cx = cv.getContext('2d', { willReadFrequently: true });
+      const read = im => { cx.clearRect(0, 0, W, H); cx.drawImage(im, 0, 0); return cx.getImageData(0, 0, W, H).data; };
+      const G = read(gi), R = read(ri);
+      // The skin is wherever the two sprites differ; outline, face and leaves are shared and stay put.
+      const skin = [];
+      let minX = W, maxX = 0, maxY = 0;
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const i = (y * W + x) * 4;
+        if (Math.abs(G[i] - R[i]) + Math.abs(G[i + 1] - R[i + 1]) + Math.abs(G[i + 2] - R[i + 2]) > 40) {
+          skin.push([x, y, i]);
+          minX = Math.min(minX, x); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+        }
+      }
+      const bx = (minX + maxX) / 2, by = maxY;
+      const far = Math.max(...skin.map(([x, y]) => Math.hypot(x - bx, (y - by) * 1.15)));
+      const noise = (x, y) => { const v = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return v - Math.floor(v); };
+      // When each pixel starts to turn: distance from the blossom end, with a few soft lobes so the color
+      // spreads in a loose star the way it does on a real tomato, and a touch of noise so the edge isn't ruled.
+      const start = skin.map(([x, y]) => {
+        const d = Math.hypot(x - bx, (y - by) * 1.15) / far;
+        const lobes = Math.sin(Math.atan2(y - by, x - bx) * 5 + 1.3) * .07 * d;
+        return Math.min(.85, Math.max(0, .78 * d + lobes + .05 * (noise(x, y) - .5)));
+      });
+      const SPAN = .22, STEPS = 3;
+      ripenFrames = [];
+      for (let f = 0; f < RIPEN_FRAMES; f++) {
+        const p = f / (RIPEN_FRAMES - 1);
+        const out = cx.createImageData(W, H);
+        out.data.set(G);
+        skin.forEach(([, , i], k) => {
+          let r = (p * (.85 + SPAN) - start[k]) / SPAN;
+          r = Math.round(Math.max(0, Math.min(1, r)) * STEPS) / STEPS;
+          if (r === 0) return;
+          const c = r === 1 ? [R[i], R[i + 1], R[i + 2]] : ripenPixel(G, R, i, r);
+          out.data[i] = c[0]; out.data[i + 1] = c[1]; out.data[i + 2] = c[2]; out.data[i + 3] = R[i + 3];
+        });
+        cx.putImageData(out, 0, 0);
+        ripenFrames.push(cv.toDataURL('image/png'));
+      }
+      lastKey = '';
+      render();
+      renderRipenPreview();
+    } catch (e) {
+      ripenFrames = null;
+    }
+  })();
+
   function tomato(kind, p = 1) {
     if (kind === 'ghost') return `<span class="tomato ghost"><img src="${IMG_RIPE}" alt=""></span>`;
     if (kind === 'ripe') return `<span class="tomato"><img src="${IMG_RIPE}" alt=""></span>`;
     const t = Math.max(0, Math.min(1, p));
-    return `<span class="tomato"><img class="faint" src="${IMG_RIPE}" alt=""><img src="${IMG_RIPE}" alt="" style="clip-path:inset(${((1 - t) * 100).toFixed(1)}% 0 0 0)"></span>`;
+    if (ripenFrames) return `<span class="tomato"><img src="${ripenFrames[Math.round(t * (RIPEN_FRAMES - 1))]}" alt=""></span>`;
+    return `<span class="tomato"><img src="${IMG_UNRIPE}" alt=""><img src="${IMG_RIPE}" alt="" style="opacity:${t.toFixed(2)}"></span>`;
   }
 
   function tomatoRow() {
@@ -752,7 +1048,10 @@ h1 .dot { color: var(--state); transition: color .3s; }
     bright: 0.7,
     powered: true,
     booting: false,
+    wifi: { mode: 'ok', ssid: 'Office-WiFi', ip: '10.0.4.42', error: '' },
   };
+  const WIFI_SCREENS = ['setup', 'connecting', 'connected', 'failed'];
+  const onWifiScreen = () => WIFI_SCREENS.includes(s.wifi.mode);
 
   const $ = id => document.getElementById(id);
   const screen = $('screen'), lcd = $('lcd'), bar = $('bar'), barFill = $('barFill'), menu = $('menu'), device = $('device'), log = $('log');
@@ -867,9 +1166,12 @@ h1 .dot { color: var(--state); transition: color .3s; }
   }
 
   const battery = `<svg viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="2" y="6" width="21" height="12" rx="2.5"/><rect x="5" y="9" width="12" height="6" rx="1" fill="currentColor" stroke="none"/><path d="M25.5 10v4" stroke-linecap="round"/></svg>`;
-  const icons = `
+  const wifiIcon = () => s.wifi.mode === 'offline'
+    ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><g opacity=".4"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5.5 12.5a10 10 0 0 1 13 0"/><path d="M9 16a5 5 0 0 1 6 0"/></g><path d="M4 3l16 18"/></svg>`
+    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5.5 12.5a10 10 0 0 1 13 0"/><path d="M9 16a5 5 0 0 1 6 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/></svg>`;
+  const iconsHtml = () => `
     <span class="icons">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5.5 12.5a10 10 0 0 1 13 0"/><path d="M9 16a5 5 0 0 1 6 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/></svg>
+      ${wifiIcon()}
       <svg viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="2" y="6" width="21" height="12" rx="2.5"/><rect x="5" y="9" width="12" height="6" rx="1" fill="currentColor" stroke="none"/><path d="M25.5 10v4" stroke-linecap="round"/></svg>
     </span>`;
 
@@ -878,9 +1180,9 @@ h1 .dot { color: var(--state); transition: color .3s; }
     let pill = '';
     if (STATES[s.idx].id !== 'pomodoro' && pomoActive()) {
       const label = pomo.waiting ? 'Done' : !pomo.running ? 'Paused' : mmss(remSec());
-      pill = `<span class="pill" style="--pc:${col(pomo.phase)}">${tomato('ripe')}${label}</span>`;
+      pill = `<span class="pill" style="--pc:${col(pomo.phase)}">${pomo.phase === 'focus' ? tomato('ripening', 1 - pomo.remaining / phaseLen('focus')) : tomato('ripe')}${label}</span>`;
     }
-    if (!pill) return `<div class="sys"><span>${fmt(now())}</span>${icons}</div>`;
+    if (!pill) return `<div class="sys"><span>${fmt(now())}</span>${iconsHtml()}</div>`;
     return `<div class="sys"><span>${fmtShort(now())}</span>${pill}<span class="icons">${battery}</span></div>`;
   }
 
@@ -981,6 +1283,79 @@ h1 .dot { color: var(--state); transition: color .3s; }
     }
   }
 
+  // ---------- Wi-Fi setup ----------
+  let qrCache = null;
+  function qrSvg() {
+    if (qrCache) return qrCache;
+    try {
+      const q = qrcode(0, 'M');
+      q.addData('WIFI:T:nopass;S:TinyBar-Setup;;');
+      q.make();
+      const n = q.getModuleCount();
+      let d = '';
+      for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) d += `M${c} ${r}h1v1h-1z`;
+      qrCache = `<svg viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges" role="img" aria-label="QR code to join TinyBar-Setup"><path d="${d}" fill="#000"/></svg>`;
+    } catch (e) {
+      qrCache = `<svg viewBox="0 0 10 10" role="img" aria-label="QR code placeholder"><rect width="10" height="10" fill="#000" opacity=".15"/></svg>`;
+    }
+    return qrCache;
+  }
+  function wifiView() {
+    const w = s.wifi;
+    if (w.mode === 'setup') return `
+      <div class="wsetup">
+        <div class="qr">${qrSvg()}</div>
+        <div class="wtext">
+          <div class="kicker">Wi-Fi setup</div>
+          <div class="word title" style="font-size:7.5cqw">Scan to set up</div>
+          <ol><li>Join <b>TinyBar-Setup</b> with your phone</li><li>Pick your office Wi-Fi on the page that opens</li></ol>
+          <div class="wfoot">Hold to skip and use without Wi-Fi</div>
+        </div>
+      </div>`;
+    if (w.mode === 'connecting') return `
+      <div class="wsetup"><div class="wtext">
+        <div class="kicker">Wi-Fi setup</div>
+        <div class="word title dots-anim" style="font-size:10cqw">Connecting</div>
+        <div class="sub">to ${esc(w.ssid)}</div>
+      </div></div>`;
+    if (w.mode === 'connected') return `
+      <div class="wsetup"><div class="wtext">
+        <div class="kicker">Connected to ${esc(w.ssid)}</div>
+        <div class="word title" style="font-size:10cqw">tinybar.local</div>
+        <div class="sub">or ${w.ip} · open it on your phone for the Remote</div>
+      </div></div>`;
+    return `
+      <div class="wsetup"><div class="wtext">
+        <div class="kicker">Couldn't connect to ${esc(w.ssid)}</div>
+        <div class="word title" style="font-size:10cqw">${esc(w.error)}</div>
+        <div class="sub">Tap to try again · Hold to skip</div>
+      </div></div>`;
+  }
+  let connectTimer = null, connectedTimer = null;
+  function startSetup(how) {
+    clearTimeout(connectTimer); clearTimeout(connectedTimer);
+    s.wifi.mode = 'setup';
+    s.wifi.error = '';
+    hideMenu();
+    setupMsg('');
+    render();
+    say(`${how}: Wi-Fi setup`);
+  }
+  function setupMsg(text, isErr) {
+    const el = $('setupMsg');
+    el.textContent = text;
+    el.hidden = !text;
+    el.classList.toggle('err', !!isErr);
+  }
+  function skipWifi(how) {
+    clearTimeout(connectTimer); clearTimeout(connectedTimer);
+    s.wifi.mode = 'offline';
+    hideMenu();
+    render();
+    toast('Offline · statuses still work');
+    say(`${how}: skipped Wi-Fi`);
+  }
+
   const screenColor = id => id === 'pomodoro' ? col(pomo.phase) : col(id);
 
   function render() {
@@ -988,6 +1363,14 @@ h1 .dot { color: var(--state); transition: color .3s; }
     if (s.booting) {
       lcd.style.setProperty('--sc', col('clock'));
       lcd.innerHTML = `<div class="splash">${tomato('ripe')}TinyBar</div>`;
+      bar.hidden = true;
+      updateHint();
+      updateRemote();
+      return;
+    }
+    if (onWifiScreen()) {
+      lcd.style.setProperty('--sc', col('setup'));
+      lcd.innerHTML = wifiView();
       bar.hidden = true;
       updateHint();
       updateRemote();
@@ -1009,6 +1392,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
   function updateHint() {
     $('hint').textContent = !s.powered ? 'Powered off · Press PWR on the side to turn it on'
       : s.booting ? 'Starting up'
+      : onWifiScreen() ? 'Wi-Fi setup · Tap: continue · Hold: skip setup · Use the phone panel to connect'
       : STATES[s.idx].id === 'pomodoro'
         ? 'Tap: start or pause · Flip: start next phase · Swipe: change status · Hold: timer options'
         : 'Tap: next status · Swipe: back or forward · Hold: quick menu · PWR: hold 3 s to power off';
@@ -1027,7 +1411,16 @@ h1 .dot { color: var(--state); transition: color .3s; }
     const pb = document.querySelector('.sbtn[data-id="pomodoro"]');
     if (pb) pb.style.setProperty('--c', pc);
     $('pwrHoldBtn').textContent = s.powered ? 'Hold PWR 3 s' : 'Press PWR';
-    $('offNote').hidden = s.powered;
+    const setupMode = s.powered && ['setup', 'connecting', 'failed'].includes(s.wifi.mode);
+    $('setupView').hidden = !setupMode;
+    $('remoteMain').hidden = setupMode;
+    $('phoneTitle').textContent = setupMode ? 'Wi-Fi setup' : 'Remote';
+    $('phoneAddr').textContent = setupMode ? 'TinyBar-Setup · 192.168.4.1' : 'tinybar.local';
+    const note = !s.powered ? "TinyBar is powered off, so this page can't reach it. Press PWR on the side of the bar to turn it on."
+      : s.wifi.mode === 'offline' ? "TinyBar isn't on Wi-Fi, so this page can't reach it. Hold its screen, then choose Wi-Fi to set it up."
+      : '';
+    $('offNote').textContent = note;
+    $('offNote').hidden = !note;
   }
 
   // Redraw only when something visible changes, so the marquee keeps scrolling.
@@ -1047,7 +1440,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
       if (pomo.phase === 'focus') pomo.focusedMs += Math.min(d, d + pomo.remaining);
       if (pomo.remaining <= 0) { endPhase(); lastKey = ''; return; }
     }
-    const key = [s.idx, fmt(now()), pomo.phase, remSec(), pomo.running, pomo.waiting].join('|');
+    const key = [s.idx, fmt(now()), pomo.phase, remSec(), pomo.running, pomo.waiting, s.wifi.mode].join('|');
     if (key === lastKey) return;
     lastKey = key;
     if (STATES[s.idx].id === 'message') {
@@ -1059,7 +1452,18 @@ h1 .dot { color: var(--state); transition: color .3s; }
     render();
   }
 
+  // On the setup screens a tap moves things along, and never leaves you stuck.
+  function wifiTap(how) {
+    silence();
+    const m = s.wifi.mode;
+    if (m === 'failed') { s.wifi.mode = 'setup'; render(); say(`${how}: back to the QR code`); }
+    else if (m === 'connected') { clearTimeout(connectedTimer); s.wifi.mode = 'ok'; render(); say(`${how}: done`); }
+    else if (m === 'connecting') toast('Still connecting');
+    else toast('Scan the code with your phone');
+  }
+
   function go(i, how) {
+    if (onWifiScreen()) { toast('Finish setup, or hold to skip'); return; }
     silence();
     s.idx = (i + STATES.length) % STATES.length;
     if (!['pomodoro', 'clock'].includes(STATES[s.idx].id)) s.lastStatus = s.idx;
@@ -1134,6 +1538,17 @@ h1 .dot { color: var(--state); transition: color .3s; }
   let menuTimer = null;
   function showMenu() {
     const done = `<div class="tile done" data-action="close"><b>Close</b><span>Done</span><small>or wait 8 s</small></div>`;
+    if (onWifiScreen()) {
+      menu.innerHTML = `
+        <div class="tile" data-action="wifiskip"><b>Skip</b><span>Skip</span><small>use without Wi-Fi</small></div>
+        <div class="tile" data-action="wifisetup"><b>Start over</b><span>QR code</span><small>show it again</small></div>
+        ${done}`;
+      menu.hidden = false;
+      $('toast').hidden = true;
+      armMenuTimer();
+      say('hold: setup options');
+      return;
+    }
     if (STATES[s.idx].id === 'pomodoro') {
       const next = pomo.phase === 'focus' ? (pomo.round % pomo.set.every === 0 ? 'long break' : 'short break') : 'focus';
       const midPhase = !pomo.waiting && !isReady();
@@ -1147,14 +1562,24 @@ h1 .dot { color: var(--state); transition: color .3s; }
       menu.innerHTML = `
         <div class="tile" data-action="bright"><b>Light</b><span>${Math.round(s.bright * 100)}%</span><small>tap to change</small></div>
         <div class="tile" data-action="sync"><b>Calendar</b><span>Sync</span><small>last synced 2 min ago</small></div>
-        <div class="tile info"><b>Battery</b><span>82%</span><small>Wi-Fi: Home</small></div>
-        <div class="tile" data-action="power"><b>Power</b><span>Off</span><small>or restart</small></div>
+        <div class="tile" data-action="wifi"><b>Wi-Fi</b><span>${s.wifi.mode === 'offline' ? 'Off' : 'On'}</span><small>${s.wifi.mode === 'offline' ? 'tap to set up' : esc(s.wifi.ssid)}</small></div>
+        <div class="tile" data-action="power"><b>Power</b><span>82%</span><small>off or restart</small></div>
         ${done}`;
     }
     menu.hidden = false;
     $('toast').hidden = true;
     armMenuTimer();
     say(STATES[s.idx].id === 'pomodoro' ? 'hold: timer options' : 'hold: quick menu');
+  }
+  function showWifiMenu() {
+    const off = s.wifi.mode === 'offline';
+    menu.innerHTML = `
+      <div class="tile info"><b>Network</b><span>${off ? 'None' : 'On'}</span><small>${off ? 'not connected' : `${esc(s.wifi.ssid)} · ${s.wifi.ip}`}</small></div>
+      <div class="tile" data-action="wifisetup"><b>${off ? 'Set up' : 'Change'}</b><span>Set up</span><small>show the QR code</small></div>
+      <div class="tile done" data-action="close"><b>Close</b><span>Back</span><small>or wait 8 s</small></div>`;
+    menu.hidden = false;
+    armMenuTimer();
+    say('menu: Wi-Fi');
   }
   function showPowerMenu() {
     menu.innerHTML = `
@@ -1181,11 +1606,17 @@ h1 .dot { color: var(--state); transition: color .3s; }
       return;
     }
     if (a === 'power') { showPowerMenu(); return; }
+    if (a === 'wifi') { showWifiMenu(); return; }
+    if (a === 'wifisetup') { startSetup('menu'); return; }
+    if (a === 'wifiskip') { skipWifi('menu'); return; }
     hideMenu();
     if (a === 'close') say('menu: closed');
     else if (a === 'restart') restart('menu');
     else if (a === 'poweroff') powerOff('menu');
-    else if (a === 'sync') { toast('Calendar synced'); say('menu: calendar synced'); }
+    else if (a === 'sync') {
+      if (s.wifi.mode === 'offline') { toast("No Wi-Fi, can't sync"); say('menu: calendar needs Wi-Fi'); }
+      else { toast('Calendar synced'); say('menu: calendar synced'); }
+    }
     else if (a === 'skip') skip('menu');
     else if (a === 'stop') stop('menu');
     else if (a === 'add') { pomo.remaining += 5 * 60000; render(); toast('+5 min'); say('menu: added 5 minutes'); }
@@ -1199,7 +1630,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
     p = { x: e.clientX, y: e.clientY };
     held = false;
     clearTimeout(holdTimer);
-    holdTimer = setTimeout(() => { held = true; showMenu(); }, 550);
+    holdTimer = setTimeout(() => { held = true; silence(); showMenu(); }, 550);
   });
   screen.addEventListener('pointermove', e => {
     if (!p) return;
@@ -1220,6 +1651,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
       else { hideMenu(); say('tap: menu closed'); }
       return;
     }
+    if (onWifiScreen()) { wifiTap('tap'); return; }
     if (dx < -40) go(s.idx + 1, 'swipe');
     else if (dx > 40) go(s.idx - 1, 'swipe');
     else if (STATES[s.idx].id === 'pomodoro') startPause('tap');
@@ -1233,7 +1665,8 @@ h1 .dot { color: var(--state); transition: color .3s; }
     else if (e.key === 'ArrowLeft') { e.preventDefault(); go(s.idx - 1, 'swipe'); }
     else if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      if (STATES[s.idx].id === 'pomodoro') startPause('tap'); else go(s.idx + 1, 'tap');
+      if (onWifiScreen()) wifiTap('tap');
+      else if (STATES[s.idx].id === 'pomodoro') startPause('tap'); else go(s.idx + 1, 'tap');
     }
     else if (e.key === 'm') { menu.hidden ? showMenu() : hideMenu(); }
   });
@@ -1255,6 +1688,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
   $('btnBoot').addEventListener('click', () => {
     if (!s.powered || s.booting) { say('BOOT: TinyBar is off, press PWR to turn it on'); return; }
     if (wake('BOOT')) return;
+    if (onWifiScreen()) { wifiTap('BOOT'); return; }
     if (silence()) { say('BOOT: alarm off'); toast('Alarm off'); render(); return; }
     go(s.idx + 1, 'BOOT');
   });
@@ -1307,6 +1741,8 @@ h1 .dot { color: var(--state); transition: color .3s; }
     setTimeout(() => {
       s.booting = false;
       if (STATES[s.idx].id === 'pomodoro') s.idx = s.lastStatus;
+      if (['connecting', 'failed'].includes(s.wifi.mode)) s.wifi.mode = 'setup';
+      if (s.wifi.mode === 'connected') s.wifi.mode = 'ok';
       lastKey = '';
       render();
       toast('Ready');
@@ -1359,6 +1795,12 @@ h1 .dot { color: var(--state); transition: color .3s; }
   // While the bar is off its web page is unreachable, so the remote's controls do nothing but explain why.
   const phone = document.querySelector('.phone');
   phone.addEventListener('click', e => {
+    if (s.powered && s.wifi.mode === 'offline' && e.target.closest('#remoteMain button, #remoteMain input')) {
+      e.preventDefault();
+      e.stopPropagation();
+      say("remote: TinyBar isn't on Wi-Fi");
+      return;
+    }
     if (s.powered || !e.target.closest('button, input') || e.target.closest('#pwrHoldBtn')) return;
     e.preventDefault();
     e.stopPropagation();
@@ -1384,7 +1826,147 @@ h1 .dot { color: var(--state); transition: color .3s; }
   });
   $('menuBtn').addEventListener('click', () => { wake(); menu.hidden ? showMenu() : hideMenu(); });
 
-  render();
+  // ---------- Phone setup page ----------
+  const netValue = () => (document.querySelector('input[name="net"]:checked') || {}).value;
+  function syncSetupForm() {
+    const n = netValue();
+    $('userField').hidden = n !== 'Office-Corp';
+    $('guestWarn').hidden = n !== 'Office-Guest';
+    $('passField').hidden = n === 'Office-Guest';
+    $('wConnect').disabled = n === 'Office-Guest' || s.wifi.mode === 'connecting';
+  }
+  $('nets').addEventListener('change', syncSetupForm);
+  $('wConnect').addEventListener('click', () => {
+    const n = netValue();
+    if (n === 'Office-Corp' && !$('wUser').value.trim()) { setupMsg('Enter your work username.', true); return; }
+    if (!$('wPass').value) { setupMsg('Enter the Wi-Fi password.', true); return; }
+    const pass = $('wPass').value;
+    s.wifi.mode = 'connecting';
+    s.wifi.ssid = n;
+    setupMsg(`TinyBar is connecting to ${n}. If it works, this network closes and your phone goes back to its usual Wi-Fi.`);
+    syncSetupForm();
+    render();
+    say(`setup page: connecting to ${n}`);
+    connectTimer = setTimeout(() => {
+      if (s.wifi.mode !== 'connecting') return;
+      if (n === 'Printer-Direct') s.wifi.error = 'No signal';
+      else if (pass.length < 8) s.wifi.error = 'Wrong password';
+      else s.wifi.error = '';
+      if (s.wifi.error) {
+        s.wifi.mode = 'failed';
+        setupMsg(s.wifi.error === 'No signal'
+          ? `Couldn't reach ${n}. It may be too far away. Pick another network.`
+          : `Couldn't connect to ${n}: the password was wrong. Check it and try again.`, true);
+        say(`Wi-Fi: ${s.wifi.error.toLowerCase()}`);
+      } else {
+        s.wifi.mode = 'connected';
+        setupMsg('');
+        $('wPass').value = '';
+        say(`Wi-Fi: connected to ${n}`);
+        connectedTimer = setTimeout(() => { if (s.wifi.mode === 'connected') { s.wifi.mode = 'ok'; render(); } }, 3000);
+      }
+      syncSetupForm();
+      render();
+    }, 2500);
+  });
+  $('wifiSetupBtn').addEventListener('click', () => { wake(); startSetup('demo'); syncSetupForm(); });
+
+  // ---------- Style panel ----------
+  // Choices live in this browser only; Copy settings hands them over for the firmware.
+  const HEAD_FONTS = {
+    'Big Shoulders Display': '500;700;800', 'Barlow Condensed': '500;700;800', 'Saira Condensed': '500;700;800',
+    'Antonio': '500;700', 'Oswald': '500;700', 'Archivo Narrow': '500;700', 'Bebas Neue': '400',
+  };
+  const TEXT_FONTS = {
+    'Schibsted Grotesk': '400;500;600', 'Atkinson Hyperlegible': '400;700', 'IBM Plex Sans': '400;500;600',
+    'Work Sans': '400;500;600', 'Figtree': '400;500;600',
+  };
+  const COLOR_KEYS = [['available', 'Available'], ['busy', 'Busy'], ['meeting', 'Meeting'], ['focus', 'Focus'],
+    ['short', 'Short break'], ['long', 'Long break'], ['away', 'Away'], ['message', 'Message']];
+  const BASE = {};
+  COLOR_KEYS.forEach(([k]) => { BASE[k] = col(k); });
+  const DEFAULT_STYLE = { head: 'Big Shoulders Display', text: 'Schibsted Grotesk', colors: {} };
+  const STORE = 'tinybar-style';
+  let style = DEFAULT_STYLE;
+  try { const saved = JSON.parse(localStorage.getItem(STORE)); if (saved && saved.head) style = { ...DEFAULT_STYLE, ...saved }; } catch (e) {}
+  const loadedFonts = new Set(['Big Shoulders Display', 'Schibsted Grotesk']);
+  function loadFont(name, weights) {
+    if (loadedFonts.has(name)) return;
+    loadedFonts.add(name);
+    const l = document.createElement('link');
+    l.rel = 'stylesheet';
+    l.href = `https://fonts.googleapis.com/css2?family=${name.replace(/ /g, '+')}:wght@${weights}&display=swap`;
+    document.head.appendChild(l);
+  }
+  Object.keys(HEAD_FONTS).forEach(n => $('fHead').add(new Option(n, n)));
+  Object.keys(TEXT_FONTS).forEach(n => $('fText').add(new Option(n, n)));
+  const sw = $('swatches');
+  COLOR_KEYS.forEach(([k, label]) => {
+    const l = document.createElement('label');
+    l.className = 'sw';
+    l.innerHTML = `<input type="color" id="c-${k}" aria-label="${label} color"><span>${label}</span>`;
+    sw.appendChild(l);
+    l.querySelector('input').addEventListener('input', e => { style = { ...style, colors: { ...style.colors, [k]: e.target.value } }; applyStyle(); });
+  });
+  function applyStyle() {
+    loadFont(style.head, HEAD_FONTS[style.head] || '700');
+    loadFont(style.text, TEXT_FONTS[style.text] || '400');
+    screen.style.setProperty('--f-screen', `"${style.head}", "Arial Narrow", sans-serif`);
+    screen.style.setProperty('--f-body', `"${style.text}", "Helvetica Neue", Arial, sans-serif`);
+    $('fHead').value = style.head;
+    $('fText').value = style.text;
+    const root = document.documentElement.style;
+    COLOR_KEYS.forEach(([k]) => {
+      const v = style.colors[k];
+      if (v) root.setProperty('--s-' + k, v); else root.removeProperty('--s-' + k);
+      $('c-' + k).value = v || BASE[k];
+    });
+    document.querySelectorAll('.sbtn').forEach(b => b.style.setProperty('--c', b.dataset.id === 'clock' ? '#3a4049' : screenColor(b.dataset.id)));
+    try { localStorage.setItem(STORE, JSON.stringify(style)); } catch (e) {}
+    lastKey = '';
+    render();
+  }
+  $('fHead').addEventListener('change', e => { style = { ...style, head: e.target.value }; applyStyle(); });
+  $('fText').addEventListener('change', e => { style = { ...style, text: e.target.value }; applyStyle(); });
+  $('styleReset').addEventListener('click', () => { style = DEFAULT_STYLE; applyStyle(); $('styleOut').hidden = true; $('styleMsg').textContent = 'Back to the defaults'; });
+  $('styleCopy').addEventListener('click', () => {
+    const out = { headlineFont: style.head, textFont: style.text, colors: {} };
+    COLOR_KEYS.forEach(([k]) => { out.colors[k] = style.colors[k] || BASE[k]; });
+    const text = JSON.stringify(out, null, 2);
+    const pre = $('styleOut');
+    pre.textContent = text;
+    pre.hidden = false;
+    const fallback = () => {
+      const r = document.createRange();
+      r.selectNodeContents(pre);
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      $('styleMsg').textContent = 'Selected below. Copy it with your keyboard.';
+    };
+    try {
+      navigator.clipboard.writeText(text).then(() => { $('styleMsg').textContent = 'Copied. Paste it into our chat.'; }, fallback);
+    } catch (e) { fallback(); }
+  });
+
+  // Ripening preview: scrub a session from start to finish.
+  const STAGES = [['Green', 0], ['Breakers', .14], ['Turning', .3], ['Pink', .48], ['Light red', .7], ['Red', 1]];
+  function renderRipenPreview() {
+    const v = +$('ripenRange').value / 100;
+    $('ripenPct').textContent = `${Math.round(v * 100)}%`;
+    $('ripenBig').innerHTML = tomato('ripening', v);
+    $('ripenStages').innerHTML = STAGES.map(([n, at]) =>
+      `<button class="stage" type="button" data-at="${at}" aria-pressed="${Math.abs(v - at) < .04}">${tomato('ripening', at)}${n}</button>`).join('');
+  }
+  $('ripenRange').addEventListener('input', renderRipenPreview);
+  $('ripenStages').addEventListener('click', e => {
+    const b = e.target.closest('.stage');
+    if (!b) return;
+    $('ripenRange').value = Math.round(+b.dataset.at * 100);
+    renderRipenPreview();
+  });
+
+  syncSetupForm();
+  applyStyle();
+  renderRipenPreview();
   setInterval(loop, 200);
 })();
 </script>
