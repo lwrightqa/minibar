@@ -108,13 +108,72 @@ These are the product manager's suggested defaults for questions the user hasn't
 
 ## Look
 
-- **Low Glare layout in a pixel font (decided 2026-10-04).** The user reviewed the four design directions on a separate page (`docs/design-directions.html`) and prefers the **Low Glare** layout: a warm near-black background, a 6 px edge bar in the status color, a colored sentence-case headline, a faint side tint, warm off-white and muted text, a status-color frame instead of the white alarm flash, and a paused timer shown steadily in the muted color instead of blinking. It is to be set in a **pixel font**.
-- **Pixel font (decided 2026-10-04): option D, with Handjet for the small text.** The user picked option D of the font study (`docs/pixel-fonts.html`): **Bitcount Prop Single in round dots** for the headlines, the timer and the clock, with **Handjet** replacing option D's Tiny5 for the small text. This is the user's choice over the team's recommendation: the UX designer, lead developer and product manager had all ranked option A (Jersey 15 with Micro 5) first, for its bold solid word across the room, real lowercase and perfectly sharp pixels. The team set the pick up as **option G**, first on the font study page, and fixed what the study had flagged (see the type spec and trade-offs below).
+- **Direction A, Bold Signal (decided 2026-10-04).** On 2026-10-04 the user switched the bar's look to **Direction A, Bold Signal**, the first direction on `docs/design-directions.html` (not to be confused with option A of the font study): **solid, saturated status-color fields**, white **Barlow Condensed 700** uppercase headlines, **Barlow** for all other text, and a darker **tinted info column** on the right. It **replaces** the earlier pick, the Low Glare layout in Bitcount Prop Single round dots with Handjet, which is kept below as history.
+  - Bold Signal is the look that goes to the firmware, the simulator's default, and the design card with the "pick" badge. The **Low Glare Pixel** card (Bitcount and Handjet) stays on the mock-up page and can still be applied, but it's no longer the default.
+  - The switch changes only the look. Every other decision and open proposal stands, including focus ticking going silent on a dark screen, meeting titles hidden by default, the offline behavior and the Mac app's API.
+  - `tools/fonts/` (the Bitcount and Handjet tools `equalize_digits.py` and `snap17.py`, with their README and the fonts' licenses) is **kept for reference**, but the current look doesn't use it.
+  - The spec, proposals and follow-ups for Bold Signal are below. Option G's type spec, trade-offs and proposals are kept after them as history.
+- **Low Glare layout in a pixel font (decided 2026-10-04; superseded the same day by Bold Signal).** The user reviewed the four design directions on a separate page (`docs/design-directions.html`) and prefers the **Low Glare** layout: a warm near-black background, a 6 px edge bar in the status color, a colored sentence-case headline, a faint side tint, warm off-white and muted text, a status-color frame instead of the white alarm flash, and a paused timer shown steadily in the muted color instead of blinking. It is to be set in a **pixel font**.
+- **Pixel font (decided 2026-10-04; superseded the same day by Bold Signal): option D, with Handjet for the small text.** The user picked option D of the font study (`docs/pixel-fonts.html`): **Bitcount Prop Single in round dots** for the headlines, the timer and the clock, with **Handjet** replacing option D's Tiny5 for the small text. This is the user's choice over the team's recommendation: the UX designer, lead developer and product manager had all ranked option A (Jersey 15 with Micro 5) first, for its bold solid word across the room, real lowercase and perfectly sharp pixels. The team set the pick up as **option G**, first on the font study page, and fixed what the study had flagged (see the type spec and trade-offs below).
   - *History:* until 2026-10-04 this was open. The mock-up showed the choice as the **Low Glare Pixel** direction with Jersey 15 headlines and Jersey 10 small text as a stand-in, and the simulator's default look stayed as it was, to switch once the font was chosen.
-  - Now that it's chosen, the Low Glare Pixel direction and the simulator's default switch to option G. **Not done yet:** `docs/mockup.html` still shows the Jersey stand-in (see Follow-ups).
+  - Now that it's chosen, the Low Glare Pixel direction and the simulator's default switch to option G. **Not done yet:** `docs/mockup.html` still shows the Jersey stand-in (see Follow-ups). *(Built later on 2026-10-04, then replaced as the default by Bold Signal.)*
 - In the Style panel, the **dark** screen mode is the Low Glare treatment: choosing it starts from Low Glare's colors (brightened so they read on near-black), tints and sentence-case headlines, and keeps the fonts already chosen.
 
-### Type spec: option G (2026-10-04)
+### Spec: Bold Signal (2026-10-04)
+
+The UX designer's spec for Direction A. Positions are on the 640 × 172 screen.
+
+- **Status colors**, with white text's contrast on each: Available #0F7F3C (5.10:1), Busy #D01B3A (5.38), In a meeting #8B3AE5 (5.48), Focus #B0590D (4.91), Short break #0B7A70 (5.21), Long break #12708F (5.61), Away #545C65 (6.78), Message #C0198C (5.59), On a call #1450B4 (7.40, the `--s-call` token).
+  - **Info column tints**, in the same order: #0B612E, #9E152C, #6A2CAE, #86440A, #085D55, #0E556D, #40464D, #92136B, #0F3D89. Each is the status color about 24% toward black (`lv_color_darken(status, 61)`). White on a tint is 7.4 to 10.3:1.
+  - **Dark surfaces:** the Clock (idle) screen and the menu overlay are #0E1013. Menu tiles are #1C1F24, and the Done tile is #E8EBEE with dark text. Wi-Fi setup stays #1D3557 (white 12.4:1).
+  - **Muted text** #DFE5EA: 5.8 to 8.1:1 on the tints, 15:1 on #0E1013.
+  - Compared with the earlier solid look's palette: Available, Busy, Focus and Short break are darker for contrast and keep their hues, Message is a more vivid magenta, In a meeting moves from indigo to purple, and Long break moves from blue to petrol, which frees cobalt blue for On a call. The closest two statuses are 15.1 apart (CIEDE2000); On a call is 43.9 from Busy and 19.2 from In a meeting, and it's darker than Meeting, so it still stands apart for red-green color-blind viewers. Busy and Focus are hard to tell apart with deuteranopia (2.6), but both mean "don't interrupt" and the words differ.
+- **Contrast rules:**
+  - Text on a status field is **always pure white at full opacity**, the kicker and the sub line included (the mock-up's dimming of the kicker to .82 and the sub line to .9 is off for this direction). Hierarchy comes from size, weight and capitals.
+  - The muted color is used **only** on the tinted info column and on dark surfaces (Clock, menus). On a status field it would drop to about 3.9:1.
+  - So Bold Signal meets the 4.5:1 rule for directions (see Mock-up-only tools): the lowest is white on Focus at 4.91:1.
+- **Layout:** the main field runs from x 0 to 448, with text inset 24 px on the left and 20 px on the right (404 px wide). The info column runs from x 448 to 640 (192 px), in the solid tint, with a 16 px inset. Baselines are fixed, so the lines don't move when the headline changes size.
+- **Kicker:** Barlow 700, 15 px, capitals, 1.5 px letter-spacing, baseline y 30.
+- **Headline:** Barlow Condensed **700** (not 800, which closes the counters of A, B and E at a distance; 800 stays in the Style panel only to try), white, capitals (meeting titles and messages in mixed case). Each headline takes the largest size that fits 404 px:
+  - **112 px** (cap height 78, baseline y 125): the timer, the clock and BUSY.
+  - **100 px** (cap 70, baseline 121): AVAILABLE and ON A CALL.
+  - **78 px** (cap 55, baseline 113): IN A MEETING and BACK AT 1:30.
+  - **62 px** (baseline 107): meeting titles and the message marquee.
+  - The cap centers all sit near y 86.
+  - **Tabular digits:** the timer and clock use Barlow Condensed's tabular figures, so they keep the same width every second ("18:42" is about 254 px at 112 px).
+- **Sub line:** Barlow 500, 19 px, white, baseline y 152.
+- **Info column:**
+  - **Status row:** the time in Barlow 600, 15 px, baseline y 30 (level with the kicker), and 16 px icons on the right, 8 px apart: **Wi-Fi** (crossed out when offline) and a **Mac icon while a Mac is connected**. **No battery icon**, since the bar runs on USB with no battery (see Product).
+  - **Label:** Barlow 700, 12 px, capitals, 1.2 px letter-spacing, muted, baseline y 92.
+  - **Value:** Barlow Condensed 700, 46 px, baseline y 130, with AM or PM at 17 px. Values that are words ("Design review") are 28 px. Durations fit without an hours-only rule: "10h 20m" is about 152 px of the column's 160.
+  - **Foot:** Barlow 500, 14 px, muted, baseline y 152 (level with the sub line).
+- **Tomatoes:** 32 × 32 px at 1:1 (the sprites' own size, so they stay sharp) with 8 px gaps; four fit exactly in 160 px. The end screen's tomato is 64 px (2x).
+- **Progress bar:** 6 px high at y 166 to 172, a white fill on a track of `lv_color_darken(status, 90)`.
+- **Corners:** tiles, the corner pill and toasts have an 8 px radius.
+- **Alarm:** Bold Signal uses the solid look's white flash. The status-color frame was Low Glare's.
+- **LVGL 9:** solid fills only, no opacity on text, no gradients.
+
+### Proposed for Bold Signal (2026-10-04, waiting for the user's OK)
+
+- **Proposed: call copy** (the designer's suggestion). Kicker "From your Mac · Slack" ("· Slack" left out when no app is sent), headline ON A CALL, sub line "Message me instead", and in the info column "On the call", the duration, and "since 2:04 PM", with the foot changing to "Meeting ends 2:30 PM" when a calendar meeting is also on. The designer's example writes the duration "12 min"; **Proposed:** "12m", like every other duration on the bar.
+- **Proposed: a paused timer holds still in white** at full opacity, with the kicker ("Paused · …") and the sub line ("Flip or tap to resume") saying it's paused. The solid look in the mock-up blinks it down to 35% opacity, which breaks the full-opacity rule (white at 35% on a status field is far below 4.5:1). Low Glare also held it still, so this is what the user last saw.
+- **Proposed: the Pomodoro corner pill's tomato** is a 16 px sprite drawn for that size, or a plain dot if that doesn't read well. A 15 px downscale of the 32 px sprite blurs.
+- **Proposed: check the smallest text** (the 12 px label and the 14 px foot) on the real bar before the firmware's screens are final.
+
+### Follow-ups for Bold Signal (open)
+
+- **Mock-up (being switched in the 2026-10-04 round):** Bold Signal becomes the simulator's default (`DEFAULT_STYLE`) and what Reset to defaults brings back, its card carries the "pick" badge and comes first, the copy near "Your pick comes first" and "The simulator opens with your pick" describes it, and every screen follows the spec above (white at full opacity on the fields, weight 700, the fixed baselines, the status row without a battery icon and with the Mac icon). The Low Glare Pixel card stays, without the badge. Then the published Artifact needs updating.
+- **Firmware fonts:** convert with lv_font_conv at 4 bpp:
+  - Barlow Condensed Bold at **112, 100 and 78 px** (A to Z, 0 to 9, colon, space and middle dot), **62 px** (printable ASCII), and **46 and 28 px** for the info column.
+  - Barlow Medium (500) at 19 and 14 px, SemiBold (600) at 15 px, and Bold (700) at 15 and 12 px.
+  - Measure the flash they take once converted.
+- **Tabular digits baked into the fonts:** lv_font_conv ignores OpenType features, so before converting, freeze the tabular figures into the default digits with fonttools' `pyftfeatfreeze -f tnum` (from the opentype-feature-freezer package). Barlow's default digits are proportional: in Barlow Condensed Bold the 1 is 284 units wide against 498 for every tabular digit. The product manager checked Barlow Condensed Bold and Barlow SemiBold on 2026-10-04: the tabular digits and the colon have no kerning with each other, so unlike Bitcount no kerning needs removing. Check again in the converted fonts (every digit the same width, no digit kerning pairs).
+- **Font names:** **Proposed:** like the Bitcount copies, the frozen Barlow files get a TinyBar family name and a modification note in their name tables, keeping the Barlow Project's copyright and the OFL text (in `tools/fonts/licenses/`). Barlow's copyright notice names no Reserved Font Name.
+- **Sizes not in the designer's list yet:** AM or PM on the clock (about 36 px in the mock-up) and in the info column (17 px), menu tiles, toasts, the corner pill, the source chips (MAC, CALENDAR), the Wi-Fi setup screens and the hold screen. Measure them from the mock-up once it's switched, and convert extra sizes or reuse the ones above.
+- **Icons:** 16 px Wi-Fi, Wi-Fi crossed out and Mac icons for the status row.
+- **Font tools README:** `tools/fonts/README.md` still introduces option G as the user's pick. It needs a note that the current look is Bold Signal and these tools are kept for reference, and a place for the Barlow build steps.
+
+### Type spec: option G (2026-10-04; superseded by Bold Signal, kept as history)
 
 The details, with every measurement, are in `docs/pixel-fonts.html` (option G). Colors are Low Glare's: background #111110, text #e2ddd3, muted #9a948a, and the status colors and side tints. Positions are on the 640 × 172 screen with its 6 px edge bar; text starts at x 26 in the main column (408 px wide) and x 470 in the side column (154 px wide).
 
@@ -144,7 +203,7 @@ The details, with every measurement, are in `docs/pixel-fonts.html` (option G). 
   - Checked in the converted 120 px font: every digit is 84 px wide, the colon 36 px, and there are no kerning pairs.
 - **Mock-up:** Bitcount comes from Google Fonts; the 2.9 KB Snap17 file is embedded as a data URI. Google's Bitcount still jitters with tabular figures, so each digit sits in a 0.7 em cell and each colon in a 0.3 em cell to match the device. The CSS is in `docs/pixel-fonts.html`.
 
-### Trade-offs and how they're handled (2026-10-04)
+### Option G's trade-offs and how they were handled (2026-10-04; superseded by Bold Signal, kept as history)
 
 - **Bitcount's digits aren't equal width.** On the device the cause is the narrow default 1 and Bitcount's digit kerning, since lv_font_conv ignores the tabular-figure feature. **Fixed** by `equalize_digits.py`: "18:41", "18:46", "11:11" and "17:07" were 264 to 336 px wide with 4 of 5 columns moving; now all are 372 px and nothing moves.
 - **Round dots are anti-aliased on the device, by design.** 23 to 27% of lit pixels are partly lit at 60 to 120 px, 48% at 50 px and 75% at 40 px. The smaller sizes are used only for Back at 12:30, the QR screen's title and long meeting titles. Kept, since it's the round-dot look the user chose. It costs flash: the round set is about 94 KB at 2 bpp (everything at 4 bpp would be 167 KB).
@@ -155,18 +214,20 @@ The details, with every measurement, are in `docs/pixel-fonts.html` (option G). 
 - **Look-alike characters:** Handjet's I and l are identical, and Bitcount's B and 8 can read as 6, as in option D. Not addressed.
 - **Correction to the font study's figures:** Handjet at 34 px and Bitcount's squares at 50 and 20 px are 0% soft, not 7% and 2%. The earlier scripts counted lv_font_conv's origin markers as soft pixels.
 
-### Proposed (2026-10-04, waiting for the user's OK)
+### Proposed for option G (2026-10-04; superseded by Bold Signal)
 
-- **Proposed: the line under the headline moves to Handjet 17 px,** out of option D's square dots. D's 20 px line overflows real copy: "Please don't interrupt · break at 12:55 PM" is 416 px of 408, the Wi-Fi setup line is 562 px, and meeting details would be cut at about 29 characters. Handjet 17 fits all current copy (235 px for that line, 309 px on the full-width setup screen), with less presence from across the room. If the user wants D's line back, the copy has to be shorter ("Don't interrupt · break at 12:55 PM", about 348 px) and meeting details are cut at about 29 characters.
-- **Proposed: the side value is one size down from option D,** 40 px instead of 50. At 50 px, durations over an hour ("1h 5m", "1h 20m") don't fit the side column.
-- **Proposed: from 10 hours on, durations show hours only** ("10h"), since "10h 20m" is 180 px at 40 px.
-- **Proposed: menu tiles' inner padding drops from 12.8 to 10 px,** so "QR code" (90 px), "Medium" and "Restart" (88 px) fit at 34 px.
-- **Proposed: check the 17 px small text on the real bar** before the firmware's screens are final.
+These applied only to Bitcount and Handjet. **Superseded on 2026-10-04 by the switch to Bold Signal**, so they no longer wait for the user's OK. They're kept as history, with what Bold Signal does instead.
 
-### Follow-ups (open)
+- *Superseded:* **Proposed: the line under the headline moves to Handjet 17 px,** out of option D's square dots. D's 20 px line overflows real copy: "Please don't interrupt · break at 12:55 PM" is 416 px of 408, the Wi-Fi setup line is 562 px, and meeting details would be cut at about 29 characters. Handjet 17 fits all current copy (235 px for that line, 309 px on the full-width setup screen), with less presence from across the room. If the user wants D's line back, the copy has to be shorter ("Don't interrupt · break at 12:55 PM", about 348 px) and meeting details are cut at about 29 characters. *Bold Signal's sub line is Barlow 500 at 19 px.*
+- *Superseded:* **Proposed: the side value is one size down from option D,** 40 px instead of 50. At 50 px, durations over an hour ("1h 5m", "1h 20m") don't fit the side column. *Bold Signal's value is Barlow Condensed 700 at 46 px.*
+- *Superseded:* **Proposed: from 10 hours on, durations show hours only** ("10h"), since "10h 20m" is 180 px at 40 px. *Not needed in Bold Signal: "10h 20m" is about 152 px of 160.*
+- *Superseded:* **Proposed: menu tiles' inner padding drops from 12.8 to 10 px,** so "QR code" (90 px), "Medium" and "Restart" (88 px) fit at 34 px. *That was for Handjet at 34 px; Bold Signal's tiles are measured in its follow-ups.*
+- *Superseded:* **Proposed: check the 17 px small text on the real bar** before the firmware's screens are final. *That was Handjet Snap17; Bold Signal's smallest text gets the same check (see its proposals).*
 
-- **Done (2026-10-04): mock-up.** The Low Glare Pixel direction and the simulator's default use option G (fonts, sizes, digit cells, positions and the embedded Snap17), and Bitcount Prop Single and Handjet Snap17 are in the Style panel's pixel fonts.
-- **Done (2026-10-04): font tools.** `snap17.py` is in `tools/fonts/`, and the README describes option G and the Snap17 build. Option G's new sizes (Bitcount round at 80, 60 and 50 px, square at 40 px, Snap17 at 17 and 34 px) still need converting with lv_font_conv and measuring for flash. **Proposed:** like the Bitcount copies, the snapped Handjet gets a TinyBar family name (the README's build command does this) and a modification note in its name table, keeping Handjet's copyright and license. Handjet declares no Reserved Font Name, so its current name is allowed.
+### Follow-ups for option G (2026-10-04; closed by the switch to Bold Signal)
+
+- **Done (2026-10-04): mock-up.** The Low Glare Pixel direction and the simulator's default use option G (fonts, sizes, digit cells, positions and the embedded Snap17), and Bitcount Prop Single and Handjet Snap17 are in the Style panel's pixel fonts. *Since the switch, option G stays on the Low Glare Pixel card, and the default moves to Bold Signal (see Follow-ups for Bold Signal).*
+- **Done (2026-10-04): font tools.** `snap17.py` is in `tools/fonts/`, and the README describes option G and the Snap17 build. *Superseded:* Option G's new sizes (Bitcount round at 80, 60 and 50 px, square at 40 px, Snap17 at 17 and 34 px) still need converting with lv_font_conv and measuring for flash. *Superseded:* **Proposed:** like the Bitcount copies, the snapped Handjet gets a TinyBar family name (the README's build command does this) and a modification note in its name table, keeping Handjet's copyright and license. Handjet declares no Reserved Font Name, so its current name is allowed. *Neither Bitcount nor Handjet is built for the firmware now; the tools stay in `tools/fonts/` for reference.*
 - **Done (2026-10-04): font study page.** Handjet's solid shape is 0% soft in the glance table. The dot variant's softness on option C's card is real (the lead measured 33%), so it stays.
 
 ## Mock-up-only tools
@@ -175,8 +236,9 @@ The details, with every measurement, are in `docs/pixel-fonts.html` (option G). 
   - Since 2026-10-04 its font lists include **pixel fonts**: Jersey 10, Jersey 15, Jersey 20, Silkscreen, Pixelify Sans, VT323, Press Start 2P, DotGothic16, Tiny5, Micro 5 and Handjet, with only the weights Google Fonts serves and no synthesized bold. Text in a pixel font snaps to whole multiples of that font's own pixel grid, and each headline takes the largest such size that fits, so every font can be judged fairly. With a pixel headline font other than Jersey 10 or 15, the line under the headline uses the text font, since the others are too wide or too big for it.
 - **Design directions** (decided 2026-10-04): four complete looks (fonts, colors and treatment) side by side on the mock-up page. Each has a live preview and an **Apply** button that puts it on the simulator. Applying one also sets the Style panel, so the look can be fine-tuned and copied. The direction the user picks goes to the firmware.
   - **Updated 2026-10-04:** a fifth card, **Low Glare Pixel** (the user's pick, with the font still to be chosen), comes first across the full row. It uses Jersey 15 and Jersey 10, like Pixel Arcade, as a stand-in, and Bold Signal and Low Glare share Barlow Condensed; the "no shared fonts" rule for directions is waived now that the user has picked.
-  - **Updated 2026-10-04 (font chosen):** the Low Glare Pixel card is to use option G, Bitcount round dots with Handjet Snap17, instead of the Jersey stand-in, and becomes the simulator's default. Not built yet (see Look).
-  - **Proposed:** every direction keeps all screen text at a contrast of 4.5:1 or better on every status color. It uses only what LVGL 9 can draw: solid fills, simple gradients, and Google Fonts under the OFL or Apache license. (The current default misses 4.5:1 with white text on Available, about 4.0:1; on Focus, about 3.2:1; and on Short break, about 4.2:1.)
+  - **Updated 2026-10-04 (font chosen):** the Low Glare Pixel card is to use option G, Bitcount round dots with Handjet Snap17, instead of the Jersey stand-in, and becomes the simulator's default. Not built yet (see Look). *(Built later on 2026-10-04.)*
+  - **Updated 2026-10-04 (switch to Bold Signal):** the user switched to **Direction A, Bold Signal**. It becomes the simulator's default, carries the "pick" badge and comes first, and it's the direction that goes to the firmware. The Low Glare Pixel card stays and can still be applied, but it's no longer the default. See Look.
+  - **Proposed:** every direction keeps all screen text at a contrast of 4.5:1 or better on every status color. It uses only what LVGL 9 can draw: solid fills, simple gradients, and Google Fonts under the OFL or Apache license. (The current default misses 4.5:1 with white text on Available, about 4.0:1; on Focus, about 3.2:1; and on Short break, about 4.2:1.) *Note 2026-10-04: those figures are for the original solid look. Bold Signal, the default now, meets the rule: white is 4.91:1 or better on every status field.*
 - **Simulate controls** (decided 2026-10-04): buttons that start and end a call or a meeting, so the automatic statuses can be tried before the Mac app exists. They're clearly labeled mock-up only, and they sit outside the Remote panel.
 
 ## Hardware notes for the firmware (V2)
