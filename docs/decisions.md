@@ -102,9 +102,92 @@ These are the product manager's suggested defaults for questions the user hasn't
   - **Wi-Fi:** `POST http://tinybar.local/api/call` with `{"active": true, "app": "Slack"}`, or `{"active": false}` when the call ends. The reply is `{"ok": true, "showing": "call"}`, or `{"ok": false, "error": "calls_off"}` when that source is turned off. `GET /api/status` returns what the bar is showing and which sources are on. It never returns the calendar address.
   - **USB serial:** the same JSON, one object per line, with `"cmd": "call"` added: `{"cmd": "call", "active": true, "app": "Slack"}`. A `{"cmd": "hello"}` line lets the app find the bar. The bar answers every line with one JSON line.
   - **Heartbeat:** the app repeats its current state every 30 seconds, and the bar ends a call after 90 seconds without a message.
-  - **Pairing:** an `Authorization: Bearer <token>` header is reserved for a later pairing step. It isn't checked yet.
-- **Conflict to resolve:** the user's example for this round sends the app name (`"app": "Slack"`), but the decision above says only "on a call: yes or no" leaves the Mac. **Proposed:** `app` is optional. The bar shows it if it's sent, and the Mac app can leave it out.
+  - **Pairing:** an `Authorization: Bearer <token>` header is reserved for a later pairing step. It isn't checked yet. *(2026-10-04: the Mac app's spec proposes the pairing step; see Mac app.)*
+- **Conflict to resolve:** the user's example for this round sends the app name (`"app": "Slack"`), but the decision above says only "on a call: yes or no" leaves the Mac. **Proposed:** `app` is optional. The bar shows it if it's sent, and the Mac app can leave it out. *(2026-10-04: the Mac app job's brief says "only on/off and the app name ever leave the Mac", which fits this proposal. The Mac app's spec sends a name only for listed call apps, and has a switch to send none; see Mac app.)*
 - **Open, not proposed this round:** the Remote and the API have no PIN, so anyone on the office Wi-Fi can open `tinybar.local` and change the status. Worth deciding before the firmware.
+
+## Mac app
+
+The menu-bar app that sets **On a call** (see Automatic status). The full spec, with acceptance criteria, is `docs/mac-app.md`. The wire format is `docs/api.md`, the contract between the app and the firmware; where they disagree about the wire format, `docs/api.md` wins. *(Note 2026-10-04: `docs/api.md` hasn't been written yet, so the spec follows the mock-up's API section.)*
+
+### Proposed (2026-10-04, product manager, waiting for the user's OK)
+
+- **Proposed: platform.** macOS 14 Sonoma or later, on Apple silicon and Intel. Menu bar only, with no Dock icon. Written in Swift and not sandboxed. Built from source, **ad-hoc signed** by default, or signed with the user's Developer ID and notarized if they have one. Not in the App Store in v1.
+- **Proposed: how it detects a call.**
+  - **Mic:** which apps are using the mic, read per app from CoreAudio's process list (new in macOS 14, which is why 14 is the minimum).
+  - **Camera:** whether any camera is in use, from CoreMediaIO. macOS has no public way to tell which app is using it, so camera use has no app name.
+  - The app only reads this state. It never opens the mic or camera, and never records.
+- **Proposed: timing.** A call starts after **3 s** of continuous use (adjustable from 0 to 30 s) and ends after **10 s** without (3 to 60 s). The start delay filters blips. Dictation and Siri often last longer than 3 s, so they're kept out by the ignore list, not by the delay. Changes you make (ignoring the app, pausing) take effect at once.
+- **Proposed: which apps count.**
+  - **By default, any app except ignored ones,** so call apps nobody listed still count. There's also a mode, "Only the call apps on my list".
+  - **Call apps** (each sends a short name): Slack, Zoom, Teams, FaceTime, Webex, Discord, WhatsApp, Signal, and the browsers Chrome, Safari, Firefox, Edge, Arc and Brave.
+  - **Ignored by default:** Siri (including "Hey Siri" listening), Dictation, Voice Control and **Voice Memos**. A memo isn't a call, and the start delay alone can't filter one longer than 3 s.
+  - The menu has a one-click "Don't count <app>".
+- **Proposed: the app name.**
+  - **Only listed call apps send a name.** Calls from other apps, or from the camera alone, send none, so the name of an arbitrary app never appears on the bar or in the bar's API.
+  - **"Send the app's name to TinyBar"** is a setting, on by default.
+  - **Browsers send the browser's name** ("Chrome"), never the website: the app doesn't read tabs. So "Google Meet" never comes from the Mac.
+- **Proposed: the camera counts by default,** with no name. It can be turned off; Photo Booth or a webcam utility would otherwise count.
+- **Proposed: Pause** for 1 hour, for the rest of today, or until resumed. There's still **no manual On a call** from the Mac, in line with "On a call is automatic only".
+- **Proposed: connection.**
+  - **USB first,** probing only Espressif USB serial devices (vendor ID 0x303A) with the `hello` handshake. Opening the port must not restart the bar; the firmware team confirms the safe DTR and RTS handling.
+  - **Wi-Fi as the fallback,** switching within 5 s when the cable is unplugged.
+  - The 30-second heartbeat is sent even when not on a call, so the bar can show its Mac icon.
+  - `active: false` is sent before sleep and on quit.
+  - **No alerts or notifications** about the connection; the menu says what's wrong.
+- **Proposed: pairing.**
+  - **Automatic the first time the bar answers over USB** (plugging it in is the consent), or with a **6-digit code** from a Pair a Mac button on the Remote's Connect your Mac card.
+  - The bar issues a token, kept in the Mac's Keychain. No computer name, user name or serial number is sent.
+  - Until the bar supports pairing, the app uses `tinybar.local` (or a typed address) with no token.
+  - **Needs the API and firmware to add:** a bar ID in `hello` and `/api/status`, `{"cmd": "pair"}` over USB, `POST /api/pair` with the code, a Bonjour service (`_tinybar._tcp`) carrying the ID, and a `401` once tokens are checked.
+- **Proposed: launch at login,** on by default, offered as a checked box in the first-run window (`SMAppService`).
+- **Proposed: privacy.**
+  - Only `active`, the optional short `app` name, and the protocol (the commands, the pairing code, the bar's token) leave the Mac, and only to the bar.
+  - No internet connections, analytics or crash reports. No history on disk of which apps used the mic.
+  - The spec says plainly that the bar shows the name to the office, that its API returns it to anyone on the Wi-Fi, and that Wi-Fi messages are plain HTTP.
+- **Checked: no microphone permission needed.**
+  - **Why:** the mic prompt comes when an app starts audio input (Apple, developer forums thread 743077). The app never does, and has no microphone usage text or entitlement.
+  - **Shipping apps that do the same:** OverSight and Mute read the same "in use" flag without microphone permission.
+  - **Not yet verified on a real Mac:**
+    - The per-app list that gives names and makes the ignore list work.
+    - The camera. Mute asks for camera access, but it's sandboxed; OverSight isn't and doesn't ask.
+  - **Proposed fallbacks** if a prompt appears:
+    - From the per-app list: device-level detection with no names or ignore list, which goes back to the user as a decision.
+    - From the camera: "Count the camera" off by default.
+- **Noted: the permission it does need.** Local Network, on macOS 15 and later, for Wi-Fi only. MDM can't grant it ahead of time. Apple recommends an Apple-issued signature for it to track the app reliably, so ad-hoc builds may be asked again after a rebuild.
+- **Proposed: managed work Macs.** The README gets a "For IT" note: what it reads, what it never asks for, that it only talks to the bar, and how it's signed. It also covers the blockers:
+  - Gatekeeper's Open Anyway for a downloaded ad-hoc app; building it yourself avoids the download quarantine.
+  - App allow-listing tools, which can only allow an ad-hoc app by a hash that changes every build. A Developer ID fixes that.
+  - Login items managed by MDM.
+  - VPNs or client isolation that block the local network. USB still works.
+- **Proposed: not in v1.**
+  - Audio of any kind, reading tabs or window titles, and controlling your status from the Mac.
+  - Two Macs feeding one bar.
+  - iPhone calls that don't go through the Mac.
+  - Notifications, auto-update, analytics and the App Store.
+
+### Open (2026-10-04)
+
+- **More than one TinyBar on a network:** they can't all be `tinybar.local`, which affects the Remote's address as well as the Mac app. **Proposed:** a bar keeps `tinybar.local` when it's free, advertises its ID over Bonjour and shows its real address on the Wi-Fi screen. The Mac app finds its bar by ID.
+- **Two Macs, one bar:** with "latest message wins", an idle second Mac's `active: false` heartbeat would end the first Mac's call. **Proposed for later:** the bar keeps each paired Mac's state by its token. v1 is one Mac per bar.
+- **Muted calls:** some apps may let go of the mic when you mute, so with the camera off, On a call would end. This is to be measured per app on a real Mac (the spec's criterion 34) before deciding whether v1 needs more.
+
+### Follow-ups (open)
+
+- **API contract:** fold the pairing additions above into `docs/api.md`, or record that v1 ships without pairing.
+- **Mock-up:**
+  - Add Pair a Mac (the code) and a paired-Macs list with Forget to the Remote's Connect your Mac card.
+  - Change the Simulate controls' "Meet" app button to "Chrome".
+  - Drop the card's "Coming later" badge when the app ships.
+  - Then republish the Artifact.
+- **Firmware:** confirm which serial line handling is safe so opening the port never resets the bar, and whether the boot log shares the USB serial port (the app ignores non-JSON lines either way).
+- **UX:** draw the four menu-bar icon states, and design the menu, the Settings window and the first-run window from the spec's content.
+- **Real-Mac checks** (the spec's "Unverified" list):
+  - No prompts.
+  - The processes that hold the mic for each call app and for Siri and Dictation.
+  - AirPods.
+  - Muted calls.
+  - Local Network permission and login items with ad-hoc signing.
 
 ## Look
 
