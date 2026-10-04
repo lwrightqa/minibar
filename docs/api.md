@@ -13,7 +13,7 @@ This is the **contract** between the bar's firmware and every program that talks
 1. [At a glance](#1-at-a-glance)
 2. [Conventions](#2-conventions): versioning, content types, JSON, times, errors, limits
 3. [Finding the bar (mDNS)](#3-finding-the-bar-mdns)
-4. [Pairing and tokens (Proposed)](#4-pairing-and-tokens-proposed)
+4. [Pairing and tokens](#4-pairing-and-tokens)
 5. [Calls from the Mac: call state and heartbeat](#5-calls-from-the-mac-call-state-and-heartbeat)
 6. [USB serial](#6-usb-serial)
 7. [Reading the bar: info and status](#7-reading-the-bar-info-and-status)
@@ -35,7 +35,7 @@ Appendices: [A, every endpoint](#appendix-a-every-endpoint) · [B, error codes](
 
 | Link | Address | Used by | Who may use it |
 |---|---|---|---|
-| **Wi-Fi** (HTTP) | `http://tinybar.local/api/v1/…` (port 80) | The Mac app when the bar isn't plugged into the Mac, the Remote page, automations | Paired clients with a token (**Proposed**, section 4) |
+| **Wi-Fi** (HTTP) | `http://tinybar.local/api/v1/…` (port 80) | The Mac app when the bar isn't plugged into the Mac, the Remote page, automations | Paired clients with a token (section 4) |
 | **USB serial** | The bar's USB Serial/JTAG port (VID `0x303A`, PID `0x1001`) | The Mac app when the bar is powered from the Mac | Whatever is plugged in. The cable is the proof, so no pairing |
 | **Setup network** | `http://192.168.4.1/api/v1/setup/…` on `TinyBar-Setup` | The Wi-Fi setup page, only while the bar shows its setup screens | Anyone on the setup network (section 13) |
 
@@ -178,9 +178,9 @@ The bar announces itself with mDNS (Bonjour) on the office Wi-Fi.
 
 ---
 
-## 4. Pairing and tokens (Proposed)
+## 4. Pairing and tokens
 
-**Proposed (2026-10-04), waiting for the user's OK.** `decisions.md` leaves this open ("the Remote and the API have no PIN"); this section is the proposed answer.
+**Decided (2026-10-04): the user approved pairing as proposed.** `decisions.md` had left this open ("the Remote and the API have no PIN"); this section is the answer. It covers everything below, including pairing over USB without a code, the Mac app's `call` scope, `pair/cancel` and a code holding a place.
 
 ### 4.1 Why
 
@@ -207,7 +207,7 @@ The `pairing_id` ties the code to the client that asked for it, so someone who r
 - **The bar keeps only a SHA-256 hash** of each token, with a public `token_id` (8 hex digits), the client's name, kind, scope and `client` ID, when and how it was paired, and when and from which address it was last used. It never shows a token again after the pairing reply.
 - **Tokens don't expire.** A token stops working when it's revoked (section 12), when the same `client` pairs again (the new token replaces the old one), or after a factory reset. Setting up Wi-Fi again keeps them.
 - **At most 10 tokens.** Pairing an eleventh is refused (`409 token_limit`) until one is revoked.
-  - **Proposed (2026-10-04, pairing fix round): a code on the screen holds a place.** While a code shows for a device that isn't paired yet, it counts as one of the 10, so the code can always work. Meanwhile pairing another new device over USB (`pair`, 6.6) is refused with `token_limit` if it would take that place; the cable still works without a token. A device that's paired already replaces its own token, so it always has room. Before this, a USB pairing made while another device's code showed could take the last place and leave 11 tokens.
+  - **Decided (2026-10-04, pairing fix round): a code on the screen holds a place.** While a code shows for a device that isn't paired yet, it counts as one of the 10, so the code can always work. Meanwhile pairing another new device over USB (`pair`, 6.6) is refused with `token_limit` if it would take that place; the cable still works without a token. A device that's paired already replaces its own token, so it always has room. Before this, a USB pairing made while another device's code showed could take the last place and leave 11 tokens.
 
 ### 4.4 Scopes
 
@@ -311,7 +311,7 @@ With `"cookie": true` the body has `"token": null` and the response carries `Set
 {"ok": false, "error": "wrong_code", "message": "That code doesn't match. 2 tries left.", "field": "code", "attempts_left": 2}
 ```
 
-**Canceling: `POST /api/v1/pair/cancel`** (**Proposed**, 2026-10-04, pairing fix round). No token needed. The device that asked takes its code off the bar, so a person who changes their mind doesn't hold up every other device for 2 minutes. The Remote's Cancel and the Mac app's Back or Cancel on its Wi-Fi page call it. Only the `pairing_id` from `pair/start` works, so no one else can cancel your code. The bar ends the pairing as a tap would ("Pairing canceled"), and it **counts as a failed pairing** (4.9), so canceling and asking again can't be used to get more guesses. Safe to repeat.
+**Canceling: `POST /api/v1/pair/cancel`** (2026-10-04, pairing fix round). No token needed. The device that asked takes its code off the bar, so a person who changes their mind doesn't hold up every other device for 2 minutes. The Remote's Cancel and the Mac app's Back or Cancel on its Wi-Fi page call it. Only the `pairing_id` from `pair/start` works, so no one else can cancel your code. The bar ends the pairing as a tap would ("Pairing canceled"), and it **counts as a failed pairing** (4.9), so canceling and asking again can't be used to get more guesses. Safe to repeat.
 
 | Field | Type | Required | Meaning |
 |---|---|---|---|
@@ -328,7 +328,7 @@ With `"cookie": true` the body has `"token": null` and the response carries `Set
 
 ### 4.8 On the bar
 
-These screens are drawn in the mock-up's pairing round and built into the firmware (decisions.md "Pairing"; still **Proposed**, waiting for the user's OK). Proposed behavior:
+These screens are drawn in the mock-up's pairing round and built into the firmware (decisions.md "Pairing", approved by the user on 2026-10-04):
 
 - **Pairing screen:** on a dark surface (#0E1013, like the menus), since it isn't a status. Kicker "PAIRING · MAC" (the client's name, or its kind's word when none was sent or it can't be drawn: "Mac", "Phone" for `remote`, "Script" for `automation`), the code as the headline in tabular digits ("482 913"), and a sub line that names the device: "Type it on your Mac · tap to cancel", "Type it on your phone · tap to cancel", otherwise "Type this code on that device · tap to cancel". In the info column, "Code expires in" over an m:ss countdown, with the bar's name ("TinyBar 2A1C") as the foot; the progress bar fills as the 2 minutes run out.
 - **The 2 minutes count from when the code appears on the screen.** It waits for the power screens to finish (the splash, Keep holding), and the countdown and `retry_after_s` wait with it. It never appears on the Wi-Fi setup screens, Connected included (`409 in_setup`).
@@ -554,7 +554,7 @@ bar → mac  @tb {"id": 3, "ok": true, "device_id": "f412fa3f2a1c", "rev": 1843,
 | `hello` | `GET /api/v1/info` | Also tells the bar who's connected, and can set its clock (6.6). |
 | `call` | `POST /api/v1/call` | Same fields and reply (section 5). |
 | `status` | `GET /api/v1/status` | Same reply (7.3). |
-| `pair` | — | USB only, **Proposed**: get a Wi-Fi token without a code (6.6). |
+| `pair` | — | USB only: get a Wi-Fi token without a code (6.6). |
 | `request` | Any endpoint | `method`, `path` and `body`, for everything else (6.6). |
 
 - **USB needs no token.** The router skips token checks for USB messages, and every endpoint is allowed.
@@ -593,7 +593,7 @@ bar → mac  @tb {"id": 2, "ok": true, "device_id": "f412fa3f2a1c", "showing": "
 mac → bar  @tb {"cmd": "status", "id": 3}
 ```
 
-**`pair`** (**Proposed**). Gives the Mac app a `call`-scope token for Wi-Fi with no code, since the cable proves someone is at the desk. Like any pairing, it replaces an older token with the same `client`, and the bar confirms on screen ("Paired · Mac · over USB").
+**`pair`**. Gives the Mac app a `call`-scope token for Wi-Fi with no code, since the cable proves someone is at the desk. Like any pairing, it replaces an older token with the same `client`, and the bar confirms on screen ("Paired · Mac · over USB").
 
 ```text
 mac → bar  @tb {"cmd": "pair", "id": 4, "client": "6F1C2A9E-5B7D-4E0A-9C3B-2D8F1A7E4B60"}
@@ -1160,7 +1160,7 @@ The page polls this. The phone may lose the setup network while the bar connects
 The mock-up's "How the Mac app talks to TinyBar" and `decisions.md` need these brought in line (product manager and lead developer, next mock-up round):
 
 1. **Paths are versioned:** `/api/v1/call` and `/api/v1/status` instead of `/api/call` and `/api/status`.
-2. **The token is checked** (**Proposed**, section 4), instead of "reserved for pairing, not checked yet". New: pairing endpoints, scopes, revoking, the pairing screen and the Devices tile.
+2. **The token is checked** (section 4), instead of "reserved for pairing, not checked yet". New: pairing endpoints, scopes, revoking, the pairing screen and the Devices tile.
 3. **Calls from your Mac turned off is not an error.** The mock-up answered `403 {"ok": false, "error": "calls_off"}`. But the bar still records the call and the heartbeat (the mock-up does this too: the Remote shows the Mac as connected, and turning the switch on mid-call shows the call at once), so the request has succeeded. Now `200` with `"sources": {"mac": false}`. A 403 would also look like a token problem to the Mac app.
 4. **`showing` no longer has `"off"`.** A dark screen is `"screen": "dark"` next to what the bar would show when woken; a powered-off bar doesn't answer at all.
 5. **USB lines carry the `@tb ` marker,** so they can share the port with log output, and an `id` to match replies. `hello` carries the client's ID, an optional label, the API version and (optionally) the time. A `ready` event, `pair` and `request` are new.
@@ -1171,7 +1171,7 @@ The mock-up's "How the Mac app talks to TinyBar" and `decisions.md` need these b
 
 ### 14.2 Needs the user's OK
 
-- **Pairing** (section 4) as a whole, including the `call` scope for the Mac app and pairing over USB without a code.
+- ~~**Pairing** (section 4) as a whole, including the `call` scope for the Mac app and pairing over USB without a code.~~ **Approved by the user on 2026-10-04.**
 - **`inputs`** (mic, camera, or both). It goes beyond the decided "only on a call yes or no, and optionally the app name, leaves the Mac". The field is in the contract so the bar can accept it, but the Mac app doesn't send it until the user agrees, and the bar doesn't show it (no screen uses it yet). Useful later, for example "On camera" in the kicker, so people know not to walk behind you.
 - **What else the Mac app sends:** a random install ID with a per-launch session ID and a counter (`client`, `session`, `seq`), and over USB the Mac's time and time zone, so a bar used without Wi-Fi still has a clock for the Clock screen and "since 2:04 PM". None of it says anything about calls, and none of it is a hardware ID or the computer's or user's name, but it isn't on the Mac app spec's list of what leaves the Mac yet (14.5).
 - **Away's back-at time and note** (8.1).
@@ -1246,8 +1246,8 @@ The mock-up's "How the Mac app talks to TinyBar" and `decisions.md` need these b
 | `GET /api/v1/info` | none | `hello` | 7.1 |
 | `POST /api/v1/pair/start` | none | `request` (pointless: use `pair`) | 4.6 |
 | `POST /api/v1/pair` | none | `request` (likewise) | 4.7 |
-| `POST /api/v1/pair/cancel` (**Proposed**) | none | `request` (likewise) | 4.7 |
-| — | — | `pair` (**Proposed**) | 6.6 |
+| `POST /api/v1/pair/cancel` | none | `request` (likewise) | 4.7 |
+| — | — | `pair` | 6.6 |
 | `GET /api/v1/status` | `call`, `full` | `status` | 7.3 |
 | `POST /api/v1/call` | `call`, `full` | `call` | 5 |
 | `POST /api/v1/status` | `full` | `request` | 8.1 |
