@@ -1,0 +1,454 @@
+<title>Low Glare Pixel Fonts</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600&amp;family=Barlow+Condensed:wght@500;600;700&amp;family=Bitcount+Prop+Single:slnt,wght,CRSV,ELSH,ELXP@-8..0,100..900,0..1,0..100,0..100&amp;family=Handjet&amp;family=Jersey+15&amp;family=JetBrains+Mono:wght@400&amp;family=Micro+5&amp;family=Press+Start+2P&amp;family=Tiny5&amp;family=VT323&amp;display=swap">
+<style>
+/* Layout: a catalog like Design Directions. Each option pairs a short brief (left) with the same three device screens at 640 x 172 (right), and its pros and cons underneath. Screens show 1:1 on a wide window and scale down to fit. */
+:root {
+  --bg: #eef0f3;
+  --surface: #ffffff;
+  --ink: #16181c;
+  --muted: #5b636e;
+  --line: #d6dbe1;
+  --frame: #1c1f24;
+  --mark: #c2410c;
+  --f-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --f-body: "Atkinson Hyperlegible Next", "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #101215; --surface: #181b20; --ink: #e9ecef; --muted: #9aa3ad; --line: #2a2f36; --frame: #050608; --mark: #ff9945; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #101215; --surface: #181b20; --ink: #e9ecef; --muted: #9aa3ad; --line: #2a2f36; --frame: #050608; --mark: #ff9945; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+/* Line heights are whole pixels, so screens land on whole pixels and pixel fonts stay crisp at 1:1. */
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 24px; }
+b, strong { font-weight: 600; }
+a { color: inherit; text-decoration-color: var(--muted); text-underline-offset: 3px; }
+a:hover { text-decoration-color: currentColor; }
+a:focus-visible { outline: 2px solid var(--mark); outline-offset: 2px; border-radius: 2px; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 32px 64px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 44px; }
+.wrap > *, main > * { min-width: 0; }
+@media (max-width: 480px) { .wrap { padding-inline: 16px; padding-block: 20px 48px; gap: 36px; } }
+
+header { display: grid; gap: 10px; }
+.eyebrow, .num, .k, figcaption, h3 { font-family: var(--f-mono); font-size: 12px; line-height: 18px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 400; }
+h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(38px, 6vw, 58px); line-height: 1; margin: 0; text-wrap: balance; }
+.lede { margin: 0; max-width: 68ch; }
+.how { margin: 0; max-width: 68ch; color: var(--muted); font-size: 14px; line-height: 22px; }
+
+.glance h2, .more h2 { font-family: var(--f-display); font-weight: 700; font-size: 28px; line-height: 32px; margin: 0 0 12px; }
+.table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+/* Separate borders, so the sticky first column paints its own background and border and scrolled cells slide cleanly under it. */
+.glance table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 720px; font-size: 14px; line-height: 22px; }
+.glance th, .glance td { text-align: left; vertical-align: top; padding: 9px 12px; border-top: 1px solid var(--line); }
+.glance thead th { border-top: 0; font-family: var(--f-mono); font-size: 11px; line-height: 16px; font-weight: 400; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.glance tbody th { font-weight: 600; white-space: nowrap; }
+.glance th:first-child { position: sticky; left: 0; z-index: 1; background: var(--surface); box-shadow: inset -1px 0 0 var(--line); }
+/* Phone: the option names wrap so the sticky column takes about a third of the box, not half. */
+@media (max-width: 480px) { .glance table { min-width: 640px; } .glance th:first-child { white-space: normal; width: 124px; } }
+.glance .sub { display: block; font-weight: 400; color: var(--muted); font-size: 13px; line-height: 20px; }
+
+.opt { display: grid; grid-template-columns: minmax(240px, 300px) minmax(660px, 1fr); grid-template-rows: auto 1fr auto; grid-template-areas: "head shots" "spec shots" "pc pc"; gap: 16px 28px; align-items: start; padding-top: 28px; border-top: 1px solid var(--line); }
+.opt > .head { grid-area: head; } .opt > .spec { grid-area: spec; } .opt > .shots { grid-area: shots; } .opt > .pc { grid-area: pc; margin-top: 8px; }
+/* Two columns only while the screens fit at 1:1 (660 px with the bezel): the brief narrows from 300 to 240 px first.
+   Below that, one column: name and character, then the screens, then the details. Pixel fonts are only sharp at 1:1. */
+@media (max-width: 999px) { .opt { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "head" "shots" "spec" "pc"; } }
+.brief { display: grid; gap: 12px; min-width: 0; }
+.brief h2 { margin: 0; font-family: var(--f-display); font-weight: 700; font-size: 34px; line-height: 1; text-wrap: balance; }
+.ref-tag { justify-self: start; font-family: var(--f-mono); font-size: 12px; line-height: 18px; letter-spacing: .06em; text-transform: uppercase; color: var(--mark); border: 1px solid currentColor; border-radius: 4px; padding: 2px 7px; }
+.char { margin: 0; }
+.note { margin: 0; font-size: 13px; line-height: 20px; color: var(--muted); }
+.lower { margin: 0; font-size: 14px; line-height: 22px; padding: 10px 12px; border-left: 3px solid var(--line); }
+.lower .k { display: block; margin-bottom: 2px; }
+.sizes { border-collapse: collapse; font-size: 13px; line-height: 20px; width: 100%; }
+.sizes th, .sizes td { text-align: left; padding: 4px 8px 4px 0; border-top: 1px solid var(--line); vertical-align: top; }
+.sizes thead th { border-top: 0; font-family: var(--f-mono); font-size: 11px; line-height: 16px; font-weight: 400; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.sizes tbody th { font-weight: 400; color: var(--muted); }
+.sizes .sz { white-space: nowrap; font-variant-numeric: tabular-nums; padding-right: 0; }
+.sizes .x { color: var(--muted); }
+
+.shots { display: grid; gap: 12px; min-width: 0; }
+.shot { display: grid; gap: 4px; margin: 0; }
+.bezel { background: var(--frame); border-radius: 14px; padding: 10px; max-width: 660px; }
+.strip-bezel { border-radius: 10px; padding: 6px 10px; }
+.fit { position: relative; width: 100%; aspect-ratio: 640 / 172; max-width: 100%; overflow: hidden; border-radius: 3px; }
+.fit.strip { aspect-ratio: 640 / 88; }
+/* will-change gives each screen its own layer, which Chromium draws with grayscale anti-aliasing, as the device does,
+   instead of colored LCD (ClearType-style) subpixel text. */
+.px { position: absolute; left: 0; top: 0; width: 640px; height: 172px; transform-origin: 0 0; overflow: hidden; will-change: transform; }
+.px img { image-rendering: pixelated; display: block; }
+.px .t { position: absolute; white-space: nowrap; font-kerning: normal; font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0, "clig" 0, "rlig" 0; font-synthesis: none; }
+.px .tn { font-variant-numeric: tabular-nums; }
+
+.pc { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 28px; }
+@media (max-width: 640px) { .pc { grid-template-columns: minmax(0, 1fr); } }
+.pc h3 { margin: 0 0 6px; }
+.pc ul { margin: 0; padding-left: 18px; display: grid; gap: 5px; font-size: 14px; line-height: 22px; max-width: 68ch; }
+
+.more { border-top: 1px solid var(--line); padding-top: 28px; display: grid; gap: 18px; }
+.more .cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 28px; }
+@media (max-width: 760px) { .more .cols { grid-template-columns: minmax(0, 1fr); } }
+.more h3 { margin: 0 0 6px; }
+.more ul, .more ol { margin: 0; padding-left: 18px; display: grid; gap: 5px; font-size: 14px; line-height: 22px; }
+.more p { margin: 0; font-size: 14px; line-height: 22px; color: var(--muted); max-width: 68ch; }
+main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 44px; }
+code { font-family: var(--f-mono); font-size: 13px; line-height: 1; }
+.rec { display: grid; gap: 10px; padding: 18px 20px; border: 2px solid var(--mark); border-radius: 10px; background: var(--surface); max-width: 80ch; }
+.rec h2 { font-family: var(--f-display); font-weight: 700; font-size: 30px; line-height: 34px; margin: 0; text-wrap: balance; }
+.rec p, .rec ul { margin: 0; }
+.rec ul { padding-left: 20px; display: grid; gap: 6px; }
+.rec-runners { color: var(--muted); }
+.rec-runners b { color: var(--ink); }
+.rec summary { cursor: pointer; font-weight: 600; }
+.rec details ul { margin-top: 8px; }
+footer { color: var(--muted); font-size: 13px; line-height: 20px; border-top: 1px solid var(--line); padding-top: 18px; max-width: 80ch; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">TinyBar · Low Glare in pixel fonts</div>
+    <h1>Low Glare, set in pixel fonts</h1>
+    <p class="lede">The Low Glare layout and colors in six pixel-font setups, to help you pick one. Only the fonts and their sizes change. Each option shows the same three screens: Busy, a Pomodoro focus session and On a call. The current Low Glare comes first, for comparison.</p>
+    <p class="how">Every pixel-font size is a whole-number multiple of the font’s pixel grid (the “4x” next to a size), so letters stay crisp on the device. Screens are 640 × 172, shown 1:1 in any window wider than about 720 px; narrower windows scale them down, which softens the pixels. The real screen is only 8.6 cm wide, so small text there looks smaller than it does here. Ligatures are off and digits are tabular, as they will be on the device. “Soft pixels” is the share of partly lit pixels once the font is converted for the device; 0% means perfectly sharp.</p>
+  </header>
+
+  <section id="recommendation" class="rec" aria-labelledby="h-rec">
+    <div class="eyebrow">The team’s recommendation</div>
+    <h2 id="h-rec">Jersey 15, with Micro 5 for small text</h2>
+    <p>The UX designer, lead developer and product manager each ranked the options on their own, and all three picked <a href="#lg-jersey15">option A</a>.</p>
+    <ul>
+      <li><b>Reads best from across the office.</b> One big, solid word in the status color, close in size to the Low Glare you liked, with a sub line in the same font.</li>
+      <li><b>Sentence case looks natural.</b> Real lowercase with proper descenders, not squashed capitals.</li>
+      <li><b>Pixel-perfect on the bar.</b> Every size converts to perfectly sharp pixels, so the device looks like this page. The chunky pixels match the tomatoes.</li>
+    </ul>
+    <p class="rec-runners"><b>Runners-up:</b> <a href="#lg-hybrid">F</a>, the same Jersey 15 headline with smooth Atkinson small text (a drop-in fallback if Micro 5 feels too small on the real screen), and <a href="#lg-handjet">C</a>, Handjet, if you’d rather have something slimmer and calmer.</p>
+    <details>
+      <summary>What choosing Jersey 15 means for the build</summary>
+      <ul>
+        <li>The firmware swaps in Jersey’s equal-width digits, so the countdown doesn’t shift sideways every second.</li>
+        <li>Longer headlines step down a size: “In a meeting” and “Back at 12:30” use 81 px instead of 108 px, and meeting titles 54 px.</li>
+        <li><b>Proposed:</b> the Pomodoro line becomes “Don’t interrupt · break at 12:55 PM”, because the current wording doesn’t fit when the break hour has two digits.</li>
+        <li>It’s the boldest of the six, so it’s worth living with on the real bar for a day before the firmware fonts are frozen. If Micro 5’s small capitals are too small there, Tiny5 or Atkinson swaps in without changing anything else.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section class="glance" aria-labelledby="h-glance">
+    <h2 id="h-glance">At a glance</h2>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th scope="col">Option</th><th scope="col">Feel</th><th scope="col">Lowercase</th><th scope="col">Sharp on the device</th><th scope="col">Timer digits</th><th scope="col">Below the headline</th></tr></thead>
+        <tbody>
+          <tr><th scope="row"><a href="#reference">For reference</a><span class="sub">Barlow Condensed + Atkinson</span></th><td>Calm, smooth</td><td>Excellent</td><td>Smooth fonts, anti-aliased</td><td>Tabular</td><td>Atkinson</td></tr>
+          <tr><th scope="row"><a href="#lg-jersey15">A · Jersey 15</a></th><td>Scoreboard, bold</td><td>Good</td><td>Yes (0%)</td><td>Swap needed</td><td>Jersey 15 sub, Micro 5</td></tr>
+          <tr><th scope="row"><a href="#lg-vt323">B · VT323</a></th><td>Terminal, thin</td><td>Excellent</td><td>Soft (13–29%)</td><td>Fine as is</td><td>Tiny5</td></tr>
+          <tr><th scope="row"><a href="#lg-handjet">C · Handjet</a></th><td>Slim LED sign, calm</td><td>Very good</td><td>Yes (0%)</td><td>Fine as is</td><td>Micro 5</td></tr>
+          <tr><th scope="row"><a href="#lg-bitcount">D · Bitcount Prop Single</a></th><td>Round dots, playful</td><td>Weak</td><td>Dots soft (25%)</td><td>Jitters (no true tabular digits)</td><td>Bitcount square, Tiny5</td></tr>
+          <tr><th scope="row"><a href="#lg-pressstart">E · Press Start 2P</a></th><td>8-bit arcade, loud</td><td>Fair</td><td>Yes (0%)</td><td>Fine as is</td><td>Tiny5</td></tr>
+          <tr><th scope="row"><a href="#lg-hybrid">F · Jersey 15 + Atkinson</a></th><td>Pixel headline, smooth text</td><td>Good, then excellent</td><td>Headline yes, text smooth</td><td>Swap needed</td><td>Atkinson</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <main>
+    <section class="opt" id="reference" aria-labelledby="h-reference">
+      <div class="brief head">
+        <div class="ref-tag">For reference</div>
+        <h2 id="h-reference">Low Glare today</h2>
+        <p class="char">The original Low Glare with smooth fonts: Barlow Condensed for the headline and labels, Atkinson Hyperlegible Next for the text. Compare each pixel option with this.</p>
+      </div>
+      <div class="brief spec">
+        <table class="sizes"><thead><tr><th scope="col">Text</th><th scope="col">Font</th><th scope="col">Size</th></tr></thead><tbody><tr><th scope="row">Busy, On a call</th><td>Barlow Condensed 500</td><td class="sz">93 px</td></tr><tr><th scope="row">Timer</th><td>Barlow Condensed 500</td><td class="sz">109 px</td></tr><tr><th scope="row">Side value</th><td>Barlow Condensed 500</td><td class="sz">41 px</td></tr><tr><th scope="row">Sub line</th><td>Atkinson Hyperlegible Next 500</td><td class="sz">18 px</td></tr><tr><th scope="row">Kicker, label</th><td>Barlow Condensed 600</td><td class="sz">15, 13 px</td></tr><tr><th scope="row">Foot</th><td>Atkinson Hyperlegible Next 400</td><td class="sz">13 px</td></tr><tr><th scope="row">Status row</th><td>JetBrains Mono 400</td><td class="sz">12 px</td></tr></tbody></table>
+        <p class="note">Smooth, anti-aliased fonts. On the device they need 4-bit anti-aliasing and more flash memory than 2x pixel fonts.</p>
+        <p class="lower"><span class="k">Lowercase</span> <b>Excellent.</b> Both faces have full descenders and a clear I, l and 1.</p>
+      </div>
+      <div class="shots" data-opt="ref">
+        <figure class="shot"><div class="bezel"><div class="fit" role="img" aria-label="Low Glare today: Busy screen" data-o="ref" data-s="busy"></div></div><figcaption>Busy</figcaption></figure>
+        <figure class="shot"><div class="bezel"><div class="fit" role="img" aria-label="Low Glare today: Pomodoro · focus screen" data-o="ref" data-s="focus"></div></div><figcaption>Pomodoro · focus</figcaption></figure>
+        <figure class="shot"><div class="bezel"><div class="fit" role="img" aria-label="Low Glare today: On a call · from the Mac app screen" data-o="ref" data-s="call"></div></div><figcaption>On a call · from the Mac app</figcaption></figure>
+        <figure class="shot"><div class="bezel strip-bezel"><div class="fit strip" role="img" aria-label="Low Glare today: glyph check" data-o="ref" data-s="glyphs"></div></div><figcaption>Glyph check: headline font, then small text</figcaption></figure>
+      </div>
+    </section>
+
+    <section class="opt" id="lg-jersey15" aria-labelledby="h-lg-jersey15">
+      <div class="brief head">
+        <div class="num">Option A</div>
+        <h2 id="h-lg-jersey15">Jersey 15</h2>
+        <p class="char">Scoreboard. Chunky, condensed letters with 2-pixel strokes, like a stadium scoreboard or a sports jersey. Bold and friendly.</p>
+      </div>
+      <div class="brief spec">
+        <table class="sizes"><thead><tr><th scope="col">Text</th><th scope="col">Font</th><th scope="col">Size</th></tr></thead><tbody><tr><th scope="row">Busy, On a call</th><td>Jersey 15</td><td class="sz">108 px <span class="x">4x</span></td></tr><tr><th scope="row">Timer</th><td>Jersey 15</td><td class="sz">135 px <span class="x">5x</span></td></tr><tr><th scope="row">Side value</th><td>Jersey 15</td><td class="sz">54 px <span class="x">2x</span></td></tr><tr><th scope="row">Sub line</th><td>Jersey 15</td><td class="sz">27 px <span class="x">1x</span></td></tr><tr><th scope="row">Small text</th><td>Micro 5</td><td class="sz">22 px <span class="x">2x</span></td></tr></tbody></table>
+        <p class="note">Small text has 2 px letter-spacing on the capitals. Micro 5 is by the same designer as Jersey 15.</p>
+        <p class="lower"><span class="k">Lowercase</span> <b>Good.</b> An x-height of 11 on a 15-pixel cap and real 4-pixel descenders, with a clear a, e, g and s. The y in Busy clears the sub line by 21 px.</p>
+      </div>
+      <div class="shots" data-opt="lg-jersey15">
+        <figure class="shot"><div class="bezel"><div class="fit" role="img" aria-label="Jersey 15: Busy screen" data-o="lg-jersey15" data-s="busy"></div></div><figcaption>Busy</figcaption></figure>
+        <figure class="shot"><div class="bezel"><div class="fit" role="img" aria-label="Jersey 15: Pomodoro · focus screen" data-o="lg-jersey15" data-s="focus"></div></div><figcaption>Pomodoro · focus</figcaption></figure>
+        <figure class="shot"><div class="bezel"><div class="fit" role="img" aria-label="Jersey 15: On a call · from the Mac app screen" data-o="lg-jersey15" data-s="call"></div></div><figcaption>On a call · from the Mac app</figcaption></figure>
+        <figure class="shot"><div class="bezel strip-bezel"><div class="fit strip" role="img" aria-label="Jersey 15: glyph check" data-o="lg-jersey15" data-s="glyphs"></div></div><figcaption>Glyph check: headline font, then small text</figcaption></figure>
+      </div>
+      <div class="pc">
+        <div><h3>Pros</h3><ul><li>Closest in size to the original: Busy is 184 px wide, the timer 235 px and On a call 320 of 408 px.</li><li>The sub line is the headline font itself at 1x, so the whole main column is one face.</li><li>Pixel-exact on the device: 0% soft pixels at every Jersey size.</li><li>The strongest color from across the room of the pixel options.</li><li>The small text matches, since Micro 5 comes from the same designer.</li></ul></div>
+        <div><h3>Cons</h3><ul><li>At 108 px, “In a meeting” (484 px) and “Back at 12:30” (508 px) don’t fit the 408 px column, so those screens use the next sharp size, 81 px.</li><li>Its default digits are proportional (the 1 is narrower), so the countdown would jitter. The firmware has to swap in the font’s tabular digits before converting. The screens here already show them.</li><li>The Pomodoro sub line has only 9 px to spare. A longer one would need the small font or get cut.</li><li>I and l are the same bar, and O and 0 are nearly the same.</li><li>The heaviest look of the six, and less quiet than Barlow Condensed.</li></ul></div>
+      </div>
+    </section>
+
+    <section class="opt" id="lg-vt323" aria-labelledby="h-lg-vt323">
+      <div class="brief head">
+        <div class="num">Option B</div>
+        <h2 id="h-lg-vt323">VT323</h2>
+        <p class="char">Terminal. The DEC VT320 terminal face: tall, thin one-pixel strokes on a wide monospace grid. Quiet and a bit nerdy.</p>
+      </div>
+      <div class="brief spec">
+        <table class="sizes"><thead><tr><th scope="col">Text</th><th scope="col">Font</th><th scope="col">Size</th></tr></thead><tbody><tr><th scope="row">Busy, timer</th><td>VT323</td><td class="sz">125 px <span class="x">10x</span></td></tr><tr><th scope="row">On a call</th><td>VT323</td><td class="sz">100 px <span class="x">8x</span></td></tr><tr><th scope="row">Side value</th><td>VT323</td><td class="sz">50 px <span class="x">4x</span></td></tr><tr><th scope="row">Sub line</th><td>Tiny5</td><td class="sz">24 px <span class="x">3x</span></td></tr><tr><th scope="row">Small text</th><td>Tiny5</td><td class="sz">16 px <span class="x">2x</span></td></tr></tbody></table>
+        <p class="note">VT323’s pixel is 12.5 px at 1x, so its only sharp sizes are multiples of 25. Small text has 2 px letter-spacing on the capitals.</p>
+        <p class="lower"><span class="k">Lowercase</span> <b>Excellent.</b> An x-height of 5 on a 7-row cap and 2-row descenders, with a real g, p and y. The y in Busy comes within 9 px of the sub line, the closest of the six, but doesn’t touch.</p>
+      </div>
+      <div class="shots" data-opt="lg-vt323">
+        <figure class="shot"><div class="bezel"><div class="fit" role="img" aria-label="VT323: Busy screen" data-o="lg-vt323" data-s="busy"></div></div><figcaption>Busy</figcaption></figure>
+        <figure class="shot"><div class="bezel"><div class="fit" role="img" aria-label="VT323: Pomodoro · focus screen" data-o="lg-vt323" data-s="focus"></div></div><figcaption>Pomodoro · focus</figcaption></figure>
+        <figure class="shot"><div class="bezel"><div class="fit" role="img" aria-label="VT323: On a call · from the Mac app screen" data-o="lg-vt323" data-s="call"></div></div><figcaption>On a call · from the Mac app</figcaption></figure>
+        <figure class="shot"><div class="bezel strip-bezel"><div class="fit strip" role="img" aria-label="VT323: glyph check" data-o="lg-vt323" data-s="glyphs"></div></div><figcaption>Glyph check: headline font, then small text</figcaption></figure>
+      </div>
+      <div class="pc">
+        <div><h3>Pros</h3><ul><li>The thinnest strokes and the least lit area: the calmest pixel look.</li><li>Excellent lowercase.</li><li>Monospace digits, so the timer never jitters. I, l and 1 all look different.</li><li>Tiny5, used below the headline, is pixel-exact on the device.</li></ul></div>
+        <div><h3>Cons</h3><ul><li>Not a true square-pixel font. It imitates a CRT, so on the device 13% of headline pixels are soft at 125 px, 16.5% at 100 px and 29% at 50 px. It looks soft-edged rather than blocky.</li><li>On a call drops to 100 px, because at 125 px it would be 437 px wide.</li><li>VT323 is too wide for its own sub line and small text, so those are Tiny5. Its wide, chunky letters contrast with VT323’s narrow, thin ones.</li><li>The Tiny5 sub line fills all 408 px, with no margin.</li><li>Thin strokes carry less color from a distance.</li></ul></div>
+      </div>
+    </section>
+
+    <section class="opt" id="lg-handjet" aria-labelledby="h-lg-handjet">
+      <div class="brief head">
+        <div class="num">Option C</div>
+        <h2 id="h-lg-handjet">Handjet</h2>
+        <p class="char">Slim sign. A tall, condensed pixel sans with one-element strokes, like a modern LED sign or a ticket machine. The closest pixel cousin of Barlow Condensed, and the calmest of the six.</p>
+      </div>
+      <div class="brief spec">
+        <table class="sizes"><thead><tr><th scope="col">Text</th><th scope="col">Font</th><th scope="col">Size</th></tr></thead><tbody><tr><th scope="row">All headlines</th><td>Handjet</td><td class="sz">102 px <span class="x">3x</span></td></tr><tr><th scope="row">Side value</th><td>Handjet</td><td class="sz">34 px <span class="x">1x</span></td></tr><tr><th scope="row">Sub line</th><td>Micro 5</td><td class="sz">22 px <span class="x">2x</span></td></tr><tr><th scope="row">Small text</th><td>Micro 5</td><td class="sz">22 px <span class="x">2x</span></td></tr></tbody></table>
+        <p class="note">Handjet’s default solid squares (element shape 2, grid 1). It’s a variable font, so the firmware converts a static copy, which is ready. Small text has 2 px letter-spacing on the capitals.</p>
+        <p class="lower"><span class="k">Lowercase</span> <b>Very good.</b> An x-height of 8 on an 11-element cap, ascenders of 12 and descenders of 3. The y in Busy clears the sub line by 18 px.</p>
+      </div>
+      <div class="shots" data-opt="lg-handjet">
+        <figure class="shot"><div class="bezel"><div class="fit" role="img" aria-label="Handjet: Busy screen" data-o="lg-handjet" data-s="busy"></div></div><figcaption>Busy</figcaption></figure>
+        <figure class="shot"><div class="bezel"><div class="fit" role="img" aria-label="Handjet: Pomodoro · focus screen" data-o="lg-handjet" data-s="focus"></div></div><figcaption>Pomodoro · focus</figcaption></figure>
+        <figure class="shot"><div class="bezel"><div class="fit" role="img" aria-label="Handjet: On a call · from the Mac app screen" data-o="lg-handjet" data-s="call"></div></div><figcaption>On a call · from the Mac app</figcaption></figure>
+        <figure class="shot"><div class="bezel strip-bezel"><div class="fit strip" role="img" aria-label="Handjet: glyph check" data-o="lg-handjet" data-s="glyphs"></div></div><figcaption>Glyph check: headline font, then small text</figcaption></figure>
+        <figure class="shot"><div class="bezel"><div class="fit" role="img" aria-label="Handjet: round-dot variant, Busy screen" data-o="lg-handjet" data-s="dot"></div></div><figcaption>Variant: round-dot LED (same font, element shape 8) · Busy</figcaption></figure>
+      </div>
+      <div class="pc">
+        <div><h3>Pros</h3><ul><li>Condensed: On a call uses only 261 of 408 px, and one size (102 px) fits all three headlines. In a meeting just fits at that size too, with nothing to spare (408 of 408 px).</li><li>Ascenders taller than the capitals give strong word shapes in sentence case.</li><li>Tabular digits by default, so no timer jitter.</li><li>Thin strokes keep glare low.</li><li>Pixel-exact on the device: 0% soft pixels at 34, 68 and 102 px.</li><li>A free variant: the same font makes a round-dot LED sign (below), though its dots are soft on the device (36%).</li></ul></div>
+        <div><h3>Cons</h3><ul><li>Sharp only at 34, 68 and 102 px. 17 px is soft, so the sub line and small text use Micro 5, which makes the sub line small (10 px capitals, 282 px wide).</li><li>Back at 12:30 on the Away screen is 438 px wide at 102 px, 30 px too wide for the main column. It needs the next sharp size down, 68 px, where it’s 292 px wide.</li><li>The side value at 34 px has 22 px capitals, smaller than the original’s 29 px. At 68 px it would run into the line below.</li><li>Its thin strokes carry less color across the room than Jersey 15.</li><li>I and l are identical.</li></ul></div>
+      </div>
+    </section>
+
+    <section class="opt" id="lg-bitcount" aria-labelledby="h-lg-bitcount">
+      <div class="brief head">
+        <div class="num">Option D</div>
+        <h2 id="h-lg-bitcount">Bitcount Prop Single</h2>
+        <p class="char">Friendly LED dots. Round, touching dots on a wide grid, like a bead sign or a friendly scoreboard. Soft and playful rather than technical.</p>
+      </div>
+      <div class="brief spec">
+        <table class="sizes"><thead><tr><th scope="col">Text</th><th scope="col">Font</th><th scope="col">Size</th></tr></thead><tbody><tr><th scope="row">Busy, On a call</th><td>Bitcount, round dots</td><td class="sz">100 px <span class="x">10x</span></td></tr><tr><th scope="row">Timer</th><td>Bitcount, round dots</td><td class="sz">120 px <span class="x">12x</span></td></tr><tr><th scope="row">Side value</th><td>Bitcount, square</td><td class="sz">50 px <span class="x">5x</span></td></tr><tr><th scope="row">Sub line</th><td>Bitcount, square</td><td class="sz">20 px <span class="x">2x</span></td></tr><tr><th scope="row">Small text</th><td>Tiny5</td><td class="sz">16 px <span class="x">2x</span></td></tr></tbody></table>
+        <p class="note">Two settings of one variable font. Round: weight 400, element shape 0. Square: weight 384.88, element shape 50, whose squares exactly fill the grid. Both with the cursive a and f turned off. Small text has 2 px letter-spacing on the capitals.</p>
+        <p class="lower"><span class="k">Lowercase</span> <b>Weak.</b> An x-height of 5 on a 6-dot cap and descenders of only 1 dot, so g and y are short and words look flat, almost like small capitals. The y in Busy clears the sub line by 22 px.</p>
+      </div>
+      <div class="shots" data-opt="lg-bitcount">
+        <figure class="shot"><div class="bezel"><div class="fit" role="img" aria-label="Bitcount Prop Single: Busy screen" data-o="lg-bitcount" data-s="busy"></div></div><figcaption>Busy</figcaption></figure>
+        <figure class="shot"><div class="bezel"><div class="fit" role="img" aria-label="Bitcount Prop Single: Pomodoro · focus screen" data-o="lg-bitcount" data-s="focus"></div></div><figcaption>Pomodoro · focus</figcaption></figure>
+        <figure class="shot"><div class="bezel"><div class="fit" role="img" aria-label="Bitcount Prop Single: On a call · from the Mac app screen" data-o="lg-bitcount" data-s="call"></div></div><figcaption>On a call · from the Mac app</figcaption></figure>
+        <figure class="shot"><div class="bezel strip-bezel"><div class="fit strip" role="img" aria-label="Bitcount Prop Single: glyph check" data-o="lg-bitcount" data-s="glyphs"></div></div><figcaption>Glyph check: headline font, then small text</figcaption></figure>
+      </div>
+      <div class="pc">
+        <div><h3>Pros</h3><ul><li>The only rounded option. The dot texture cuts the lit area, which suits low glare.</li><li>Wide, geometric letters read well. On a call fills 390 of 408 px.</li><li>The sub line stays in the family, in its square version, at 398 of 408 px. That version is pixel-exact on the device (0% soft pixels).</li><li>The dot spacing is a whole number of pixels, so every dot renders the same.</li></ul></div>
+        <div><h3>Cons</h3><ul><li>The weakest in sentence case (see Lowercase).</li><li>B and 8 have rounded corners that can briefly read as 6.</li><li>Round dots are always soft-edged on the device (25% of lit pixels).</li><li>The most firmware work: a tabular-digit swap, two static copies of the font with the cursive letters turned off, and the converter’s autohinter turned off.</li><li>Too wide for small text, so small text is Tiny5.</li></ul></div>
+      </div>
+    </section>
+
+    <section class="opt" id="lg-pressstart" aria-labelledby="h-lg-pressstart">
+      <div class="brief head">
+        <div class="num">Option E</div>
+        <h2 id="h-lg-pressstart">Press Start 2P</h2>
+        <p class="char">8-bit arcade. The classic 8 × 8 arcade-game font: wide, square and unmistakably retro.</p>
+      </div>
+      <div class="brief spec">
+        <table class="sizes"><thead><tr><th scope="col">Text</th><th scope="col">Font</th><th scope="col">Size</th></tr></thead><tbody><tr><th scope="row">Busy, timer</th><td>Press Start 2P</td><td class="sz">80 px <span class="x">10x</span></td></tr><tr><th scope="row">On a call</th><td>Press Start 2P</td><td class="sz">40 px <span class="x">5x</span></td></tr><tr><th scope="row">Side value</th><td>Press Start 2P</td><td class="sz">32 px <span class="x">4x</span></td></tr><tr><th scope="row">Sub line</th><td>Tiny5</td><td class="sz">24 px <span class="x">3x</span></td></tr><tr><th scope="row">Small text</th><td>Tiny5</td><td class="sz">16 px <span class="x">2x</span></td></tr></tbody></table>
+        <p class="note">Small text has 2 px letter-spacing on the capitals.</p>
+        <p class="lower"><span class="k">Lowercase</span> <b>Fair.</b> An x-height of 5 on a 7-row cap, but descenders of only 1 row, so g, p and y sit almost on the baseline. The y in Busy clears the sub line by 14 px.</p>
+      </div>
+      <div class="shots" data-opt="lg-pressstart">
+        <figure class="shot"><div class="bezel"><div class="fit" role="img" aria-label="Press Start 2P: Busy screen" data-o="lg-pressstart" data-s="busy"></div></div><figcaption>Busy</figcaption></figure>
+        <figure class="shot"><div class="bezel"><div class="fit" role="img" aria-label="Press Start 2P: Pomodoro · focus screen" data-o="lg-pressstart" data-s="focus"></div></div><figcaption>Pomodoro · focus</figcaption></figure>
+        <figure class="shot"><div class="bezel"><div class="fit" role="img" aria-label="Press Start 2P: On a call · from the Mac app screen" data-o="lg-pressstart" data-s="call"></div></div><figcaption>On a call · from the Mac app</figcaption></figure>
+        <figure class="shot"><div class="bezel strip-bezel"><div class="fit strip" role="img" aria-label="Press Start 2P: glyph check" data-o="lg-pressstart" data-s="glyphs"></div></div><figcaption>Glyph check: headline font, then small text</figcaption></figure>
+      </div>
+      <div class="pc">
+        <div><h3>Pros</h3><ul><li>Iconic: it reads as pixel art instantly.</li><li>Perfectly crisp: 0% soft pixels on the device at every size used.</li><li>Monospace digits, so no timer jitter.</li><li>Wide letters carry from a distance. Busy is 310 px wide and the timer 380 of 408 px.</li></ul></div>
+        <div><h3>Cons</h3><ul><li>Very wide, so On a call only fits at 40 px. Its 35 px capitals are half the size of Busy’s, so the automatic status gets the smallest headline. In a meeting would need 32 px.</li><li>Descenders of 1 row make g, p and y look squashed.</li><li>Too wide for its own sub line and small text, so everything below the headline is Tiny5. The sub line fills all 408 px.</li><li>The loudest of the six, and the least like Low Glare.</li></ul></div>
+      </div>
+    </section>
+
+    <section class="opt" id="lg-hybrid" aria-labelledby="h-lg-hybrid">
+      <div class="brief head">
+        <div class="num">Option F</div>
+        <h2 id="h-lg-hybrid">Jersey 15 + Atkinson</h2>
+        <p class="char">Pixel headline, clean text. Jersey 15 for the headline and side value, and Low Glare’s own Atkinson Hyperlegible Next for everything else. A direct test of whether pixel small text is worth it.</p>
+      </div>
+      <div class="brief spec">
+        <table class="sizes"><thead><tr><th scope="col">Text</th><th scope="col">Font</th><th scope="col">Size</th></tr></thead><tbody><tr><th scope="row">Busy, On a call</th><td>Jersey 15</td><td class="sz">108 px <span class="x">4x</span></td></tr><tr><th scope="row">Timer</th><td>Jersey 15</td><td class="sz">135 px <span class="x">5x</span></td></tr><tr><th scope="row">Side value</th><td>Jersey 15</td><td class="sz">54 px <span class="x">2x</span></td></tr><tr><th scope="row">Sub line</th><td>Atkinson Hyperlegible Next 500</td><td class="sz">18 px</td></tr><tr><th scope="row">Small text</th><td>Atkinson Hyperlegible Next 500</td><td class="sz">14 px</td></tr></tbody></table>
+        <p class="note">Small text has 1 px letter-spacing on the capitals.</p>
+        <p class="lower"><span class="k">Lowercase</span> <b>Good, then excellent.</b> The headline is the same as in option A. Atkinson’s lowercase is excellent. The y in Busy clears the sub line by 22 px.</p>
+      </div>
+      <div class="shots" data-opt="lg-hybrid">
+        <figure class="shot"><div class="bezel"><div class="fit" role="img" aria-label="Jersey 15 + Atkinson: Busy screen" data-o="lg-hybrid" data-s="busy"></div></div><figcaption>Busy</figcaption></figure>
+        <figure class="shot"><div class="bezel"><div class="fit" role="img" aria-label="Jersey 15 + Atkinson: Pomodoro · focus screen" data-o="lg-hybrid" data-s="focus"></div></div><figcaption>Pomodoro · focus</figcaption></figure>
+        <figure class="shot"><div class="bezel"><div class="fit" role="img" aria-label="Jersey 15 + Atkinson: On a call · from the Mac app screen" data-o="lg-hybrid" data-s="call"></div></div><figcaption>On a call · from the Mac app</figcaption></figure>
+        <figure class="shot"><div class="bezel strip-bezel"><div class="fit strip" role="img" aria-label="Jersey 15 + Atkinson: glyph check" data-o="lg-hybrid" data-s="glyphs"></div></div><figcaption>Glyph check: headline font, then small text</figcaption></figure>
+      </div>
+      <div class="pc">
+        <div><h3>Pros</h3><ul><li>The most legible small text. Atkinson was designed to tell I, l and 1, and O and 0, apart.</li><li>Muted 14 px text reads better up close than 2x pixel text.</li><li>The pixel personality stays where coworkers see it from across the room.</li><li>The sub line has room to spare (330 of 408 px) for longer copy.</li></ul></div>
+        <div><h3>Cons</h3><ul><li>Smooth text next to a pixel headline gives up some of the all-pixel charm and the match with the pixel tomatoes.</li><li>Atkinson needs anti-aliasing on the device and takes more flash memory than a 2x pixel font.</li><li>The Jersey timer still needs the tabular-digit swap.</li></ul></div>
+      </div>
+    </section>
+  </main>
+
+  <section class="more" aria-labelledby="h-more">
+    <h2 id="h-more">Notes</h2>
+    <div class="cols">
+      <div>
+        <h3>For the firmware</h3>
+        <ol>
+          <li>Convert at whole-number sizes only: every size on this page is a whole-number scale of its font.</li>
+          <li>Convert pixel fonts with <code>--autohint-off</code>. The autohinter moved Bitcount’s crossbars by half a pixel and changed nothing in the others.</li>
+          <li>Handjet and Bitcount are variable fonts and need static copies (ready in the team folder).</li>
+          <li>Jersey 15 and Micro 5 have proportional digits by default. Swap in their tabular digits before converting so the timer doesn’t jitter. Bitcount’s tabular digits don’t fix it: its 1, 6 and 7 are still one dot narrower than the other digits. VT323, Tiny5, Handjet and Press Start 2P are already tabular.</li>
+          <li>Letter-spacing must be whole font pixels (2 px at 2x).</li>
+        </ol>
+      </div>
+      <div>
+        <h3>Also tried, and why not</h3>
+        <ul>
+          <li>Silkscreen: no real lowercase, so no sentence case.</li>
+          <li>Pixelify Sans, DotGothic16: off their own pixel grid, so blurry on the device.</li>
+          <li>Geist Pixel: a very fine grid that lands on whole pixels only near 79 px.</li>
+          <li>Coral Pixels: a color font that ignores the text color.</li>
+          <li>Rubik Pixels: a texture of tiny dots.</li>
+          <li>Jacquard 12 and 24, Jacquarda Bastarda 9: blackletter.</li>
+          <li>Sixtyfour, Workbench: rounded CRT pixels with gaps, and as wide as Press Start 2P.</li>
+          <li>Doto: its colon looks like a double dagger, and it can’t set the sub line.</li>
+          <li>Bitcount Prop Double: its 8 reads as a 6.</li>
+          <li>Jersey 10: sharp only at 56 and 112 px. Jersey 20 and 25: too wide for the sub line.</li>
+          <li>Bytesized: tiny 3 × 4 letters with no descenders.</li>
+          <li>Tiny5 and Micro 5 as headlines: crude at large sizes. Both work well as small text.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>All fonts are Google Fonts under the SIL Open Font License 1.1. Sample times, durations and app names are examples. Soft-pixel figures come from lv_font_conv 1.5.3 at 4 bits per pixel.</footer>
+</div>
+
+<script>
+(() => {
+  const RIPE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAADgUlEQVR4nO2WzWsbRxjGfzMrybHlRJZNUGoTO1/CqKHQlNA0kFNrSg4tJtAm8bXQnIrJOYUeTNI/wKSnHEpcaOMakkObEoLTWzB1C6kpjuyYNDgOwoqw3LUlBX3sTg672kjW7lquDj00LyzS7M77PM88884HvI7/OESL+apVLNkK+crCMa5MxlqAaE0AABO3DrUK4RnK43G+X5mMbX3XTF5dBPwUxM+e4NexEgATcykME74aSTtgN5f6gHSVFMCZEsO02t/dOsDSj795cmxXOA7wR5f2OS+X/j7I4o0ZBs+fZPHGDACD508SP/TE6fPz16tN8TRTuQ32xc+eAMBUCileQXiM1JdjWweudg0A8GaswPuLGVYWjvHtgxQA129a3z77ZNlJ+PJcmvHoANKW/cU/y748fgLU7d5e9kSKBCW8N7/WQP54ahaAw5++y+ULjzi1/yATcylLRKQfpEAqfxFeRahu9/bSEy1y5OPDaCEN5meYmEvVFJVNAoxOzTIyBWM/pNDshX20s0wyHwJgPDrA6PqychPhpkrd7XuDzs4iiXODBKNdFN86Q8/QBafDeKQfKQTH+3IAzD4LW0L0p06f+4ke8hshHuVDmDbL6HqjE64OaED8w34Cu4KEL/5CGFibBu3+dZS9vjLTSbuv4HRkg6yuMY7liBQCYW7SvqcE+RBS4YjYGq4CAm0Gpqwv/u4PPicLhB5MArB3KEFmOolhL5LuiMHpyAYagvSaQEmBBBLhEklbhFu4bsWmKXl8ZwWjbKCPnSJ77xrZe9ca+u0dSqDZjlZ/M7pESYG5FXMnDgAY0sooZnPw0zeEIh2U9AIVl761IsyKQmBNY0UJDEeBuwWuAsyyQGtTPPw+SfxoJ+b+KCW94HzP/f7ULY30Wv0wVUWzuT2PAm8HlO3AxuomrG56AlRjs1BPXlH17eHuDkb1xjzXGpjPBTGMV8DVx4+88KL+XXX0C7kgSO9cTwf+TId5O5ZvINrdocjolm6z0mhtuewC6TH/4L0Vq+oud3xfDhkQnoR+5HPr7QAMd7Uz8GTBlc/3LKgeRO/E6mugdn4DQlFRwrF8J+SwzYWkunb/eL4bqSwhW4urogRGKei0/9LbnP/DXe1+8HiqqgkF1mECWFuqfQeovQvULTO74GpG7svT7FXaEmLXhV9Vg3PoNIW/07u8fxX+e9zX8T+Ol86jXDVytxGEAAAAAElFTkSuQmCC';
+  const UNRIPE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAADHElEQVR4nO2XzWsTURTFf2+msVVRkZbGr6ZgDa1CYxUkuHDtQt1YkFhcuBDxXyh2ozT4H4jLSkVLF4KYjW5cF0Ft/aLUWAwJadIk1tqWatJ5Ll7mtUlmkpEgLvRAFnnz3jn3nnvfnQT+4y9DNHleNstlNCOenO0lOrm/CYrmAgBg7HGgWQpXSJePfh6d3F+95uVcBVrqRRCMhHlxawmA+9PLANy8lNZkTz74gbQtClBTkrHHAeYmplw1GjWOJg5dPwxA23bJ10wncxNTBCNhTR6MhNnrz1IqKspXdz970vHSuTX2BSNhx40umdbVaOhANHYCgO5giSu9b0nO9upy2A149WICAMOUDA8uMPp0ACEEUkpGLrypq1MvAPkwHtJfhnpmasS32n/7WpwzXe2Mv/tWEQTAzfOvXbXcmlCL93X2U7J+ADPcn17eIpwmGjtRznKKyxMQnfRhmIpg36EfLCRbEUIw+nSAkQtvpFMQTlHJ8dl+BHDsgAqiu3WI9m3n9IY7z46r9SOqPeY/mhg+i+Gz03rPg9l+1tdKZFJtSKn2OZXD9Rra4qEd9wDI/3xOsvgIAFO0kPg+h1lOtyNskFvO6MAULNp2KHq7FE6oOwe2Yo95mqKVJ7PxHIDAriCpVXXVJBYdu/10nASfuZ3k4ry6OpbEf3CdTKrNldd1FL9PKjtn1m6QK8bIFWOAyt7GwZ1qNhjCRAiBEILk4rzXnIAGDpjGNjasnzrr6gBs8QpYqt7CEJVzWzpPY+cAyiQziZeEAqdqHtvWAwgMXeOFfFoJW7Jmern1gbsDhgBLklrZtNRuumpIKVlZ/w5bhS2JMDZF+46XnGWcFr98atEu5As5Ckt58oVczT5RPp5bzrC6slIbmCXrNiC4OCCEIBH3EegpaiJhCLK5DJ0dfrKFLKK87gVu9VdJuJyxp1z3EWfrvCAR9wHK/sGut456btdQlOe3JvkT4tDgGtqdm4j7PLth7xXCvfEqNBo8l4B+6dQbqfpAud5HBzbszOvqeP0prQOxRez3PWw6VfXS8cT/u7/lvbV98/83/uMfwi8XOVSvwQBOXQAAAABJRU5ErkJggg==';
+  const OPTIONS = [{"id":"lg-jersey15","name":"Jersey 15","fonts":{"head":{"stack":"'Jersey 15', monospace","size":0,"sizes":{"busy":108,"focus":135,"call":108}},"side":{"stack":"'Jersey 15', monospace","size":54},"sub":{"stack":"'Jersey 15', monospace","size":27},"small":{"stack":"'Micro 5', monospace","size":22,"ls":2}},"variant":null},{"id":"lg-vt323","name":"VT323","fonts":{"head":{"stack":"VT323, monospace","size":0,"sizes":{"busy":125,"focus":125,"call":100}},"side":{"stack":"VT323, monospace","size":50},"sub":{"stack":"Tiny5, monospace","size":24},"small":{"stack":"Tiny5, monospace","size":16,"ls":2}},"variant":null},{"id":"lg-handjet","name":"Handjet","fonts":{"head":{"stack":"Handjet, monospace","size":0,"sizes":{"busy":102,"focus":102,"call":102}},"side":{"stack":"Handjet, monospace","size":34},"sub":{"stack":"'Micro 5', monospace","size":22},"small":{"stack":"'Micro 5', monospace","size":22,"ls":2}},"variant":null},{"id":"lg-bitcount","name":"Bitcount Prop Single","fonts":{"head":{"stack":"'Bitcount Prop Single', monospace","vs":"'wght' 400, 'ELSH' 0, 'CRSV' 0, 'ELXP' 0, 'slnt' 0","size":0,"sizes":{"busy":100,"focus":120,"call":100}},"side":{"stack":"'Bitcount Prop Single', monospace","vs":"'wght' 384.88, 'ELSH' 50, 'CRSV' 0, 'ELXP' 0, 'slnt' 0","size":50},"sub":{"stack":"'Bitcount Prop Single', monospace","vs":"'wght' 384.88, 'ELSH' 50, 'CRSV' 0, 'ELXP' 0, 'slnt' 0","size":20},"small":{"stack":"Tiny5, monospace","size":16,"ls":2}},"variant":null},{"id":"lg-pressstart","name":"Press Start 2P","fonts":{"head":{"stack":"'Press Start 2P', monospace","size":0,"sizes":{"busy":80,"focus":80,"call":40}},"side":{"stack":"'Press Start 2P', monospace","size":32},"sub":{"stack":"Tiny5, monospace","size":24},"small":{"stack":"Tiny5, monospace","size":16,"ls":2}},"variant":null},{"id":"lg-hybrid","name":"Jersey 15 + Atkinson","fonts":{"head":{"stack":"'Jersey 15', monospace","size":0,"sizes":{"busy":108,"focus":135,"call":108}},"side":{"stack":"'Jersey 15', monospace","size":54},"sub":{"stack":"'Atkinson Hyperlegible Next', sans-serif","size":18,"w":500},"small":{"stack":"'Atkinson Hyperlegible Next', sans-serif","size":14,"w":500,"ls":1}},"variant":null}];
+  const POS = {"ref":{"glyphs":{"g1":[25,6],"g2":[26,61]}},"lg-jersey15":{"busy":{"kicker":[26,11],"head":[22,25],"sub":[25,136],"status":[470,11],"label":[470,76],"value":[468,90],"foot":[470,141],"wifi":[608,14]},"focus":{"kicker":[26,11],"head":[21,10],"sub":[25,136],"status":[470,11],"label":[470,76],"foot":[470,141],"wifi":[608,14]},"call":{"kicker":[26,11],"head":[22,25],"sub":[25,136],"status":[470,11],"label":[470,76],"value":[468,90],"foot":[470,141],"wifi":[608,14]},"glyphs":{"g1":[24,2],"g2":[26,56]}},"lg-vt323":{"busy":{"kicker":[26,14],"head":[22,10],"sub":[26,138],"status":[470,14],"label":[470,79],"value":[469,90],"foot":[470,144],"wifi":[608,14]},"focus":{"kicker":[26,14],"head":[17,10],"sub":[26,138],"status":[470,14],"label":[470,79],"foot":[470,144],"wifi":[608,14]},"call":{"kicker":[26,14],"head":[23,25],"sub":[26,138],"status":[470,14],"label":[470,79],"value":[467,90],"foot":[470,144],"wifi":[608,14]},"glyphs":{"g1":[25,2],"g2":[26,59]}},"lg-handjet":{"busy":{"kicker":[26,11],"head":[20,27],"sub":[26,141],"status":[470,11],"label":[470,76],"value":[469,96],"foot":[470,141],"wifi":[608,14]},"focus":{"kicker":[26,11],"head":[20,27],"sub":[26,141],"status":[470,11],"label":[470,76],"foot":[470,141],"wifi":[608,14]},"call":{"kicker":[26,11],"head":[20,27],"sub":[26,141],"status":[470,11],"label":[470,76],"value":[468,96],"foot":[470,141],"wifi":[608,14]},"glyphs":{"g1":[24,8],"g2":[26,56]}},"lg-bitcount":{"busy":{"kicker":[26,14],"head":[26,37],"sub":[26,142],"status":[470,14],"label":[470,79],"value":[470,95],"foot":[470,144],"wifi":[608,14]},"focus":{"kicker":[26,14],"head":[26,27],"sub":[26,142],"status":[470,14],"label":[470,79],"foot":[470,144],"wifi":[608,14]},"call":{"kicker":[26,14],"head":[26,37],"sub":[26,142],"status":[470,14],"label":[470,79],"value":[470,95],"foot":[470,144],"wifi":[608,14]},"glyphs":{"g1":[26,7],"g2":[26,59]}},"lg-pressstart":{"busy":{"kicker":[26,14],"head":[26,45],"sub":[26,138],"status":[470,14],"label":[470,79],"value":[470,102],"foot":[470,144],"wifi":[608,14]},"focus":{"kicker":[26,14],"head":[16,45],"sub":[26,138],"status":[470,14],"label":[470,79],"foot":[470,144],"wifi":[608,14]},"call":{"kicker":[26,14],"head":[26,65],"sub":[26,138],"status":[470,14],"label":[470,79],"value":[466,102],"foot":[470,144],"wifi":[608,14]},"glyphs":{"g1":[26,14],"g2":[26,59]}},"lg-hybrid":{"busy":{"kicker":[26,15],"head":[22,26],"sub":[25,142],"status":[470,15],"label":[470,80],"value":[468,90],"foot":[470,145],"wifi":[608,14]},"focus":{"kicker":[26,15],"head":[21,11],"sub":[25,142],"status":[470,15],"label":[470,80],"foot":[469,145],"wifi":[608,14]},"call":{"kicker":[26,15],"head":[22,26],"sub":[25,142],"status":[470,15],"label":[470,80],"value":[468,90],"foot":[470,145],"wifi":[608,14]},"glyphs":{"g1":[24,2],"g2":[26,60]}}};
+  const DOT = 'data:image/png;base64,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';
+
+  const C = { bg: '#111110', text: '#e2ddd3', muted: '#9a948a', busy: '#ff5f57', focus: '#ff9945', call: '#f2d04f' };
+  const SIDE = { busy: '#241716', focus: '#241c14', call: '#232015' };
+  const TRACK = '#452f1c';
+  const MOMENTS = {
+    busy: { kicker: 'Status', word: 'Busy', sub: 'Heads down, message me instead', label: 'Busy for', value: '45m', foot: 'since 10:15 AM' },
+    focus: { kicker: 'Pomodoro · focus 2 of 4', word: '18:42', sub: "Please don't interrupt · break at 2:55 PM", label: 'Today', tomatoes: true, foot: '1 done · 31m focused', bar: .25 },
+    call: { kicker: 'From your Mac · Slack', word: 'On a call', sub: 'Message me instead', label: 'On the call', value: '12m', foot: 'since 2:04 PM' },
+  };
+  const GLYPHS = 'gpqy Il1 O0 B8 S5';
+  const wifi = c => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5.5 12.5a10 10 0 0 1 13 0"/><path d="M9 16a5 5 0 0 1 6 0"/><circle cx="12" cy="19.5" r="1" fill="${c}"/></svg>`;
+  // Four session tomatoes: one done, one in progress (still green), two to come.
+  function tomatoes(top, left, gap, ghost) {
+    const t = [[RIPE, 1], [UNRIPE, 1], [RIPE, ghost], [RIPE, ghost]];
+    return `<div data-el="tomatoes" style="position:absolute;left:${left}px;top:${top}px;display:flex;gap:${gap}px">${t.map(([src, o]) => `<img src="${src}" width="32" height="32" alt="" style="opacity:${o}">`).join('')}</div>`;
+  }
+
+  // The current Low Glare, exactly as in Design Directions.
+  function refScreen(m, id) {
+    const c = C[id], side = SIDE[id];
+    const size = id === 'focus' ? 109 : 93;
+    return `<div class="px" style="background:#111110">
+      <div style="position:absolute;left:0;top:0;width:6px;height:172px;background:${c}"></div>
+      <div style="position:absolute;left:26px;top:0;width:408px;height:172px">
+        <div style="position:absolute;left:0;top:16px;font:600 15px/1 'Barlow Condensed',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#9a948a">${m.kicker}</div>
+        <div style="position:absolute;left:-2px;top:${id === 'focus' ? 24 : 30}px;font:500 ${size}px/1 'Barlow Condensed',sans-serif;color:${c};white-space:nowrap;font-variant-numeric:tabular-nums">${m.word}</div>
+        <div style="position:absolute;left:0;top:142px;font:500 18px/1 'Atkinson Hyperlegible Next',sans-serif;color:#e2ddd3;white-space:nowrap">${m.sub}</div>
+      </div>
+      <div style="position:absolute;left:454px;top:0;width:186px;height:172px;background:${side};padding:14px 16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;font:400 12px/1 'JetBrains Mono',monospace;color:#9a948a">2:41 PM ${wifi('#9a948a')}</div>
+        <div style="position:absolute;left:16px;top:80px;font:600 13px/1 'Barlow Condensed',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#9a948a">${m.label}</div>
+        ${m.tomatoes ? tomatoes(96, 16, 6, .5) : `<div style="position:absolute;left:16px;top:96px;font:500 41px/1 'Barlow Condensed',sans-serif;color:#e2ddd3">${m.value}</div>`}
+        <div style="position:absolute;left:16px;top:142px;font:400 13px/1 'Atkinson Hyperlegible Next',sans-serif;color:#9a948a;white-space:nowrap">${m.foot}</div>
+      </div>
+      ${m.bar ? `<div style="position:absolute;left:6px;bottom:0;width:634px;height:4px;background:${TRACK}"><i style="display:block;height:100%;width:${m.bar * 100}%;background:${c}"></i></div>` : ''}
+    </div>`;
+  }
+
+  // Longhands, so the .t class's kerning, ligature and digit settings aren't reset by the font shorthand.
+  const font = s => `font-family:${s.stack};font-size:${s.size}px;line-height:1;font-weight:${s.w || 400};${s.vs ? `font-variation-settings:${s.vs};` : ''}`;
+  function text(P, el, x, s, color, content, caps) {
+    const at = P && P[el] ? `left:${P[el][0]}px;top:${P[el][1]}px;` : `left:${x}px;top:0;`;
+    // Only digits get tabular figures, like the firmware's digit swap (Bitcount's tnum would also make its letters monospaced).
+    const body = content.replace(/[0-9]+/g, d => `<span class="tn">${d}</span>`);
+    return `<div class="t" data-el="${el}" data-x="${x}" style="${at}${font(s)}${caps ? `letter-spacing:${s.ls || 0}px;text-transform:uppercase;` : ''}color:${color}">${body}</div>`;
+  }
+
+  // A pixel option in the Low Glare layout. Text is placed by baseline (positions baked in POS).
+  function pxScreen(o, id, key, fonts) {
+    const m = MOMENTS[id], c = C[id], P = (POS[key] || {})[id];
+    const F = fonts || o.fonts, H = Object.assign({}, F.head, { size: F.head.sizes[id] });
+    const S = F.small;
+    return `<div class="px" style="background:${C.bg}">
+      <div style="position:absolute;left:0;top:0;width:6px;height:172px;background:${c}"></div>
+      <div style="position:absolute;left:454px;top:0;width:186px;height:172px;background:${SIDE[id]}"></div>
+      ${text(P, 'kicker', 26, S, C.muted, m.kicker, true)}
+      ${text(P, 'head', 26, H, c, m.word)}
+      ${text(P, 'sub', 26, F.sub, C.text, m.sub)}
+      ${text(P, 'status', 470, S, C.muted, '2:41 PM')}
+      <div data-el="wifi" style="position:absolute;left:608px;top:${P && P.wifi ? P.wifi[1] : 0}px">${wifi(C.muted)}</div>
+      ${text(P, 'label', 470, S, C.muted, m.label, true)}
+      ${m.tomatoes ? tomatoes(96, 470, 6, .5) : text(P, 'value', 470, F.side, C.text, m.value)}
+      ${text(P, 'foot', 470, S, C.muted, m.foot)}
+      ${m.bar ? `<div style="position:absolute;left:6px;bottom:0;width:634px;height:4px;background:${TRACK}"><i style="display:block;height:100%;width:${m.bar * 100}%;background:${c}"></i></div>` : ''}
+    </div>`;
+  }
+
+  // Glyph check: headline font at the side value's size, then the small text.
+  const REF_FONTS = { head: { stack: "'Barlow Condensed', sans-serif", w: 500, size: 41 }, small: { stack: "'Atkinson Hyperlegible Next', sans-serif", w: 400, size: 13 } };
+  function strip(key, o) {
+    const P = (POS[key] || {}).glyphs;
+    const g1 = o ? Object.assign({}, o.fonts.head, { size: o.fonts.side.size }) : REF_FONTS.head;
+    const g2 = o ? o.fonts.small : REF_FONTS.small;
+    return `<div class="px" style="height:88px;background:${C.bg}">
+      ${text(P, 'g1', 26, g1, C.text, GLYPHS)}
+      ${text(P, 'g2', 26, g2, C.muted, GLYPHS + '  2:41 PM')}
+    </div>`;
+  }
+
+  const byId = Object.fromEntries(OPTIONS.map(o => [o.id, o]));
+  document.querySelectorAll('.fit[data-o]').forEach(fit => {
+    const key = fit.dataset.o, s = fit.dataset.s, o = byId[key];
+    if (s === 'glyphs') fit.innerHTML = strip(key, o);
+    else if (key === 'ref') fit.innerHTML = refScreen(MOMENTS[s], s);
+    else if (s === 'dot') fit.innerHTML = o.variant ? pxScreen(o, 'busy', key + '-dot', Object.assign({}, o.fonts, o.variant)) : `<div class="px"><img src="${DOT}" width="640" height="172" alt=""></div>`;
+    else fit.innerHTML = pxScreen(o, s, key);
+  });
+
+  // Scale each 640 px wide screen to its box.
+  const fit = () => document.querySelectorAll('.fit').forEach(f => {
+    const px = f.firstElementChild;
+    if (px) px.style.transform = `scale(${f.clientWidth / 640})`;
+  });
+  fit();
+  if ('ResizeObserver' in window) new ResizeObserver(fit).observe(document.body);
+  else addEventListener('resize', fit);
+})();
+</script>

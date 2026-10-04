@@ -136,6 +136,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
   border-radius: 4px;
   background: var(--lcd-off);
   color: var(--s-fg);
+  font-family: var(--f-body);
   font-synthesis: none;
 }
 .screen {
@@ -153,6 +154,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
   transition: background .35s, transform .6s cubic-bezier(.5,0,.2,1), opacity .25s;
   display: grid;
   grid-template-columns: 1fr 29%;
+  grid-template-rows: minmax(0, 1fr);
 }
 .device.flipped .lcd { transform: rotate(180deg); }
 .scr.off .lcd { opacity: 0; }
@@ -171,6 +173,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
   font-weight: var(--w-kick, 700);
   font-size: var(--z-kick, 2.3cqw);
   letter-spacing: var(--ls-kick, .14em);
+  line-height: var(--lh-s, 1.55);
   text-transform: uppercase;
   opacity: .82;
   white-space: nowrap;
@@ -181,10 +184,10 @@ h1 .dot { color: var(--state); transition: color .3s; }
 /* Source chip on automatic screens: MAC or CALENDAR. In LVGL it's one label with a background. */
 .chip {
   display: inline-block;
-  margin-right: .6em;
+  margin-right: .3em;
   padding: 0 .45em;
   border-radius: .3em;
-  font-size: .88em;
+  font-size: var(--z-chip, .88em);
   line-height: 1.35;
   letter-spacing: .12em;
   text-transform: uppercase;
@@ -195,8 +198,10 @@ h1 .dot { color: var(--state); transition: color .3s; }
 .word {
   font-family: var(--f-screen);
   font-weight: var(--w-word, 800);
-  font-size: calc(var(--fs, 10) * var(--ws, 1) * 1cqw);
-  line-height: .84;
+  /* A direction can cap headline words (--z-wmax); the Pomodoro timer digits (.time) are exempt. */
+  font-size: min(var(--z-wmax, 100cqw), calc(var(--fs, 10) * var(--ws, 1) * 1cqw));
+  line-height: var(--lh-word, .84);
+  margin-top: var(--mt-word, 0);
   letter-spacing: .005em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -204,11 +209,13 @@ h1 .dot { color: var(--state); transition: color .3s; }
   text-overflow: ellipsis;
   font-variant-numeric: tabular-nums;
 }
-.word.title { text-transform: none; line-height: .95; }
+.word.time { font-size: calc(var(--fs, 10) * var(--ws, 1) * 1cqw); }
+.word.title { text-transform: none; line-height: var(--lh-title, .95); margin-top: var(--mt-title, 0); }
 .sub {
   font-family: var(--f-sub, var(--f-body));
   font-weight: var(--w-sub, 500);
   font-size: var(--z-sub, 2.9cqw);
+  line-height: var(--lh-sub, 1.55);
   opacity: .9;
   white-space: nowrap;
   overflow: hidden;
@@ -234,6 +241,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
   gap: 1cqw;
   font-family: var(--f-sys, var(--f-mono));
   font-size: var(--z-sys, 1.9cqw);
+  line-height: var(--lh-s, 1.55);
   opacity: .85;
   font-variant-numeric: tabular-nums;
 }
@@ -244,6 +252,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
   font-family: var(--f-kick, var(--f-screen));
   font-weight: var(--w-kick, 700);
   font-size: var(--z-label, 2cqw);
+  line-height: var(--lh-s, 1.55);
   letter-spacing: var(--ls-kick, .14em);
   text-transform: uppercase;
   opacity: .75;
@@ -259,7 +268,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
   text-overflow: ellipsis;
 }
 .ctx-value.small { font-size: var(--z-vals, 3.6cqw); line-height: 1.05; }
-.ctx-foot { font-size: var(--z-foot, 2cqw); opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ctx-foot { font-size: var(--z-foot, 2cqw); line-height: var(--lh-s, 1.55); opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tomatoes { display: flex; gap: 1cqw; margin-top: .8cqw; }
 .tomato { position: relative; display: block; }
 .tomato img { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; image-rendering: pixelated; }
@@ -297,10 +306,10 @@ h1 .dot { color: var(--state); transition: color .3s; }
   justify-content: space-between;
   min-width: 0;
 }
-.tile b { font-family: var(--f-kick, var(--f-screen)); font-weight: 700; font-size: 2cqw; letter-spacing: .1em; text-transform: uppercase; color: #9aa3ad; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tile span { font-family: var(--f-screen); font-weight: 800; font-size: 4.4cqw; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tile small { font-size: 1.8cqw; line-height: 1.25; color: #9aa3ad; }
-.tile span.two { white-space: normal; font-size: 3.6cqw; line-height: 1.05; }
+.tile b { font-family: var(--f-kick, var(--f-screen)); font-weight: var(--w-kick, 700); font-size: var(--z-label, 2cqw); letter-spacing: .1em; text-transform: uppercase; color: #9aa3ad; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile span { font-family: var(--f-screen); font-weight: var(--w-tv, 800); font-size: var(--z-tv, 4.4cqw); line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile small { font-size: var(--z-foot, 1.8cqw); line-height: 1.25; color: #9aa3ad; }
+.tile span.two { white-space: normal; font-size: var(--z-tv2, 3.6cqw); line-height: 1.05; }
 
 .caption {
   display: flex;
@@ -332,9 +341,10 @@ h1 .dot { color: var(--state); transition: color .3s; }
   display: grid;
   gap: 16px;
 }
-.phone-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.phone-head strong { font-family: var(--f-screen); font-size: 24px; font-weight: 800; letter-spacing: .02em; }
-.phone-head span { font-family: var(--f-mono); font-size: 11px; color: var(--muted); }
+/* The title and address each stay on one line; in a narrow panel the address drops below the title as a whole. */
+.phone-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 8px; }
+.phone-head strong { font-family: var(--f-screen); font-size: 24px; font-weight: 800; letter-spacing: .02em; white-space: nowrap; }
+.phone-head span { font-family: var(--f-mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
 .field-label { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; margin-bottom: 6px; display: block; }
 .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .sbtn {
@@ -420,6 +430,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
   .kv dd { margin-bottom: 10px; }
 }
 .spec { font-family: var(--f-mono); font-size: 13px; }
+.kv code { font-family: var(--f-mono); font-size: 12.5px; color: var(--ink); }
 .note-small { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
 
 /* Pomodoro on the screen */
@@ -451,6 +462,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
 .tile.info { background: transparent; box-shadow: none; }
 .tile.done { background: #e8ebee; color: #111316; }
 .tile.done b { color: #4a525c; }
+.tile.done[data-action]:hover { background: #d5dade; }
 
 /* Brief on-screen confirmation, so every gesture shows what it did. */
 .toast {
@@ -463,9 +475,12 @@ h1 .dot { color: var(--state); transition: color .3s; }
   padding: .7cqw 2.2cqw;
   border-radius: var(--r, 3cqw);
   font-family: var(--f-body);
-  font-weight: 600;
-  font-size: 2.4cqw;
+  font-weight: var(--w-toast, 600);
+  font-size: var(--z-toast, 2.4cqw);
   white-space: nowrap;
+  max-width: 94%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   pointer-events: none;
 }
 .device.flipped .toast { bottom: auto; top: 2.6cqw; transform: translateX(-50%) rotate(180deg); }
@@ -484,13 +499,13 @@ h1 .dot { color: var(--state); transition: color .3s; }
   justify-content: center;
   gap: 1.4cqw;
   font-family: var(--f-screen);
-  font-weight: 800;
-  font-size: 5cqw;
+  font-weight: var(--w-tv, 800);
+  font-size: var(--z-hold, 5cqw);
   letter-spacing: .04em;
   text-transform: uppercase;
 }
 .hold[hidden] { display: none; }
-.hold small { font-family: var(--f-body); font-weight: 500; font-size: 2.4cqw; letter-spacing: 0; text-transform: none; color: #c9ced4; }
+.hold small { font-family: var(--f-body); font-weight: var(--w-toast, 500); font-size: var(--z-toast, 2.4cqw); letter-spacing: 0; text-transform: none; color: #c9ced4; }
 .hold .track { width: 40cqw; height: 1.2cqw; border-radius: 1cqw; background: #2a2e36; overflow: hidden; }
 .hold .track i { display: block; height: 100%; width: 0; background: #fff; }
 .hold.go .track i { width: 100%; transition: width 2.6s linear; }
@@ -505,8 +520,8 @@ h1 .dot { color: var(--state); transition: color .3s; }
   justify-content: center;
   gap: 2.4cqw;
   font-family: var(--f-screen);
-  font-weight: 800;
-  font-size: 9cqw;
+  font-weight: var(--w-tv, 800);
+  font-size: var(--z-splash, 9cqw);
   text-transform: uppercase;
 }
 .splash .tomato { width: 10cqw; height: 10cqw; }
@@ -522,11 +537,11 @@ h1 .dot { color: var(--state); transition: color .3s; }
 .wsetup .qr { height: 21cqw; aspect-ratio: 1; flex: none; background: #fff; border-radius: var(--r, 1.2cqw); padding: .9cqw; }
 .wsetup .qr svg { display: block; width: 100%; height: 100%; }
 .wsetup .wtext { min-width: 0; display: flex; flex-direction: column; gap: .5cqw; }
-.wsetup ol { margin: .4cqw 0 0; padding-left: 3cqw; font-family: var(--f-body); font-size: 2.6cqw; line-height: 1.35; }
-.wsetup .wfoot { font-family: var(--f-body); font-size: 2cqw; opacity: .75; }
+.wsetup ol { margin: .4cqw 0 0; padding-left: 3cqw; font-family: var(--f-body); font-size: var(--z-wol, 2.6cqw); line-height: 1.35; }
+.wsetup .wfoot { font-family: var(--f-body); font-size: var(--z-wfoot, 2cqw); opacity: .75; }
 .dots-anim::after { content: "…"; display: inline-block; width: 1.2em; text-align: left; animation: dots 1.2s steps(4, end) infinite; overflow: hidden; vertical-align: bottom; }
 @keyframes dots { from { width: 0; } to { width: 1.2em; } }
-.setup { display: grid; gap: 12px; }
+.setup { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .setup p { margin: 0; font-size: 14px; color: var(--muted); }
 .nets { display: grid; gap: 6px; border: 0; margin: 0; padding: 0; }
 .net {
@@ -558,6 +573,9 @@ h1 .dot { color: var(--state); transition: color .3s; }
 .setup-msg { padding: 10px 12px; border-radius: 12px; font-size: 13px; border: 1px solid var(--line); }
 .setup-msg.err { border-color: var(--s-busy); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
+.seg button:disabled { opacity: .45; cursor: not-allowed; }
+.field input[aria-invalid="true"], .msg-row input[aria-invalid="true"] { border-color: var(--s-busy); }
+.field-err { margin: 0; padding-left: 10px; border-left: 3px solid var(--s-busy); font-size: 13px; color: var(--ink); }
 
 /* Style panel */
 .style-panel {
@@ -611,9 +629,10 @@ h1 .dot { color: var(--state); transition: color .3s; }
 .flows { display: grid; gap: 28px; }
 .flows > p { margin: -12px 0 0; color: var(--muted); max-width: 70ch; }
 .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
-table.controls { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 13px; }
+table.controls { border-collapse: collapse; width: 100%; min-width: 900px; font-size: 13px; }
 table.controls th, table.controls td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
 table.controls thead th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+table.controls thead th .th-note { display: block; margin-top: 2px; letter-spacing: 0; text-transform: none; font-weight: 400; }
 table.controls tbody th { font-weight: 700; white-space: nowrap; }
 table.controls tr:last-child th, table.controls tr:last-child td { border-bottom: 0; }
 table.controls td.none { color: var(--muted); }
@@ -621,11 +640,16 @@ table.controls td.none { color: var(--muted); }
 .fig-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); padding: 14px; }
 .fig svg { display: block; width: 100%; min-width: 760px; height: auto; }
 .fig figcaption { font-size: 14px; color: var(--muted); max-width: 78ch; }
+/* On narrow screens the diagrams and the table scroll sideways inside their frames; say so. */
+.scroll-hint { display: none; margin: 0 0 -4px; font-size: 13px; color: var(--muted); }
+@media (max-width: 840px) { .scroll-hint { display: block; } }
 .fig figcaption b { color: var(--ink); }
 .dg-box { fill: var(--bg); stroke: var(--ink); stroke-width: 1.2; }
 .dg-box.alarm { stroke-dasharray: 5 4; }
 .dg-box.focus { stroke: var(--s-focus); stroke-width: 2.2; }
 .dg-box.brk { stroke: var(--s-short); stroke-width: 2.2; }
+.dg-box.call { stroke: var(--s-call); stroke-width: 2.2; }
+.dg-box.meet { stroke: var(--s-meeting); stroke-width: 2.2; }
 .dg-box.info { stroke: var(--muted); stroke-dasharray: 2 3; }
 .dg-box.done { fill: var(--ink); }
 .dg-group { fill: none; stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 4 4; }
@@ -648,14 +672,19 @@ table.controls td.none { color: var(--muted); }
   justify-content: space-between;
   gap: 10px;
 }
+/* The readout is page text, so it stays in the ink color; the phase color is a dot beside it. */
 .pomo-read b {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-family: var(--f-screen);
   font-weight: 800;
   font-size: 34px;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  color: var(--pc);
+  color: var(--ink);
 }
+.pomo-read b::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--pc); flex: none; }
 .pomo-read span { font-size: 13px; color: var(--muted); text-align: right; }
 .pomo-tomatoes { display: flex; gap: 6px; }
 .pomo-tomatoes .tomato { width: 30px; height: 30px; display: block; }
@@ -676,9 +705,10 @@ table.controls td.none { color: var(--muted); }
 .scr[data-dir] .kicker, .scr[data-dir] .sub, .scr[data-dir] .ctx-label, .scr[data-dir] .ctx-foot,
 .scr[data-dir] .sys, .scr[data-dir] .wsetup .wfoot { opacity: 1; }
 .scr[data-case="none"] .word, .scr[data-case="none"] .splash { text-transform: none; }
-.scr[data-case="none"] .word { line-height: 1.22; margin-top: -.28em; }
+.scr[data-case="none"] .word { line-height: var(--lh-word, 1.22); margin-top: var(--mt-word, -.28em); }
 .scr[data-case="none"] .endrow .word { margin-top: 0; }
-.scr[data-case="none"] .kicker, .scr[data-case="none"] .sub { line-height: 1.2; }
+.scr[data-case="none"] .kicker { line-height: var(--lh-s, 1.2); }
+.scr[data-case="none"] .sub { line-height: var(--lh-sub, 1.2); }
 .scr[data-labels="none"] .kicker, .scr[data-labels="none"] .ctx-label, .scr[data-labels="none"] .tile b { text-transform: none; letter-spacing: 0; }
 .scr[data-labels="none"] .chip { letter-spacing: .04em; }
 .scr[data-accent="1"] .lcd::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--z-accent, .9375cqw); background: var(--sc); z-index: 1; }
@@ -696,7 +726,7 @@ table.controls td.none { color: var(--muted); }
 .scr[data-mode="dark"][data-k="clock"] .word, .scr[data-mode="dark"][data-k="setup"] .word, .scr[data-mode="dark"] .splash { color: var(--b-text); }
 .scr[data-mode="dark"] .kicker, .scr[data-mode="dark"] .ctx-label, .scr[data-mode="dark"] .ctx-foot, .scr[data-mode="dark"] .sys,
 .scr[data-mode="dark"] .wsetup ol, .scr[data-mode="dark"] .wsetup .wfoot { color: var(--b-muted); }
-.scr[data-mode="dark"] .sub, .scr[data-mode="dark"] .ctx-value { color: var(--b-text); }
+.scr[data-mode="dark"] .sub, .scr[data-mode="dark"] .ctx-value, .scr[data-mode="dark"] .wsetup ol b { color: var(--b-text); }
 .scr[data-mode="dark"][data-side="tint"] .side { background: var(--tsc, color-mix(in srgb, var(--sc) 8%, var(--b-bg))); }
 .scr[data-mode="dark"] .bar { height: .625cqw; background: color-mix(in srgb, var(--sc) 22%, var(--b-bg)); }
 .scr[data-mode="dark"] .bar i { background: var(--sc); }
@@ -714,6 +744,7 @@ table.controls td.none { color: var(--muted); }
 .scr[data-mode="dark"] .tile[data-action]:hover { background: color-mix(in srgb, var(--b-text) 11%, var(--b-bg)); }
 .scr[data-mode="dark"] .tile.info { background: transparent; box-shadow: none; }
 .scr[data-mode="dark"] .tile.done { background: color-mix(in srgb, var(--b-text) 12%, var(--b-bg)); color: var(--b-text); box-shadow: inset 0 0 0 .3125cqw var(--b-text); }
+.scr[data-mode="dark"] .tile.done[data-action]:hover { background: color-mix(in srgb, var(--b-text) 20%, var(--b-bg)); }
 .scr[data-mode="dark"] .tile b, .scr[data-mode="dark"] .tile small, .scr[data-mode="dark"] .tile.done b, .scr[data-mode="dark"] .hold small { color: var(--b-muted); }
 .scr[data-mode="dark"] .toast { background: color-mix(in srgb, var(--b-text) 9%, var(--b-bg)); color: var(--b-text); box-shadow: inset 0 0 0 .156cqw color-mix(in srgb, var(--b-text) 18%, var(--b-bg)); }
 .scr[data-mode="dark"] .hold .track { background: color-mix(in srgb, var(--b-text) 12%, var(--b-bg)); }
@@ -751,6 +782,8 @@ table.controls td.none { color: var(--muted); }
 .scr[data-mode="light"] .tile.info { background: transparent; box-shadow: none; }
 .scr[data-mode="light"] .tile b, .scr[data-mode="light"] .tile small, .scr[data-mode="light"] .hold small { color: var(--b-muted); }
 .scr[data-mode="light"] .tile.done { background: var(--b-text); color: var(--b-bg); box-shadow: none; }
+.scr[data-mode="light"] .tile.done[data-action]:hover { background: #2a2e36; }
+.scr[data-mode="light"] .wsetup ol b { color: var(--b-text); }
 .scr[data-mode="light"] .tile.done b, .scr[data-mode="light"] .tile.done small { color: #c9ccd1; }
 .scr[data-mode="light"] .toast { background: var(--b-text); color: var(--b-bg); }
 .scr[data-mode="light"] .hold .track { background: #e3ded5; }
@@ -758,10 +791,10 @@ table.controls td.none { color: var(--muted); }
 .scr[data-mode="light"] .wsetup .qr { box-shadow: inset 0 0 0 .3125cqw #e3ded5; }
 
 /* ---------- Automatic status on the Remote ---------- */
-.auto { display: grid; gap: 12px; }
-.auto > p { margin: 0; }
+.auto-sec { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.auto-sec > p { margin: 0; }
 .auto-now { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; font-weight: 600; }
-.auto-card { display: grid; gap: 10px; padding: 14px; border-radius: 16px; border: 1px solid var(--line); min-width: 0; }
+.auto-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 14px; border-radius: 16px; border: 1px solid var(--line); min-width: 0; }
 .auto-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .auto-head b { font-size: 15px; }
 .badge { font-size: 11px; font-weight: 600; letter-spacing: .04em; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
@@ -790,6 +823,10 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
 .dir-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap: 16px; }
 .dir-card { display: grid; gap: 10px; align-content: start; min-width: 0; padding: 16px; border-radius: 16px; border: 1px solid var(--line); }
 .dir-card.on { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.dir-info, .dir-pv { display: grid; gap: 10px; align-content: start; min-width: 0; }
+/* The user's current pick leads the list across the full row, with its previews beside the description. */
+.dir-card.pick { grid-column: 1 / -1; }
+@media (min-width: 960px) { .dir-card.pick { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 24px; } }
 .dir-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .dir-top h3 { margin: 0; margin-right: auto; font-size: 20px; line-height: 1.2; }
 .dir-card p { margin: 0; font-size: 14px; color: var(--muted); }
@@ -798,7 +835,8 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
 .dir-fonts dd { margin: 0; }
 .dir-sw { display: flex; flex-wrap: wrap; gap: 6px 4px; }
 .dir-sw span { display: grid; justify-items: center; gap: 2px; width: 50px; font-size: 10px; line-height: 1.15; color: var(--muted); text-align: center; }
-.dir-sw i { width: 28px; height: 20px; border-radius: 5px; box-shadow: inset 0 0 0 1px rgba(127,127,127,.45); }
+/* The border keeps near-black swatches visible on a dark card. */
+.dir-sw i { width: 28px; height: 20px; border-radius: 5px; border: 1px solid color-mix(in srgb, var(--ink) 32%, transparent); }
 .pv-frame { padding: 6px; border-radius: 10px; background: var(--chassis); }
 .scr.pv { border-radius: 3px; pointer-events: none; user-select: none; }
 .pv-cap { font-family: var(--f-mono); font-size: 11px; color: var(--muted); letter-spacing: .04em; }
@@ -816,7 +854,11 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
 @media (prefers-reduced-motion: reduce) {
   .device, .lcd, .bar i { transition: none; }
   .marquee.scroll .word { animation: none; padding-left: 0; }
-  .word.blink, .lcd.alert::after, .scr .lcd.alert::after { animation: none; }
+  .word.blink { animation: none; }
+  /* The alarm shows a steady frame instead of flashing: white on a solid color field, the status color on the
+     dark and light modes. These selectors are as specific as the mode rules above, and come later, so they win. */
+  .scr[data-mode] .lcd.alert::after { animation: none; opacity: 1; background: transparent; box-shadow: inset 0 0 0 .9375cqw #fff; }
+  .scr[data-mode="dark"] .lcd.alert::after, .scr[data-mode="light"] .lcd.alert::after { box-shadow: inset 0 0 0 .9375cqw var(--sc); }
 }
 </style>
 
@@ -889,7 +931,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     <div class="style-head">
       <div class="eyebrow">Mock-up only · not on the device</div>
       <h2 id="dirsTitle">Design directions</h2>
-      <p>Complete looks for the screen, side by side. The large preview in each card follows the simulator live; the small ones show Busy and the Pomodoro. Apply puts a direction on the simulator and in the Style panel below, where you can fine-tune it. Reset to defaults there brings back today's look.</p>
+      <p>Complete looks for the screen, side by side. Your current pick, the Low Glare layout in a pixel font, comes first; which pixel font is still open. The large preview in each card follows the simulator live; the small ones show Busy and the Pomodoro. Apply puts a direction on the simulator and in the Style panel below, where you can fine-tune it. Reset to defaults there brings back today's look.</p>
     </div>
     <div class="dir-grid" id="dirGrid"></div>
   </section>
@@ -899,6 +941,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
       <div class="eyebrow">Mock-up only · not on the device</div>
       <h2 id="styleTitle">Style</h2>
       <p>Try fonts, colors and screen modes on the screen. Your choices stay in this browser. Copy them when you've found a look you like, and send them to me for the firmware.</p>
+      <p>Dark mode is the Low Glare treatment: picking it starts from Low Glare's colors, tints and sentence-case headlines, with the fonts you've chosen. Pixel fonts snap to whole multiples of their own pixel grid so they stay crisp, and each headline takes the largest of those sizes that fits. With a pixel headline font other than Jersey 10 or 15, the line under the headline uses the text font, since the others are too wide or too big for it.</p>
     </div>
     <div class="style-grid">
       <label class="field"><span class="field-label">Headline font</span><select id="fHead"></select></label>
@@ -945,7 +988,14 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
         <div class="setup-msg" id="guestWarn" hidden>This network needs a sign-in web page, which TinyBar can't fill in. Ask IT whether there's a network for devices.</div>
         <label class="field" id="userField" hidden><span class="field-label">Work username</span><input id="wUser" type="text" autocomplete="off"></label>
         <label class="field" id="passField"><span class="field-label">Password</span><input id="wPass" type="password" autocomplete="off"></label>
-        <label class="field"><span class="field-label">Secret iCal address (optional)</span><input id="wCal" type="text" inputmode="url" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics"></label>
+        <div class="field">
+          <label class="field-label" for="wCal">Secret iCal address (optional)</label>
+          <div class="msg-row">
+            <input id="wCal" type="password" inputmode="url" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" aria-describedby="wCalErr">
+            <button class="btn ghost" id="wCalShow" type="button" aria-pressed="false">Show</button>
+          </div>
+          <p class="field-err" id="wCalErr" hidden></p>
+        </div>
         <p class="note-small">Find it on a computer: Google Calendar › Settings › your calendar › Integrate calendar › "Secret address in iCal format". You can also add it later on the Remote.</p>
         <button class="btn" id="wConnect" type="button">Connect</button>
         <p class="note-small">In the mock-up, any password of 8 or more characters works and shorter ones fail, so you can see the error screen.</p>
@@ -1025,7 +1075,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
       </form>
       <div>
         <span class="field-label">Automatic status</span>
-        <div class="auto">
+        <div class="auto-sec">
           <p class="note-small">Your calendar and your Mac can set the status for you, separately or together. Whatever you pick yourself wins until the call or meeting ends.</p>
           <div class="auto-now"><span id="autoNow" aria-live="polite">Showing your status</span><button class="btn ghost" id="autoShowAgain" type="button" hidden>Show again</button></div>
 
@@ -1033,7 +1083,6 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
             <div class="auto-head"><b>Calendar</b><span class="badge" id="calBadge">Connected</span></div>
             <label class="check" for="calOn"><input type="checkbox" id="calOn" checked> Calendar meetings</label>
             <p class="auto-line" id="calLine"></p>
-            <p class="note-small" id="calOnNote" hidden>Add your calendar's secret address first. This switch turns on when it's saved.</p>
             <div id="calSaved">
               <div class="mask" id="calMask"></div>
               <div class="row" id="calActions">
@@ -1048,8 +1097,8 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
             </div>
             <div class="setup" id="calForm" hidden>
               <label class="field" for="calInput"><span class="field-label">Secret address in iCal format</span></label>
-              <div class="msg-row">
-                <input id="calInput" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics">
+              <div class="msg-row" id="calInputRow">
+                <input id="calInput" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" aria-describedby="calMsg">
                 <button class="btn ghost" id="calShow" type="button" aria-pressed="false">Show</button>
               </div>
               <details class="help">
@@ -1066,7 +1115,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
               <div class="row">
                 <button class="btn" id="calSave" type="button">Add</button>
                 <button class="btn ghost" id="calCancel" type="button" hidden>Cancel</button>
-                <button class="btn ghost" id="calSample" type="button">Use a sample address (mock-up only)</button>
+                <button class="btn ghost" id="calSample" type="button">Fill in a sample (mock-up)</button>
               </div>
             </div>
             <div class="setup-msg" id="calMsg" hidden></div>
@@ -1076,7 +1125,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
           </div>
 
           <div class="auto-card" id="macCard">
-            <div class="auto-head"><b>Connect your Mac</b><span class="badge later">Mac app coming later</span></div>
+            <div class="auto-head"><b>Connect your Mac</b><span class="badge later">Coming later</span></div>
             <label class="check" for="macOn"><input type="checkbox" id="macOn" checked> Calls from your Mac</label>
             <p class="auto-line" id="macLine"></p>
             <p class="note-small">A small menu-bar app will set On a call whenever your Mac's mic or camera is in use, so Slack huddles and Google Meet calls show up even when they aren't on your calendar. It talks to TinyBar over USB when the bar is powered from your Mac, otherwise over Wi-Fi. <a href="#api">How the Mac app talks to TinyBar</a></p>
@@ -1099,16 +1148,18 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
       <div>
         <h2>How you'd control it</h2>
         <dl class="kv">
-          <dt>Touch</dt><dd>Tap cycles status, a swipe steps back or forward, and holding opens a quick menu with light, calendar, Wi-Fi and power. On the Pomodoro screen, a tap starts or pauses the timer and holding opens timer options. A dark screen wakes on the first tap, and every action shows a short confirmation.</dd>
-          <dt>Pomodoro</dt><dd>25-minute focus sessions, 5-minute breaks and a 15-minute break after every fourth session, all adjustable. Focus shows in orange so people know not to interrupt; breaks turn the bar teal or blue to say it's a good moment. Each finished session earns a red tomato, upcoming sessions show as faded tomatoes, and the one in progress ripens like a real tomato as you focus: color breaks at the bottom and spreads up to the stem, through yellow and orange to red. The timer keeps running when you switch to another status, with a small countdown in the corner, and the bar jumps back to it when a phase ends.</dd>
-          <dt>Side buttons</dt><dd>BOOT jumps to the next status without looking. A press of PWR turns the screen off and on, holding it for 3 seconds powers the bar off, and a press turns it back on. If the screen is dark or an alarm is ringing, the first press of either button only wakes the screen or silences the alarm.</dd>
+          <dt>Touch</dt><dd>Tap cycles status, a swipe steps back or forward, and holding opens a quick menu with light, calendar, Wi-Fi and power. On the Pomodoro screen, a tap starts or pauses the timer and holding opens timer options. On a call or meeting screen, a tap goes back to your own status; the call or meeting is set aside until it ends. A dark screen wakes on the first tap, and every action shows a short confirmation.</dd>
+          <dt>Pomodoro</dt><dd>25-minute focus sessions, 5-minute breaks and a 15-minute break after every fourth session, all adjustable. Focus shows in orange so people know not to interrupt; breaks turn the bar teal or blue to say it's a good moment. Each finished session earns a red tomato, upcoming sessions show as faded tomatoes, and the one in progress ripens like a real tomato as you focus: color breaks at the bottom and spreads up to the stem, through yellow and orange to red. The timer keeps running when you switch to another status, with a small countdown in the corner, and the bar jumps back to it when a phase ends. A call or calendar meeting pauses it, and the bar makes no sound while one is on. A ringing alarm goes quiet and chimes once when it's over. Ticking during focus is optional and off by default: one gentle tick a second, Soft or Medium, set on the Remote or under Settings in the timer menu. It's silent while the timer is paused, on breaks, while the alarm rings, during calls and meetings, while the screen is dark, and when the bar is powered off.</dd>
+          <dt>Side buttons</dt><dd>BOOT jumps to the next status without looking; on a call or meeting screen it goes back to your own status, like a tap. A press of PWR turns the screen off and on, holding it for 3 seconds powers the bar off, and a press turns it back on. If the screen is dark or an alarm is ringing, the first press of either button only wakes the screen or silences the alarm.</dd>
           <dt>Power</dt><dd>On battery, the software is what keeps the bar switched on, so it also handles switching off: hold PWR for 3 seconds, or use Power in the quick menu, which also has Restart. A watchdog restarts the bar if the software ever freezes, so it can't get stuck on, and it shuts itself down before the battery runs flat. On USB the bar always has power, so powering off puts it into a deep sleep until you press PWR. While it's off, the Remote page can't reach it and says so.</dd>
-          <dt>Wi-Fi setup</dt><dd>On first start the bar shows a QR code. Scanning it joins your phone to the bar's own network, where a page lets you choose the office Wi-Fi, enter the password and paste a calendar link. You can also skip Wi-Fi; statuses and the Pomodoro work without it.</dd>
-          <dt>Phone remote</dt><dd>The device serves a small page at tinybar.local on your Wi-Fi, like the Remote panel on this page.</dd>
-          <dt>Automations</dt><dd>An HTTP endpoint (and optionally MQTT for Home Assistant) so a calendar, Slack, Zoom or a shortcut can set the status.</dd>
-          <dt>Calendar</dt><dd>Optionally reads a private calendar link and switches to "In a meeting" on its own.</dd>
-          <dt>Flip</dt><dd>Turning the bar over always does three things: the layout turns the right way up, any alarm goes quiet, and the Pomodoro starts whatever it's waiting for (the next session or break, or a paused timer). A timer that's already running is left alone, so a flip never skips anything.</dd>
-          <dt>Alarm</dt><dd>When a session or break ends, the bar flashes and chimes every few seconds until you tap, press a button or flip it, and gives up after a minute. With auto-start on, it chimes once and carries on. The mock-up plays the chime in your browser.</dd>
+          <dt>Wi-Fi setup</dt><dd>On first start the bar shows a QR code. Scanning it joins your phone to the bar's own network, where a page lets you choose the office Wi-Fi, enter the password and paste your calendar's secret iCal address (optional). You can also skip Wi-Fi; statuses and the Pomodoro work without it, but the calendar and the Remote don't.</dd>
+          <dt>Phone remote</dt><dd>The device serves a small page at tinybar.local on your Wi-Fi, like the Remote panel on this page. Its Automatic status section has a switch for each source, holds your calendar's secret address, and shows what the bar is showing and why.</dd>
+          <dt>Calendar</dt><dd>Paste your calendar's secret iCal address on the Remote, or during Wi-Fi setup (Google Calendar › Settings › your calendar › Integrate calendar › "Secret address in iCal format"). Meetings then show as In a meeting on their own and fill in Next up. Once saved, the address is never shown again; the Remote shows a short masked form with Replace and Remove. Show meeting titles is off by default, so the bar shows times only, and events marked Private never show a title. The bar syncs about every 10 minutes, or when you choose Sync now, and switches at each meeting's exact start and end time. Skipping Wi-Fi turns the calendar off; if Wi-Fi drops, the bar follows its last synced copy.</dd>
+          <dt>Automatic status</dt><dd>Two sources, each with its own switch on the Remote: meetings from your calendar, and calls from your Mac. On a call wins over In a meeting, which wins over your own status. A tap, swipe, BOOT, flip or a choice on the Remote sets the call or meeting aside until it ends, and a small headset or calendar glyph stays in the corner. Show again, in the quick menu, the timer menu or on the Remote, brings it back, and the next call or meeting always takes over again. A call or meeting that takes over pauses the Pomodoro, and the bar makes no sound while one is on.</dd>
+          <dt>Mac app (later)</dt><dd>A small menu-bar app, built later, will set On a call whenever your Mac's mic or camera is in use, over USB when the bar is powered from the Mac and otherwise over Wi-Fi. Only whether you're on a call, and optionally the app's name, leaves the Mac. <a href="#api">How the Mac app talks to TinyBar</a></dd>
+          <dt>Local API</dt><dd>The bar answers on your Wi-Fi at tinybar.local: <code>POST /api/call</code> sets or ends On a call, and <code>GET /api/status</code> says what the bar is showing and which sources are on. The same JSON works one line at a time over USB serial. It never returns the calendar address.</dd>
+          <dt>Flip</dt><dd>Turning the bar over always does three things: the layout turns the right way up, any alarm goes quiet, and the Pomodoro starts whatever it's waiting for (the next session or break, or a paused timer). A timer that's already running is left alone, so a flip never skips anything. On a call or meeting screen it also shows the Pomodoro, which sets the call or meeting aside.</dd>
+          <dt>Alarm</dt><dd>When a session or break ends, the bar flashes and chimes every few seconds until you tap, press a button or flip it, and gives up after a minute. With auto-start on, it chimes once and carries on. During a call or meeting it flashes without the chime. The mock-up plays the chime in your browser.</dd>
         </dl>
       </div>
       <div>
@@ -1122,35 +1173,45 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
           <dt>Audio</dt><dd>ES8311 codec + speaker</dd>
           <dt>Power</dt><dd>USB-C, or 3.7 V Li-ion on MX1.25 (pin 2 +), charges at 1.2 A</dd>
         </dl>
-        <p class="note-small">Meeting names, times, the battery level and today's Pomodoro count are sample data.</p>
+        <p class="note-small">Meetings and the sample calendar address, calls and their app names, the battery level and today's Pomodoro count are sample data.</p>
       </div>
     </div>
   </section>
 
   <section class="flows" aria-labelledby="flowsTitle">
     <h2 id="flowsTitle">How the controls work</h2>
-    <p>Every control does something in every state, and every screen has a way back. The table covers gestures and buttons; the diagrams show the Pomodoro cycle, the menus, power and Wi-Fi setup.</p>
+    <p>Every control does something in every state, and every screen has a way back. The table covers gestures and buttons; the diagrams show the Pomodoro cycle, the menus, power, Wi-Fi setup, and how automatic status decides between a call, a meeting and your own status.</p>
+    <p class="scroll-hint">Scroll the table sideways to see every column →</p>
     <div class="table-wrap">
       <table class="controls">
-        <thead><tr><th scope="col">Control</th><th scope="col">Status screen</th><th scope="col">Pomodoro screen</th><th scope="col">Alarm ringing</th><th scope="col">Screen dark</th><th scope="col">Powered off</th></tr></thead>
-        <tbody><tr><th scope="row">Tap</th><td>Next status</td><td>Start or pause</td><td>Silences it (on the Pomodoro screen, also starts the next phase)</td><td>Wakes the screen</td><td class="none">Nothing</td></tr><tr><th scope="row">Swipe</th><td>Previous or next status</td><td>Changes status</td><td>Silences it and changes status</td><td>Wakes the screen</td><td class="none">Nothing</td></tr><tr><th scope="row">Hold</th><td>Quick menu</td><td>Timer menu</td><td>Silences it and opens the menu</td><td>Wakes the screen</td><td class="none">Nothing</td></tr><tr><th scope="row">Flip</th><td>Turns the layout; starts what the Pomodoro is waiting for</td><td>Same; a running timer is left alone</td><td>Silences it and starts the next phase</td><td>Wakes the screen, then same</td><td class="none">Nothing</td></tr><tr><th scope="row">BOOT</th><td>Next status</td><td>Next status</td><td>Silences it</td><td>Wakes the screen</td><td class="none">Nothing</td></tr><tr><th scope="row">PWR press</th><td>Screen off</td><td>Screen off</td><td>Silences it</td><td>Screen on</td><td>Starts up</td></tr><tr><th scope="row">PWR hold 3 s</th><td>Power off</td><td>Power off</td><td>Power off</td><td>Power off</td><td class="none">—</td></tr></tbody>
+        <thead><tr><th scope="col">Control</th><th scope="col">Status screen</th><th scope="col">Pomodoro screen</th><th scope="col">Call or meeting (automatic)</th><th scope="col">Alarm ringing<span class="th-note">no chime during a call or meeting, flash only</span></th><th scope="col">Screen dark</th><th scope="col">Powered off</th></tr></thead>
+        <tbody><tr><th scope="row">Tap</th><td>Next status</td><td>Start or pause</td><td>Back to your status (sets it aside)</td><td>Silences it (on the Pomodoro screen, also starts the next phase)</td><td>Wakes the screen</td><td class="none">Nothing</td></tr><tr><th scope="row">Swipe</th><td>Previous or next status</td><td>Changes status</td><td>Previous or next status, counted from yours (sets it aside)</td><td>Silences it and changes status</td><td>Wakes the screen</td><td class="none">Nothing</td></tr><tr><th scope="row">Hold</th><td>Quick menu</td><td>Timer menu (Show again replaces Settings while a call or meeting is set aside)</td><td>Quick menu, even when your status is the Pomodoro</td><td>Silences it and opens the menu</td><td>Wakes the screen</td><td class="none">Nothing</td></tr><tr><th scope="row">Flip</th><td>Turns the layout; starts what the Pomodoro is waiting for</td><td>Same; a running timer is left alone</td><td>Turns the layout; starts or resumes the Pomodoro and shows it (sets it aside)</td><td>Silences it and starts the next phase</td><td>Wakes the screen, then same</td><td class="none">Nothing</td></tr><tr><th scope="row">BOOT</th><td>Next status</td><td>Next status</td><td>Back to your status (sets it aside)</td><td>Silences it</td><td>Wakes the screen</td><td class="none">Nothing</td></tr><tr><th scope="row">PWR press</th><td>Screen off</td><td>Screen off</td><td>Screen off</td><td>Silences it</td><td>Screen on</td><td>Starts up</td></tr><tr><th scope="row">PWR hold 3 s</th><td>Power off</td><td>Power off</td><td>Power off</td><td>Power off</td><td>Power off</td><td class="none">—</td></tr></tbody>
       </table>
     </div>
     <figure class="fig">
-      <div class="fig-scroll"><svg viewBox="0 0 990 290" role="img" aria-label="Pomodoro cycle: Ready, focus, alarm, break, alarm, and back to focus; a tap pauses focus."><defs><marker id="ah-pomo" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z"/></marker></defs><rect class="dg-box " x="20" y="60" width="110" height="48" rx="8"/><text class="dg-k" x="75.0" y="78" text-anchor="middle">POMODORO</text><text class="dg-t" x="75.0" y="95" text-anchor="middle">Ready</text><rect class="dg-box focus" x="210" y="60" width="130" height="48" rx="8"/><text class="dg-k" x="275.0" y="78" text-anchor="middle">FOCUS</text><text class="dg-t" x="275.0" y="95" text-anchor="middle">25 min</text><rect class="dg-box alarm" x="420" y="60" width="140" height="48" rx="8"/><text class="dg-k" x="490.0" y="78" text-anchor="middle">ALARM</text><text class="dg-t" x="490.0" y="95" text-anchor="middle">Break time</text><rect class="dg-box brk" x="640" y="60" width="150" height="48" rx="8"/><text class="dg-k" x="715.0" y="78" text-anchor="middle">BREAK</text><text class="dg-t" x="715.0" y="95" text-anchor="middle">5 or 15 min</text><rect class="dg-box alarm" x="870" y="60" width="110" height="48" rx="8"/><text class="dg-k" x="925.0" y="78" text-anchor="middle">ALARM</text><text class="dg-t" x="925.0" y="95" text-anchor="middle">Back to it</text><rect class="dg-box " x="210" y="220" width="130" height="48" rx="8"/><text class="dg-k" x="275.0" y="238" text-anchor="middle">TIMER</text><text class="dg-t" x="275.0" y="255" text-anchor="middle">Paused</text><path class="dg-e" d="M130 84 L208 84" marker-end="url(#ah-pomo)"/><text class="dg-l" x="170" y="76" text-anchor="middle">tap or flip</text><path class="dg-e" d="M340 84 L418 84" marker-end="url(#ah-pomo)"/><text class="dg-l" x="380" y="76" text-anchor="middle">timer ends</text><path class="dg-e" d="M560 84 L638 84" marker-end="url(#ah-pomo)"/><text class="dg-l" x="600" y="74" text-anchor="middle">tap, flip</text><text class="dg-l" x="600" y="87" text-anchor="middle">or button</text><path class="dg-e" d="M790 84 L868 84" marker-end="url(#ah-pomo)"/><text class="dg-l" x="830" y="76" text-anchor="middle">timer ends</text><path class="dg-e" d="M925 108 L925 172 L300 172 L300 110" marker-end="url(#ah-pomo)"/><text class="dg-l" x="612" y="166" text-anchor="middle">tap, flip or button starts the next focus</text><path class="dg-e" d="M235 108 L235 218" marker-end="url(#ah-pomo)"/><text class="dg-l" x="227" y="168" text-anchor="end">tap</text><path class="dg-e" d="M262 220 L262 110" marker-end="url(#ah-pomo)"/><text class="dg-l" x="270" y="204" text-anchor="start">tap or flip</text><path class="dg-e dash" d="M275 60 L275 30 L715 30 L715 58" marker-end="url(#ah-pomo)"/><text class="dg-l" x="495" y="24" text-anchor="middle">with auto-start on, the alarm screens are skipped</text></svg></div>
-      <figcaption><b>Pomodoro cycle.</b> Sessions and breaks end on their own, and the alarm screens wait for a tap, a flip or either button unless auto-start is on. Every fourth break is a long one. Skip and Stop are in the timer menu, and Stop returns to the status you had before.</figcaption>
+      <p class="scroll-hint">Scroll sideways to see the whole diagram →</p>
+      <div class="fig-scroll"><svg viewBox="0 0 990 290" role="img" aria-label="Pomodoro cycle: Ready, focus, alarm, break, alarm, and back to focus; a tap pauses focus."><defs><marker id="ah-pomo" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z"/></marker></defs><rect class="dg-box " x="20" y="60" width="110" height="48" rx="8"/><text class="dg-k" x="75.0" y="78" text-anchor="middle">POMODORO</text><text class="dg-t" x="75.0" y="95" text-anchor="middle">Ready</text><rect class="dg-box focus" x="210" y="60" width="130" height="48" rx="8"/><text class="dg-k" x="275.0" y="78" text-anchor="middle">FOCUS</text><text class="dg-t" x="275.0" y="95" text-anchor="middle">25 min</text><rect class="dg-box alarm" x="420" y="60" width="140" height="48" rx="8"/><text class="dg-k" x="490.0" y="78" text-anchor="middle">ALARM</text><text class="dg-t" x="490.0" y="95" text-anchor="middle">Break time</text><rect class="dg-box brk" x="640" y="60" width="150" height="48" rx="8"/><text class="dg-k" x="715.0" y="78" text-anchor="middle">BREAK</text><text class="dg-t" x="715.0" y="95" text-anchor="middle">5 or 15 min</text><rect class="dg-box alarm" x="870" y="60" width="110" height="48" rx="8"/><text class="dg-k" x="925.0" y="78" text-anchor="middle">ALARM</text><text class="dg-t" x="925.0" y="95" text-anchor="middle">Back to it</text><rect class="dg-box " x="210" y="220" width="130" height="48" rx="8"/><text class="dg-k" x="275.0" y="238" text-anchor="middle">TIMER</text><text class="dg-t" x="275.0" y="255" text-anchor="middle">Paused</text><path class="dg-e" d="M130 84 L208 84" marker-end="url(#ah-pomo)"/><text class="dg-l" x="170" y="76" text-anchor="middle">tap or flip</text><path class="dg-e" d="M340 84 L418 84" marker-end="url(#ah-pomo)"/><text class="dg-l" x="380" y="76" text-anchor="middle">timer ends</text><path class="dg-e" d="M560 84 L638 84" marker-end="url(#ah-pomo)"/><text class="dg-l" x="600" y="76" text-anchor="middle">tap, flip</text><text class="dg-l" x="600" y="99" text-anchor="middle">or button</text><path class="dg-e" d="M790 84 L868 84" marker-end="url(#ah-pomo)"/><text class="dg-l" x="830" y="76" text-anchor="middle">timer ends</text><path class="dg-e" d="M925 108 L925 172 L300 172 L300 110" marker-end="url(#ah-pomo)"/><text class="dg-l" x="612" y="166" text-anchor="middle">tap, flip or button starts the next focus</text><path class="dg-e" d="M235 108 L235 218" marker-end="url(#ah-pomo)"/><text class="dg-l" x="227" y="168" text-anchor="end">tap</text><path class="dg-e" d="M262 220 L262 110" marker-end="url(#ah-pomo)"/><text class="dg-l" x="270" y="204" text-anchor="start">tap or flip</text><path class="dg-e dash" d="M275 60 L275 30 L715 30 L715 58" marker-end="url(#ah-pomo)"/><text class="dg-l" x="495" y="24" text-anchor="middle">with auto-start on, the alarm screens are skipped</text></svg></div>
+      <figcaption><b>Pomodoro cycle.</b> Sessions and breaks end on their own, and the alarm screens wait for a tap, a flip or either button unless auto-start is on. Every fourth break is a long one. Skip and Stop are in the timer menu, and Stop returns to the status you had before. A call or calendar meeting pauses the timer, and the bar makes no sound while one is on.</figcaption>
     </figure>
     <figure class="fig">
-      <div class="fig-scroll"><svg viewBox="0 0 990 380" role="img" aria-label="Menu tree: holding a status screen opens Light, Calendar, Wi-Fi, Power and Done; Wi-Fi and Power open sub-menus; holding the Pomodoro screen opens Skip, plus 5 minutes, Stop, Auto-start and Done."><defs><marker id="ah-menu" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z"/></marker></defs><rect class="dg-box " x="20" y="40" width="180" height="40" rx="8"/><text class="dg-t" x="110.0" y="64.5" text-anchor="middle">Hold on a status screen</text><rect class="dg-group" x="222" y="32" width="626" height="56" rx="12"/><text class="dg-g" x="230" y="25">QUICK MENU</text><rect class="dg-box " x="230" y="40" width="110" height="40" rx="8"/><text class="dg-t" x="285.0" y="64.5" text-anchor="middle">Light</text><rect class="dg-box " x="355" y="40" width="110" height="40" rx="8"/><text class="dg-t" x="410.0" y="64.5" text-anchor="middle">Calendar</text><rect class="dg-box " x="480" y="40" width="110" height="40" rx="8"/><text class="dg-t" x="535.0" y="64.5" text-anchor="middle">Wi-Fi</text><rect class="dg-box " x="605" y="40" width="110" height="40" rx="8"/><text class="dg-t" x="660.0" y="64.5" text-anchor="middle">Power</text><rect class="dg-box done" x="730" y="40" width="110" height="40" rx="8"/><text class="dg-t inv" x="785.0" y="64.5" text-anchor="middle">Done</text><path class="dg-e" d="M200 60 L220 60" marker-end="url(#ah-menu)"/><rect class="dg-group" x="252" y="132" width="376" height="56" rx="12"/><text class="dg-g" x="260" y="125">WI-FI</text><rect class="dg-box info" x="260" y="140" width="110" height="40" rx="8"/><text class="dg-t" x="315.0" y="164.5" text-anchor="middle">Network</text><rect class="dg-box " x="385" y="140" width="110" height="40" rx="8"/><text class="dg-t" x="440.0" y="164.5" text-anchor="middle">Set up again</text><rect class="dg-box done" x="510" y="140" width="110" height="40" rx="8"/><text class="dg-t inv" x="565.0" y="164.5" text-anchor="middle">Back</text><path class="dg-e" d="M535 80 L535 130" marker-end="url(#ah-menu)"/><text class="dg-l" x="543" y="110" text-anchor="start">tap</text><rect class="dg-group" x="592" y="222" width="376" height="56" rx="12"/><text class="dg-g" x="600" y="215">POWER</text><rect class="dg-box " x="600" y="230" width="110" height="40" rx="8"/><text class="dg-t" x="655.0" y="254.5" text-anchor="middle">Restart</text><rect class="dg-box " x="725" y="230" width="110" height="40" rx="8"/><text class="dg-t" x="780.0" y="254.5" text-anchor="middle">Power off</text><rect class="dg-box done" x="850" y="230" width="110" height="40" rx="8"/><text class="dg-t inv" x="905.0" y="254.5" text-anchor="middle">Back</text><path class="dg-e" d="M660 80 L660 220" marker-end="url(#ah-menu)"/><text class="dg-l" x="668" y="110" text-anchor="start">tap</text><rect class="dg-box " x="20" y="320" width="180" height="40" rx="8"/><text class="dg-t" x="110.0" y="344.5" text-anchor="middle">Hold on the Pomodoro screen</text><rect class="dg-group" x="222" y="312" width="626" height="56" rx="12"/><text class="dg-g" x="230" y="305">TIMER MENU</text><rect class="dg-box " x="230" y="320" width="110" height="40" rx="8"/><text class="dg-t" x="285.0" y="344.5" text-anchor="middle">Skip</text><rect class="dg-box " x="355" y="320" width="110" height="40" rx="8"/><text class="dg-t" x="410.0" y="344.5" text-anchor="middle">+5 min</text><rect class="dg-box " x="480" y="320" width="110" height="40" rx="8"/><text class="dg-t" x="535.0" y="344.5" text-anchor="middle">Stop</text><rect class="dg-box " x="605" y="320" width="110" height="40" rx="8"/><text class="dg-t" x="660.0" y="344.5" text-anchor="middle">Auto-start</text><rect class="dg-box done" x="730" y="320" width="110" height="40" rx="8"/><text class="dg-t inv" x="785.0" y="344.5" text-anchor="middle">Done</text><path class="dg-e" d="M200 340 L220 340" marker-end="url(#ah-menu)"/></svg></div>
-      <figcaption><b>Menus.</b> Holding the screen opens a row of tiles. Bordered tiles act when tapped, the dotted Network tile is read-only, and the filled tile closes the menu, which also closes itself after 8 seconds. Set up again shows the Wi-Fi QR code. On the Pomodoro screen, +5 min only appears while a session or break is running.</figcaption>
+      <p class="scroll-hint">Scroll sideways to see the whole diagram →</p>
+      <div class="fig-scroll"><svg viewBox="0 0 990 500" role="img" aria-label="Menu tree: holding a status screen, or a call or meeting screen, opens Light, Calendar, Wi-Fi, Power and Done; the Calendar tile reads Sync, Off or Show again; Wi-Fi and Power open sub-menus; holding the Pomodoro screen opens Skip, plus 5 minutes, Stop, Settings and Done; Settings opens Auto-start, Ticking and Back, which returns to the timer menu; while a call or meeting is set aside, Show again replaces Settings."><defs><marker id="ah-menu" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z"/></marker></defs><rect class="dg-box " x="20" y="40" width="180" height="40" rx="8"/><text class="dg-t" x="110.0" y="64.5" text-anchor="middle">Hold on a status screen</text><rect class="dg-group" x="222" y="32" width="626" height="56" rx="12"/><text class="dg-g" x="230" y="25">QUICK MENU</text><rect class="dg-box " x="230" y="40" width="110" height="40" rx="8"/><text class="dg-t" x="285.0" y="64.5" text-anchor="middle">Light</text><rect class="dg-box " x="355" y="40" width="110" height="40" rx="8"/><text class="dg-t" x="410.0" y="64.5" text-anchor="middle">Calendar</text><rect class="dg-box " x="480" y="40" width="110" height="40" rx="8"/><text class="dg-t" x="535.0" y="64.5" text-anchor="middle">Wi-Fi</text><rect class="dg-box " x="605" y="40" width="110" height="40" rx="8"/><text class="dg-t" x="660.0" y="64.5" text-anchor="middle">Power</text><rect class="dg-box done" x="730" y="40" width="110" height="40" rx="8"/><text class="dg-t inv" x="785.0" y="64.5" text-anchor="middle">Done</text><path class="dg-e" d="M200 60 L220 60" marker-end="url(#ah-menu)"/><text class="dg-l" x="410" y="104" text-anchor="middle">Sync, Off or Show again</text><rect class="dg-group" x="252" y="132" width="376" height="56" rx="12"/><text class="dg-g" x="260" y="125">WI-FI</text><rect class="dg-box info" x="260" y="140" width="110" height="40" rx="8"/><text class="dg-t" x="315.0" y="164.5" text-anchor="middle">Network</text><rect class="dg-box " x="385" y="140" width="110" height="40" rx="8"/><text class="dg-t" x="440.0" y="164.5" text-anchor="middle">Set up again</text><rect class="dg-box done" x="510" y="140" width="110" height="40" rx="8"/><text class="dg-t inv" x="565.0" y="164.5" text-anchor="middle">Back</text><path class="dg-e" d="M535 80 L535 130" marker-end="url(#ah-menu)"/><text class="dg-l" x="543" y="110" text-anchor="start">tap</text><rect class="dg-group" x="592" y="222" width="376" height="56" rx="12"/><text class="dg-g" x="600" y="215">POWER</text><rect class="dg-box " x="600" y="230" width="110" height="40" rx="8"/><text class="dg-t" x="655.0" y="254.5" text-anchor="middle">Restart</text><rect class="dg-box " x="725" y="230" width="110" height="40" rx="8"/><text class="dg-t" x="780.0" y="254.5" text-anchor="middle">Power off</text><rect class="dg-box done" x="850" y="230" width="110" height="40" rx="8"/><text class="dg-t inv" x="905.0" y="254.5" text-anchor="middle">Back</text><path class="dg-e" d="M660 80 L660 220" marker-end="url(#ah-menu)"/><text class="dg-l" x="668" y="110" text-anchor="start">tap</text><rect class="dg-box " x="20" y="320" width="180" height="40" rx="8"/><text class="dg-t" x="110.0" y="344.5" text-anchor="middle">Hold on Pomodoro</text><rect class="dg-group" x="222" y="312" width="626" height="56" rx="12"/><text class="dg-g" x="230" y="305">TIMER MENU</text><rect class="dg-box " x="230" y="320" width="110" height="40" rx="8"/><text class="dg-t" x="285.0" y="344.5" text-anchor="middle">Skip</text><rect class="dg-box " x="355" y="320" width="110" height="40" rx="8"/><text class="dg-t" x="410.0" y="344.5" text-anchor="middle">+5 min</text><rect class="dg-box " x="480" y="320" width="110" height="40" rx="8"/><text class="dg-t" x="535.0" y="344.5" text-anchor="middle">Stop</text><rect class="dg-box " x="605" y="320" width="110" height="40" rx="8"/><text class="dg-t" x="660.0" y="344.5" text-anchor="middle">Settings</text><rect class="dg-box done" x="730" y="320" width="110" height="40" rx="8"/><text class="dg-t inv" x="785.0" y="344.5" text-anchor="middle">Done</text><path class="dg-e" d="M200 340 L220 340" marker-end="url(#ah-menu)"/><text class="dg-l" x="230" y="388" text-anchor="start">Show again replaces Settings while a call or meeting is set aside</text><path class="dg-e" d="M684 360 L684 410" marker-end="url(#ah-menu)"/><text class="dg-l" x="692" y="390" text-anchor="start">tap</text><rect class="dg-group" x="592" y="412" width="376" height="56" rx="12"/><text class="dg-g" x="600" y="405">SETTINGS</text><rect class="dg-box " x="600" y="420" width="110" height="40" rx="8"/><text class="dg-t" x="655.0" y="444.5" text-anchor="middle">Auto-start</text><rect class="dg-box " x="725" y="420" width="110" height="40" rx="8"/><text class="dg-t" x="780.0" y="444.5" text-anchor="middle">Ticking</text><rect class="dg-box done" x="850" y="420" width="110" height="40" rx="8"/><text class="dg-t inv" x="905.0" y="444.5" text-anchor="middle">Back</text><text class="dg-l" x="780" y="484" text-anchor="middle">Off, Soft or Medium</text><path class="dg-e" d="M905 420 L905 340 L850 340" marker-end="url(#ah-menu)"/><text class="dg-l" x="897" y="385" text-anchor="end">to the timer menu</text></svg></div>
+      <figcaption><b>Menus.</b> Holding the screen opens a row of tiles. Bordered tiles act when tapped, the dotted Network tile is read-only, and the filled tile closes the menu, which also closes itself after 8 seconds; in Settings, the filled Back tile returns to the timer menu. The Calendar tile syncs, says Off when no calendar is added or there's no Wi-Fi, and becomes Show again while a call or meeting is set aside. Set up again shows the Wi-Fi QR code. On the Pomodoro screen, +5 min only appears while a session or break is running, and Settings holds Auto-start and Ticking (Off, Soft, Medium); while a call or meeting is set aside, Show again takes its place. On a call or meeting screen, holding always opens the quick menu. Only taps act on a menu; a swipe across it is ignored.</figcaption>
     </figure>
     <figure class="fig">
+      <p class="scroll-hint">Scroll sideways to see the whole diagram →</p>
       <div class="fig-scroll"><svg viewBox="0 0 990 200" role="img" aria-label="Power states: a PWR press turns the screen off; holding PWR for 3 seconds powers off; a PWR press starts the bar again."><defs><marker id="ah-power" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z"/></marker></defs><rect class="dg-box " x="30" y="40" width="140" height="44" rx="8"/><text class="dg-t" x="100.0" y="66.5" text-anchor="middle">Screen off</text><rect class="dg-box " x="300" y="40" width="140" height="44" rx="8"/><text class="dg-t" x="370.0" y="66.5" text-anchor="middle">On</text><rect class="dg-box " x="570" y="40" width="140" height="44" rx="8"/><text class="dg-t" x="640.0" y="66.5" text-anchor="middle">Powering off</text><rect class="dg-box " x="830" y="40" width="130" height="44" rx="8"/><text class="dg-t" x="895.0" y="66.5" text-anchor="middle">Off</text><rect class="dg-box " x="570" y="140" width="140" height="44" rx="8"/><text class="dg-t" x="640.0" y="166.5" text-anchor="middle">Starting up</text><path class="dg-e" d="M300 54 L172 54" marker-end="url(#ah-power)"/><text class="dg-l" x="235" y="46" text-anchor="middle">PWR press</text><path class="dg-e" d="M170 72 L298 72" marker-end="url(#ah-power)"/><text class="dg-l" x="235" y="96" text-anchor="middle">tap or any button</text><path class="dg-e" d="M440 62 L568 62" marker-end="url(#ah-power)"/><text class="dg-l" x="505" y="54" text-anchor="middle">hold PWR 3 s</text><path class="dg-e" d="M710 62 L828 62" marker-end="url(#ah-power)"/><text class="dg-l" x="770" y="54" text-anchor="middle">about 1 s</text><path class="dg-e" d="M895 84 L895 162 L712 162" marker-end="url(#ah-power)"/><text class="dg-l" x="903" y="125" text-anchor="start">PWR press</text><path class="dg-e" d="M570 162 L370 162 L370 86" marker-end="url(#ah-power)"/><text class="dg-l" x="470" y="156" text-anchor="middle">about 1.5 s</text></svg></div>
       <figcaption><b>Power.</b> A press of PWR only turns the screen off. Holding it for 3 seconds, or Power off in the menu, cuts the power, and a press starts the bar again. Restart goes straight to Starting up. On USB, Off is a deep sleep, because the board can't cut its own USB power.</figcaption>
     </figure>
     <figure class="fig">
+      <p class="scroll-hint">Scroll sideways to see the whole diagram →</p>
       <div class="fig-scroll"><svg viewBox="0 0 990 210" role="img" aria-label="Wi-Fi setup: the QR screen leads to connecting, then connected and your status; a failed connection goes to an error screen and a tap returns to the QR code; Skip goes offline."><defs><marker id="ah-wifi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z"/></marker></defs><rect class="dg-box " x="30" y="30" width="140" height="48" rx="8"/><text class="dg-k" x="100.0" y="48" text-anchor="middle">QR CODE</text><text class="dg-t" x="100.0" y="65" text-anchor="middle">Set up Wi-Fi</text><rect class="dg-box " x="300" y="30" width="140" height="48" rx="8"/><text class="dg-k" x="370.0" y="48" text-anchor="middle">WI-FI</text><text class="dg-t" x="370.0" y="65" text-anchor="middle">Connecting</text><rect class="dg-box " x="570" y="30" width="140" height="48" rx="8"/><text class="dg-k" x="640.0" y="48" text-anchor="middle">CONNECTED</text><text class="dg-t" x="640.0" y="65" text-anchor="middle">tinybar.local</text><rect class="dg-box " x="830" y="30" width="130" height="48" rx="8"/><text class="dg-t" x="895.0" y="58.5" text-anchor="middle">Your status</text><rect class="dg-box " x="30" y="150" width="140" height="48" rx="8"/><text class="dg-k" x="100.0" y="168" text-anchor="middle">NO WI-FI</text><text class="dg-t" x="100.0" y="185" text-anchor="middle">Offline</text><rect class="dg-box " x="300" y="150" width="140" height="48" rx="8"/><text class="dg-k" x="370.0" y="168" text-anchor="middle">ERROR</text><text class="dg-t" x="370.0" y="185" text-anchor="middle">Couldn't connect</text><path class="dg-e" d="M170 54 L298 54" marker-end="url(#ah-wifi)"/><text class="dg-l" x="235" y="46" text-anchor="middle">Connect on phone</text><path class="dg-e" d="M440 54 L568 54" marker-end="url(#ah-wifi)"/><text class="dg-l" x="505" y="46" text-anchor="middle">joins</text><path class="dg-e" d="M710 54 L828 54" marker-end="url(#ah-wifi)"/><text class="dg-l" x="770" y="46" text-anchor="middle">after 3 s or tap</text><path class="dg-e" d="M370 78 L370 148" marker-end="url(#ah-wifi)"/><text class="dg-l" x="378" y="118" text-anchor="start">wrong password or no signal</text><path class="dg-e" d="M300 174 L235 174 L235 68 L172 68" marker-end="url(#ah-wifi)"/><text class="dg-l" x="243" y="128" text-anchor="start">tap</text><path class="dg-e" d="M65 78 L65 148" marker-end="url(#ah-wifi)"/><text class="dg-l" x="57" y="118" text-anchor="end">Skip</text><path class="dg-e" d="M135 150 L135 80" marker-end="url(#ah-wifi)"/><text class="dg-l" x="143" y="118" text-anchor="start">Wi-Fi menu</text></svg></div>
-      <figcaption><b>Wi-Fi setup.</b> On first start, or after Set up again, the bar shows a QR code that joins your phone to its own TinyBar-Setup network, where a page lets you pick the office network and enter the password, plus a work username if the network needs one. If it can't connect, the bar says why and a tap returns to the QR code. Skip, in the hold menu, uses the bar without Wi-Fi: statuses and the Pomodoro still work, but the calendar and Remote don't.</figcaption>
+      <figcaption><b>Wi-Fi setup.</b> On first start, or after Set up again, the bar shows a QR code that joins your phone to its own TinyBar-Setup network, where a page lets you pick the office network and enter the password, plus a work username if the network needs one. If it can't connect, the bar says why and a tap returns to the QR code. Once it says Connected, setup is done: a tap moves on and holding opens the quick menu. Skip, in the hold menu, uses the bar without Wi-Fi: statuses and the Pomodoro still work, but the calendar and Remote don't. The setup page also takes your calendar's secret iCal address, if you've copied it already.</figcaption>
+    </figure>
+    <figure class="fig">
+      <p class="scroll-hint">Scroll sideways to see the whole diagram →</p>
+      <div class="fig-scroll"><svg viewBox="0 0 990 362" role="img" aria-label="Automatic status: three sources feed the bar. You pick your own status on the bar or the Remote, the calendar sets In a meeting, and the Mac app, built later, sets On a call. On a call beats In a meeting, which beats your status. A meeting or call starting takes over from your status; a call starting during a meeting takes over from the meeting. When a call ends during a meeting the bar goes back to the meeting, and when the call or meeting ends it goes back to your status. A tap, swipe, BOOT, flip or a Remote choice sets a call or meeting aside and shows your status; Show again brings it back. Taking over pauses the Pomodoro, and the bar makes no sound while either is on."><defs><marker id="ah-auto" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z"/></marker></defs><text class="dg-g" x="16" y="58">SOURCES</text><text class="dg-g" x="16" y="218">SCREEN</text><rect class="dg-box " x="95" y="30" width="170" height="48" rx="8"/><text class="dg-k" x="180.0" y="48" text-anchor="middle">YOU</text><text class="dg-t" x="180.0" y="65" text-anchor="middle">Bar or Remote</text><rect class="dg-box " x="435" y="30" width="170" height="48" rx="8"/><text class="dg-k" x="520.0" y="48" text-anchor="middle">CALENDAR</text><text class="dg-t" x="520.0" y="65" text-anchor="middle">Secret iCal address</text><rect class="dg-box " x="775" y="30" width="170" height="48" rx="8"/><text class="dg-k" x="860.0" y="48" text-anchor="middle">MAC APP · LATER</text><text class="dg-t" x="860.0" y="65" text-anchor="middle">Mic or camera in use</text><rect class="dg-group" x="420" y="168" width="540" height="128" rx="12"/><text class="dg-g" x="952" y="161" text-anchor="end">AUTOMATIC</text><rect class="dg-box " x="95" y="190" width="170" height="48" rx="8"/><text class="dg-k" x="180.0" y="208" text-anchor="middle">YOUR STATUS</text><text class="dg-t" x="180.0" y="225" text-anchor="middle">Manual or Pomodoro</text><rect class="dg-box meet" x="435" y="190" width="170" height="48" rx="8"/><text class="dg-k" x="520.0" y="208" text-anchor="middle">IN A MEETING</text><text class="dg-t" x="520.0" y="225" text-anchor="middle">Beats your status</text><rect class="dg-box call" x="775" y="190" width="170" height="48" rx="8"/><text class="dg-k" x="860.0" y="208" text-anchor="middle">ON A CALL</text><text class="dg-t" x="860.0" y="225" text-anchor="middle">Beats a meeting</text><path class="dg-e" d="M180 78 L180 188" marker-end="url(#ah-auto)"/><text class="dg-l" x="172" y="136" text-anchor="end">picks a status</text><path class="dg-e" d="M520 78 L520 188" marker-end="url(#ah-auto)"/><text class="dg-l" x="528" y="136" text-anchor="start">a meeting is on</text><path class="dg-e" d="M860 78 L860 188" marker-end="url(#ah-auto)"/><text class="dg-l" x="868" y="136" text-anchor="start">on a call: yes or no</text><path class="dg-e" d="M470 168 L470 118 L230 118 L230 188" marker-end="url(#ah-auto)"/><text class="dg-l" x="350" y="97" text-anchor="middle">tap, swipe, BOOT, flip</text><text class="dg-l" x="350" y="110" text-anchor="middle">or a Remote choice (set aside)</text><path class="dg-e" d="M250 190 L250 146 L450 146 L450 166" marker-end="url(#ah-auto)"/><text class="dg-l" x="350" y="140" text-anchor="middle">Show again</text><path class="dg-e" d="M265 204 L433 204" marker-end="url(#ah-auto)"/><text class="dg-l" x="342" y="196" text-anchor="middle">meeting starts</text><path class="dg-e" d="M435 226 L267 226" marker-end="url(#ah-auto)"/><text class="dg-l" x="342" y="240" text-anchor="middle">meeting ends</text><path class="dg-e" d="M605 204 L773 204" marker-end="url(#ah-auto)"/><text class="dg-l" x="690" y="196" text-anchor="middle">call starts</text><path class="dg-e" d="M775 226 L607 226" marker-end="url(#ah-auto)"/><text class="dg-l" x="690" y="240" text-anchor="middle">call ends,</text><text class="dg-l" x="690" y="253" text-anchor="middle">meeting still on</text><text class="dg-l" x="435" y="282" text-anchor="start">taking over pauses the Pomodoro; no sound while either is on</text><path class="dg-e" d="M160 238 L160 315 L880 315 L880 240" marker-end="url(#ah-auto)"/><text class="dg-l" x="520" y="309" text-anchor="middle">call starts</text><path class="dg-e" d="M900 238 L900 345 L140 345 L140 240" marker-end="url(#ah-auto)"/><text class="dg-l" x="520" y="339" text-anchor="middle">call ends</text></svg></div>
+      <figcaption><b>Automatic status.</b> On a call beats In a meeting, which beats your own status, and a choice you make during a call or meeting beats both until it ends. Each source has its own switch on the Remote: Calendar meetings reads your secret iCal address, and Calls from your Mac waits for the Mac app, which comes later. When a call or meeting ends, the bar drops to the next one down. Show again, in the quick menu, the timer menu or on the Remote, brings back a call or meeting you set aside, and the next call or meeting always takes over again. The power screens, Wi-Fi setup and an open menu are never interrupted, and a dark screen stays dark until you wake it.</figcaption>
     </figure>
   </section>
 
@@ -1205,6 +1266,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   ];
   const POMO = STATES.findIndex(x => x.id === 'pomodoro');
   const PHASE_NAME = { focus: 'Focus', short: 'Short break', long: 'Long break' };
+  let style = null;   // the Style panel's current look; set in the Style panel section below
 
   // Tomato sprites made with PixelLab (32 x 32). Finished sessions are red, upcoming ones faded red,
   // and the current one ripens from green to red as the session runs.
@@ -1323,15 +1385,17 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   const mmss = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
   const hm = mins => mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
   const esc = t => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  // Durations on the automatic screens round up, so a call that has just started reads 1m.
+  const minsUp = ms => Math.max(1, Math.ceil(ms / 60000));
+  // Time ranges show AM/PM once when both ends share it: 2:30–3:15 PM, but 11:30 AM–12:15 PM.
+  const span = (a, b) => ampm(a) === ampm(b) ? `${fmtShort(a)}–${fmt(b)}` : `${fmt(a)}–${fmt(b)}`;
+  const ago = d => { const m = Math.floor((now() - d) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : `at ${fmt(d)}`; };
+  const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
 
   // Sample timeline, anchored to when the page loaded.
   const t0 = now();
   const sample = {
     busySince: addMin(t0, -12),
-    meetStart: addMin(t0, -18),
-    meetEnd: addMin(t0, 42),
-    nextMeet: roundTo(addMin(t0, 75), 30),
-    freeUntil: roundTo(addMin(t0, 40), 30),
     awayBack: roundTo(addMin(t0, 25), 5),
     awaySince: addMin(t0, -8),
   };
@@ -1341,6 +1405,8 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     set: { focus: 25, short: 5, long: 15, every: 4 },
     auto: false,
     sound: true,
+    tick: false,          // optional soft ticking while a focus session runs
+    tickVol: 'soft',
     speed: 1,
     phase: 'focus',
     round: 2,
@@ -1350,6 +1416,8 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     justEnded: null,
     doneToday: 1,
     focusedMs: 0,
+    autoPaused: null,     // 'call' or 'meeting' when one of them paused the timer
+    heldAlarm: null,      // 'call' or 'meeting' when one of them silenced a ringing alarm
   };
   const phaseLen = ph => pomo.set[ph] * 60000;
   pomo.focusedMs = phaseLen('focus') + (phaseLen('focus') - pomo.remaining);
@@ -1357,6 +1425,66 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   const isReady = () => !pomo.running && !pomo.waiting && pomo.phase === 'focus' && pomo.remaining === phaseLen('focus');
   const pomoActive = () => pomo.running || pomo.waiting || !isReady();
   const simEnd = () => new Date(Date.now() + pomo.remaining / pomo.speed);
+
+  // ---------- Automatic status: calendar and Mac ----------
+  // Sample calendar (mock-up only): today's meetings as the bar keeps them after a sync. None is in progress at
+  // page load, so the bar still opens on the Pomodoro. The firmware rebuilds this list from the iCal feed.
+  let evSeq = 0, callSeq = 0;
+  function sampleEvents() {
+    // The first meeting starts on the next :00 or :30 at least 40 minutes away. Late in the evening that would be
+    // tomorrow, so it moves closer (but still in the future) to keep at least one meeting later today.
+    const n = now(), today = n.toDateString();
+    let a = roundTo(addMin(n, 40), 30);
+    if (a.toDateString() !== today) a = roundTo(addMin(n, 5), 5);
+    if (a.toDateString() !== today) a = addMin(n, 1);
+    return [
+      { title: 'Design review', loc: 'Room 4', start: a, end: addMin(a, 45) },
+      { title: '1:1 with Sam', loc: '', start: addMin(a, 60), end: addMin(a, 90) },
+      { title: 'Team retro', loc: 'Room 2', start: addMin(a, 150), end: addMin(a, 210) },
+    ].map(e => ({ ...e, id: ++evSeq, priv: false }));
+  }
+  const SAMPLE_CAL = 'https://calendar.google.com/calendar/ical/you%40example.com/private-8c1d5e2a9b7f40c3a6e1d2b3c4f53f2a/basic.ics';
+  // The saved address only lives in this variable, the way the firmware keeps it in encrypted NVS:
+  // no screen, page or API ever reads it back. The Remote shows the host and the last four characters.
+  let calUrl = SAMPLE_CAL;
+  const cal = {
+    state: 'ok', checking: false, host: 'calendar.google.com', file: 'basic.ics', hint: '3f2a',
+    on: true, titles: false, lastSync: addMin(t0, -2), events: sampleEvents(), replacing: false, confirm: false,
+  };
+  // The Mac app (built later). link is 'usb' or 'wifi' once it has been heard from; call is { id, app, since, via }.
+  const mac = { on: true, link: null, lastHeard: null, lostAt: null, quiet: false, quietMs: 0, call: null };
+  const MAC_TIMEOUT = 90000;
+
+  const todays = () => { const n = now(), day = n.toDateString(); return cal.events.filter(e => e.end > n && e.start.toDateString() === day); };
+  const currentEvent = () => { const n = now(); return cal.events.filter(e => e.start <= n && n < e.end).sort((a, b) => b.start - a.start)[0] || null; };
+  const nextEvent = () => { const n = now(); return todays().filter(e => e.start > n).sort((a, b) => a.start - b.start)[0] || null; };
+  const leftText = () => { const k = todays().length; return k ? `${k} meeting${k === 1 ? '' : 's'} left today` : 'no more meetings today'; };
+  const wifiUp = () => s.wifi.mode === 'ok' || s.wifi.mode === 'connected';
+  // Meeting data shows only with a saved address, the Calendar meetings switch on, and Wi-Fi set up. If Wi-Fi
+  // drops, the bar keeps following its last synced copy; skipping Wi-Fi turns the calendar off.
+  const calData = () => cal.state === 'ok' && cal.on && s.wifi.mode !== 'offline';
+  // Titles and locations only with Show meeting titles on, and never for events marked Private.
+  const titleOf = e => e && cal.titles && !e.priv ? e.title : '';
+  const placeOf = e => e && cal.titles && !e.priv && e.loc && !/^https?:/i.test(e.loc) ? e.loc : '';
+  function callNow() { return mac.call && mac.on ? mac.call : null; }
+  function meetNow() { return calData() ? currentEvent() : null; }
+  // What the bar shows, highest first: On a call, then In a meeting from the calendar, then your own status.
+  // A call or meeting you set aside stays aside until it ends; the next one always takes over again.
+  function autoTop() {
+    const c = callNow(), m = meetNow();
+    if (c && s.aside.call !== c.id) return { kind: 'call', id: c.id };
+    if (m && s.aside.meeting !== m.id) return { kind: 'meeting', id: m.id };
+    return null;
+  }
+  function asideKind() {
+    const c = callNow(), m = meetNow();
+    if (c && s.aside.call === c.id) return 'call';
+    if (m && s.aside.meeting === m.id) return 'meeting';
+    return null;
+  }
+  // No sound while a call is on or a calendar meeting is in progress, even one you set aside.
+  const quiet = () => !!(callNow() || meetNow());
+  const quietWhy = () => callNow() ? 'call' : 'meeting';
 
   const s = {
     idx: POMO,
@@ -1372,20 +1500,31 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     powered: true,
     booting: false,
     wifi: { mode: 'ok', ssid: 'Office-WiFi', ip: '10.0.4.42', error: '' },
+    since: addMin(t0, -12),              // when you picked your own status (In a meeting by hand counts from here)
+    aside: { call: null, meeting: null }, // ids of the call and meeting you set aside
+    rev: 0,                               // bumped on every automatic-status change so loop() redraws
   };
   const WIFI_SCREENS = ['setup', 'connecting', 'connected', 'failed'];
   const onWifiScreen = () => WIFI_SCREENS.includes(s.wifi.mode);
+  let autoShown = null;    // the call or meeting on screen, so changes can be announced once
+  let pendingToast = null; // an automatic change announced while the screen was busy
+  let rendering = 'clock'; // which screen view() is building, for the corner pill
+  const bump = () => { s.rev++; };
+  const ownName = () => STATES[s.idx].name;
 
   const $ = id => document.getElementById(id);
   const screen = $('screen'), lcd = $('lcd'), bar = $('bar'), barFill = $('barFill'), menu = $('menu'), device = $('device'), log = $('log');
 
   // Chime through Web Audio; the device would play the same notes on its speaker.
+  // Browsers only allow sound after the person has interacted with the page.
   let ac = null;
-  document.addEventListener('pointerdown', () => {
+  const unlockAudio = () => {
     try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); } catch (e) {}
-  });
+  };
+  document.addEventListener('pointerdown', unlockAudio);
+  document.addEventListener('keydown', unlockAudio);
   function chime(toBreak) {
-    if (!pomo.sound || !ac) return;
+    if (!pomo.sound || !ac || quiet()) return;
     try {
       const notes = toBreak ? [784, 988, 1175] : [1175, 988, 784];
       notes.forEach((f, i) => {
@@ -1402,6 +1541,34 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       });
     } catch (e) {}
   }
+
+  // Optional ticking during focus: one short, quiet click a second, filtered so it's a soft "tk" rather than a beep,
+  // alternating slightly in pitch. Both levels sit well below the alarm chime (Soft peaks around -31 dBFS, Medium
+  // around -23, the chime around -13) because it's an open office. The device would play a tiny PCM click through
+  // the ES8311 at a similarly low level.
+  let tickBuf = null, tickAlt = false;
+  function tickSound() {
+    if (!ac || ac.state !== 'running') return;
+    try {
+      if (!tickBuf) {
+        tickBuf = ac.createBuffer(1, Math.round(ac.sampleRate * 0.025), ac.sampleRate);
+        const d = tickBuf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 6);
+      }
+      const src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+      src.buffer = tickBuf;
+      f.type = 'bandpass';
+      f.frequency.value = (tickAlt = !tickAlt) ? 2000 : 1700;
+      f.Q.value = 1.6;
+      g.gain.value = pomo.tickVol === 'medium' ? 0.25 : 0.1;
+      src.connect(f).connect(g).connect(ac.destination);
+      src.start();
+    } catch (e) {}
+  }
+  // Ticks only while a focus session is actually running: not paused, not on a break, not while the alarm rings,
+  // not during a call or calendar meeting (it picks up again afterwards), and not while the screen is dark or the
+  // bar is off. (Silent on a dark screen is proposed; a dark screen often means you've stepped away.)
+  const ticking = () => pomo.tick && s.powered && !s.booting && !s.off && pomo.running && pomo.phase === 'focus' && !s.ringing && !quiet();
 
   function flash() {
     lcd.classList.remove('alert');
@@ -1424,8 +1591,17 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   }
 
   // When a phase ends without auto-start, the alarm repeats until it is answered, for at most a minute.
+  // During a call or calendar meeting it flashes without the chime.
   function endPhase() {
     const ended = nextPhase(false);
+    if (autoTop()) {
+      // A call or meeting pauses the timer when it takes over, so this shouldn't happen; if it does, the alarm waits.
+      Object.assign(pomo, { running: false, waiting: true, justEnded: ended, heldAlarm: autoTop().kind });
+      bump();
+      say('timer: phase done, the alarm waits until the call or meeting ends');
+      return;
+    }
+    const muted = pomo.sound && quiet() ? ` · chime muted during the ${quietWhy()}` : '';
     chime(ended === 'focus');
     if (pomo.auto) { pomo.running = true; pomo.waiting = false; pomo.justEnded = null; }
     else {
@@ -1437,7 +1613,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     hideMenu();
     render();
     flash();
-    say(ended === 'focus' ? 'timer: focus done, alarm ringing' : 'timer: break over, alarm ringing');
+    say((ended === 'focus' ? 'timer: focus done' : 'timer: break over') + (pomo.auto ? ', next phase started' : ', alarm ringing') + muted);
   }
 
   function silence() {
@@ -1451,62 +1627,77 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   function startWaiting() {
     if (pomo.running) return null;
     const verb = pomo.waiting || isReady() ? 'started' : 'resumed';
-    pomo.waiting = false; pomo.justEnded = null; pomo.running = true;
+    pomo.waiting = false; pomo.justEnded = null; pomo.running = true; pomo.autoPaused = null;
     return `${PHASE_NAME[pomo.phase]} ${verb}`;
   }
 
+  const asideLog = k => k ? `, ${k} set aside` : '';
   function startPause(how) {
     silence();
+    const aside = setAside();
     const started = startWaiting();
-    if (started) { say(`${how}: ${started.toLowerCase()}`); toast(started); }
-    else { pomo.running = false; say(`${how}: timer paused`); toast('Paused'); }
+    if (started) { say(`${how}: ${started.toLowerCase()}${asideLog(aside)}`); toast(started); }
+    else { pomo.running = false; say(`${how}: timer paused${asideLog(aside)}`); toast('Paused'); }
     render();
   }
   function skip(how) {
     silence();
+    const aside = setAside();
     nextPhase(true);
-    pomo.running = true; pomo.waiting = false; pomo.justEnded = null;
+    pomo.running = true; pomo.waiting = false; pomo.justEnded = null; pomo.autoPaused = null;
     render();
-    say(`${how}: skipped to ${PHASE_NAME[pomo.phase].toLowerCase()}`);
+    say(`${how}: skipped to ${PHASE_NAME[pomo.phase].toLowerCase()}${asideLog(aside)}`);
   }
   // Stop ends the run (today's tomatoes stay) and goes back to the status you had before.
   function stop(how) {
     silence();
-    Object.assign(pomo, { phase: 'focus', round: 1, remaining: phaseLen('focus'), running: false, waiting: false, justEnded: null });
+    const aside = setAside();
+    Object.assign(pomo, { phase: 'focus', round: 1, remaining: phaseLen('focus'), running: false, waiting: false, justEnded: null, autoPaused: null, heldAlarm: null });
     s.idx = s.lastStatus;
     render();
     toast('Pomodoro stopped');
-    say(`${how}: Pomodoro stopped, back to ${STATES[s.idx].name}`);
+    say(`${how}: Pomodoro stopped, back to ${STATES[s.idx].name}${asideLog(aside)}`);
   }
 
   let toastTimer = null;
   function toast(text) {
+    // A dark screen stays dark: a confirmation for something changed from the Remote (or this page) waits until the
+    // screen is woken, unless an automatic change is already waiting. Powered off, there's nothing to show it on.
+    if (!s.powered) return;
+    if (s.off) { pendingToast = pendingToast || text; return; }
     const el = $('toast');
     el.textContent = text;
     el.hidden = false;
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => { el.hidden = true; }, 1600);
   }
+  // Toasts for automatic changes wait until the screen is free: not dark, no menu, no setup or power screen.
+  const screenFree = () => s.powered && !s.booting && !s.off && menu.hidden && !onWifiScreen() && $('holdOv').hidden;
+  function notify(text) { if (screenFree()) toast(text); else pendingToast = text; }
+  const hiddenNote = () => s.booting ? ' · shows once TinyBar has started'
+    : onWifiScreen() ? ' · shows when setup is done'
+    : !menu.hidden ? ' · shows when the menu closes'
+    : s.off ? ' · the screen is dark, it shows when woken' : '';
 
   const battery = `<svg viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="2" y="6" width="21" height="12" rx="2.5"/><rect x="5" y="9" width="12" height="6" rx="1" fill="currentColor" stroke="none"/><path d="M25.5 10v4" stroke-linecap="round"/></svg>`;
   const wifiIcon = () => s.wifi.mode === 'offline'
     ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><g opacity=".4"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5.5 12.5a10 10 0 0 1 13 0"/><path d="M9 16a5 5 0 0 1 6 0"/></g><path d="M4 3l16 18"/></svg>`
     : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5.5 12.5a10 10 0 0 1 13 0"/><path d="M9 16a5 5 0 0 1 6 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/></svg>`;
-  const iconsHtml = () => `
-    <span class="icons">
-      ${wifiIcon()}
-      <svg viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="2" y="6" width="21" height="12" rx="2.5"/><rect x="5" y="9" width="12" height="6" rx="1" fill="currentColor" stroke="none"/><path d="M25.5 10v4" stroke-linecap="round"/></svg>
-    </span>`;
+  // A call or meeting you set aside leaves a small glyph in the corner: a headset or a calendar.
+  const headset = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.5" height="6.5" rx="1.5"/><rect x="16.5" y="14" width="4.5" height="6.5" rx="1.5"/></svg>`;
+  const calGlyph = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`;
+  const asideGlyph = () => { const k = asideKind(); return k === 'call' ? headset : k === 'meeting' ? calGlyph : ''; };
+  const iconsHtml = () => `<span class="icons">${asideGlyph()}${wifiIcon()}${battery}</span>`;
 
   // Top row of the side column. Off the Pomodoro screen, a running timer shows as a small pill.
   function sysRow() {
     let pill = '';
-    if (STATES[s.idx].id !== 'pomodoro' && pomoActive()) {
+    if (rendering !== 'pomodoro' && pomoActive()) {
       const label = pomo.waiting ? 'Done' : !pomo.running ? 'Paused' : mmss(remSec());
-      pill = `<span class="pill" style="--pc:${col(pomo.phase)}">${pomo.phase === 'focus' ? tomato('ripening', 1 - pomo.remaining / phaseLen('focus')) : tomato('ripe')}${label}</span>`;
+      pill = `<span class="pill" style="--pc:var(--s-${pomo.phase})">${pomo.phase === 'focus' ? tomato('ripening', 1 - pomo.remaining / phaseLen('focus')) : tomato('ripe')}${label}</span>`;
     }
     if (!pill) return `<div class="sys"><span>${fmt(now())}</span>${iconsHtml()}</div>`;
-    return `<div class="sys"><span>${fmtShort(now())}</span>${pill}<span class="icons">${battery}</span></div>`;
+    return `<div class="sys"><span>${fmtShort(now())}</span>${pill}<span class="icons">${asideGlyph()}${battery}</span></div>`;
   }
 
   const side = (label, value, foot = '', valueClass = '') => `
@@ -1520,6 +1711,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     </aside>`;
 
   function pomoView() {
+    rendering = 'pomodoro';
     const { phase, round, set } = pomo;
     const total = phaseLen(phase);
     const nextRound = phase === 'long' ? 1 : round + 1;
@@ -1535,8 +1727,8 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
 
     if (pomo.waiting) {
       const main = pomo.justEnded === 'focus'
-        ? `<div class="kicker">Focus ${round} of ${set.every} done</div><div class="endrow">${tomato('ripe')}<div class="word" style="font-size:9.5cqw">Break time</div></div><div class="sub">Flip or tap to start a ${set[phase]} min ${phase === 'long' ? 'long' : 'short'} break</div>`
-        : `<div class="kicker">Break over</div><div class="endrow">${tomato('ripe')}<div class="word" style="font-size:9.5cqw">Back to it</div></div><div class="sub">Flip or tap to start focus ${round} of ${set.every}</div>`;
+        ? `<div class="kicker">Focus ${round} of ${set.every} done</div><div class="endrow">${tomato('ripe')}<div class="word" style="--fs:9.5">Break time</div></div><div class="sub">Flip or tap to start a ${set[phase]} min ${phase === 'long' ? 'long' : 'short'} break</div>`
+        : `<div class="kicker">Break over</div><div class="endrow">${tomato('ripe')}<div class="word" style="--fs:9.5">Back to it</div></div><div class="sub">Flip or tap to start focus ${round} of ${set.every}</div>`;
       return { main, side: sideHtml };
     }
 
@@ -1551,42 +1743,49 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     else if (phase === 'focus') sub = `Please don't interrupt · break at ${fmt(simEnd())}`;
     else sub = `Free to chat · back to focus at ${fmt(simEnd())}`;
     return {
-      main: `<div class="kicker">${kicker}</div><div class="word ${paused && !ready ? 'blink' : ''}" style="font-size:17cqw">${mmss(remSec())}</div><div class="sub">${sub}</div>`,
+      main: `<div class="kicker">${kicker}</div><div class="word time ${paused && !ready ? 'blink' : ''}" style="--fs:17">${mmss(remSec())}</div><div class="sub">${sub}</div>`,
       side: sideHtml,
       bar: (total - pomo.remaining) / total * 100,
     };
   }
 
   function view(id) {
+    rendering = id;
     const n = now();
+    const cd = calData(), nx = cd ? nextEvent() : null;
+    const nextLine = (fallback) => !nx ? fallback
+      : titleOf(nx) ? `Next: ${esc(titleOf(nx))} at ${fmt(nx.start)}` : `Next meeting at ${fmt(nx.start)}`;
     switch (id) {
-      case 'available':
+      case 'available': {
+        // Free until comes from the calendar; without one, the side says how long you've been available.
+        let sd;
+        if (!cd) sd = side('Available for', hm(minsUp(n - s.since)), 'since ' + fmt(s.since));
+        else if (nx) sd = side('Free until', fmtShort(nx.start), `${ampm(nx.start)} · then ${esc(titleOf(nx) || 'a meeting')}`);
+        else sd = side('Free', 'Rest of day', 'no meetings left', 'small');
         return {
-          main: `<div class="kicker">Status</div><div class="word" style="font-size:14.5cqw">Available</div><div class="sub">Happy to chat</div>`,
-          side: side('Free until', fmtShort(sample.freeUntil), ampm(sample.freeUntil) + ' · then Design review'),
+          main: `<div class="kicker">Status</div><div class="word" style="--fs:14.5">Available</div><div class="sub">Happy to chat</div>`,
+          side: sd,
         };
+      }
       case 'busy': {
         const mins = Math.round((n - sample.busySince) / 60000);
         return {
-          main: `<div class="kicker">Status</div><div class="word" style="font-size:17cqw">Busy</div><div class="sub">Heads down, message me instead</div>`,
+          main: `<div class="kicker">Status</div><div class="word" style="--fs:17">Busy</div><div class="sub">Heads down, message me instead</div>`,
           side: side('Busy for', hm(mins), 'since ' + fmt(sample.busySince)),
         };
       }
-      case 'meeting': {
-        const left = Math.max(0, Math.round((sample.meetEnd - n) / 60000));
-        const pct = Math.min(100, (n - sample.meetStart) / (sample.meetEnd - sample.meetStart) * 100);
+      case 'meeting':
+        // In a meeting set by hand: no title or end time is known, so it counts up from when you picked it.
         return {
-          main: `<div class="kicker">In a meeting · ${fmtShort(sample.meetStart)}–${fmt(sample.meetEnd)}</div><div class="word title" style="font-size:9.5cqw">Design review</div><div class="sub">Next: 1:1 with Sam at ${fmt(sample.nextMeet)}</div>`,
-          side: side('Ends in', hm(left), 'at ' + fmt(sample.meetEnd)),
-          bar: pct,
+          main: `<div class="kicker">Status</div><div class="word" style="--fs:11">In a meeting</div><div class="sub">${nextLine("Message me if it's urgent")}</div>`,
+          side: side('Meeting for', hm(minsUp(n - s.since)), 'since ' + fmt(s.since)),
         };
-      }
       case 'pomodoro':
         return pomoView();
       case 'away': {
         const gone = Math.round((n - sample.awaySince) / 60000);
         return {
-          main: `<div class="kicker">Away</div><div class="word" style="font-size:13cqw">Back at ${fmtShort(sample.awayBack)}</div><div class="sub">Grabbing lunch</div>`,
+          main: `<div class="kicker">Away</div><div class="word" style="--fs:13">Back at ${fmtShort(sample.awayBack)}</div><div class="sub">Grabbing lunch</div>`,
           side: side('Gone for', hm(gone), 'left at ' + fmt(sample.awaySince)),
         };
       }
@@ -1594,16 +1793,52 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
         const text = esc(s.message || 'Hello');
         const long = s.message.length > 22;
         return {
-          main: `<div class="kicker">Message</div><div class="marquee ${long ? 'scroll' : ''}" style="--dur:${Math.max(6, s.message.length * 0.32)}s"><div class="word" style="font-size:10cqw">${text}</div></div><div class="sub">Set from the remote</div>`,
+          main: `<div class="kicker">Message</div><div class="marquee ${long ? 'scroll' : ''}" style="--dur:${Math.max(6, s.message.length * 0.32)}s"><div class="word" style="--fs:10">${text}</div></div><div class="sub">Set from the remote</div>`,
           side: side('Posted', fmtShort(s.messageAt), ampm(s.messageAt) + ' today'),
         };
       }
-      case 'clock':
+      case 'clock': {
+        let sd;
+        if (s.wifi.mode === 'offline') sd = side('Calendar', 'Off', 'needs Wi-Fi', 'small');
+        else if (cal.state !== 'ok') sd = side('Calendar', 'Not set up', 'add it on the Remote', 'small');
+        else if (!cal.on) sd = side('Calendar', 'Off', 'turned off on the Remote', 'small');
+        else if (nx && titleOf(nx)) sd = side('Next up', esc(titleOf(nx)), fmt(nx.start) + (placeOf(nx) ? ' · ' + esc(placeOf(nx)) : ''), 'small');
+        else if (nx) sd = side('Next up', fmt(nx.start), `meeting · in ${hm(minsUp(nx.start - n))}`, 'small');
+        else sd = side('Next up', 'Nothing', 'rest of today is free', 'small');
         return {
-          main: `<div class="kicker">${n.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</div><div class="word" style="font-size:17cqw">${fmtShort(n)}<span style="font-size:.32em;letter-spacing:.06em;margin-left:.15em">${ampm(n)}</span></div><div class="sub">Idle · ${pomo.doneToday} Pomodoro${pomo.doneToday === 1 ? '' : 's'} done today</div>`,
-          side: side('Next up', 'Design review', fmt(sample.meetStart) + ' · in Room 4', 'small'),
+          main: `<div class="kicker">${n.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</div><div class="word" style="--fs:17">${fmtShort(n)}<span style="font-size:.32em;letter-spacing:.06em;margin-left:.15em">${ampm(n)}</span></div><div class="sub">Idle · ${pomo.doneToday} Pomodoro${pomo.doneToday === 1 ? '' : 's'} done today</div>`,
+          side: sd,
         };
+      }
     }
+  }
+
+  // The automatic screens. Both start with a source chip (MAC or CALENDAR), so they're never mistaken for a status
+  // you set yourself, and both can be left with a tap.
+  const progress = e => Math.max(0, Math.min(100, (now() - e.start) / (e.end - e.start) * 100));
+  function autoView(a) {
+    rendering = a.kind;
+    const n = now(), m = meetNow();
+    if (a.kind === 'call') {
+      const c = mac.call;
+      const app = c.app ? esc(c.app.length > 24 ? c.app.slice(0, 23) + '…' : c.app) : 'Mic or camera on';
+      const mins = minsUp(n - c.since);
+      const t = titleOf(m);
+      return {
+        main: `<div class="kicker auto"><span class="chip">Mac</span> ${app}</div><div class="word" style="--fs:17">On a call</div><div class="sub">${t ? esc(t) : 'Please keep voices low nearby'}</div>`,
+        side: m ? side('Meeting ends in', hm(minsUp(m.end - n)), `at ${fmt(m.end)} · call ${hm(mins)}`) : side('On a call for', hm(mins), 'since ' + fmt(c.since)),
+        bar: m ? progress(m) : null,
+      };
+    }
+    const t = titleOf(m), nx = nextEvent(), place = placeOf(m);
+    const next = nx ? (titleOf(nx) ? `Next: ${esc(titleOf(nx))} at ${fmt(nx.start)}` : `Next meeting at ${fmt(nx.start)}`) : 'No more meetings today';
+    return {
+      main: `<div class="kicker auto"><span class="chip">Calendar</span> ${t ? 'In a meeting · ' : ''}${span(m.start, m.end)}</div>`
+        + (t ? `<div class="word title" style="--fs:9.5" data-min=".79">${esc(t)}</div>` : `<div class="word" style="--fs:11">In a meeting</div>`)
+        + `<div class="sub">${place ? esc(place) + ' · ' : ''}${next}</div>`,
+      side: side('Ends in', hm(minsUp(m.end - n)), 'at ' + fmt(m.end)),
+      bar: progress(m),
+    };
   }
 
   // ---------- Wi-Fi setup ----------
@@ -1630,7 +1865,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
         <div class="qr">${qrSvg()}</div>
         <div class="wtext">
           <div class="kicker">Wi-Fi setup</div>
-          <div class="word title" style="font-size:7.5cqw">Scan to set up</div>
+          <div class="word title" style="--fs:7.5">Scan to set up</div>
           <ol><li>Join <b>TinyBar-Setup</b> with your phone</li><li>Pick your office Wi-Fi on the page that opens</li></ol>
           <div class="wfoot">Hold to skip and use without Wi-Fi</div>
         </div>
@@ -1638,19 +1873,19 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     if (w.mode === 'connecting') return `
       <div class="wsetup"><div class="wtext">
         <div class="kicker">Wi-Fi setup</div>
-        <div class="word title dots-anim" style="font-size:10cqw">Connecting</div>
+        <div class="word title dots-anim" style="--fs:10">Connecting</div>
         <div class="sub">to ${esc(w.ssid)}</div>
       </div></div>`;
     if (w.mode === 'connected') return `
       <div class="wsetup"><div class="wtext">
         <div class="kicker">Connected to ${esc(w.ssid)}</div>
-        <div class="word title" style="font-size:10cqw">tinybar.local</div>
+        <div class="word title" style="--fs:10">tinybar.local</div>
         <div class="sub">or ${w.ip} · open it on your phone for the Remote</div>
       </div></div>`;
     return `
       <div class="wsetup"><div class="wtext">
         <div class="kicker">Couldn't connect to ${esc(w.ssid)}</div>
-        <div class="word title" style="font-size:10cqw">${esc(w.error)}</div>
+        <div class="word title" style="--fs:10">${esc(w.error)}</div>
         <div class="sub">Tap to try again · Hold to skip</div>
       </div></div>`;
   }
@@ -1661,6 +1896,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     s.wifi.error = '';
     hideMenu();
     setupMsg('');
+    wCalErr('');
     render();
     say(`${how}: Wi-Fi setup`);
   }
@@ -1675,64 +1911,145 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     s.wifi.mode = 'offline';
     hideMenu();
     render();
-    toast('Offline · statuses still work');
+    // Without Wi-Fi the calendar is off, so a meeting on screen ends here.
+    if (!syncAuto('Offline, calendar off')) toast('Offline · statuses still work');
     say(`${how}: skipped Wi-Fi`);
   }
 
-  const screenColor = id => id === 'pomodoro' ? col(pomo.phase) : col(id);
+  // Paint a screen (the simulator or a preview) in one status color. --sc is the color; --tc and --tsc pick up a
+  // direction's own main and side tints when it defines them.
+  function paint(el, key) {
+    el.dataset.k = key;
+    el.style.setProperty('--sc', `var(--s-${key})`);
+    el.style.setProperty('--tc', `var(--t-${key})`);
+    el.style.setProperty('--tsc', `var(--ts-${key})`);
+  }
 
+  let lcdHtml = '', lcdBar = null;
   function render() {
-    if (!s.powered) { updateHint(); updateRemote(); return; }
+    if (!s.powered) { updateHint(); updateRemote(); updatePreviews(); return; }
+    let key, html, barPct = null;
     if (s.booting) {
-      lcd.style.setProperty('--sc', col('clock'));
-      lcd.innerHTML = `<div class="splash">${tomato('ripe')}TinyBar</div>`;
-      bar.hidden = true;
-      updateHint();
-      updateRemote();
-      return;
+      key = 'clock';
+      html = `<div class="splash">${tomato('ripe')}TinyBar</div>`;
+    } else if (onWifiScreen()) {
+      key = 'setup';
+      html = wifiView();
+    } else {
+      // A call or meeting shows over your own status; your status is still there underneath, unchanged.
+      const a = autoTop(), st = STATES[s.idx];
+      let v;
+      if (a) { key = a.kind; v = autoView(a); }
+      else { key = st.id === 'pomodoro' ? pomo.phase : st.id; v = view(st.id); }
+      html = `<div class="main">${v.main}</div>${v.side}`;
+      barPct = v.bar == null ? null : v.bar;
+      document.documentElement.style.setProperty('--state', key === 'clock' ? 'var(--s-meeting)' : `var(--s-${key})`);
+      document.querySelectorAll('.sbtn').forEach(b => b.setAttribute('aria-pressed', b.dataset.id === st.id));
     }
-    if (onWifiScreen()) {
-      lcd.style.setProperty('--sc', col('setup'));
-      lcd.innerHTML = wifiView();
-      bar.hidden = true;
-      updateHint();
-      updateRemote();
-      return;
-    }
-    const st = STATES[s.idx];
-    const c = screenColor(st.id);
-    const v = view(st.id);
-    lcd.style.setProperty('--sc', c);
-    document.documentElement.style.setProperty('--state', st.id === 'clock' ? col('meeting') : c);
-    lcd.innerHTML = `<div class="main">${v.main}</div>${v.side}`;
-    if (v.bar == null) { bar.hidden = true; }
-    else { bar.hidden = false; barFill.style.width = v.bar.toFixed(2) + '%'; }
-    document.querySelectorAll('.sbtn').forEach(b => b.setAttribute('aria-pressed', b.dataset.id === st.id));
+    paint(screen, key);
+    lcdHtml = html;
+    lcdBar = barPct;
+    lcd.innerHTML = html;
+    if (barPct == null) { bar.hidden = true; }
+    else { bar.hidden = false; barFill.style.width = barPct.toFixed(2) + '%'; }
+    fitWords(screen);
     updateHint();
     updateRemote();
+    updatePreviews();
+  }
+
+  // Fit the text on a screen (the simulator or a preview), so any font in the Style panel can be judged fairly.
+  // Headlines shrink until they fit their column. Text in a pixel font snaps to whole multiples of that font's own
+  // pixel grid so it stays crisp: a headline takes the largest such size that fits (down to 2x, or 24 px for fonts
+  // with a small grid, then it's cut with an ellipsis), and the sub line and side value step down the same way.
+  // Pixel fonts without a strict grid scale freely. On the device each direction would ship fixed sizes; this just
+  // finds them.
+  const pxFont = ff => PIXEL_FONTS[ff.split(',')[0].trim().replace(/^["']|["']$/g, '')] || null;
+  function fitWords(root) {
+    const w0 = root.clientWidth;
+    if (!w0) return;
+    const k = 640 / w0;
+    const set = (el, v) => { el.style.fontSize = (v / 6.4).toFixed(3) + 'cqw'; };
+    const fits = el => el.scrollWidth <= el.clientWidth + 1;
+    root.querySelectorAll('.lcd .word, .lcd .sub, .lcd .ctx-value').forEach(el => {
+      const cs = getComputedStyle(el), pf = pxFont(cs.fontFamily), g = pf && pf.grid;
+      const word = el.classList.contains('word');
+      if (!word && !pf) return;           // sub lines and side values are only fitted in pixel fonts
+      const px = parseFloat(cs.fontSize) * k;
+      const mq = el.closest('.marquee');
+      if (mq) {
+        // A message scrolls instead of shrinking. In a pixel font it rounds down to the grid, and any message too
+        // wide for the column scrolls, however few characters it has.
+        if (g) set(el, Math.max(g, Math.floor(px / g + 1e-6) * g));
+        if (!mq.classList.contains('scroll') && el.scrollWidth > mq.clientWidth + 1) mq.classList.add('scroll');
+        return;
+      }
+      // Candidate sizes, largest first.
+      const steps = [];
+      if (g) {
+        const top = Math.max(g, Math.round(px / g) * g), floor = word ? Math.max(2 * g, 24) : g;
+        for (let v = top; v >= floor - .01; v -= g) steps.push(v);
+        if (!steps.length) steps.push(top);
+        if (!word && g > 24) steps.push(g / 2);   // fonts with a big grid get a half step for small text
+      } else {
+        const min = px * (+el.dataset.min || (word ? .6 : .7));
+        for (let v = px; v >= min - .01 && steps.length < 40; v *= .95) steps.push(v);
+      }
+      // A pixel headline or side value also has to fit its column's height (a big grid can overshoot it): the
+      // headline's line isn't squeezed by the lines around it, and the column's lines stay inside its padding.
+      const box = pf && !el.classList.contains('sub') && el.closest('.main, .side');
+      const tall = () => {
+        const r = box.getBoundingClientRect(), cs = getComputedStyle(box);
+        return (word && el.clientHeight + 1 < parseFloat(getComputedStyle(el).lineHeight))
+          || box.firstElementChild.getBoundingClientRect().top < r.top + parseFloat(cs.paddingTop) - 1
+          || box.lastElementChild.getBoundingClientRect().bottom > r.bottom - parseFloat(cs.paddingBottom) + 1;
+      };
+      const ok = () => fits(el) && (!box || !tall());
+      if (g) set(el, steps[0]);
+      for (let i = 1; i < steps.length && !ok(); i++) set(el, steps[i]);
+    });
   }
 
   function updateHint() {
+    const a = s.powered && !s.booting && !onWifiScreen() && autoTop();
+    const k = asideKind();
+    // Connected is the end of setup: a tap moves on and holding opens the quick menu.
+    const connected = s.wifi.mode === 'connected';
     $('hint').textContent = !s.powered ? 'Powered off · Press PWR on the side to turn it on'
       : s.booting ? 'Starting up'
+      : connected ? 'Connected · Tap: continue · Hold: quick menu'
       : onWifiScreen() ? 'Wi-Fi setup · Tap: continue · Hold: skip setup · Use the phone panel to connect'
-      : STATES[s.idx].id === 'pomodoro'
+      : a ? 'Automatic status · Tap: back to your status · Swipe: change status · Hold: quick menu · BOOT: back to your status'
+      : (STATES[s.idx].id === 'pomodoro'
         ? 'Tap: start or pause · Flip: start next phase · Swipe: change status · Hold: timer options'
-        : 'Tap: next status · Swipe: back or forward · Hold: quick menu · PWR: hold 3 s to power off';
+        : 'Tap: next status · Swipe: back or forward · Hold: quick menu · PWR: hold 3 s to power off')
+        + (k ? ` · The ${k} is set aside: Show again is in the ${STATES[s.idx].id === 'pomodoro' ? 'timer' : 'quick'} menu` : '');
+    // The accessible names follow the screen too.
+    const pomoScr = STATES[s.idx].id === 'pomodoro';
+    screen.setAttribute('aria-label', !s.powered ? 'TinyBar screen, powered off. Press PWR to turn it on.'
+      : s.booting ? 'TinyBar screen, starting up.'
+      : s.off ? 'TinyBar screen, dark. Tap to wake it.'
+      : connected ? 'TinyBar screen, connected to Wi-Fi. Tap to continue, long-press for the quick menu.'
+      : onWifiScreen() ? 'TinyBar screen, Wi-Fi setup. Tap to continue, long-press for setup options.'
+      : a ? `TinyBar screen, ${a.kind === 'call' ? 'On a call, from your Mac' : 'In a meeting, from your calendar'}. Tap to go back to your status, swipe to change status, long-press for the quick menu.`
+      : pomoScr ? 'TinyBar screen, Pomodoro. Tap to start or pause, swipe to change status, long-press for timer options.'
+      : 'TinyBar screen. Tap for next status, swipe to change status, long-press for the quick menu.');
+    $('btnBoot').setAttribute('aria-label', a ? 'BOOT button: back to your status' : 'BOOT button: next status');
   }
 
+  const colorOf = key => (style && style.colors[key]) || BASE[key];
   function updateRemote() {
-    const pc = col(pomo.phase);
     const box = $('pomoBox');
-    box.style.setProperty('--pc', pc);
+    box.style.setProperty('--pc', colorOf(pomo.phase));
     $('pTime').textContent = mmss(remSec());
     $('pTomatoes').innerHTML = tomatoRow();
     const where = pomo.phase === 'focus' ? `Focus ${pomo.round} of ${pomo.set.every}` : PHASE_NAME[pomo.phase];
-    const state = pomo.waiting ? 'waiting for you' : isReady() ? 'ready' : pomo.running ? 'running' : 'paused';
+    const state = pomo.waiting ? 'waiting for you' : isReady() ? 'ready' : pomo.running ? 'running'
+      : pomo.autoPaused && quiet() ? `paused for the ${pomo.autoPaused}` : 'paused';
     $('pRead').textContent = `${where} · ${state}`;
     $('pStart').textContent = pomo.waiting ? `Start ${pomo.phase === 'focus' ? 'focus' : 'break'}` : pomo.running ? 'Pause' : isReady() ? 'Start' : 'Resume';
     const pb = document.querySelector('.sbtn[data-id="pomodoro"]');
-    if (pb) pb.style.setProperty('--c', pc);
+    if (pb) sbtnColor(pb, pomo.phase);
     $('pwrHoldBtn').textContent = s.powered ? 'Hold PWR 3 s' : 'Press PWR';
     const setupMode = s.powered && ['setup', 'connecting', 'failed'].includes(s.wifi.mode);
     $('setupView').hidden = !setupMode;
@@ -1744,34 +2061,125 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       : '';
     $('offNote').textContent = note;
     $('offNote').hidden = !note;
+    updateAutoRemote();
+    updateSim();
+  }
+
+  // The Remote's Automatic status section and the banner over the status buttons.
+  function updateAutoRemote() {
+    const a = autoTop(), k = asideKind(), c = callNow(), m = meetNow();
+    $('autoNow').textContent = a ? (a.kind === 'call' ? 'Showing On a call · from your Mac' : 'Showing In a meeting · from your calendar')
+      : k ? `Showing your status · you set the ${k} aside` : 'Showing your status';
+    $('autoShowAgain').hidden = !k;
+    const ev = a ? a.kind : k, shown = !!a;
+    $('autoBanner').hidden = !ev;
+    if (ev) {
+      $('autoBanner').style.setProperty('--c', colorOf(ev === 'call' ? 'call' : 'meeting'));
+      if (ev === 'call') {
+        $('abTitle').textContent = shown ? `On a call${c.app ? ' · ' + c.app : ''} · ${minsUp(now() - c.since)} min` : 'On a call · set aside on the bar';
+        $('abSub').textContent = !shown ? 'Your own status shows until the call ends.'
+          : m ? `From your Mac, during a meeting until ${fmt(m.end)}.` : 'From your Mac. Showing on the bar until the call ends.';
+      } else {
+        $('abTitle').textContent = shown ? `In a meeting until ${fmt(m.end)}` : 'In a meeting · set aside on the bar';
+        $('abSub').textContent = !shown ? `Your own status shows until it ends at ${fmt(m.end)}.`
+          : titleOf(m) ? `${titleOf(m)} · from your calendar` : 'From your calendar.';
+      }
+      $('abBtn').textContent = shown ? 'Set aside' : 'Show again';
+    }
+    // Calendar
+    const none = cal.state !== 'ok';
+    $('calBadge').textContent = cal.checking ? 'Checking…' : none ? 'Not set up' : 'Connected';
+    $('calBadge').className = 'badge' + (!none && !cal.checking ? ' ok' : '');
+    $('calOn').checked = cal.on;
+    $('calOn').disabled = none;
+    // While an address is being checked, the badge and the message under the field say so (once).
+    $('calLine').textContent = none && cal.checking ? 'Not set up yet.'
+      : none ? 'Not set up. Add your secret address below; the switch then turns on, meetings show as In a meeting, and Next up fills in.'
+      : `Synced ${ago(cal.lastSync)} · ${leftText()}` + (cal.on ? '' : ". Calendar meetings is off, so the bar won't show meetings.");
+    $('calSaved').hidden = none || cal.replacing;
+    $('calForm').hidden = !(none || cal.replacing);
+    $('calSave').textContent = none ? 'Add' : 'Save';
+    $('calSave').disabled = cal.checking;
+    $('calCancel').hidden = !cal.replacing;
+    $('calMask').textContent = none ? '' : `${cal.host}/…/${cal.file} · ending ${cal.hint}`;
+    $('calConfirm').hidden = !cal.confirm;
+    $('calActions').hidden = cal.confirm;
+    $('calTitles').checked = cal.titles;
+    $('calTitles').disabled = none;
+    // Messages sit right under the address field while it's open, otherwise under the saved address.
+    const msgAt = $('calForm').hidden ? $('calSaved') : $('calInputRow');
+    if (msgAt.nextElementSibling !== $('calMsg')) msgAt.after($('calMsg'));
+    // Mac
+    $('macOn').checked = mac.on;
+    const via = mac.link === 'usb' ? 'USB' : 'Wi-Fi';
+    const heard = mac.quiet || (mac.link === 'wifi' && !wifiUp()) ? `last heard ${fmt(mac.lastHeard)}` : 'heard from it just now';
+    $('macLine').textContent = (!mac.on ? 'Off. The bar ignores calls from your Mac. ' : '')
+      + (mac.link ? `Connected over ${via}${mac.call ? ` · on a call${mac.call.app ? ` (${mac.call.app})` : ''}` : ''} · ${heard}`
+        : mac.lostAt ? `Not connected · last heard ${fmt(mac.lostAt)}` : 'Not connected yet');
+  }
+  function calMsg(text, isErr) {
+    const el = $('calMsg');
+    el.textContent = text;
+    el.hidden = !text;
+    el.classList.toggle('err', !!isErr);
+    $('calInput').setAttribute('aria-invalid', isErr ? 'true' : 'false');
+  }
+  // The address field starts masked every time the form opens or closes; Show reveals it only while typing.
+  function maskCalInput() {
+    $('calInput').type = 'password';
+    $('calShow').textContent = 'Show';
+    $('calShow').setAttribute('aria-pressed', 'false');
+  }
+
+  // What the Simulate panel has sent so far, in plain words.
+  function updateSim() {
+    const cur = currentEvent(), nx = nextEvent();
+    const calT = cal.state !== 'ok' ? 'no address saved'
+      : cur ? `meeting until ${fmt(cur.end)}${cur.priv ? ' (private)' : ''}` : nx ? `next meeting at ${fmt(nx.start)}` : 'no more meetings today';
+    const c = mac.call;
+    const macT = c ? `on a call (${c.app || 'no app name'}) over ${c.via === 'usb' ? 'USB' : 'Wi-Fi'}`
+      : mac.link ? `connected over ${mac.link === 'usb' ? 'USB' : 'Wi-Fi'}` : 'not connected';
+    const q = mac.link && mac.quiet ? ` · quiet: TinyBar gives up in ${Math.max(0, Math.ceil((MAC_TIMEOUT - mac.quietMs) / 1000))} s (demo time)` : '';
+    $('simState').textContent = `Calendar: ${calT} · Mac: ${macT}${q}`;
   }
 
   // Redraw only when something visible changes, so the marquee keeps scrolling.
-  let lastKey = '', lastTs = Date.now();
+  let lastKey = '', lastShape = '', lastTs = Date.now();
   function loop() {
     if (!s.powered || s.booting) { lastTs = Date.now(); return; }
     const t = Date.now();
+    const dt = t - lastTs;
+    lastTs = t;
+    syncAuto();
+    releaseHeldAlarm();
+    macTimers(dt);
+    // The regular calendar sync, about every 10 minutes. Meetings start and end on time from the saved copy.
+    if (cal.state === 'ok' && !cal.checking && wifiUp() && now() - cal.lastSync > 10 * 60000) cal.lastSync = now();
     if (s.ringing) {
       if (t > s.ringUntil) { s.ringing = false; say('alarm: stopped after a minute'); }
       else if (t >= s.nextRing) { chime(pomo.phase !== 'focus'); flash(); s.nextRing = t + 4000; }
     }
-    const dt = t - lastTs;
-    lastTs = t;
     if (pomo.running) {
       const d = dt * pomo.speed;
       pomo.remaining -= d;
       if (pomo.phase === 'focus') pomo.focusedMs += Math.min(d, d + pomo.remaining);
       if (pomo.remaining <= 0) { endPhase(); lastKey = ''; return; }
     }
-    const key = [s.idx, fmt(now()), pomo.phase, remSec(), pomo.running, pomo.waiting, s.wifi.mode].join('|');
+    if (pendingToast && screenFree() && $('toast').hidden) { toast(pendingToast); pendingToast = null; }
+    const quietSec = mac.quiet ? Math.floor(mac.quietMs / 1000) : 0;
+    const key = [s.idx, fmt(now()), pomo.phase, remSec(), pomo.running, pomo.waiting, s.wifi.mode, s.rev, quietSec].join('|');
     if (key === lastKey) return;
     lastKey = key;
-    if (STATES[s.idx].id === 'message') {
+    const shape = [s.idx, s.rev, s.wifi.mode].join('|');
+    if (STATES[s.idx].id === 'message' && !autoTop() && shape === lastShape) {
+      rendering = 'message';
       const sys = lcd.querySelector('.sys');
       if (sys) sys.outerHTML = sysRow();
       updateRemote();
+      updatePreviews(false);
       return;
     }
+    lastShape = shape;
     render();
   }
 
@@ -1785,17 +2193,131 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     else toast('Scan the code with your phone');
   }
 
+  // Changing status by hand. During a call or meeting this also sets it aside (your choice wins until it ends).
   function go(i, how) {
     if (onWifiScreen()) { toast('Finish setup, or hold to skip'); return; }
     silence();
+    const aside = setAside();
     s.idx = (i + STATES.length) % STATES.length;
     if (!['pomodoro', 'clock'].includes(STATES[s.idx].id)) s.lastStatus = s.idx;
+    s.since = now();
     hideMenu();
     render();
-    if (how) say(`${how}: ${STATES[s.idx].name}`);
+    if (how) say(`${how}: ${STATES[s.idx].name}${asideLog(aside)}`);
+    if (aside) toast(`${cap(aside)} set aside · ${STATES[s.idx].name}`);
   }
 
   function say(t) { log.textContent = t; }
+
+  // ---------- Automatic status: taking over, setting aside, handing back ----------
+  // Set aside whatever call or meeting is on screen. Returns 'call' or 'meeting', or null if nothing was showing.
+  function setAside() {
+    const a = autoTop();
+    if (!a) return null;
+    const c = callNow(), m = meetNow();
+    if (c) s.aside.call = c.id;
+    if (m) s.aside.meeting = m.id;
+    autoShown = null;
+    bump();
+    return a.kind;
+  }
+  // A tap or BOOT on an automatic screen goes back to your own status.
+  function backToOwn(how) {
+    silence();
+    const k = setAside();
+    hideMenu();
+    render();
+    // The device has no hint line, so the toast says how to undo it: Show again is in the quick or timer menu.
+    toast(`${cap(k)} set aside · hold to show it again`);
+    say(`${how}: ${k} set aside, back to ${ownName()}`);
+  }
+  // Undo: the quick menu's Show again tile and the Remote's Show again button.
+  function showAgain(how) {
+    const k = asideKind();
+    hideMenu();
+    if (!k) { toast('Nothing set aside'); say(`${how}: nothing is set aside`); return; }
+    s.aside = { call: null, meeting: null };
+    autoShown = autoTop();
+    const extra = takeover(autoShown);
+    bump();
+    render();
+    toast(`Showing the ${k} again`);
+    say(`${how}: showing the ${k} again${extra}`);
+  }
+  // A call or meeting taking over pauses a running Pomodoro and silences a ringing alarm. The alarm rings once
+  // when the call or meeting is over.
+  function takeover(top) {
+    let out = '';
+    if (pomo.running) { pomo.running = false; pomo.autoPaused = top.kind; out += ', timer paused'; }
+    if (s.ringing) { s.ringing = false; pomo.heldAlarm = top.kind; out += ', alarm held'; }
+    return out;
+  }
+  function releaseHeldAlarm() {
+    if (!pomo.heldAlarm || quiet() || !s.powered || s.booting) return;
+    const after = pomo.heldAlarm;
+    pomo.heldAlarm = null;
+    if (!pomo.waiting) return;
+    s.idx = POMO;
+    bump();
+    render();
+    chime(pomo.phase !== 'focus');
+    flash();
+    say(`timer: ${pomo.justEnded === 'focus' ? 'break time' : 'back to it'}, one chime now the ${after} is over`);
+  }
+  // Compare what should show with what is showing, and announce the change once. lead names what happened
+  // ("Call ended", "Calendar removed"...) when the caller knows. Returns true when the screen changed.
+  function syncAuto(lead) {
+    if (!s.powered || s.booting) return false;
+    const top = autoTop(), prev = autoShown;
+    if (top && prev ? top.kind === prev.kind && top.id === prev.id : top === prev) return false;
+    autoShown = top;
+    pendingToast = null;
+    const extra = top ? takeover(top) : '';
+    let msg, line;
+    if (top && top.kind === 'call') {
+      const app = mac.call.app;
+      msg = lead && !prev ? `${lead} · On a call` : 'Mac: call started';
+      line = `mac: call started${app ? ` (${app})` : ''}`;
+    } else if (top) {
+      const m = meetNow(), t = titleOf(m);
+      if (prev && prev.kind === 'call' && !callNow()) {
+        msg = `${lead || 'Call ended'} · still in ${t || 'a meeting'}`;
+        line = `mac: ${(lead || 'call ended').toLowerCase()}, back to the meeting`;
+      } else {
+        msg = lead ? `${lead} · In a meeting` : `Calendar: ${t || 'meeting'} started`;
+        line = `calendar: ${t || 'meeting'} started, ${span(m.start, m.end)}`;
+      }
+    } else {
+      const held = pomo.heldAlarm && pomo.waiting && !quiet();
+      const what = lead || (prev.kind === 'call' ? 'Call ended' : 'Meeting ended');
+      msg = held ? what : `${what} · back to ${ownName()}`;
+      line = `${prev.kind === 'call' ? 'mac' : 'calendar'}: ${what.charAt(0).toLowerCase() + what.slice(1)}, back to ${held ? 'the Pomodoro' : ownName()}`;
+    }
+    notify(msg);
+    say(line + extra + hiddenNote());
+    bump();
+    lastKey = '';
+    render();
+    releaseHeldAlarm();
+    return true;
+  }
+  // The Mac repeats its state every 30 s. After 90 s (demo time) with nothing, TinyBar stops trusting it and
+  // ends the call, so On a call can't get stuck. A Mac on Wi-Fi can't reach a bar that isn't on Wi-Fi.
+  function macTimers(dt) {
+    if (!mac.link) return;
+    const unreachable = mac.link === 'wifi' && !wifiUp();
+    if (!mac.quiet && !unreachable) { mac.lastHeard = now(); mac.quietMs = 0; return; }
+    mac.quietMs += dt * pomo.speed;
+    if (mac.quietMs < MAC_TIMEOUT) return;
+    const hadCall = !!callNow();
+    Object.assign(mac, { lostAt: mac.lastHeard, link: null, quiet: false, quietMs: 0, call: null });
+    s.aside.call = null;
+    bump();
+    if (!syncAuto('Lost contact with your Mac')) {
+      if (hadCall) notify('Lost contact with your Mac · call ended');
+      say(`mac: lost contact after 90 s${hadCall ? ', call ended' : ''}`);
+    }
+  }
 
   // Remote panel
   const grid = $('statusGrid');
@@ -1804,7 +2326,6 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     b.className = 'sbtn';
     b.type = 'button';
     b.dataset.id = st.id;
-    b.style.setProperty('--c', st.id === 'clock' ? '#3a4049' : screenColor(st.id));
     b.innerHTML = `<i></i>${st.name}`;
     b.addEventListener('click', () => { if (s.off) togglePower(); go(i, 'remote'); });
     grid.appendChild(b);
@@ -1826,7 +2347,8 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
         pomo.remaining = phaseLen(k);
       }
       if (s.off) togglePower();
-      s.idx = POMO;
+      // During a call or meeting a length change doesn't pull the bar off the automatic screen.
+      if (!autoTop()) s.idx = POMO;
       render();
       say(`remote: ${k === 'every' ? `long break after ${v} sessions` : `${PHASE_NAME[k].toLowerCase()} set to ${v} min`}`);
     });
@@ -1847,6 +2369,31 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   $('pStop').addEventListener('click', () => { wake(); stop('remote'); });
   $('pAuto').addEventListener('change', e => { pomo.auto = e.target.checked; say(`remote: auto-start ${pomo.auto ? 'on' : 'off'}`); });
   $('pSound').addEventListener('change', e => { pomo.sound = e.target.checked; say(`remote: chime ${pomo.sound ? 'on' : 'off'}`); });
+  // Ticking: off by default, Soft or Medium. The bar's timer menu has the same switch under Settings.
+  const volName = () => pomo.tickVol === 'medium' ? 'Medium' : 'Soft';
+  const tickLabel = () => pomo.tick ? volName() : 'Off';
+  // The volume choice is dimmed and disabled while ticking is off, so it never reads as "ticking at Soft".
+  function syncTickControls() {
+    $('pTick').checked = pomo.tick;
+    pickSeg($('tickSeg'), $('tickSeg').querySelector(`[data-v="${pomo.tickVol}"]`));
+    $('tickSeg').querySelectorAll('button').forEach(b => { b.disabled = !pomo.tick; });
+    $('tickSeg').setAttribute('aria-disabled', !pomo.tick);
+  }
+  function setTicking(on, vol, how) {
+    const volOnly = on === pomo.tick && vol && vol !== pomo.tickVol;
+    pomo.tick = on;
+    if (vol) pomo.tickVol = vol;
+    syncTickControls();
+    if (volOnly && !on) { toast(`Ticking volume · ${volName()} (ticking is off)`); say(`${how}: ticking volume ${pomo.tickVol} (ticking is off)`); return; }
+    toast(on ? `Ticking on · ${volName()}` : 'Ticking off');
+    say(`${how}: ticking ${on ? `on (${pomo.tickVol})` : 'off'}`);
+  }
+  syncTickControls();
+  $('pTick').addEventListener('change', e => setTicking(e.target.checked, null, 'remote'));
+  $('tickSeg').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (b) setTicking(pomo.tick, b.dataset.v, 'remote');
+  });
 
   $('msgForm').addEventListener('submit', e => {
     e.preventDefault();
@@ -1855,12 +2402,24 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     go(STATES.findIndex(x => x.id === 'message'), 'remote');
   });
 
-  // Quick menu. On the Pomodoro screen it holds timer options instead.
-  // Every tile either does something or is styled as read-only, Done always closes,
+  // Quick menu. On the Pomodoro screen it holds timer options instead (but on a call or meeting screen it's
+  // always the quick menu). Every tile either does something or is styled as read-only, Done always closes,
   // and the menu closes itself after 8 seconds untouched.
   let menuTimer = null;
+  // The Calendar tile has a state for every situation, so it's never a dead end. While a call or meeting is set
+  // aside it becomes Show again.
+  function calTile() {
+    const k = asideKind();
+    if (k) return `<div class="tile" data-action="showagain"><b>Set aside</b><span class="two">Show again</span><small>the ${k}</small></div>`;
+    if (s.wifi.mode === 'offline') return `<div class="tile" data-action="sync"><b>Calendar</b><span>Off</span><small>needs Wi-Fi</small></div>`;
+    if (cal.state !== 'ok') return `<div class="tile" data-action="sync"><b>Calendar</b><span>Off</span><small>add it on the Remote</small></div>`;
+    if (cal.checking) return `<div class="tile" data-action="sync"><b>Calendar</b><span>Sync…</span><small>syncing now</small></div>`;
+    return `<div class="tile" data-action="sync"><b>Calendar</b><span>Sync</span><small>synced ${ago(cal.lastSync)}</small></div>`;
+  }
   function showMenu() {
     const done = `<div class="tile done" data-action="close"><b>Close</b><span>Done</span><small>or wait 8 s</small></div>`;
+    // Connected is the end of setup: holding there finishes it and opens the usual menu, so Skip can't undo it.
+    if (s.wifi.mode === 'connected') { clearTimeout(connectedTimer); s.wifi.mode = 'ok'; render(); }
     if (onWifiScreen()) {
       menu.innerHTML = `
         <div class="tile" data-action="wifiskip"><b>Skip</b><span>Skip</span><small>use without Wi-Fi</small></div>
@@ -1872,19 +2431,24 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       say('hold: setup options');
       return;
     }
-    if (STATES[s.idx].id === 'pomodoro') {
+    const timer = !autoTop() && STATES[s.idx].id === 'pomodoro';
+    if (timer) {
       const next = pomo.phase === 'focus' ? (pomo.round % pomo.set.every === 0 ? 'long break' : 'short break') : 'focus';
       const midPhase = !pomo.waiting && !isReady();
+      const k = asideKind();
+      // While a call or meeting is set aside, Show again takes the Settings tile's place (ticking can't play
+      // during one anyway, and both settings are on the Remote), so the menu stays at five tiles.
       menu.innerHTML = `
         <div class="tile" data-action="skip"><b>Skip</b><span>Next</span><small>to ${next}</small></div>
         ${midPhase ? `<div class="tile" data-action="add"><b>Add time</b><span>+5</span><small>min to this ${pomo.phase === 'focus' ? 'session' : 'break'}</small></div>` : ''}
         <div class="tile" data-action="stop"><b>Stop</b><span>End</span><small>keeps tomatoes</small></div>
-        <div class="tile" data-action="auto"><b>Auto</b><span>${pomo.auto ? 'On' : 'Off'}</span><small>start next phase</small></div>
+        ${k ? `<div class="tile" data-action="showagain"><b>Set aside</b><span class="two">Show again</span><small>the ${k}</small></div>`
+          : `<div class="tile" data-action="tset"><b>Settings</b><span>More</span><small>auto-start, ticking</small></div>`}
         ${done}`;
     } else {
       menu.innerHTML = `
         <div class="tile" data-action="bright"><b>Light</b><span>${Math.round(s.bright * 100)}%</span><small>tap to change</small></div>
-        <div class="tile" data-action="sync"><b>Calendar</b><span>Sync</span><small>last synced 2 min ago</small></div>
+        ${calTile()}
         <div class="tile" data-action="wifi"><b>Wi-Fi</b><span>${s.wifi.mode === 'offline' ? 'Off' : 'On'}</span><small>${s.wifi.mode === 'offline' ? 'tap to set up' : esc(s.wifi.ssid)}</small></div>
         <div class="tile" data-action="power"><b>Power</b><span>82%</span><small>off or restart</small></div>
         ${done}`;
@@ -1892,7 +2456,17 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     menu.hidden = false;
     $('toast').hidden = true;
     armMenuTimer();
-    say(STATES[s.idx].id === 'pomodoro' ? 'hold: timer options' : 'hold: quick menu');
+    say(timer ? 'hold: timer options' : 'hold: quick menu');
+  }
+  // Timer settings: auto-start and ticking, with Back to the timer menu. The menu stays open so ticking can be
+  // stepped through Off, Soft and Medium.
+  function showTimerSettings() {
+    menu.innerHTML = `
+      <div class="tile" data-action="auto"><b>Auto-start</b><span>${pomo.auto ? 'On' : 'Off'}</span><small>next phase</small></div>
+      <div class="tile" data-action="tick"><b>Ticking</b><span>${tickLabel()}</span><small>during focus</small></div>
+      <div class="tile done" data-action="timermenu"><b>Settings</b><span>Back</span><small>to the timer menu</small></div>`;
+    menu.hidden = false;
+    armMenuTimer();
   }
   function showWifiMenu() {
     const off = s.wifi.mode === 'offline';
@@ -1932,18 +2506,38 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     if (a === 'wifi') { showWifiMenu(); return; }
     if (a === 'wifisetup') { startSetup('menu'); return; }
     if (a === 'wifiskip') { skipWifi('menu'); return; }
+    if (a === 'tset') { showTimerSettings(); say('menu: timer settings'); return; }
+    if (a === 'timermenu') { showMenu(); return; }
+    if (a === 'auto') {
+      pomo.auto = !pomo.auto;
+      $('pAuto').checked = pomo.auto;
+      showTimerSettings();
+      toast(`Auto-start ${pomo.auto ? 'on' : 'off'}`);
+      say(`menu: auto-start ${pomo.auto ? 'on' : 'off'}`);
+      return;
+    }
+    if (a === 'tick') {
+      const order = [[false, null], [true, 'soft'], [true, 'medium']];
+      const cur = !pomo.tick ? 0 : pomo.tickVol === 'medium' ? 2 : 1;
+      const [on, vol] = order[(cur + 1) % 3];
+      setTicking(on, vol, 'menu');
+      showTimerSettings();
+      return;
+    }
+    if (a === 'showagain') { showAgain('menu'); return; }
     hideMenu();
     if (a === 'close') say('menu: closed');
     else if (a === 'restart') restart('menu');
     else if (a === 'poweroff') powerOff('menu');
     else if (a === 'sync') {
       if (s.wifi.mode === 'offline') { toast("No Wi-Fi, can't sync"); say('menu: calendar needs Wi-Fi'); }
-      else { toast('Calendar synced'); say('menu: calendar synced'); }
+      else if (cal.state !== 'ok') { toast('Add your calendar on the Remote'); say('menu: no calendar yet, add its secret address on the Remote'); }
+      else if (cal.checking) { toast('Still syncing'); say('menu: calendar still syncing'); }
+      else { cal.lastSync = now(); bump(); toast('Calendar synced'); say(`menu: calendar synced, ${leftText()}`); }
     }
     else if (a === 'skip') skip('menu');
     else if (a === 'stop') stop('menu');
     else if (a === 'add') { pomo.remaining += 5 * 60000; render(); toast('+5 min'); say('menu: added 5 minutes'); }
-    else if (a === 'auto') { pomo.auto = !pomo.auto; $('pAuto').checked = pomo.auto; toast(`Auto-start ${pomo.auto ? 'on' : 'off'}`); say(`menu: auto-start ${pomo.auto ? 'on' : 'off'}`); }
   }
 
   // Touch gestures on the screen
@@ -1965,10 +2559,13 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     if (s.off) { wake('tap'); p = null; return; }
     if (!p) return;
     let dx = e.clientX - p.x;
+    const moved = Math.abs(dx) >= 10 || Math.abs(e.clientY - p.y) >= 10;
     if (s.flipped) dx = -dx;
     p = null;
     if (held) return;
     if (!menu.hidden) {
+      // Only a tap acts on a menu. A swipe is ignored, so it can't run whichever tile the finger lifts on.
+      if (moved) { say('swipe: ignored on the menu, tap a tile'); return; }
       const t = e.target.closest('[data-action]');
       if (t) menuAction(t.dataset.action);
       else { hideMenu(); say('tap: menu closed'); }
@@ -1977,6 +2574,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     if (onWifiScreen()) { wifiTap('tap'); return; }
     if (dx < -40) go(s.idx + 1, 'swipe');
     else if (dx > 40) go(s.idx - 1, 'swipe');
+    else if (autoTop()) backToOwn('tap');
     else if (STATES[s.idx].id === 'pomodoro') startPause('tap');
     else if (silence()) { toast('Alarm off'); say('tap: alarm off'); render(); }
     else go(s.idx + 1, 'tap');
@@ -1988,7 +2586,9 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     else if (e.key === 'ArrowLeft') { e.preventDefault(); go(s.idx - 1, 'swipe'); }
     else if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      if (onWifiScreen()) wifiTap('tap');
+      if (s.off) wake('tap');
+      else if (onWifiScreen()) wifiTap('tap');
+      else if (autoTop()) backToOwn('tap');
       else if (STATES[s.idx].id === 'pomodoro') startPause('tap'); else go(s.idx + 1, 'tap');
     }
     else if (e.key === 'm') { menu.hidden ? showMenu() : hideMenu(); }
@@ -1999,8 +2599,11 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     s.off = !s.off;
     screen.classList.toggle('off', s.off);
     bar.style.visibility = s.off ? 'hidden' : '';
+    if (s.off) $('toast').hidden = true;
     hideMenu();
     say(s.off ? 'PWR: screen off' : 'PWR: screen on');
+    updateHint();
+    updatePreviews();
   }
   function wake(how) {
     if (!s.off) return false;
@@ -2013,6 +2616,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     if (wake('BOOT')) return;
     if (onWifiScreen()) { wifiTap('BOOT'); return; }
     if (silence()) { say('BOOT: alarm off'); toast('Alarm off'); render(); return; }
+    if (autoTop()) { backToOwn('BOOT'); return; }
     go(s.idx + 1, 'BOOT');
   });
   // PWR: a press turns the screen off or on (or answers an alarm); holding it for 3 s powers the bar off.
@@ -2031,6 +2635,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   }
   function hideHold() { const el = $('holdOv'); el.hidden = true; el.classList.remove('go', 'done'); }
 
+  const resetPomo = () => Object.assign(pomo, { phase: 'focus', round: 1, remaining: phaseLen('focus'), running: false, waiting: false, justEnded: null, autoPaused: null, heldAlarm: null });
   function powerOff(how) {
     silence();
     hideMenu();
@@ -2050,7 +2655,9 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       screen.classList.remove('off');
       screen.classList.add('dead');
       // A running Pomodoro stops when the power is cut; today's tomatoes are kept.
-      Object.assign(pomo, { phase: 'focus', round: 1, remaining: phaseLen('focus'), running: false, waiting: false, justEnded: null });
+      resetPomo();
+      autoShown = null;
+      pendingToast = null;
       render();
       say(`${how}: off`);
     }, 1200);
@@ -2066,15 +2673,19 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       if (STATES[s.idx].id === 'pomodoro') s.idx = s.lastStatus;
       if (['connecting', 'failed'].includes(s.wifi.mode)) s.wifi.mode = 'setup';
       if (s.wifi.mode === 'connected') s.wifi.mode = 'ok';
+      // After a restart the bar picks up a call or meeting that's still on.
+      s.aside = { call: null, meeting: null };
+      autoShown = autoTop();
+      bump();
       lastKey = '';
       render();
-      toast('Ready');
+      toast(autoShown ? `Ready · ${autoShown.kind === 'call' ? 'On a call' : 'In a meeting'}` : 'Ready');
     }, 1500);
   }
   function restart(how) {
     silence();
     hideMenu();
-    Object.assign(pomo, { phase: 'focus', round: 1, remaining: phaseLen('focus'), running: false, waiting: false, justEnded: null });
+    resetPomo();
     powerOn(`${how}: restart`);
   }
 
@@ -2124,7 +2735,8 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       say("remote: TinyBar isn't on Wi-Fi");
       return;
     }
-    if (s.powered || !e.target.closest('button, input') || e.target.closest('#pwrHoldBtn')) return;
+    // The PWR stand-in and Flip are the bar itself, not the Remote, so they still work.
+    if (s.powered || !e.target.closest('button, input') || e.target.closest('#pwrHoldBtn, #flipBtn')) return;
     e.preventDefault();
     e.stopPropagation();
     say('remote: TinyBar is off, press PWR to turn it on');
@@ -2133,19 +2745,22 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
 
   // Flipping the bar over always does three things: turns the layout the right way up,
   // silences any alarm, and starts whatever the Pomodoro is waiting for. A running timer is left alone.
+  // On a call or meeting screen it also shows the Pomodoro, which sets the call or meeting aside.
   $('flipBtn').addEventListener('click', () => {
     if (s.booting) return;
     s.flipped = !s.flipped;
     device.classList.toggle('flipped', s.flipped);
+    if (!s.powered) { say('flip: TinyBar is off, nothing happens until you press PWR'); return; }
     wake();
     hideMenu();
     const quieted = silence();
+    const aside = setAside();
     const started = startWaiting();
-    if (started) s.idx = POMO;
+    if (started || aside) s.idx = POMO;
     render();
     const msg = started || `${PHASE_NAME[pomo.phase]} already running`;
     toast(quieted ? `Alarm off · ${msg}` : msg);
-    say(`flip: layout turned${quieted ? ', alarm off' : ''}, ${msg.toLowerCase()}`);
+    say(`flip: layout turned${quieted ? ', alarm off' : ''}, ${msg.toLowerCase()}${asideLog(aside)}`);
   });
   $('menuBtn').addEventListener('click', () => { wake(); menu.hidden ? showMenu() : hideMenu(); });
 
@@ -2163,10 +2778,21 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     const n = netValue();
     if (n === 'Office-Corp' && !$('wUser').value.trim()) { setupMsg('Enter your work username.', true); return; }
     if (!$('wPass').value) { setupMsg('Enter the Wi-Fi password.', true); return; }
+    // The calendar address is optional, but one that's filled in has to look right before the bar connects.
+    // The real check with Google happens once the bar is online.
+    const calChk = $('wCal').value.trim() ? checkIcal($('wCal').value) : null;
+    if (calChk && calChk.err) {
+      // Flagged at the field itself, which gets the focus, so the message is never off-screen on a phone.
+      wCalErr(`${calChk.err} Or clear it to add your calendar later on the Remote.`);
+      $('wCal').focus();
+      say('setup page: calendar address rejected');
+      return;
+    }
+    wCalErr('');
     const pass = $('wPass').value;
     s.wifi.mode = 'connecting';
     s.wifi.ssid = n;
-    setupMsg(`TinyBar is connecting to ${n}. If it works, this network closes and your phone goes back to its usual Wi-Fi.`);
+    setupMsg(`TinyBar is connecting to ${n}. If it works, this network closes and your phone goes back to its usual Wi-Fi.${calChk ? ' It will check your calendar once it\'s online.' : ''}`);
     syncSetupForm();
     render();
     say(`setup page: connecting to ${n}`);
@@ -2187,74 +2813,600 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
         $('wPass').value = '';
         say(`Wi-Fi: connected to ${n}`);
         connectedTimer = setTimeout(() => { if (s.wifi.mode === 'connected') { s.wifi.mode = 'ok'; render(); } }, 3000);
+        if (calChk) { $('wCal').value = ''; maskWCal(); saveCalendar(calChk, 'setup'); }
       }
       syncSetupForm();
       render();
     }, 2500);
   });
   $('wifiSetupBtn').addEventListener('click', () => { wake(); startSetup('demo'); syncSetupForm(); });
+  // The setup page's calendar field is masked like the Remote's, with its own Show button and its own error line.
+  function wCalErr(text) {
+    $('wCalErr').textContent = text;
+    $('wCalErr').hidden = !text;
+    $('wCal').setAttribute('aria-invalid', text ? 'true' : 'false');
+  }
+  function maskWCal() {
+    $('wCal').type = 'password';
+    $('wCalShow').textContent = 'Show';
+    $('wCalShow').setAttribute('aria-pressed', 'false');
+  }
+  $('wCalShow').addEventListener('click', () => {
+    const show = $('wCal').type === 'password';
+    $('wCal').type = show ? 'text' : 'password';
+    $('wCalShow').textContent = show ? 'Hide' : 'Show';
+    $('wCalShow').setAttribute('aria-pressed', show);
+  });
+  $('wCal').addEventListener('input', () => { if (!$('wCalErr').hidden) wCalErr(''); });
+
+  // ---------- Calendar on the Remote ----------
+  // Format checks run on the phone first; then the bar fetches the address once to check it with Google.
+  function checkIcal(raw) {
+    const v = raw.trim();
+    if (!v) return { err: 'Paste your secret address first.' };
+    let u = null;
+    try { u = new URL(v); } catch (e) {}
+    if (!u || !/^(https|http|webcal):$/.test(u.protocol) || !u.hostname.includes('.'))
+      return { err: "That isn't a web address. Copy the whole address, starting with https://." };
+    if (u.protocol === 'http:') return { err: "That address starts with http://, so it isn't encrypted. Use the https:// address Google gives you." };
+    if (/\/public\//.test(u.pathname)) return { err: "That's your calendar's public address, which only works if the calendar is public. Copy the Secret address in iCal format instead; it's further down the same page." };
+    if (!/\.ics$/i.test(u.pathname)) return { err: "That isn't a calendar address. The secret address ends in .ics (Google's ends in basic.ics)." };
+    const parts = u.pathname.split('/');
+    const token = (u.pathname.match(/private-([0-9a-z]+)/i) || [])[1] || parts[parts.length - 2] || '';
+    return {
+      url: 'https://' + u.host + u.pathname + u.search, host: u.hostname, file: parts[parts.length - 1],
+      hint: token.slice(-4) || '····', google: /(^|\.)google\.com$/i.test(u.hostname),
+    };
+  }
+  let calTimer = null;
+  function saveCalendar(chk, how) {
+    clearTimeout(calTimer);
+    cal.checking = true;
+    calMsg('Checking the address with Google Calendar…');
+    bump();
+    render();
+    say(`${how}: checking the calendar address`);
+    calTimer = setTimeout(() => {
+      cal.checking = false;
+      if (chk.hint === '0000') {
+        // Mock-up only: stands in for Google answering 401, 403 or 404. Nothing is saved.
+        calMsg("Google didn't recognize that address. It may have been reset in Google Calendar. Copy the current secret address and paste it again.", true);
+        if (how === 'setup') notify("Calendar address didn't work · add it on the Remote");
+        say(`${how}: calendar rejected, Google didn't recognize the address`);
+        bump();
+        render();
+        return;
+      }
+      calUrl = chk.url;
+      const fresh = cal.state !== 'ok';
+      Object.assign(cal, { state: 'ok', host: chk.host, file: chk.file, hint: chk.hint, lastSync: now(), replacing: false, confirm: false });
+      if (fresh) { cal.on = true; cal.events = sampleEvents(); }
+      $('calInput').value = ''; maskCalInput();
+      calMsg(`Saved. ${cap(leftText())}.${chk.google ? '' : " This isn't a Google address, but TinyBar can read any iCal feed."}`);
+      bump();
+      if (!syncAuto()) notify(`Calendar synced · ${leftText()}`);
+      say(`${how}: calendar saved, ${leftText()}`);
+      render();
+    }, 1200);
+  }
+  function removeCalendar() {
+    clearTimeout(calTimer);
+    calUrl = '';
+    Object.assign(cal, { state: 'none', checking: false, on: false, events: [], lastSync: null, replacing: false, confirm: false, host: '', file: '', hint: '' });
+    s.aside.meeting = null;
+    $('calInput').value = ''; maskCalInput();
+    calMsg('Calendar removed.');
+    bump();
+    if (!syncAuto('Calendar removed')) toast('Calendar removed');
+    say('remote: calendar removed');
+    render();
+  }
+  $('calSave').addEventListener('click', () => {
+    const chk = checkIcal($('calInput').value);
+    if (chk.err) { calMsg(chk.err, true); say('remote: calendar address rejected'); return; }
+    saveCalendar(chk, 'remote');
+  });
+  $('calInput').addEventListener('input', () => { if ($('calMsg').classList.contains('err')) calMsg(''); });
+  $('calInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('calSave').click(); } });
+  $('calShow').addEventListener('click', () => {
+    const i = $('calInput'), show = i.type === 'password';
+    i.type = show ? 'text' : 'password';
+    $('calShow').textContent = show ? 'Hide' : 'Show';
+    $('calShow').setAttribute('aria-pressed', show);
+  });
+  $('calSample').addEventListener('click', () => {
+    $('calInput').value = SAMPLE_CAL;
+    calMsg(`Sample address filled in. Choose ${cal.state === 'ok' ? 'Save' : 'Add'} to save it.`);
+    say('remote: sample calendar address filled in (mock-up only)');
+  });
+  $('calReplace').addEventListener('click', () => {
+    cal.replacing = true; cal.confirm = false;
+    $('calInput').value = ''; maskCalInput();
+    calMsg('');
+    updateRemote();
+    $('calInput').focus();
+    say('remote: replacing the calendar address');
+  });
+  $('calCancel').addEventListener('click', () => {
+    cal.replacing = false;
+    $('calInput').value = ''; maskCalInput();
+    calMsg('');
+    updateRemote();
+    say('remote: kept the calendar address');
+  });
+  $('calRemove').addEventListener('click', () => { cal.confirm = true; calMsg(''); updateRemote(); say('remote: confirm removing the calendar'); });
+  $('calRemoveNo').addEventListener('click', () => { cal.confirm = false; calMsg('Kept your calendar.'); updateRemote(); say('remote: kept the calendar'); });
+  $('calRemoveYes').addEventListener('click', removeCalendar);
+  $('calSync').addEventListener('click', () => {
+    if (cal.checking) return;
+    cal.lastSync = now();
+    calMsg(`Calendar synced. ${cap(leftText())}.`);
+    bump();
+    render();
+    toast('Calendar synced');
+    say(`remote: calendar synced, ${leftText()}`);
+  });
+  // Turning a source off ends its status at once; turning it back on during a call or meeting shows it at once.
+  // A meeting or call set aside is forgotten when its source is turned off, so turning it back on shows it again.
+  $('calOn').addEventListener('change', e => {
+    cal.on = e.target.checked;
+    if (!cal.on) s.aside.meeting = null;
+    bump();
+    const lead = `Calendar meetings ${cal.on ? 'on' : 'off'}`;
+    if (!syncAuto(lead)) toast(lead);
+    say(`remote: calendar meetings ${cal.on ? 'on' : 'off'}`);
+    render();
+  });
+  $('calTitles').addEventListener('change', e => {
+    cal.titles = e.target.checked;
+    bump();
+    render();
+    toast(`Meeting titles ${cal.titles ? 'on' : 'off'}`);
+    say(`remote: meeting titles ${cal.titles ? 'on' : 'off'}`);
+  });
+  $('macOn').addEventListener('change', e => {
+    mac.on = e.target.checked;
+    if (!mac.on) s.aside.call = null;
+    bump();
+    const lead = `Calls from your Mac ${mac.on ? 'on' : 'off'}`;
+    if (!syncAuto(lead)) toast(lead);
+    say(`remote: calls from your Mac ${mac.on ? 'on' : 'off'}`);
+    render();
+  });
+  $('abBtn').addEventListener('click', () => { wake(); if (autoTop()) backToOwn('remote'); else showAgain('remote'); });
+  $('autoShowAgain').addEventListener('click', () => { wake(); showAgain('remote'); });
+
+  // ---------- Simulate (mock-up only) ----------
+  // These stand in for the calendar and the Mac app. Every button answers in every state: when it can't take
+  // effect it says why in the log and changes nothing.
+  const segValue = id => $(id).querySelector('[aria-pressed="true"]').dataset.v;
+  ['simApp', 'simLink'].forEach(id => $(id).addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    pickSeg($(id), b);
+    say(id === 'simApp' ? `simulate: call app ${b.dataset.v || 'not shared'}` : `simulate: the Mac connects over ${b.textContent}`);
+  }));
+  $('simMeetStart').addEventListener('click', () => {
+    if (!s.powered) { say('simulate: TinyBar is off, press PWR to turn it on'); return; }
+    if (s.wifi.mode === 'offline') { say("simulate: TinyBar is offline, so it can't read your calendar"); return; }
+    if (cal.state !== 'ok') { say('simulate: no calendar address saved, add one on the Remote first'); return; }
+    // The next sample meeting moves up to start now, for 30 minutes. A meeting already on ends as it starts.
+    const n = now(), cur = currentEvent(), nx = nextEvent();
+    if (cur) cur.end = n;
+    if (nx) cal.events.splice(cal.events.indexOf(nx), 1);
+    cal.events.push({ id: ++evSeq, title: nx ? nx.title : 'Design review', loc: nx ? nx.loc : 'Room 4', start: n, end: addMin(n, 30), priv: $('simPrivate').checked });
+    bump();
+    if (!cal.on) { say('simulate: meeting started, but Calendar meetings is off on the Remote, so the bar ignores it'); render(); return; }
+    if (!syncAuto()) say(`simulate: meeting started${hiddenNote()}`);
+    render();
+  });
+  $('simMeetEnd').addEventListener('click', () => {
+    if (!s.powered) { say('simulate: TinyBar is off, press PWR to turn it on'); return; }
+    const cur = currentEvent();
+    if (!cur) { say('simulate: no meeting in progress to end'); return; }
+    cur.end = now();
+    bump();
+    if (!syncAuto('Meeting ended')) say(`simulate: meeting ended${calData() ? '' : " (the bar wasn't showing it)"}`);
+    render();
+  });
+  $('simCallStart').addEventListener('click', () => {
+    if (!s.powered) { say("simulate: TinyBar is off, so the Mac can't reach it"); return; }
+    const via = segValue('simLink'), app = segValue('simApp') || null;
+    if (via === 'wifi' && !wifiUp()) {
+      say(s.wifi.mode === 'offline' ? "mac: can't reach TinyBar without Wi-Fi; USB still works when the bar is plugged into the Mac"
+        : "mac: can't reach TinyBar over Wi-Fi during setup; USB still works");
+      return;
+    }
+    Object.assign(mac, { link: via, lastHeard: now(), quiet: false, quietMs: 0, lostAt: null });
+    if (mac.call) {
+      // Repeats while already on a call keep the start time and update the app name.
+      Object.assign(mac.call, { app, via });
+      bump();
+      say(`mac: still on the call${app ? ` (${app})` : ''}`);
+      render();
+      return;
+    }
+    mac.call = { id: ++callSeq, app, since: now(), via };
+    bump();
+    if (!mac.on) { say('mac: call started, but Calls from your Mac is off on the Remote, so the bar ignores it'); render(); return; }
+    if (!syncAuto()) say(`mac: call started${hiddenNote()}`);
+    render();
+  });
+  $('simCallEnd').addEventListener('click', () => {
+    if (!s.powered) { say("simulate: TinyBar is off, so the Mac can't reach it"); return; }
+    if (!mac.call) { say('simulate: no call to end'); return; }
+    Object.assign(mac, { call: null, lastHeard: now(), quiet: false, quietMs: 0 });
+    bump();
+    if (!syncAuto('Call ended')) say(`mac: call ended${mac.on ? '' : ' (Calls from your Mac was off)'}`);
+    render();
+  });
+  $('simQuiet').addEventListener('click', () => {
+    if (!s.powered) { say('simulate: TinyBar is off, press PWR to turn it on'); return; }
+    if (!mac.link) { say('simulate: no Mac is connected, start a call first'); return; }
+    if (mac.quiet) { say('simulate: the Mac has already gone quiet'); return; }
+    mac.quiet = true;
+    mac.quietMs = 0;
+    bump();
+    say(`mac: gone quiet; TinyBar ends ${mac.call ? 'the call' : 'the connection'} after 90 s without a message`);
+    render();
+  });
 
   // ---------- Style panel ----------
   // Choices live in this browser only; Copy settings hands them over for the firmware.
+  // Pixel fonts list only the weights Google Fonts serves (w), and screens set font-synthesis: none, so nothing is
+  // faked bold. grid is the size in screen pixels at which one of the font's pixels is one screen pixel; text snaps
+  // to whole multiples of it (VT323 draws half-pixel steps, so its crisp sizes are multiples of 25, and Handjet's
+  // one-element strokes need 34). Pixelify Sans and DotGothic16 aren't drawn on a strict grid, so they scale freely.
+  // m is the ascent, descent and capital height in em, from the font files, used to seat headlines (see treat()).
+  // sub marks the fonts that suit the line under the headline at their 1x size (narrow, and small enough at 1x);
+  // with any other pixel headline font that line uses the text font, as the pixel-font comparison does.
+  const PIXEL_FONTS = {
+    'Jersey 10': { w: '400', grid: 18.667, m: [.804, .268, .536], sub: true },
+    'Jersey 15': { w: '400', grid: 27, m: [.778, .222, .556], sub: true },
+    'Jersey 20': { w: '400', grid: 34, m: [.794, .206, .588] },
+    'Silkscreen': { w: '400;700', grid: 8, m: [1.03, .25, .625] },
+    'Pixelify Sans': { w: '400;500;600;700', m: [.92, .28, .631] },
+    'VT323': { w: '400', grid: 25, m: [.8, .2, .56] },
+    'Press Start 2P': { w: '400', grid: 8, m: [1, 0, 1] },
+    'DotGothic16': { w: '400', m: [1.16, .288, .787] },
+    'Tiny5': { w: '400', grid: 8, m: [.875, .25, .625] },
+    'Micro 5': { w: '400', grid: 11, m: [.721, .279, .455] },
+    'Handjet': { w: '400;500;600;700;800', grid: 34, m: [.882, .235, .647] },
+  };
+  const PIXEL_W = Object.fromEntries(Object.entries(PIXEL_FONTS).map(([n, f]) => [n, f.w]));
   const HEAD_FONTS = {
-    'Big Shoulders Display': '500;700;800', 'Barlow Condensed': '500;700;800', 'Saira Condensed': '500;700;800',
-    'Antonio': '500;700', 'Oswald': '500;700', 'Archivo Narrow': '500;700', 'Bebas Neue': '400',
+    'Big Shoulders Display': '500;700;800', 'Barlow Condensed': '500;600;700;800', 'Saira Condensed': '500;700;800',
+    'Antonio': '500;700', 'Oswald': '500;700', 'Archivo Narrow': '500;700', 'Bebas Neue': '400', 'Nunito': '700;800', ...PIXEL_W,
   };
   const TEXT_FONTS = {
-    'Schibsted Grotesk': '400;500;600', 'Atkinson Hyperlegible': '400;700', 'IBM Plex Sans': '400;500;600',
-    'Work Sans': '400;500;600', 'Figtree': '400;500;600',
+    'Schibsted Grotesk': '400;500;600', 'Atkinson Hyperlegible': '400;700', 'Atkinson Hyperlegible Next': '400;500;600',
+    'Barlow': '500;600;700', 'Nunito Sans': '600;700', 'IBM Plex Sans': '400;500;600', 'Work Sans': '400;500;600', 'Figtree': '400;500;600',
+    ...PIXEL_W,
   };
-  const COLOR_KEYS = [['available', 'Available'], ['busy', 'Busy'], ['meeting', 'Meeting'], ['focus', 'Focus'],
+  const COLOR_KEYS = [['available', 'Available'], ['busy', 'Busy'], ['meeting', 'Meeting'], ['call', 'On a call'], ['focus', 'Focus'],
     ['short', 'Short break'], ['long', 'Long break'], ['away', 'Away'], ['message', 'Message']];
+  const ALL_KEYS = [...COLOR_KEYS.map(([k]) => k), 'clock', 'setup'];
   const BASE = {};
-  COLOR_KEYS.forEach(([k]) => { BASE[k] = col(k); });
-  const DEFAULT_STYLE = { head: 'Big Shoulders Display', text: 'Schibsted Grotesk', colors: {} };
+  ALL_KEYS.forEach(k => { BASE[k] = col(k); });
+  // Screen modes. A direction can override any of these. Picking a mode in the panel starts from these defaults,
+  // except dark, which starts from Low Glare (see the sMode handler).
+  const MODES = {
+    solid: { label: 'Solid color fields', sidePanel: 'shade', accentBar: false, base: null },
+    dark: { label: 'Dark with color accents (Low Glare)', sidePanel: 'tint', accentBar: true, base: { background: '#111110', text: '#e2ddd3', mutedText: '#9a948a' } },
+    light: { label: 'Light tints', sidePanel: 'tint', accentBar: true, base: { background: '#faf8f4', text: '#1c1f24', mutedText: '#454b54' } },
+  };
+  // The design directions, as the designers specified them. Sizes are in screen pixels (640 x 172); "word" scales
+  // every headline and "wordMax" caps headline words (the Pomodoro timer is exempt). Text in a pixel font snaps to
+  // that font's own grid (PIXEL_FONTS).
+  const LOW_GLARE = {
+    head: 'Barlow Condensed', text: 'Atkinson Hyperlegible Next', mono: 'JetBrains Mono',
+    mode: 'dark', headlineCase: 'none', labelCase: 'upper', sidePanel: 'tint', accentBar: true, accentWidth: 6, cornerRadius: 8,
+    base: { background: '#111110', text: '#e2ddd3', mutedText: '#9a948a' },
+    colors: { available: '#5ccf72', busy: '#ff5f57', meeting: '#a588ff', call: '#f2d04f', focus: '#ff9945', short: '#36c6c0', long: '#6cbcfa', away: '#b4ab9e', message: '#f27ab8', clock: '#4a463f', setup: '#6cbcfa' },
+    tints: { available: [null, '#172018'], busy: [null, '#241716'], meeting: [null, '#1d1b23'], call: [null, '#232015'], focus: [null, '#241c14'], short: [null, '#141f1e'], long: [null, '#181f23'], away: [null, '#1e1d1b'], message: [null, '#23191d'] },
+    roles: { kick: 'head', sub: 'text', sys: 'mono' }, weights: { word: 500, kick: 600, val: 500, sub: 500 },
+    // Words at 93 px and the timer at 109 px, as on the approved Low Glare page.
+    sizes: { kick: 15, label: 13, sub: 18, val: 41, vals: 23, foot: 13, sys: 12, word: 1, wordMax: 93 }, kickTrack: .12,
+    pad: [12, 20, 12, 20], padSide: [14, 16, 14, 16],
+  };
+  // Pixel type, tuned for Jersey 15 headlines and Jersey 10 small text. Other pixel fonts snap these sizes to
+  // their own grids, and headlines are seated from each font's metrics.
+  const PIXEL_TYPE = {
+    head: 'Jersey 15', text: 'Jersey 10', mono: null,
+    roles: { kick: 'text', sub: 'head', sys: 'text' }, weights: { word: 400, kick: 400, val: 400, sub: 400 },
+    sizes: { kick: 18.667, label: 18.667, sub: 27, val: 54, vals: 27, foot: 18.667, sys: 18.667, word: 1.24 }, kickTrack: .054, lh: [1.05, 1],
+  };
+  // The user's current pick comes first.
+  const DIRS = [
+    {
+      id: 'lgpixel', name: 'Low Glare Pixel', pick: 'Your pick · font still to be chosen',
+      tagline: 'The Low Glare layout set in pixel type: Jersey 15 headlines and Jersey 10 small text, as a stand-in while the pixel font is being chosen.',
+      tryLine: 'Try other pixel fonts in the Style panel below (Headline font › Pixel fonts). Each one snaps to its own pixel grid, so the sizes you see are ones the bar can draw crisply.',
+      fonts: [['Headlines', 'Jersey 15', '400'], ['Small text', 'Jersey 10', '400']],
+      // Headlines step down to 108 px (4x) in sentence case, so descenders have room.
+      style: { ...LOW_GLARE, ...PIXEL_TYPE, sizes: { ...PIXEL_TYPE.sizes, word: 1.1 } },
+    },
+    {
+      id: 'signal', name: 'Bold Signal',
+      tagline: 'Full-bleed saturated status fields with huge white road-sign capitals, plus a calm, darker info column that lines up with the main text.',
+      fonts: [['Headlines', 'Barlow Condensed', '700'], ['Text', 'Barlow', '500, 600, 700']],
+      style: {
+        head: 'Barlow Condensed', text: 'Barlow', mode: 'solid', headlineCase: 'upper', sidePanel: 'tint', accentBar: false, cornerRadius: 8,
+        base: { background: '#0E1013', text: '#FFFFFF', mutedText: '#DFE5EA' },
+        colors: { available: '#0F7F3C', busy: '#D01B3A', meeting: '#8B3AE5', call: '#1450B4', focus: '#B0590D', short: '#0B7A70', long: '#12708F', away: '#545C65', message: '#C0198C', clock: '#0E1013', setup: '#1D3557' },
+        tints: { available: [null, '#0B612E'], busy: [null, '#9E152C'], meeting: [null, '#6A2CAE'], call: [null, '#0F3D89'], focus: [null, '#86440A'], short: [null, '#085D55'], long: [null, '#0E556D'], away: [null, '#40464D'], message: [null, '#92136B'] },
+        roles: { kick: 'text', sub: 'text', sys: 'text' }, weights: { word: 700, kick: 700, val: 700, sub: 500 },
+        sizes: { kick: 15, label: 12, sub: 19, val: 46, vals: 28, foot: 14, sys: 15, word: 1.03 }, kickTrack: .1,
+        pad: [16, 20, 16, 24], padSide: [14, 16, 14, 16],
+      },
+    },
+    {
+      id: 'lowglare', name: 'Low Glare',
+      tagline: 'A warm near-black screen where the status lives in a colored headline, a thin full-height edge bar and a faint tint on the side column, with soft off-white and muted text everywhere else.',
+      fonts: [['Headlines', 'Barlow Condensed', '500, 600'], ['Text', 'Atkinson Hyperlegible Next', '400, 500, 600'], ['Status row', 'JetBrains Mono', '400']],
+      style: LOW_GLARE,
+    },
+    {
+      id: 'softlight', name: 'Soft Light',
+      tagline: 'Paper-pale tints of each status color, dark ink type in rounded Nunito, sentence case, and a slim colored edge, like a well-made notebook.',
+      fonts: [['Headlines', 'Nunito', '700, 800'], ['Text', 'Nunito Sans', '600, 700']],
+      style: {
+        head: 'Nunito', text: 'Nunito Sans', mode: 'light', headlineCase: 'none', labelCase: 'none', sidePanel: 'tint', accentBar: true, accentWidth: 8, cornerRadius: 12,
+        wordLH: [1.22, '-.22em'],   // a little lower than the default, so the source chip clears the headline
+        base: { background: '#faf8f4', text: '#1c1f24', mutedText: '#454b54' },
+        colors: { available: '#0b8440', busy: '#d1313f', meeting: '#6f57e0', call: '#8a6f00', focus: '#b45a06', short: '#08807c', long: '#0a77b3', away: '#776f63', message: '#b23fb0', clock: '#c9c2b6', setup: '#2f4a73' },
+        tints: { available: ['#d3f4d8', '#a6e5b2'], busy: ['#ffdddb', '#feb5b1'], meeting: ['#e7e7ff', '#cecdfe'], call: ['#ffeeba', '#ffdb69'], focus: ['#ffe6d3', '#fec89c'], short: ['#caf5f3', '#8fe6e2'], long: ['#d6edfe', '#a7daff'], away: ['#ede9e2', '#dad1c6'], message: ['#fedefc', '#f7bcf4'], clock: ['#faf8f4', '#efebe4'], setup: ['#faf8f4', '#faf8f4'] },
+        roles: { kick: 'text', sub: 'text', sys: 'text' }, weights: { word: 800, kick: 700, val: 800, sub: 600 },
+        sizes: { kick: 17, label: 15, sub: 19, val: 38, vals: 22, foot: 13, sys: 13, word: .8 }, kickTrack: 0,
+        pad: [14, 16, 16, 20], padSide: [12, 12, 16, 14],
+      },
+    },
+    {
+      id: 'pixel', name: 'Pixel Arcade',
+      tagline: 'A retro game screen: chunky Jersey pixel lettering in the status color on a near-black field, with a solid status-colored side panel where the tomatoes sit in square slots.',
+      fonts: [['Headlines', 'Jersey 15', '400'], ['Small text', 'Jersey 10', '400']],
+      style: {
+        ...PIXEL_TYPE, mode: 'dark', headlineCase: 'upper', sidePanel: 'solid', accentBar: false, cornerRadius: 0, barStyle: 'seg',
+        base: { background: '#16141f', text: '#f3ead3', mutedText: '#b5ad98' },
+        colors: { available: '#5cc070', busy: '#e8545e', meeting: '#9479e2', call: '#f2c45a', focus: '#f08a45', short: '#5fd3cf', long: '#68b2f2', away: '#a59f93', message: '#ef86b6', clock: '#262333', setup: '#16141f' },
+        pad: [16, 14, 16, 20], padSide: [12, 14, 14, 14],
+      },
+    },
+  ];
+  const DEFAULT_STYLE = { head: 'Big Shoulders Display', text: 'Schibsted Grotesk', colors: {}, mode: 'solid', headlineCase: 'upper' };
   const STORE = 'tinybar-style';
-  let style = DEFAULT_STYLE;
-  try { const saved = JSON.parse(localStorage.getItem(STORE)); if (saved && saved.head) style = { ...DEFAULT_STYLE, ...saved }; } catch (e) {}
-  const loadedFonts = new Set(['Big Shoulders Display', 'Schibsted Grotesk']);
+  style = DEFAULT_STYLE;
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORE));
+    if (saved && saved.head) style = { ...DEFAULT_STYLE, ...saved, colors: { ...(saved.colors || {}) } };
+  } catch (e) {}
+  const loadedFonts = new Set(['Big Shoulders Display|500;700;800', 'Schibsted Grotesk|400;500;600', 'JetBrains Mono|400;500']);
   function loadFont(name, weights) {
-    if (loadedFonts.has(name)) return;
-    loadedFonts.add(name);
+    if (!name) return;
+    const key = name + '|' + weights;
+    if (loadedFonts.has(key)) return;
+    loadedFonts.add(key);
     const l = document.createElement('link');
     l.rel = 'stylesheet';
     l.href = `https://fonts.googleapis.com/css2?family=${name.replace(/ /g, '+')}:wght@${weights}&display=swap`;
     document.head.appendChild(l);
   }
-  Object.keys(HEAD_FONTS).forEach(n => $('fHead').add(new Option(n, n)));
-  Object.keys(TEXT_FONTS).forEach(n => $('fText').add(new Option(n, n)));
+  const fontWeights = name => HEAD_FONTS[name] || TEXT_FONTS[name] || '400';
+  function fillFonts(sel, fonts) {
+    const grp = document.createElement('optgroup');
+    grp.label = 'Pixel fonts';
+    Object.keys(fonts).forEach(n => (n in PIXEL_FONTS ? grp : sel).appendChild(new Option(n, n)));
+    sel.appendChild(grp);
+  }
+  fillFonts($('fHead'), HEAD_FONTS);
+  fillFonts($('fText'), TEXT_FONTS);
+  Object.entries(MODES).forEach(([k, m]) => $('sMode').add(new Option(m.label, k)));
   const sw = $('swatches');
+  // Any edit after Apply keeps the direction's name, marked as edited.
+  const edit = patch => { style = { ...style, ...patch, edited: !!style.direction }; applyStyle(); };
   COLOR_KEYS.forEach(([k, label]) => {
     const l = document.createElement('label');
     l.className = 'sw';
     l.innerHTML = `<input type="color" id="c-${k}" aria-label="${label} color"><span>${label}</span>`;
     sw.appendChild(l);
-    l.querySelector('input').addEventListener('input', e => { style = { ...style, colors: { ...style.colors, [k]: e.target.value } }; applyStyle(); });
+    l.querySelector('input').addEventListener('input', e => edit({ colors: { ...style.colors, [k]: e.target.value } }));
   });
+
+  // Put a look on a screen element: data attributes pick the treatment, variables carry fonts, sizes and colors.
+  // withColors also sets the status colors on the element itself (previews); the simulator takes them from :root.
+  const cq = px => (px / 6.4).toFixed(4) + 'cqw';
+  const fam = (n, fb) => `"${n}", ${fb}`;
+  // Snap a size (screen pixels) to a whole multiple of a pixel font's grid; null for other fonts. Small text stays at
+  // 12 px or more, and a font with a big grid (over 24 px) may take half a step for it, the nearest legible size.
+  function snapPx(font, px, small) {
+    const f = PIXEL_FONTS[font];
+    if (!f || !f.grid) return null;
+    const g = f.grid, step = small && g > 24 && px < g * .75 ? g / 2 : g;
+    return Math.max(small ? Math.ceil(12 / step - 1e-6) * step : step, Math.round(px / step) * step);
+  }
+  // Seat a pixel headline from its font's metrics, so the capitals sit just under the kicker whatever the font:
+  // capitals get a line just taller than they are; sentence case gets the font's full ascent-to-descent line so
+  // descenders have room, pulled up so the capitals start the same small gap below the kicker.
+  // [line-height, margin-top]; for Jersey 15 this gives [.6, 0] and [1, -.18em], as the designers set them.
+  function seat([asc, desc, cap], upper) {
+    const lh = upper ? cap + .044 : asc + desc, gap = upper ? .022 : .04;
+    return [+lh.toFixed(3), (gap - ((lh - asc - desc) / 2 + asc - cap)).toFixed(3) + 'em'];
+  }
+  // Other fonts are measured in the browser once they've loaded (the headline is re-seated then), so sentence-case
+  // headlines sit right in any font, for example Big Shoulders when dark mode starts from Low Glare.
+  const measured = {};
+  function metricsOf(font, weight) {
+    const key = font + '|' + weight;
+    if (measured[key]) return measured[key];
+    try {
+      if (!document.fonts.check(`${weight} 40px "${font}"`)) return null;
+      const c = document.createElement('canvas').getContext('2d');
+      c.font = `${weight} 100px "${font}"`;
+      const m = c.measureText('H');
+      if (!m.fontBoundingBoxAscent) return null;
+      return (measured[key] = [m.fontBoundingBoxAscent / 100, m.fontBoundingBoxDescent / 100, m.actualBoundingBoxAscent / 100]);
+    } catch (e) { return null; }
+  }
+  // Default sizes in screen pixels, for snapping when a look doesn't set its own.
+  const DEF_PX = { kick: 14.72, label: 12.8, sub: 18.56, val: 40.96, vals: 23.04, foot: 12.8, sys: 12.16 };
+  function treat(el, st, withColors) {
+    const mode = MODES[st.mode] ? st.mode : 'solid', m = MODES[mode];
+    const accent = st.accentBar ?? m.accentBar, base = st.base || m.base;
+    const d = el.dataset;
+    d.mode = mode;
+    d.case = st.headlineCase || 'upper';
+    d.labels = st.labelCase || 'upper';
+    d.side = st.sidePanel || m.sidePanel;
+    d.accent = accent ? '1' : '0';
+    d.bar = st.barStyle || 'plain';
+    if (st.direction || mode !== 'solid' || withColors) d.dir = '1'; else delete d.dir;
+    const pixel = n => n in PIXEL_FONTS;
+    const R = st.roles || {}, W = st.weights || {}, Z = st.sizes || {};
+    const role = r => r === 'text' ? 'var(--f-body)' : r === 'head' ? 'var(--f-screen)' : r === 'mono' ? fam(st.mono || 'JetBrains Mono', 'ui-monospace, Menlo, monospace') : null;
+    const fontOf = r => r === 'text' ? st.text : r === 'head' ? st.head : r === 'mono' ? (st.mono || 'JetBrains Mono') : null;
+    // The line under the headline only follows a pixel headline font that suits it (Jersey 10 and 15).
+    const subRole = R.sub === 'head' && pixel(st.head) && !PIXEL_FONTS[st.head].sub ? 'text' : R.sub;
+    const hp = pixel(st.head), upper = (st.headlineCase || 'upper') !== 'none';
+    // Pixel headlines are seated from the font table; sentence case in another font is seated from its measured
+    // metrics unless the look sets its own line (capitals keep today's tuned line).
+    const mm = hp ? PIXEL_FONTS[st.head].m : !upper && !st.wordLH ? metricsOf(st.head, W.word || 800) : null;
+    const wordLH = mm ? seat(mm, upper) : st.wordLH, titleLH = hp ? seat(mm, false) : st.titleLH;
+    const v = {
+      '--f-screen': fam(st.head, hp ? 'monospace' : '"Arial Narrow", sans-serif'),
+      '--f-body': fam(st.text, pixel(st.text) ? 'monospace' : '"Helvetica Neue", Arial, sans-serif'),
+      '--f-kick': role(R.kick), '--f-sub': role(subRole), '--f-sys': role(R.sys),
+      '--w-word': W.word, '--w-kick': W.kick, '--w-val': W.val, '--w-sub': W.sub,
+      '--w-tv': hp ? 400 : null, '--w-toast': pixel(st.text) ? 400 : null,
+      '--ws': Z.word, '--z-wmax': Z.wordMax ? cq(Z.wordMax) : null, '--lh-s': st.lh && st.lh[0], '--lh-sub': st.lh && st.lh[1],
+      '--lh-word': wordLH && wordLH[0], '--mt-word': wordLH && wordLH[1],
+      '--lh-title': titleLH && titleLH[0], '--mt-title': titleLH && titleLH[1],
+      '--ls-kick': st.kickTrack != null ? st.kickTrack + 'em' : null,
+      '--r': st.cornerRadius != null ? cq(st.cornerRadius) : null,
+      '--r-pill': st.cornerRadius === 0 ? '0' : null,
+      '--z-accent': accent ? cq(st.accentWidth || 6) : null,
+      '--b-bg': base && base.background, '--b-text': base && base.text, '--b-muted': base && base.mutedText,
+    };
+    // Text sizes. In a pixel font each one snaps to that font's grid; the fitter then steps headlines, sub lines
+    // and side values down the same grid when they don't fit.
+    const kickF = fontOf(R.kick) || st.head, sysF = fontOf(R.sys) || 'JetBrains Mono';
+    const FONT = { kick: kickF, label: kickF, sub: fontOf(subRole) || st.text, val: st.head, vals: st.head, foot: st.text, sys: sysF };
+    const SMALL = { kick: true, label: true, foot: true, sys: true };
+    const sized = {};
+    Object.keys(DEF_PX).forEach(k => {
+      sized[k] = snapPx(FONT[k], Z[k] || DEF_PX[k], SMALL[k]);
+      v['--z-' + k] = sized[k] != null ? cq(sized[k]) : Z[k] ? cq(Z[k]) : null;
+    });
+    // The rest of the screen's text (chip, toast, menu tiles, setup screen, power screens), only for pixel fonts.
+    const snapV = (font, px, small) => { const n = snapPx(font, px, small); return n != null ? cq(n) : null; };
+    Object.assign(v, {
+      '--z-chip': snapV(kickF, .88 * (sized.kick || Z.kick || DEF_PX.kick), true),
+      '--z-toast': snapV(st.text, 15.36, true), '--z-wol': snapV(st.text, 16.64, true), '--z-wfoot': snapV(st.text, 12.8, true),
+      '--z-tv': snapV(st.head, 28.16), '--z-tv2': snapV(st.head, 23.04), '--z-hold': snapV(st.head, 32), '--z-splash': snapV(st.head, 57.6),
+    });
+    ['t', 'r', 'b', 'l'].forEach((k, i) => {
+      v['--pm-' + k] = st.pad ? cq(st.pad[i]) : null;
+      v['--ps-' + k] = st.padSide ? cq(st.padSide[i]) : null;
+    });
+    ALL_KEYS.forEach(k => {
+      const t = st.tints && st.tints[k];
+      v['--t-' + k] = t && t[0];
+      v['--ts-' + k] = t && t[1];
+      if (withColors) v['--s-' + k] = st.colors[k] || BASE[k];
+    });
+    Object.entries(v).forEach(([k, val]) => { if (val != null && val !== '') el.style.setProperty(k, val); else el.style.removeProperty(k); });
+  }
+
+  // WCAG contrast, so the Remote's pressed buttons pick white or dark text for light direction colors.
+  const lum = hex => {
+    const n = parseInt(hex.slice(1), 16);
+    return [n >> 16, (n >> 8) & 255, n & 255].map(c => { c /= 255; return c <= .03928 ? c / 12.92 : Math.pow((c + .055) / 1.055, 2.4); })
+      .reduce((a, c, i) => a + c * [.2126, .7152, .0722][i], 0);
+  };
+  const contrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+  function sbtnColor(b, key) {
+    const c = b.dataset.id === 'clock' ? '#3a4049' : colorOf(key);
+    b.style.setProperty('--c', c);
+    b.style.setProperty('--cfg', contrast('#ffffff', c) >= 4.5 ? '#fff' : '#111316');
+  }
+
   function applyStyle() {
-    loadFont(style.head, HEAD_FONTS[style.head] || '700');
-    loadFont(style.text, TEXT_FONTS[style.text] || '400');
-    screen.style.setProperty('--f-screen', `"${style.head}", "Arial Narrow", sans-serif`);
-    screen.style.setProperty('--f-body', `"${style.text}", "Helvetica Neue", Arial, sans-serif`);
+    loadFont(style.head, fontWeights(style.head));
+    loadFont(style.text, fontWeights(style.text));
+    if (style.mono) loadFont(style.mono, '400;500');
+    treat(screen, style, false);
     $('fHead').value = style.head;
     $('fText').value = style.text;
+    $('sMode').value = MODES[style.mode] ? style.mode : 'solid';
+    $('sCase').value = style.headlineCase === 'none' ? 'none' : 'upper';
     const root = document.documentElement.style;
-    COLOR_KEYS.forEach(([k]) => {
+    ALL_KEYS.forEach(k => {
       const v = style.colors[k];
       if (v) root.setProperty('--s-' + k, v); else root.removeProperty('--s-' + k);
-      $('c-' + k).value = v || BASE[k];
+      const inp = $('c-' + k);
+      if (inp) inp.value = (v || BASE[k]).toLowerCase();
     });
-    document.querySelectorAll('.sbtn').forEach(b => b.style.setProperty('--c', b.dataset.id === 'clock' ? '#3a4049' : screenColor(b.dataset.id)));
+    document.querySelectorAll('.sbtn').forEach(b => sbtnColor(b, b.dataset.id === 'pomodoro' ? pomo.phase : b.dataset.id));
     try { localStorage.setItem(STORE, JSON.stringify(style)); } catch (e) {}
+    markApplied();
     lastKey = '';
     render();
   }
-  $('fHead').addEventListener('change', e => { style = { ...style, head: e.target.value }; applyStyle(); });
-  $('fText').addEventListener('change', e => { style = { ...style, text: e.target.value }; applyStyle(); });
-  $('styleReset').addEventListener('click', () => { style = DEFAULT_STYLE; applyStyle(); $('styleOut').hidden = true; $('styleMsg').textContent = 'Back to the defaults'; });
+  $('fHead').addEventListener('change', e => edit({ head: e.target.value }));
+  $('fText').addEventListener('change', e => edit({ text: e.target.value }));
+  // Everything in a look except its fonts.
+  const TREATMENT = ['headlineCase', 'labelCase', 'sidePanel', 'accentBar', 'accentWidth', 'cornerRadius', 'base', 'colors', 'tints',
+    'roles', 'weights', 'sizes', 'kickTrack', 'lh', 'wordLH', 'titleLH', 'pad', 'padSide', 'barStyle'];
+  $('sMode').addEventListener('change', e => {
+    // A new mode starts from the applied direction's treatment when that direction uses the mode. Otherwise dark
+    // starts from Low Glare (its colors, which read on near-black, its tints and sentence-case headlines), and
+    // solid and light start from the defaults. The fonts stay as chosen.
+    const mode = e.target.value, d = DIRS.find(x => x.id === style.direction);
+    const from = d && d.style.mode === mode ? d.style : mode === 'dark' ? LOW_GLARE : MODES[mode];
+    const patch = { mode };
+    TREATMENT.forEach(k => { patch[k] = from[k] != null ? JSON.parse(JSON.stringify(from[k])) : null; });
+    patch.colors = patch.colors || {};
+    edit(patch);
+    say(`style: ${MODES[mode].label.toLowerCase()}${from === LOW_GLARE ? ', starting from Low Glare' : ''}`);
+  });
+  $('sCase').addEventListener('change', e => { edit({ headlineCase: e.target.value }); say(`style: headlines ${e.target.value === 'none' ? 'as written' : 'in uppercase'}`); });
+  $('styleReset').addEventListener('click', () => {
+    style = DEFAULT_STYLE;
+    applyStyle();
+    $('styleOut').hidden = true;
+    $('styleMsg').textContent = 'Back to the defaults';
+    say('style: back to the default look');
+  });
   $('styleCopy').addEventListener('click', () => {
-    const out = { headlineFont: style.head, textFont: style.text, colors: {} };
-    COLOR_KEYS.forEach(([k]) => { out.colors[k] = style.colors[k] || BASE[k]; });
+    const d = DIRS.find(x => x.id === style.direction), m = MODES[style.mode] || MODES.solid;
+    const out = {
+      direction: d ? d.name + (style.edited ? ' (edited)' : '') : 'Default',
+      mode: style.mode || 'solid',
+      headlineCase: style.headlineCase || 'upper',
+      labelCase: style.labelCase || 'upper',
+      sidePanel: style.sidePanel || m.sidePanel,
+      accentBar: style.accentBar ?? m.accentBar,
+      cornerRadius: style.cornerRadius ?? null,
+      headlineFont: style.head,
+      textFont: style.text,
+      monoFont: (style.roles && style.roles.sys !== 'mono') ? null : (style.mono || 'JetBrains Mono'),
+      // Which font each small part uses (head, text or mono), and the weights asked for.
+      fontRoles: { kick: 'head', sub: 'text', sys: 'mono', ...style.roles,
+        ...(style.roles && style.roles.sub === 'head' && PIXEL_FONTS[style.head] && !PIXEL_FONTS[style.head].sub ? { sub: 'text' } : {}) },
+      weights: style.weights || { word: 800, kick: 700, val: 800, sub: 500 },
+      // A pixel font's grid in screen pixels: every size of it is a whole multiple.
+      pixelGrid: Object.fromEntries([['headline', style.head], ['text', style.text]]
+        .filter(([, n]) => PIXEL_FONTS[n]).map(([r, n]) => [r, PIXEL_FONTS[n].grid || 'none'])),
+      accentWidth: (style.accentBar ?? m.accentBar) ? (style.accentWidth || 6) : null,
+      barStyle: style.barStyle || 'plain',
+      kickerTracking: style.kickTrack ?? .14,
+      padding: { main: style.pad || [16.64, 20.48, 16.64, 20.48], side: style.padSide || [16.64, 17.92, 16.64, 17.92] },
+      base: style.base || m.base,
+      colors: {},
+    };
+    ALL_KEYS.forEach(k => { out.colors[k] = style.colors[k] || BASE[k]; });
+    if (style.tints) out.tints = style.tints;
+    if (style.sizes) out.sizes = style.sizes;
+    if (style.lh) out.lineHeights = { small: style.lh[0], sub: style.lh[1] };
     const text = JSON.stringify(out, null, 2);
     const pre = $('styleOut');
     pre.textContent = text;
@@ -2269,6 +3421,109 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       navigator.clipboard.writeText(text).then(() => { $('styleMsg').textContent = 'Copied. Paste it into our chat.'; }, fallback);
     } catch (e) { fallback(); }
   });
+
+  // ---------- Design directions (mock-up only) ----------
+  // Each card has a live preview that mirrors the simulator, plus Busy and the Pomodoro. Previews are drawn from
+  // the same markup as the simulator, so they never drift from it.
+  const SWATCH_KEYS = [['available', 'Available'], ['busy', 'Busy'], ['meeting', 'In a meeting'], ['call', 'On a call'], ['focus', 'Focus'],
+    ['short', 'Short break'], ['long', 'Long break'], ['away', 'Away'], ['message', 'Message'], ['clock', 'Clock'], ['setup', 'Wi-Fi setup']];
+  const pvHtml = (kind) => `<div class="pv-frame"><div class="scr pv" data-pv="${kind}" aria-hidden="true"><div class="lcd"></div><div class="bar" hidden><i></i></div></div></div>`;
+  function buildDirections() {
+    $('dirGrid').innerHTML = DIRS.map(d => `
+      <article class="dir-card${d.pick ? ' pick' : ''}" data-id="${d.id}" aria-labelledby="dn-${d.id}">
+        <div class="dir-info">
+          <div class="dir-top"><h3 id="dn-${d.id}">${d.name}</h3>${d.pick ? `<span class="badge pick">${d.pick}</span>` : ''}<span class="badge ok" data-applied hidden>Applied</span></div>
+          <p>${d.tagline}</p>
+          ${d.tryLine ? `<p>${d.tryLine}</p>` : ''}
+          <dl class="dir-fonts">${d.fonts.map(([r, n, w]) => `<dt>${r}</dt><dd>${n} · ${w} · OFL</dd>`).join('')}</dl>
+          <div class="dir-sw" role="list" aria-label="${d.name} status colors">${SWATCH_KEYS.map(([k, l]) => `<span role="listitem"><i style="background:${d.style.colors[k]}" title="${d.style.colors[k]}"></i>${l}</span>`).join('')}</div>
+          <div class="row"><button class="btn" type="button" data-apply="${d.id}" aria-pressed="false">Apply ${d.name}</button><span class="note-small" data-msg aria-live="polite"></span></div>
+        </div>
+        <div class="dir-pv">
+          <div class="pv-cap">Live · the simulator's screen now</div>
+          ${pvHtml('now')}
+          <div class="pv-pair">
+            <figure>${pvHtml('busy')}<figcaption class="pv-cap">Busy</figcaption></figure>
+            <figure>${pvHtml('pomo')}<figcaption class="pv-cap">Pomodoro</figcaption></figure>
+          </div>
+        </div>
+      </article>`).join('');
+    treatPreviews();
+  }
+  function treatPreviews() {
+    document.querySelectorAll('.dir-card').forEach(c => {
+      const d = DIRS.find(x => x.id === c.dataset.id);
+      c.querySelectorAll('.scr.pv').forEach(el => treat(el, d.style, true));
+    });
+  }
+  function applyDirection(id) {
+    const d = DIRS.find(x => x.id === id);
+    style = { ...JSON.parse(JSON.stringify(d.style)), direction: id, edited: false };
+    applyStyle();
+    document.querySelectorAll('.dir-card [data-msg]').forEach(m => { m.textContent = ''; });
+    document.querySelector(`.dir-card[data-id="${id}"] [data-msg]`).textContent = 'On the simulator now';
+    $('styleMsg').textContent = `${d.name} applied. Fine-tune it here, or Reset to defaults.`;
+    toast(`${d.name} applied`);
+    say(`style: ${d.name} applied`);
+  }
+  function markApplied() {
+    document.querySelectorAll('.dir-card').forEach(c => {
+      const on = c.dataset.id === style.direction;
+      c.classList.toggle('on', on);
+      const badge = c.querySelector('[data-applied]');
+      badge.hidden = !on;
+      badge.textContent = style.edited ? 'Applied, with your edits' : 'Applied';
+      c.querySelector('[data-apply]').setAttribute('aria-pressed', on);
+      if (!on) c.querySelector('[data-msg]').textContent = '';
+    });
+  }
+  $('dirGrid').addEventListener('click', e => { const b = e.target.closest('[data-apply]'); if (b) applyDirection(b.dataset.apply); });
+
+  let dirsVisible = false, dirFontsLoaded = false;
+  function setPv(el, key, html, barPct) {
+    paint(el, key);
+    el.firstElementChild.innerHTML = html;
+    const b = el.lastElementChild;
+    b.hidden = barPct == null;
+    if (barPct != null) b.firstElementChild.style.width = barPct.toFixed(2) + '%';
+    fitWords(el);
+  }
+  function updatePreviews(mirror = true) {
+    if (!dirsVisible) return;
+    const was = rendering;
+    const bv = view('busy'), pv = pomoView();
+    rendering = was;
+    const busyHtml = `<div class="main">${bv.main}</div>${bv.side}`, pomoHtml = `<div class="main">${pv.main}</div>${pv.side}`;
+    document.querySelectorAll('.scr.pv').forEach(el => {
+      const kind = el.dataset.pv;
+      if (kind === 'now') {
+        if (!mirror) return;
+        setPv(el, screen.dataset.k || 'clock', s.powered ? lcdHtml : '', s.powered ? lcdBar : null);
+        el.classList.toggle('off', !s.powered || s.off);
+      } else if (kind === 'busy') setPv(el, 'busy', busyHtml, null);
+      else setPv(el, pomo.phase, pomoHtml, pv.bar);
+    });
+  }
+  function loadDirFonts() {
+    if (dirFontsLoaded) return;
+    dirFontsLoaded = true;
+    DIRS.forEach(d => { loadFont(d.style.head, fontWeights(d.style.head)); loadFont(d.style.text, fontWeights(d.style.text)); });
+  }
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(es => {
+      const vis = es[es.length - 1].isIntersecting;
+      if (vis && !dirsVisible) { dirsVisible = true; loadDirFonts(); updatePreviews(); }
+      else dirsVisible = vis;
+    }, { rootMargin: '200px' }).observe($('dirGrid'));
+  } else { dirsVisible = true; loadDirFonts(); }
+  let fontTimer = null;
+  if (document.fonts && document.fonts.addEventListener) {
+    // Fonts arrive after the first draw: re-seat the headlines with the real metrics and refit the text.
+    document.fonts.addEventListener('loadingdone', () => {
+      clearTimeout(fontTimer);
+      fontTimer = setTimeout(() => { treat(screen, style, false); treatPreviews(); lastKey = ''; render(); }, 120);
+    });
+  }
 
   // Ripening preview: scrub a session from start to finish.
   const STAGES = [['Green', 0], ['Breakers', .14], ['Turning', .3], ['Pink', .48], ['Light red', .7], ['Red', 1]];
@@ -2288,8 +3543,10 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   });
 
   syncSetupForm();
+  buildDirections();
   applyStyle();
   renderRipenPreview();
   setInterval(loop, 200);
+  setInterval(() => { if (ticking()) tickSound(); }, 1000);
 })();
 </script>
