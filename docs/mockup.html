@@ -1,8 +1,14 @@
 <title>TinyBar Screen Mock-up</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800&family=Schibsted+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800&family=Bitcount+Prop+Single:slnt,wght,CRSV,ELSH,ELXP@-8..0,100..900,0..1,0..100,0..100&family=Handjet:wght,ELGR,ELSH@400,1,2&family=JetBrains+Mono:wght@400;500&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
 <style>
+/* Handjet Snap17, the bar's small-text font: Handjet's solid squares (wght 400, ELSH 2, ELGR 1) with every element
+   moved onto a whole pixel at 17 px, subset to ASCII, Latin-1 (accented names such as "José" or "Café") and the
+   punctuation the bar uses, about 4 KB. It's a modified copy (still under the SIL Open Font License) that Google Fonts
+   doesn't serve, so it's embedded here, as in docs/pixel-fonts.html. Characters it lacks fall back to Google's Handjet
+   in the same instance (the link above), which is soft at 17 px; the bar's own copy has all 1,339 of Handjet's. */
+@font-face { font-family: "Handjet Snap17"; font-weight: 400; font-display: block; src: url(data:font/woff2;base64,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) format("woff2"); }
 /* Layout: one working bench. The device sits on top at true 640:172 proportions; the phone remote and notes sit underneath. */
 :root {
   --bg: #eceef1;
@@ -137,6 +143,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
   background: var(--lcd-off);
   color: var(--s-fg);
   font-family: var(--f-body);
+  font-variation-settings: var(--fv-body, normal);
   font-synthesis: none;
 }
 .screen {
@@ -159,7 +166,9 @@ h1 .dot { color: var(--state); transition: color .3s; }
 .device.flipped .lcd { transform: rotate(180deg); }
 .scr.off .lcd { opacity: 0; }
 
-/* Sizes, weights and font roles are variables so a design direction can change them; the fallbacks are the default look. */
+/* Sizes, weights and font roles are variables so a design direction can change them; the fallbacks are the original
+   Big Shoulders look. --fv-* carry font-variation-settings for each role (set only for variable pixel fonts that need
+   pinning, like Bitcount; see PIXEL_FONTS), so another font in the same role is never pushed off its own defaults. */
 .main {
   min-width: 0;
   padding: var(--pm-t, 2.6cqw) var(--pm-r, 3.2cqw) var(--pm-b, 2.6cqw) var(--pm-l, 3.2cqw);
@@ -172,6 +181,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
   font-family: var(--f-kick, var(--f-screen));
   font-weight: var(--w-kick, 700);
   font-size: var(--z-kick, 2.3cqw);
+  font-variation-settings: var(--fv-kick, normal);
   letter-spacing: var(--ls-kick, .14em);
   line-height: var(--lh-s, 1.55);
   text-transform: uppercase;
@@ -198,6 +208,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
 .word {
   font-family: var(--f-screen);
   font-weight: var(--w-word, 800);
+  font-variation-settings: var(--fv-screen, normal);
   /* A direction can cap headline words (--z-wmax); the Pomodoro timer digits (.time) are exempt. */
   font-size: min(var(--z-wmax, 100cqw), calc(var(--fs, 10) * var(--ws, 1) * 1cqw));
   line-height: var(--lh-word, .84);
@@ -210,9 +221,11 @@ h1 .dot { color: var(--state); transition: color .3s; }
   font-variant-numeric: tabular-nums;
 }
 .word.time { font-size: calc(var(--fs, 10) * var(--ws, 1) * 1cqw); }
+.word .ampm { font-size: .32em; letter-spacing: .06em; margin-left: .15em; }
 .word.title { text-transform: none; line-height: var(--lh-title, .95); margin-top: var(--mt-title, 0); }
 .sub {
   font-family: var(--f-sub, var(--f-body));
+  font-variation-settings: var(--fv-sub, normal);
   font-weight: var(--w-sub, 500);
   font-size: var(--z-sub, 2.9cqw);
   line-height: var(--lh-sub, 1.55);
@@ -240,6 +253,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
   justify-content: space-between;
   gap: 1cqw;
   font-family: var(--f-sys, var(--f-mono));
+  font-variation-settings: var(--fv-sys, normal);
   font-size: var(--z-sys, 1.9cqw);
   line-height: var(--lh-s, 1.55);
   opacity: .85;
@@ -251,6 +265,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
 .ctx-label {
   font-family: var(--f-kick, var(--f-screen));
   font-weight: var(--w-kick, 700);
+  font-variation-settings: var(--fv-kick, normal);
   font-size: var(--z-label, 2cqw);
   line-height: var(--lh-s, 1.55);
   letter-spacing: var(--ls-kick, .14em);
@@ -260,6 +275,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
 .ctx-value {
   font-family: var(--f-screen);
   font-weight: var(--w-val, 800);
+  font-variation-settings: var(--fv-val, normal);
   font-size: var(--z-val, 6.4cqw);
   line-height: .95;
   font-variant-numeric: tabular-nums;
@@ -267,8 +283,9 @@ h1 .dot { color: var(--state); transition: color .3s; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.ctx-value.small { font-size: var(--z-vals, 3.6cqw); line-height: 1.05; }
+.ctx-value.small { font-family: var(--f-vals, var(--f-screen)); font-variation-settings: var(--fv-vals, normal); font-size: var(--z-vals, 3.6cqw); line-height: 1.05; }
 .ctx-foot { font-size: var(--z-foot, 2cqw); line-height: var(--lh-s, 1.55); opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ctx-foot.after-tomatoes { margin-top: 1cqw; }
 .tomatoes { display: flex; gap: 1cqw; margin-top: .8cqw; }
 .tomato { position: relative; display: block; }
 .tomato img { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; image-rendering: pixelated; }
@@ -306,8 +323,8 @@ h1 .dot { color: var(--state); transition: color .3s; }
   justify-content: space-between;
   min-width: 0;
 }
-.tile b { font-family: var(--f-kick, var(--f-screen)); font-weight: var(--w-kick, 700); font-size: var(--z-label, 2cqw); letter-spacing: .1em; text-transform: uppercase; color: #9aa3ad; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tile span { font-family: var(--f-screen); font-weight: var(--w-tv, 800); font-size: var(--z-tv, 4.4cqw); line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile b { font-family: var(--f-kick, var(--f-screen)); font-variation-settings: var(--fv-kick, normal); font-weight: var(--w-kick, 700); font-size: var(--z-label, 2cqw); letter-spacing: .1em; text-transform: uppercase; color: #9aa3ad; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile span { font-family: var(--f-tv, var(--f-screen)); font-variation-settings: var(--fv-tv, normal); font-weight: var(--w-tv, 800); font-size: var(--z-tv, 4.4cqw); line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tile small { font-size: var(--z-foot, 1.8cqw); line-height: 1.25; color: #9aa3ad; }
 .tile span.two { white-space: normal; font-size: var(--z-tv2, 3.6cqw); line-height: 1.05; }
 
@@ -484,6 +501,8 @@ h1 .dot { color: var(--state); transition: color .3s; }
   pointer-events: none;
 }
 .device.flipped .toast { bottom: auto; top: 2.6cqw; transform: translateX(-50%) rotate(180deg); }
+/* Text a toast crosses is hidden while it's up (see clearUnderToast()). */
+.under-toast { visibility: hidden; }
 .device.flipped .bar { bottom: auto; top: 0; transform: rotate(180deg); }
 .lcd { filter: brightness(var(--bright, 1)); }
 
@@ -499,13 +518,14 @@ h1 .dot { color: var(--state); transition: color .3s; }
   justify-content: center;
   gap: 1.4cqw;
   font-family: var(--f-screen);
+  font-variation-settings: var(--fv-val, normal);
   font-weight: var(--w-tv, 800);
   font-size: var(--z-hold, 5cqw);
   letter-spacing: .04em;
   text-transform: uppercase;
 }
 .hold[hidden] { display: none; }
-.hold small { font-family: var(--f-body); font-weight: var(--w-toast, 500); font-size: var(--z-toast, 2.4cqw); letter-spacing: 0; text-transform: none; color: #c9ced4; }
+.hold small { font-family: var(--f-body); font-variation-settings: var(--fv-body, normal); font-weight: var(--w-toast, 500); font-size: var(--z-toast, 2.4cqw); letter-spacing: 0; text-transform: none; color: #c9ced4; }
 .hold .track { width: 40cqw; height: 1.2cqw; border-radius: 1cqw; background: #2a2e36; overflow: hidden; }
 .hold .track i { display: block; height: 100%; width: 0; background: #fff; }
 .hold.go .track i { width: 100%; transition: width 2.6s linear; }
@@ -520,6 +540,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
   justify-content: center;
   gap: 2.4cqw;
   font-family: var(--f-screen);
+  font-variation-settings: var(--fv-screen, normal);
   font-weight: var(--w-tv, 800);
   font-size: var(--z-splash, 9cqw);
   text-transform: uppercase;
@@ -699,7 +720,8 @@ table.controls td.none { color: var(--muted); }
 
 /* ---------- Screen treatments ----------
    The Style panel and the Design directions set these attributes and variables on the simulator and on each preview.
-   data-mode: solid (the status color fills the screen, today's look), dark (near-black with color accents), light (pale tints, ink text).
+   data-mode: solid (the status color fills the screen, the original look), dark (near-black with color accents; the default, Low Glare Pixel), light (pale tints, ink text).
+   data-layout: pixel puts text on the pixel look's fixed lines (see the Pixel layout section below).
    --sc is the status color, --tc and --tsc a direction's own main and side tints, --b-* its base background, text and muted text.
    Everything maps to LVGL 9: solid fills, borders and one image opacity. */
 .scr[data-dir] .kicker, .scr[data-dir] .sub, .scr[data-dir] .ctx-label, .scr[data-dir] .ctx-foot,
@@ -738,7 +760,8 @@ table.controls td.none { color: var(--muted); }
 @keyframes frame { 0% { opacity: 1; } 60% { opacity: 0; } }
 .scr[data-mode="dark"] .sys .pill { background: color-mix(in srgb, var(--pc) 18%, var(--b-bg)); color: var(--pc); box-shadow: inset 0 0 0 .234cqw var(--pc); }
 .scr[data-mode="dark"] .chip { background: transparent; color: var(--sc); box-shadow: inset 0 0 0 .156cqw var(--sc); }
-.scr[data-mode="dark"] .menu, .scr[data-mode="dark"] .hold { background: color-mix(in srgb, var(--b-bg) 96%, transparent); color: var(--b-text); }
+/* Menus and the hold screen cover the status completely (LV_OPA_COVER), so nothing underneath shows through. */
+.scr[data-mode="dark"] .menu, .scr[data-mode="dark"] .hold { background: var(--b-bg); color: var(--b-text); }
 .scr[data-mode="dark"] .tile { background: color-mix(in srgb, var(--b-text) 6%, var(--b-bg)); color: var(--b-text); }
 .scr[data-mode="dark"] .tile[data-action] { box-shadow: inset 0 0 0 .234cqw color-mix(in srgb, var(--b-text) 18%, var(--b-bg)); }
 .scr[data-mode="dark"] .tile[data-action]:hover { background: color-mix(in srgb, var(--b-text) 11%, var(--b-bg)); }
@@ -789,6 +812,88 @@ table.controls td.none { color: var(--muted); }
 .scr[data-mode="light"] .hold .track { background: #e3ded5; }
 .scr[data-mode="light"] .hold .track i { background: var(--b-text); }
 .scr[data-mode="light"] .wsetup .qr { box-shadow: inset 0 0 0 .3125cqw #e3ded5; }
+
+/* Equal-width digits for Bitcount (see cellDigits()). The bar's copy of the font gives every digit a 7-dot advance
+   with its 5-dot ink centered, and the colon a dot of space on each side (tools/fonts/equalize_digits.py). Google's
+   Bitcount doesn't, so the mock-up puts each digit in a .7 em cell (its tabular shape, ink one dot in) and each colon
+   in a .3 em cell. The negative letter-spacing keeps the 7-dot default digits from spilling out of their cell. */
+.tc, .tk { display: inline-block; box-sizing: border-box; padding-left: .1em; text-transform: none; }
+.tc { width: .7em; font-variant-numeric: tabular-nums; letter-spacing: -.1em; }
+.tk { width: .3em; letter-spacing: 0; }
+/* Text that starts with a digit moves left one dot, so the first digit's ink, not its cell, sits on the margin. */
+.lead-cell { margin-left: -.1em; }
+
+/* ---------- Pixel layout (data-layout="pixel": the Low Glare Pixel look) ----------
+   Positions from the UX designer's type spec in screen pixels (1 px = .15625cqw), so pixel fonts land on whole pixels
+   at 1:1. Small text sits on fixed lines: the kicker and the status row with their capitals at y 17, the sub line and
+   the foot with their baselines at y 157. The headline's line is trimmed to its capital-plus-descender box (--mt-word
+   and --mb-word, from the font table) and centered between them. The side column is 186 px wide (x 470 to 624 inside
+   its padding), with the label, value and foot on fixed lines above the bottom edge. All screen text has kerning on,
+   ligatures and contextual forms off, and default digits except in the digit cells, as lv_font_conv converts it. */
+.scr[data-layout="pixel"] { font-kerning: normal; font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0, "clig" 0, "rlig" 0; }
+.scr[data-layout="pixel"] :is(.word, .ctx-value, .sys) { font-variant-numeric: normal; }
+.scr[data-layout="pixel"] .lcd { grid-template-columns: 1fr 29.0625cqw; }
+.scr[data-layout="pixel"] .main { justify-content: space-between; gap: 0; }
+.scr[data-layout="pixel"] :is(.kicker, .sub, .ctx-label, .ctx-foot, .sys, .hold, .splash, .toast, .wsetup .wfoot) { line-height: 1; }
+/* Headlines: the line is the font's full ascent and descent, so nothing is clipped, and the margins trim it to the
+   capital-plus-descender box. The right margin lets the last dot's empty side bearing hang into the padding, so a
+   headline fits when its ink fits the 408 px column. */
+.scr[data-layout="pixel"] .word { letter-spacing: 0; line-height: var(--lh-word); margin: var(--mt-word) calc(-1 * var(--rsb-word, 0em)) var(--mb-word) 0; }
+.scr[data-layout="pixel"] .endrow .word { margin: var(--mt-word) calc(-1 * var(--rsb-word, 0em)) var(--mb-word) 0; }
+.scr[data-layout="pixel"] .word.lead-cell { margin-left: -.1em; }
+.scr[data-layout="pixel"] .word .ampm { font-family: var(--f-body); font-variation-settings: var(--fv-body, normal); font-size: 5.3125cqw; letter-spacing: 0; margin-left: 0; }
+.scr[data-layout="pixel"] .endrow { gap: 1.875cqw; }
+.scr[data-layout="pixel"] .endrow .tomato { width: 10cqw; height: 10cqw; }
+/* A message scrolls sideways, but dots above the capitals (j, accents) stay visible. */
+.scr[data-layout="pixel"] .marquee { display: flex; overflow: clip visible; }
+.scr[data-layout="pixel"] .marquee .word { flex: none; }
+/* The status row on whole pixels: the pill follows the time with an 8 px gap and the icons are 17 px, on the right. */
+.scr[data-layout="pixel"] .sys { justify-content: flex-start; gap: 1.25cqw; }
+.scr[data-layout="pixel"] .sys .icons { margin-left: auto; gap: 1.25cqw; }
+.scr[data-layout="pixel"] .sys svg { width: 2.65625cqw; height: 2.65625cqw; }
+.scr[data-layout="pixel"] .sys .pill { padding: 0 .9375cqw; }
+.scr[data-layout="pixel"] .pill .tomato { width: 2.5cqw; height: 2.5cqw; vertical-align: -.46875cqw; margin-right: .46875cqw; }
+.scr[data-layout="pixel"] .chip { margin-right: .3125cqw; padding: 0 .625cqw 0 .78125cqw; border-radius: .46875cqw; line-height: 1; letter-spacing: var(--ls-kick); vertical-align: baseline; }
+/* Side column, from the bottom: foot baseline y 157, value capitals at y 102 (baseline 126 for Bitcount's 40 px
+   squares, 124 for Handjet at 34 px), label baseline y 92, and the tomatoes from y 99. */
+.scr[data-layout="pixel"] .ctx-label { margin-bottom: .15625cqw; }
+/* The side value hangs its last dot's blank side bearing into the padding, as a headline does, so "9h 59m" fits by
+   its 152 px of ink. On the bar its label starts at x 466 (a digit's cell starts a dot before its ink) and is 162 px
+   wide, to x 628, so the 160 px advance isn't cut. */
+.scr[data-layout="pixel"] .ctx-value { line-height: 1; margin-bottom: 1.09375cqw; margin-right: calc(-1 * var(--rsb-word, 0em)); }
+.scr[data-layout="pixel"] .ctx-value.small { margin-bottom: 2.03125cqw; margin-right: 0; }
+.scr[data-layout="pixel"] .tomatoes { margin-top: .625cqw; }
+.scr[data-layout="pixel"] .ctx-foot.after-tomatoes { margin-top: 1.875cqw; }
+/* Toasts sit 16 px above the bottom edge, centered on a whole pixel (round() where the browser has it). */
+.scr[data-layout="pixel"] .toast { bottom: 2.5cqw; padding: .9375cqw 1.875cqw; transform: translateX(round(-50%, 1px)); }
+.device.flipped .scr[data-layout="pixel"] .toast { bottom: auto; top: 2.5cqw; transform: translateX(round(-50%, 1px)) rotate(180deg); }
+/* Menu tiles: 20 px around, 10 px between and 10 px inside. LVGL sizes a label by its advance, so "QR code" and
+   "Medium" need the 10 px at 34 px. Tiles are whole pixels wide (five of 112 px, four of 142 or 143, three of 193 or
+   194), with the label at the top, the value 12 px under it and the foot at the bottom. */
+.scr[data-layout="pixel"] .menu { padding: 3.125cqw; gap: 1.5625cqw; }
+.scr[data-layout="pixel"] .menu:has(> .tile:nth-child(4):last-child) { grid-template-columns: 22.34375cqw 22.1875cqw 22.1875cqw 22.34375cqw; }
+.scr[data-layout="pixel"] .menu:has(> .tile:nth-child(3):last-child) { grid-template-columns: 30.15625cqw 30.3125cqw 30.15625cqw; }
+.scr[data-layout="pixel"] .tile { padding: 1.5625cqw; justify-content: flex-start; }
+.scr[data-layout="pixel"] .tile span { margin-top: 1.875cqw; }
+.scr[data-layout="pixel"] .tile small { margin-top: auto; }
+.scr[data-layout="pixel"] .tile b { letter-spacing: var(--ls-kick); line-height: 1; }
+.scr[data-layout="pixel"] .tile span, .scr[data-layout="pixel"] .tile span.two { line-height: 1; }
+.scr[data-layout="pixel"] .tile small { line-height: 3.28125cqw; }
+/* Hold and power screens, and the splash: centered on whole pixels (round() where the browser has it). */
+.scr[data-layout="pixel"] .hold { letter-spacing: 0; text-transform: none; gap: 0; }
+.scr[data-layout="pixel"] .hold > * { align-self: start; margin-left: 50%; transform: translateX(round(-50%, 1px)); }
+/* The title is centered on its ink, not its advance: half the last dot's blank side bearing to the right (2 px at
+   40 px), so "Keep holding" and "Powering off" sit on the track's center, x 320. LVGL: x_ofs +2 on the centered label. */
+.scr[data-layout="pixel"] #holdTitle { margin-left: calc(50% + var(--rsb-word, 0em) / 2); }
+.scr[data-layout="pixel"] .hold .track { height: 1.25cqw; margin: 1.25cqw 0 1.40625cqw 50%; }
+.scr[data-layout="pixel"] .splash { gap: 2.5cqw; }
+/* Wi-Fi setup: the same top and bottom lines as the status screens; steps in the text color on a 21 px pitch. */
+.scr[data-layout="pixel"] .wsetup { align-items: stretch; gap: 3.125cqw; padding: 2.1875cqw 3.125cqw 1.875cqw calc(var(--z-accent, .9375cqw) + 3.125cqw); }
+/* The QR code is 132 px with 8 px of margin, so its 29 modules are 4 px each and the text column starts at x 178. */
+.scr[data-layout="pixel"] .wsetup .qr { align-self: center; height: 20.625cqw; padding: 1.25cqw; }
+.scr[data-layout="pixel"] .wsetup .wtext { flex: 1; justify-content: space-between; gap: 0; }
+.scr[data-layout="pixel"] .wsetup ol { margin: 0; padding-left: 3.125cqw; line-height: 3.28125cqw; }
+.scr[data-layout="pixel"][data-mode="dark"] .wsetup ol { color: var(--b-text); }
 
 /* ---------- Automatic status on the Remote ---------- */
 .auto-sec { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
@@ -931,7 +1036,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     <div class="style-head">
       <div class="eyebrow">Mock-up only · not on the device</div>
       <h2 id="dirsTitle">Design directions</h2>
-      <p>Complete looks for the screen, side by side. Your current pick, the Low Glare layout in a pixel font, comes first; which pixel font is still open. The large preview in each card follows the simulator live; the small ones show Busy and the Pomodoro. Apply puts a direction on the simulator and in the Style panel below, where you can fine-tune it. Reset to defaults there brings back today's look.</p>
+      <p>Complete looks for the screen, side by side. Your pick comes first: the Low Glare layout in Bitcount Prop Single and Handjet, the look the simulator now opens with. The large preview in each card follows the simulator live; the small ones show Busy and the Pomodoro. Apply puts a direction on the simulator and in the Style panel below, where you can fine-tune it. Reset to defaults there brings back your pick.</p>
     </div>
     <div class="dir-grid" id="dirGrid"></div>
   </section>
@@ -941,7 +1046,8 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
       <div class="eyebrow">Mock-up only · not on the device</div>
       <h2 id="styleTitle">Style</h2>
       <p>Try fonts, colors and screen modes on the screen. Your choices stay in this browser. Copy them when you've found a look you like, and send them to me for the firmware.</p>
-      <p>Dark mode is the Low Glare treatment: picking it starts from Low Glare's colors, tints and sentence-case headlines, with the fonts you've chosen. Pixel fonts snap to whole multiples of their own pixel grid so they stay crisp, and each headline takes the largest of those sizes that fits. With a pixel headline font other than Jersey 10 or 15, the line under the headline uses the text font, since the others are too wide or too big for it.</p>
+      <p>The simulator opens with your pick, Low Glare Pixel: Bitcount Prop Single for headlines and Handjet for small text, which come first under Pixel fonts. Pixel fonts snap to whole multiples of their own pixel grid so they stay crisp, and each headline takes the largest of those sizes that fits. Bitcount's digits are drawn in equal-width cells, as the bar's copy of the font draws them, so the timer and clock don't jitter. With a pixel headline font other than Jersey 10 or 15, the line under the headline uses the text font, since the others are too wide or too big for it.</p>
+      <p>Dark mode is the Low Glare treatment: picking it starts from Low Glare's colors, tints and sentence-case headlines, with the fonts you've chosen. The original look is still here: choose Solid color fields, then Big Shoulders Display and Schibsted Grotesk.</p>
     </div>
     <div class="style-grid">
       <label class="field"><span class="field-label">Headline font</span><select id="fHead"></select></label>
@@ -1386,13 +1492,15 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   const ampm = d => fmt(d).slice(-2);
   const roundTo = (d, m) => { const ms = m * 60000; return new Date(Math.ceil(d.getTime() / ms) * ms); };
   const mmss = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
-  const hm = mins => mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
+  // Proposed (UX, 2026-10-04): from 10 hours on, hours only ("10h"), since "10h 20m" is too wide for the side value.
+  const hm = mins => mins >= 600 ? `${Math.floor(mins / 60)}h` : mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
   const esc = t => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   // Durations on the automatic screens round up, so a call that has just started reads 1m.
   const minsUp = ms => Math.max(1, Math.ceil(ms / 60000));
   // Time ranges show AM/PM once when both ends share it: 2:30–3:15 PM, but 11:30 AM–12:15 PM.
   const span = (a, b) => ampm(a) === ampm(b) ? `${fmtShort(a)}–${fmt(b)}` : `${fmt(a)}–${fmt(b)}`;
-  const ago = d => { const m = Math.floor((now() - d) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : `at ${fmt(d)}`; };
+  // short: "2m ago", as the side values write minutes, for the quick menu's tile foot (92 px wide on the bar).
+  const ago = (d, short) => { const m = Math.floor((now() - d) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m}${short ? 'm' : ' min'} ago` : `at ${fmt(d)}`; };
   const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
 
   // Sample timeline, anchored to when the page loaded.
@@ -1671,8 +1779,45 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     const el = $('toast');
     el.textContent = text;
     el.hidden = false;
+    clearUnderToast();
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { el.hidden = true; }, 1600);
+    toastTimer = setTimeout(() => { el.hidden = true; clearUnderToast(); }, 1600);
+  }
+  // While a toast is up, the small text it crosses is hidden (the sub line, a side foot, a menu tile's foot, the setup
+  // screen's lines), so no fragments of it show around the pill. Only text whose ink comes within 8 px of the pill
+  // goes; it's back when the toast goes. Firmware: LV_OBJ_FLAG_HIDDEN on the labels whose text area meets the toast's,
+  // cleared when the toast's timer ends. The loop checks again, since the screen and menus redraw under a toast.
+  const UNDER_TOAST = '.lcd :is(.sub, .ctx-foot, .wfoot, .wsetup li), .menu .tile small';
+  function clearUnderToast() {
+    const t = $('toast'), up = !t.hidden && s.powered && !s.off;
+    const r = up && t.getBoundingClientRect(), gap = 8 * screen.clientWidth / 640;
+    screen.querySelectorAll(UNDER_TOAST).forEach(el => {
+      let hit = false;
+      if (r && r.width) {
+        const rg = document.createRange();
+        rg.selectNodeContents(el);
+        hit = [...rg.getClientRects()].some(q => q.width && q.left < r.right + gap && q.right > r.left - gap && q.top < r.bottom && q.bottom > r.top);
+      }
+      el.classList.toggle('under-toast', hit);
+    });
+  }
+  // A meeting title in a toast is cut to 24 characters, and further if the pill would still reach the side column,
+  // keeping the words around it ("Calendar: Quarterly planning wi… started"). make builds the toast from the title.
+  // Measured on a canvas in the toast's font, from layout offsets, so a flip in progress doesn't skew it. LVGL:
+  // lv_txt_get_width() on the toast's font, one character at a time.
+  let titleCtx = null;
+  function withTitle(make, t) {
+    const cut = n => t.length > n ? t.slice(0, n - 1).trimEnd() + '…' : t;
+    let n = Math.min(t.length, 24);
+    try {
+      const cs = getComputedStyle($('toast')), side = lcd.querySelector('.side');
+      const room = (side ? 2 * (lcd.offsetLeft + side.offsetLeft) - screen.clientWidth : screen.clientWidth)
+        - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      titleCtx = titleCtx || document.createElement('canvas').getContext('2d');
+      titleCtx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      while (n > 8 && titleCtx.measureText(make(cut(n))).width > room) n--;
+    } catch (e) {}
+    return make(cut(n));
   }
   // Toasts for automatic changes wait until the screen is free: not dark, no menu, no setup or power screen.
   const screenFree = () => s.powered && !s.booting && !s.off && menu.hidden && !onWifiScreen() && $('holdOv').hidden;
@@ -1724,14 +1869,14 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
         <div>
           <div class="ctx-label">Today</div>
           <div class="tomatoes">${tomatoRow()}</div>
-          <div class="ctx-foot" style="margin-top:1cqw">${pomo.doneToday} done · ${hm(Math.round(pomo.focusedMs / 60000))} focused</div>
+          <div class="ctx-foot after-tomatoes">${pomo.doneToday} done · ${hm(Math.round(pomo.focusedMs / 60000))} focused</div>
         </div>
       </aside>`;
 
     if (pomo.waiting) {
       const main = pomo.justEnded === 'focus'
-        ? `<div class="kicker">Focus ${round} of ${set.every} done</div><div class="endrow">${tomato('ripe')}<div class="word" style="--fs:9.5">Break time</div></div><div class="sub">Flip or tap to start a ${set[phase]} min ${phase === 'long' ? 'long' : 'short'} break</div>`
-        : `<div class="kicker">Break over</div><div class="endrow">${tomato('ripe')}<div class="word" style="--fs:9.5">Back to it</div></div><div class="sub">Flip or tap to start focus ${round} of ${set.every}</div>`;
+        ? `<div class="kicker">Focus ${round} of ${set.every} done</div><div class="endrow">${tomato('ripe')}<div class="word" style="--fs:9.5" data-fit="pair">Break time</div></div><div class="sub">Flip or tap to start a ${set[phase]} min ${phase === 'long' ? 'long' : 'short'} break</div>`
+        : `<div class="kicker">Break over</div><div class="endrow">${tomato('ripe')}<div class="word" style="--fs:9.5" data-fit="pair">Back to it</div></div><div class="sub">Flip or tap to start focus ${round} of ${set.every}</div>`;
       return { main, side: sideHtml };
     }
 
@@ -1796,7 +1941,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
         const text = esc(s.message || 'Hello');
         const long = s.message.length > 22;
         return {
-          main: `<div class="kicker">Message</div><div class="marquee ${long ? 'scroll' : ''}" style="--dur:${Math.max(6, s.message.length * 0.32)}s"><div class="word" style="--fs:10">${text}</div></div><div class="sub">Set from the remote</div>`,
+          main: `<div class="kicker">Message</div><div class="marquee ${long ? 'scroll' : ''}" style="--dur:${Math.max(6, s.message.length * 0.32)}s"><div class="word" style="--fs:10" data-fit="msg">${text}</div></div><div class="sub">Set from the Remote</div>`,
           side: side('Posted', fmtShort(s.messageAt), ampm(s.messageAt) + ' today'),
         };
       }
@@ -1805,11 +1950,14 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
         if (s.wifi.mode === 'offline') sd = side('Calendar', 'Off', 'needs Wi-Fi', 'small');
         else if (cal.state !== 'ok') sd = side('Calendar', 'Not set up', 'add it on the Remote', 'small');
         else if (!cal.on) sd = side('Calendar', 'Off', 'turned off on the Remote', 'small');
-        else if (nx && titleOf(nx)) sd = side('Next up', esc(titleOf(nx)), fmt(nx.start) + (placeOf(nx) ? ' · ' + esc(placeOf(nx)) : ''), 'small');
-        else if (nx) sd = side('Next up', fmt(nx.start), `meeting · in ${hm(minsUp(nx.start - n))}`, 'small');
+        // Next up reads like Free until and Posted: the start time is the side value, and AM or PM leads the foot,
+        // followed by the title and place (titles on) or how soon it starts. A title in the foot gets about 25
+        // characters before the ellipsis; as the side value it got about 9.
+        else if (nx) sd = side('Next up', fmtShort(nx.start), `${ampm(nx.start)} · ` + (titleOf(nx)
+          ? esc(titleOf(nx)) + (placeOf(nx) ? ' · ' + esc(placeOf(nx)) : '') : `meeting in ${hm(minsUp(nx.start - n))}`));
         else sd = side('Next up', 'Nothing', 'rest of today is free', 'small');
         return {
-          main: `<div class="kicker">${n.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</div><div class="word" style="--fs:17">${fmtShort(n)}<span style="font-size:.32em;letter-spacing:.06em;margin-left:.15em">${ampm(n)}</span></div><div class="sub">Idle · ${pomo.doneToday} Pomodoro${pomo.doneToday === 1 ? '' : 's'} done today</div>`,
+          main: `<div class="kicker">${n.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</div><div class="word" style="--fs:17" data-fit="time">${fmtShort(n)}<span class="ampm">${ampm(n)}</span></div><div class="sub">Idle · ${pomo.doneToday} Pomodoro${pomo.doneToday === 1 ? '' : 's'} done today</div>`,
           side: sd,
         };
       }
@@ -1837,7 +1985,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     const next = nx ? (titleOf(nx) ? `Next: ${esc(titleOf(nx))} at ${fmt(nx.start)}` : `Next meeting at ${fmt(nx.start)}`) : 'No more meetings today';
     return {
       main: `<div class="kicker auto"><span class="chip">Calendar</span> ${t ? 'In a meeting · ' : ''}${span(m.start, m.end)}</div>`
-        + (t ? `<div class="word title" style="--fs:9.5" data-min=".79">${esc(t)}</div>` : `<div class="word" style="--fs:11">In a meeting</div>`)
+        + (t ? `<div class="word title" style="--fs:9.5" data-min=".79" data-fit="title">${esc(t)}</div>` : `<div class="word" style="--fs:11">In a meeting</div>`)
         + `<div class="sub">${place ? esc(place) + ' · ' : ''}${next}</div>`,
       side: side('Ends in', hm(minsUp(m.end - n)), 'at ' + fmt(m.end)),
       bar: progress(m),
@@ -1868,7 +2016,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
         <div class="qr">${qrSvg()}</div>
         <div class="wtext">
           <div class="kicker">Wi-Fi setup</div>
-          <div class="word title" style="--fs:7.5">Scan to set up</div>
+          <div class="word title" style="--fs:7.5" data-fit="qr">Scan to set up</div>
           <ol><li>Join <b>TinyBar-Setup</b> with your phone</li><li>Pick your office Wi-Fi on the page that opens</li></ol>
           <div class="wfoot">Hold to skip and use without Wi-Fi</div>
         </div>
@@ -1876,19 +2024,19 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     if (w.mode === 'connecting') return `
       <div class="wsetup"><div class="wtext">
         <div class="kicker">Wi-Fi setup</div>
-        <div class="word title dots-anim" style="--fs:10">Connecting</div>
+        <div class="word title dots-anim" style="--fs:10" data-fit="setup">Connecting</div>
         <div class="sub">to ${esc(w.ssid)}</div>
       </div></div>`;
     if (w.mode === 'connected') return `
       <div class="wsetup"><div class="wtext">
         <div class="kicker">Connected to ${esc(w.ssid)}</div>
-        <div class="word title" style="--fs:10">tinybar.local</div>
+        <div class="word title" style="--fs:10" data-fit="setup">tinybar.local</div>
         <div class="sub">or ${w.ip} · open it on your phone for the Remote</div>
       </div></div>`;
     return `
       <div class="wsetup"><div class="wtext">
         <div class="kicker">Couldn't connect to ${esc(w.ssid)}</div>
-        <div class="word title" style="--fs:10">${esc(w.error)}</div>
+        <div class="word title" style="--fs:10" data-fit="setup">${esc(w.error)}</div>
         <div class="sub">Tap to try again · Hold to skip</div>
       </div></div>`;
   }
@@ -1956,9 +2104,72 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     if (barPct == null) { bar.hidden = true; }
     else { bar.hidden = false; barFill.style.width = barPct.toFixed(2) + '%'; }
     fitWords(screen);
+    clearUnderToast();
     updateHint();
     updateRemote();
     updatePreviews();
+  }
+
+  // Bitcount's digits aren't equal width, even as tabular figures (its 1, 6 and 7 are a dot narrower), and
+  // lv_font_conv ignores OpenType features anyway, so on the bar a ticking timer or clock would jitter. The firmware
+  // gets a copy of the font with equal-width digits (tools/fonts/equalize_digits.py), and the mock-up draws the same
+  // widths by putting each digit and colon of text in such a font (PIXEL_FONTS cells) in a fixed-width cell (.tc and
+  // .tk in the CSS). Every MM:SS is then the same width, with the colon in the same place, as on the bar. Text that
+  // starts with a digit is marked so its first digit's ink lines up with the margin. AM/PM, in another font, is left alone.
+  const pxFont = ff => PIXEL_FONTS[ff.split(',')[0].trim().replace(/^["']|["']$/g, '')] || null;
+  const cellFont = el => { const f = pxFont(getComputedStyle(el).fontFamily); return !!(f && f.cells); };
+  function cellDigits(root) {
+    root.querySelectorAll('.lcd .word, .lcd .ctx-value').forEach(el => {
+      if (!cellFont(el)) return;
+      const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT), texts = [];
+      while (walk.nextNode()) texts.push(walk.currentNode);
+      texts.forEach(t => {
+        const host = t.parentElement;
+        if (!/[0-9:]/.test(t.data) || host.closest('.tc, .tk') || (host !== el && !cellFont(host))) return;
+        const frag = document.createDocumentFragment();
+        t.data.split(/([0-9:])/).forEach(part => {
+          if (!part) return;
+          if (part.length === 1 && /[0-9:]/.test(part)) {
+            const c = document.createElement('span');
+            c.className = part === ':' ? 'tk' : 'tc';
+            c.textContent = part;
+            frag.appendChild(c);
+          } else frag.appendChild(document.createTextNode(part));
+        });
+        t.replaceWith(frag);
+      });
+      el.classList.toggle('lead-cell', /^[0-9]/.test(el.textContent.trim()));
+    });
+  }
+
+  // In the pixel layout, small text starts with its ink on the margin (x 26 in the main column, 470 in the side), as
+  // the type spec places it: most Handjet letters start one element (1 px at 17 px) into their advance, a T or an I
+  // doesn't. Each line moves left by its first letter's side bearing, measured on a canvas (the firmware can read the
+  // same from the glyph's ofs_x). Bitcount's letters start at their origin, and its digits are aligned by lead-cell.
+  let inkCtx = null;
+  const bearing = {};
+  function alignInk(root) {
+    if (root.dataset.layout !== 'pixel' || !root.clientWidth) return;
+    const k = 640 / root.clientWidth;
+    // A whole number of screen pixels, so the text stays on the pixel grid.
+    const shift = (el, b, cs) => { const px = Math.round(b * parseFloat(cs.fontSize) * k); el.style.marginLeft = px ? -(px / 6.4) + 'cqw' : ''; };
+    root.querySelectorAll('.lcd :is(.kicker:not(.auto), .sub, .ctx-label, .ctx-foot, .ctx-value.small, .sys > span:first-child, .wsetup .wfoot)').forEach(el => {
+      const cs = getComputedStyle(el);
+      let ch = el.textContent.trim().charAt(0);
+      if (!ch || cellFont(el)) return;
+      if (cs.textTransform === 'uppercase') ch = ch.toUpperCase();
+      const key = cs.fontFamily + '|' + cs.fontWeight + '|' + ch;
+      if (!(key in bearing)) {
+        try {
+          inkCtx = inkCtx || document.createElement('canvas').getContext('2d');
+          inkCtx.font = `${cs.fontWeight} 100px ${cs.fontFamily}`;
+          bearing[key] = Math.max(0, -inkCtx.measureText(ch).actualBoundingBoxLeft / 100);
+        } catch (e) { bearing[key] = 0; }
+        // Don't keep a guess made before the font arrived; it's measured again after loadingdone.
+        if (!document.fonts.check(`${cs.fontWeight} 20px ${cs.fontFamily.split(',')[0]}`)) { const b = bearing[key]; delete bearing[key]; shift(el, b, cs); return; }
+      }
+      shift(el, bearing[key], cs);
+    });
   }
 
   // Fit the text on a screen (the simulator or a preview), so any font in the Style panel can be judged fairly.
@@ -1966,31 +2177,67 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   // pixel grid so it stays crisp: a headline takes the largest such size that fits (down to 2x, or 24 px for fonts
   // with a small grid, then it's cut with an ellipsis), and the sub line and side value step down the same way.
   // Pixel fonts without a strict grid scale freely. On the device each direction would ship fixed sizes; this just
-  // finds them.
-  const pxFont = ff => PIXEL_FONTS[ff.split(',')[0].trim().replace(/^["']|["']$/g, '')] || null;
+  // finds them. A look with a size ladder (the user's pick) uses its sizes instead, for each kind of text: the
+  // markup's data-fit, or the timer, a headline, a side value or a small side value. The ladder only applies to a
+  // font whose grid it's built on, so another font picked in the Style panel falls back to its own grid.
   function fitWords(root) {
     const w0 = root.clientWidth;
     if (!w0) return;
+    cellDigits(root);
     const k = 640 / w0;
-    const set = (el, v) => { el.style.fontSize = (v / 6.4).toFixed(3) + 'cqw'; };
-    const fits = el => el.scrollWidth <= el.clientWidth + 1;
+    const set = (el, v) => { el.style.fontSize = (v / 6.4).toFixed(5) + 'cqw'; };
+    // How far the text runs past the right edge of its box, in screen pixels. It's measured from the text's own
+    // fractional box (a Range), not scrollWidth, which rounds to whole CSS pixels: on a half-size screen that hid an
+    // overflow of up to 2 screen pixels, so a headline 1 px too wide was taken and then cut with an ellipsis. hang is
+    // blank space at the end of the text that may run past the box (a pixel font's last side bearing).
+    const over = (el, box = el, hang = 0) => {
+      const rg = document.createRange();
+      rg.selectNodeContents(el);
+      const t = rg.getBoundingClientRect(), b = box.getBoundingClientRect(), cs = getComputedStyle(box);
+      return (t.right - (b.right - parseFloat(cs.paddingRight) - parseFloat(cs.borderRightWidth))) * k - hang;
+    };
+    // Fits with no slack (a hundredth of a pixel for rounding). The whole-pixel check stays as a backstop.
+    const fits = el => el.scrollWidth <= el.clientWidth + 1 && over(el) <= .01;
+    const kindOf = (el, word) => el.dataset.fit || (word ? (el.classList.contains('time') ? 'time' : 'word')
+      : el.classList.contains('ctx-value') ? (el.classList.contains('small') ? 'vals' : 'val') : 'sub');
     root.querySelectorAll('.lcd .word, .lcd .sub, .lcd .ctx-value').forEach(el => {
       const cs = getComputedStyle(el), pf = pxFont(cs.fontFamily), g = pf && pf.grid;
       const word = el.classList.contains('word');
       if (!word && !pf) return;           // sub lines and side values are only fitted in pixel fonts
       const px = parseFloat(cs.fontSize) * k;
+      const lad = g && root._ladder && root._ladder[kindOf(el, word)];
+      const ladder = lad && lad.every(v => Math.abs(v / g - Math.round(v / g)) < 1e-6) ? lad : null;
       const mq = el.closest('.marquee');
       if (mq) {
         // A message scrolls instead of shrinking. In a pixel font it rounds down to the grid, and any message too
-        // wide for the column scrolls, however few characters it has.
+        // wide for the column scrolls, however few characters it has. With a ladder, a short message takes the
+        // largest size that fits and stands still; one too wide even at the smallest step scrolls at the look's
+        // scrolling size (ladder.marquee, else the smallest step), as a long message always does. In the pixel
+        // layout a message fits by its ink, like any headline: its last dot's blank side bearing may hang over.
+        const hang = () => root.dataset.layout === 'pixel' && pf && pf.rsb ? pf.rsb * parseFloat(getComputedStyle(el).fontSize) * k : 0;
+        const wide = () => over(el, mq, hang()) > .01;
+        if (ladder) {
+          const roll = root._ladder.marquee ? root._ladder.marquee[0] : ladder[ladder.length - 1];
+          if (mq.classList.contains('scroll')) set(el, roll);
+          else {
+            let i = 0;
+            set(el, ladder[0]);
+            while (i < ladder.length - 1 && wide()) set(el, ladder[++i]);
+            if (wide()) { set(el, roll); mq.classList.add('scroll'); }
+          }
+          return;
+        }
         if (g) set(el, Math.max(g, Math.floor(px / g + 1e-6) * g));
-        if (!mq.classList.contains('scroll') && el.scrollWidth > mq.clientWidth + 1) mq.classList.add('scroll');
+        if (!mq.classList.contains('scroll') && wide()) mq.classList.add('scroll');
         return;
       }
       // Candidate sizes, largest first.
       const steps = [];
-      if (g) {
-        const top = Math.max(g, Math.round(px / g) * g), floor = word ? Math.max(2 * g, 24) : g;
+      if (ladder) steps.push(...ladder);
+      else if (g) {
+        // Headlines stop at 2x (or 24 px); other text at the smallest whole multiple of 12 px or more, as snapPx()
+        // keeps small text (20 px for Bitcount, whose 10 px is one dot per pixel and hard to read).
+        const top = Math.max(g, Math.round(px / g) * g), floor = word ? Math.max(2 * g, 24) : Math.ceil(12 / g - 1e-6) * g;
         for (let v = top; v >= floor - .01; v -= g) steps.push(v);
         if (!steps.length) steps.push(top);
         if (!word && g > 24) steps.push(g / 2);   // fonts with a big grid get a half step for small text
@@ -2011,6 +2258,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       if (g) set(el, steps[0]);
       for (let i = 1; i < steps.length && !ok(); i++) set(el, steps[i]);
     });
+    alignInk(root);
   }
 
   function updateHint() {
@@ -2169,6 +2417,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       if (pomo.remaining <= 0) { endPhase(); lastKey = ''; return; }
     }
     if (pendingToast && screenFree() && $('toast').hidden) { toast(pendingToast); pendingToast = null; }
+    if (!$('toast').hidden) clearUnderToast();
     const quietSec = mac.quiet ? Math.floor(mac.quietMs / 1000) : 0;
     const key = [s.idx, fmt(now()), pomo.phase, remSec(), pomo.running, pomo.waiting, s.wifi.mode, s.rev, quietSec].join('|');
     if (key === lastKey) return;
@@ -2177,7 +2426,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     if (STATES[s.idx].id === 'message' && !autoTop() && shape === lastShape) {
       rendering = 'message';
       const sys = lcd.querySelector('.sys');
-      if (sys) sys.outerHTML = sysRow();
+      if (sys) { sys.outerHTML = sysRow(); alignInk(screen); }
       updateRemote();
       updatePreviews(false);
       return;
@@ -2284,10 +2533,10 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     } else if (top) {
       const m = meetNow(), t = titleOf(m);
       if (prev && prev.kind === 'call' && !callNow()) {
-        msg = `${lead || 'Call ended'} · still in ${t || 'a meeting'}`;
+        msg = withTitle(x => `${lead || 'Call ended'} · still in ${x}`, t || 'a meeting');
         line = `mac: ${(lead || 'call ended').toLowerCase()}, back to the meeting`;
       } else {
-        msg = lead ? `${lead} · In a meeting` : `Calendar: ${t || 'meeting'} started`;
+        msg = lead ? `${lead} · In a meeting` : withTitle(x => `Calendar: ${x} started`, t || 'meeting');
         line = `calendar: ${t || 'meeting'} started, ${span(m.start, m.end)}`;
       }
     } else {
@@ -2417,7 +2666,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     if (s.wifi.mode === 'offline') return `<div class="tile" data-action="sync"><b>Calendar</b><span>Off</span><small>needs Wi-Fi</small></div>`;
     if (cal.state !== 'ok') return `<div class="tile" data-action="sync"><b>Calendar</b><span>Off</span><small>add it on the Remote</small></div>`;
     if (cal.checking) return `<div class="tile" data-action="sync"><b>Calendar</b><span>Sync…</span><small>syncing now</small></div>`;
-    return `<div class="tile" data-action="sync"><b>Calendar</b><span>Sync</span><small>synced ${ago(cal.lastSync)}</small></div>`;
+    return `<div class="tile" data-action="sync"><b>Calendar</b><span>Sync</span><small>synced ${ago(cal.lastSync, true)}</small></div>`;
   }
   function showMenu() {
     const done = `<div class="tile done" data-action="close"><b>Close</b><span>Done</span><small>or wait 8 s</small></div>`;
@@ -3060,10 +3309,26 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   // faked bold. grid is the size in screen pixels at which one of the font's pixels is one screen pixel; text snaps
   // to whole multiples of it (VT323 draws half-pixel steps, so its crisp sizes are multiples of 25, and Handjet's
   // one-element strokes need 34). Pixelify Sans and DotGothic16 aren't drawn on a strict grid, so they scale freely.
-  // m is the ascent, descent and capital height in em, from the font files, used to seat headlines (see treat()).
+  // m is the ascent, descent and capital height in em, from the font files, used to seat headlines (see treat()); a
+  // fourth value is how far the letters' ink goes below the baseline, when that's less than the font's descent.
   // sub marks the fonts that suit the line under the headline at their 1x size (narrow, and small enough at 1x);
   // with any other pixel headline font that line uses the text font, as the pixel-font comparison does.
+  // Variable pixel fonts are pinned to one instance: axes is the Google Fonts axis request, vs the
+  // font-variation-settings for headlines and text, and vsVal those for the side value and hold title.
+  // cells: the bar's copy of the font has equal-width digits that the mock-up draws with cells (cellDigits()).
+  // rsb: the blank space after most letters, in em, so a headline fits by its ink in the pixel layout.
+  // embedded: the font is in the page (@font-face at the top), not loaded from Google Fonts; fb is its fallback.
+  //   Bitcount Prop Single, the user's headline pick (2026-10-04): 10 dots per em, so whole-dot sizes are multiples
+  //   of 10 px. Round dots: wght 400, ELSH 0; squares that exactly fill the grid: wght 384.88, ELSH 50. CRSV 0 turns
+  //   off the cursive a and f. Its digits aren't equal width (the 1, 6 and 7 are narrower, even as tabular figures).
+  //   Handjet Snap17, the small-text pick: Handjet's solid squares (wght 400, ELSH 2, ELGR 1, Google's defaults),
+  //   snapped to whole pixels at 17 px, so it's sharp at 17 and 34 px. Its digits are already equal width.
+  const BITCOUNT_ROUND = "'wght' 400, 'ELSH' 0, 'CRSV' 0, 'ELXP' 0, 'slnt' 0";
+  const BITCOUNT_SQUARE = "'wght' 384.88, 'ELSH' 50, 'CRSV' 0, 'ELXP' 0, 'slnt' 0";
   const PIXEL_FONTS = {
+    'Bitcount Prop Single': { w: '400', grid: 10, m: [.84, .36, .6, .1], axes: 'slnt,wght,CRSV,ELSH,ELXP@-8..0,100..900,0..1,0..100,0..100',
+      vs: BITCOUNT_ROUND, vsVal: BITCOUNT_SQUARE, cells: true, rsb: .1 },
+    'Handjet Snap17': { w: '400', grid: 17, m: [.882, .235, .647], embedded: true, fb: '"Handjet", monospace' },
     'Jersey 10': { w: '400', grid: 18.667, m: [.804, .268, .536], sub: true },
     'Jersey 15': { w: '400', grid: 27, m: [.778, .222, .556], sub: true },
     'Jersey 20': { w: '400', grid: 34, m: [.794, .206, .588] },
@@ -3112,22 +3377,39 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     sizes: { kick: 15, label: 13, sub: 18, val: 41, vals: 23, foot: 13, sys: 12, word: 1, wordMax: 93 }, kickTrack: .12,
     pad: [12, 20, 12, 20], padSide: [14, 16, 14, 16],
   };
-  // Pixel type, tuned for Jersey 15 headlines and Jersey 10 small text. Other pixel fonts snap these sizes to
-  // their own grids, and headlines are seated from each font's metrics.
+  // Pixel type, tuned for Jersey 15 headlines and Jersey 10 small text (Pixel Arcade). Other pixel fonts snap these
+  // sizes to their own grids, and headlines are seated from each font's metrics.
   const PIXEL_TYPE = {
     head: 'Jersey 15', text: 'Jersey 10', mono: null,
     roles: { kick: 'text', sub: 'head', sys: 'text' }, weights: { word: 400, kick: 400, val: 400, sub: 400 },
     sizes: { kick: 18.667, label: 18.667, sub: 27, val: 54, vals: 27, foot: 18.667, sys: 18.667, word: 1.24 }, kickTrack: .054, lh: [1.05, 1],
   };
-  // The user's current pick comes first.
+  // The user's pick (2026-10-04) and the default look: the Low Glare layout in Bitcount Prop Single and Handjet,
+  // option G in docs/pixel-fonts.html, to the UX designer's type spec. Round dots for headlines, the timer and the
+  // clock; Bitcount's squares for the side value and the hold title; Handjet Snap17 for everything else, at 17 px,
+  // or 34 px for tile values, small side values and AM/PM. layout 'pixel' puts text on the spec's lines (see the Pixel
+  // layout CSS). ladder lists the sizes the firmware ships for each kind of headline or value (data-fit on the
+  // markup), largest first: text takes the first that fits its column, and the last is cut off with an ellipsis (a
+  // message scrolls instead, at the marquee size). Bitcount is wide, so the status word swings from 100 px (Busy) to
+  // 80 (Available), 60 (In a meeting, the alarm pair), 50 (Back at 12:30) and 40 (long meeting titles). A message
+  // stands still at 100, 80, 60 or 50 px when it fits ("Out sick today" at 50), and scrolls at 60 when it doesn't.
+  const LOW_GLARE_PIXEL = {
+    ...LOW_GLARE,
+    head: 'Bitcount Prop Single', text: 'Handjet Snap17', mono: null, layout: 'pixel',
+    roles: { kick: 'text', sub: 'text', sys: 'text', vals: 'text', tv: 'text' }, weights: { word: 400, kick: 400, val: 400, sub: 400 },
+    sizes: { kick: 17, label: 17, sub: 17, val: 40, vals: 34, foot: 17, sys: 17, word: 1, chip: 17, toast: 17, wol: 17, wfoot: 17, tv: 34, tv2: 34, hold: 40, splash: 100 },
+    ladder: { word: [100, 80, 60, 50, 40], time: [120], pair: [60], title: [60, 40], msg: [100, 80, 60, 50], marquee: [60], qr: [50], setup: [60, 50, 40], val: [40], vals: [34] },
+    kickTrack: 1 / 17,   // 1 px at 17 px
+    pad: [14, 20, 12, 20], padSide: [14, 16, 12, 16],
+  };
+  // The user's pick comes first.
   const DIRS = [
     {
-      id: 'lgpixel', name: 'Low Glare Pixel', pick: 'Your pick · font still to be chosen',
-      tagline: 'The Low Glare layout set in pixel type: Jersey 15 headlines and Jersey 10 small text, as a stand-in while the pixel font is being chosen.',
-      tryLine: 'Try other pixel fonts in the Style panel below (Headline font › Pixel fonts). Each one snaps to its own pixel grid, so the sizes you see are ones the bar can draw crisply.',
-      fonts: [['Headlines', 'Jersey 15', '400'], ['Small text', 'Jersey 10', '400']],
-      // Headlines step down to 108 px (4x) in sentence case, so descenders have room.
-      style: { ...LOW_GLARE, ...PIXEL_TYPE, sizes: { ...PIXEL_TYPE.sizes, word: 1.1 } },
+      id: 'lgpixel', name: 'Low Glare Pixel', pick: 'Your pick · fonts chosen',
+      tagline: "The Low Glare layout in the pixel fonts you picked: Bitcount Prop Single's round dots for the status, the timer and the clock, its square dots for the side value, and Handjet for all the small text.",
+      tryLine: "Every size is one the bar draws on whole pixels: the status takes the largest of 100, 80, 60, 50 or 40 px that fits, the timer and clock are 120 px, and small text is 17 px. Bitcount's digits all get the same width on the bar, so the timer and clock hold still, and the mock-up draws them that way too. Fine-tune it in the Style panel below.",
+      fonts: [['Headlines', 'Bitcount Prop Single', 'round dots'], ['Side value', 'Bitcount Prop Single', 'square dots'], ['Small text', 'Handjet', 'solid squares']],
+      style: LOW_GLARE_PIXEL,
     },
     {
       id: 'signal', name: 'Bold Signal',
@@ -3176,22 +3458,56 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       },
     },
   ];
-  const DEFAULT_STYLE = { head: 'Big Shoulders Display', text: 'Schibsted Grotesk', colors: {}, mode: 'solid', headlineCase: 'upper' };
-  const STORE = 'tinybar-style';
-  style = DEFAULT_STYLE;
+  // The default look is the user's pick, applied as its direction. The original look (Big Shoulders Display and
+  // Schibsted Grotesk on solid color fields) is still in the panel's lists: Solid color fields, then those fonts.
+  const DEFAULT_STYLE = { ...LOW_GLARE_PIXEL, direction: 'lgpixel', edited: false };
+  const freshDefault = () => JSON.parse(JSON.stringify(DEFAULT_STYLE));
+  // Version 2 of the saved style: the default changed on 2026-10-04, and earlier saves held the old default.
+  // Only what you chose is saved: the direction's id, and with your edits just the settings that differ from it. The
+  // rest is rebuilt from DIRS on every load, so a later change to a direction (or to the default look) reaches a
+  // browser that has opened the page before. Saves from before this (the whole look) are read too: an unedited one
+  // is rebuilt from its direction, an edited one is kept as it was.
+  const STORE = 'tinybar-style-2';
+  const clone = o => JSON.parse(JSON.stringify(o));
+  function restoreStyle(saved) {
+    const d = saved && DIRS.find(x => x.id === saved.direction);
+    if (d && (!saved.edited || saved.changes)) {
+      return { ...clone(d.style), ...(saved.edited ? saved.changes : {}), direction: d.id, edited: !!saved.edited };
+    }
+    if (saved && saved.head) return { mode: 'solid', headlineCase: 'upper', ...saved, colors: { ...(saved.colors || {}) } };
+    return null;
+  }
+  function saveStyle() {
+    const d = DIRS.find(x => x.id === style.direction);
+    let out = style;
+    if (d) {
+      const changes = {};
+      if (style.edited) {
+        new Set([...Object.keys(d.style), ...Object.keys(style)]).forEach(k => {
+          if (k === 'direction' || k === 'edited') return;
+          if (JSON.stringify(style[k] ?? null) !== JSON.stringify(d.style[k] ?? null)) changes[k] = style[k] ?? null;
+        });
+      }
+      out = style.edited ? { direction: d.id, edited: true, changes } : { direction: d.id, edited: false };
+    }
+    try { localStorage.setItem(STORE, JSON.stringify(out)); } catch (e) {}
+  }
+  style = freshDefault();
   try {
-    const saved = JSON.parse(localStorage.getItem(STORE));
-    if (saved && saved.head) style = { ...DEFAULT_STYLE, ...saved, colors: { ...(saved.colors || {}) } };
+    const saved = restoreStyle(JSON.parse(localStorage.getItem(STORE)));
+    if (saved) style = saved;
   } catch (e) {}
-  const loadedFonts = new Set(['Big Shoulders Display|500;700;800', 'Schibsted Grotesk|400;500;600', 'JetBrains Mono|400;500']);
+  // Fonts the page's own link already loads (the default look's Bitcount with all its axes).
+  const loadedFonts = new Set(['Big Shoulders Display|500;700;800', 'Schibsted Grotesk|400;500;600', 'JetBrains Mono|400;500', 'Bitcount Prop Single|400']);
   function loadFont(name, weights) {
-    if (!name) return;
+    const pf = PIXEL_FONTS[name];
+    if (!name || (pf && pf.embedded)) return;
     const key = name + '|' + weights;
     if (loadedFonts.has(key)) return;
     loadedFonts.add(key);
     const l = document.createElement('link');
     l.rel = 'stylesheet';
-    l.href = `https://fonts.googleapis.com/css2?family=${name.replace(/ /g, '+')}:wght@${weights}&display=swap`;
+    l.href = `https://fonts.googleapis.com/css2?family=${name.replace(/ /g, '+')}:${pf && pf.axes ? pf.axes : 'wght@' + weights}&display=swap`;
     document.head.appendChild(l);
   }
   const fontWeights = name => HEAD_FONTS[name] || TEXT_FONTS[name] || '400';
@@ -3217,8 +3533,10 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
 
   // Put a look on a screen element: data attributes pick the treatment, variables carry fonts, sizes and colors.
   // withColors also sets the status colors on the element itself (previews); the simulator takes them from :root.
-  const cq = px => (px / 6.4).toFixed(4) + 'cqw';
+  // Five decimals keep every whole-pixel size exact at 640 px (17 px is 2.65625cqw), so pixel fonts stay sharp.
+  const cq = px => (px / 6.4).toFixed(5) + 'cqw';
   const fam = (n, fb) => `"${n}", ${fb}`;
+  const pxFallback = n => (PIXEL_FONTS[n] && PIXEL_FONTS[n].fb) || 'monospace';
   // Snap a size (screen pixels) to a whole multiple of a pixel font's grid; null for other fonts. Small text stays at
   // 12 px or more, and a font with a big grid (over 24 px) may take half a step for it, the nearest legible size.
   function snapPx(font, px, small) {
@@ -3234,6 +3552,14 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   function seat([asc, desc, cap], upper) {
     const lh = upper ? cap + .044 : asc + desc, gap = upper ? .022 : .04;
     return [+lh.toFixed(3), (gap - ((lh - asc - desc) / 2 + asc - cap)).toFixed(3) + 'em'];
+  }
+  // The pixel layout trims a headline's line to its capital-plus-descender box instead: the line is the font's full
+  // ascent and descent (nothing clipped), and the margins take off what's above the capitals and below the ink of the
+  // descenders (ink, or half the descent when the table doesn't say). Capitals have no descender.
+  // [line-height, margin-top, margin-bottom]; for Bitcount this gives [1.2, -.24em, -.26em], a .7 em box.
+  function seatBox([asc, desc, cap, ink], upper) {
+    const below = upper ? 0 : ink ?? desc / 2;
+    return [+(asc + desc).toFixed(3), -(asc - cap).toFixed(3) + 'em', -(desc - below).toFixed(3) + 'em'];
   }
   // Other fonts are measured in the browser once they've loaded (the headline is re-seated then), so sentence-case
   // headlines sit right in any font, for example Big Shoulders when dark mode starts from Low Glare.
@@ -3263,6 +3589,9 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     d.accent = accent ? '1' : '0';
     d.bar = st.barStyle || 'plain';
     if (st.direction || mode !== 'solid' || withColors) d.dir = '1'; else delete d.dir;
+    if (st.layout) d.layout = st.layout; else delete d.layout;
+    // The fitter reads the look's size ladder from the element (see fitWords()).
+    el._ladder = st.ladder || null;
     const pixel = n => n in PIXEL_FONTS;
     const R = st.roles || {}, W = st.weights || {}, Z = st.sizes || {};
     const role = r => r === 'text' ? 'var(--f-body)' : r === 'head' ? 'var(--f-screen)' : r === 'mono' ? fam(st.mono || 'JetBrains Mono', 'ui-monospace, Menlo, monospace') : null;
@@ -3274,15 +3603,26 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     // metrics unless the look sets its own line (capitals keep today's tuned line).
     const mm = hp ? PIXEL_FONTS[st.head].m : !upper && !st.wordLH ? metricsOf(st.head, W.word || 800) : null;
     const wordLH = mm ? seat(mm, upper) : st.wordLH, titleLH = hp ? seat(mm, false) : st.titleLH;
+    // In the pixel layout, titles share the headline's box; a font that hasn't loaded yet gets Bitcount's until it has.
+    const lay = st.layout === 'pixel', box = lay ? seatBox(hp ? mm : metricsOf(st.head, W.word || 800) || [.84, .36, .6, .1], upper) : null;
+    const kickF = fontOf(R.kick) || st.head, sysF = fontOf(R.sys) || 'JetBrains Mono', subF = fontOf(subRole) || st.text;
+    const valsF = fontOf(R.vals) || st.head, tvF = fontOf(R.tv) || st.head;
+    // Variable pixel fonts are pinned per role (PIXEL_FONTS vs and vsVal); other fonts keep their own settings.
+    const fv = n => (PIXEL_FONTS[n] && PIXEL_FONTS[n].vs) || null;
+    const fvVal = (PIXEL_FONTS[st.head] && PIXEL_FONTS[st.head].vsVal) || fv(st.head);
+    const em = (n, k) => PIXEL_FONTS[n] && PIXEL_FONTS[n][k] ? PIXEL_FONTS[n][k] + 'em' : null;
     const v = {
-      '--f-screen': fam(st.head, hp ? 'monospace' : '"Arial Narrow", sans-serif'),
-      '--f-body': fam(st.text, pixel(st.text) ? 'monospace' : '"Helvetica Neue", Arial, sans-serif'),
-      '--f-kick': role(R.kick), '--f-sub': role(subRole), '--f-sys': role(R.sys),
+      '--f-screen': fam(st.head, hp ? pxFallback(st.head) : '"Arial Narrow", sans-serif'),
+      '--f-body': fam(st.text, pixel(st.text) ? pxFallback(st.text) : '"Helvetica Neue", Arial, sans-serif'),
+      '--f-kick': role(R.kick), '--f-sub': role(subRole), '--f-sys': role(R.sys), '--f-vals': role(R.vals), '--f-tv': role(R.tv),
+      '--fv-body': fv(st.text), '--fv-screen': fv(st.head), '--fv-val': fvVal, '--fv-kick': fv(kickF), '--fv-sub': fv(subF),
+      '--fv-sys': fv(sysF), '--fv-vals': valsF === st.head ? fvVal : fv(valsF), '--fv-tv': fv(tvF),
       '--w-word': W.word, '--w-kick': W.kick, '--w-val': W.val, '--w-sub': W.sub,
-      '--w-tv': hp ? 400 : null, '--w-toast': pixel(st.text) ? 400 : null,
+      '--w-tv': hp || pixel(tvF) ? 400 : null, '--w-toast': pixel(st.text) ? 400 : null,
       '--ws': Z.word, '--z-wmax': Z.wordMax ? cq(Z.wordMax) : null, '--lh-s': st.lh && st.lh[0], '--lh-sub': st.lh && st.lh[1],
-      '--lh-word': wordLH && wordLH[0], '--mt-word': wordLH && wordLH[1],
+      '--lh-word': box ? box[0] : wordLH && wordLH[0], '--mt-word': box ? box[1] : wordLH && wordLH[1], '--mb-word': box && box[2],
       '--lh-title': titleLH && titleLH[0], '--mt-title': titleLH && titleLH[1],
+      '--rsb-word': lay ? em(st.head, 'rsb') : null,
       '--ls-kick': st.kickTrack != null ? st.kickTrack + 'em' : null,
       '--r': st.cornerRadius != null ? cq(st.cornerRadius) : null,
       '--r-pill': st.cornerRadius === 0 ? '0' : null,
@@ -3291,8 +3631,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     };
     // Text sizes. In a pixel font each one snaps to that font's grid; the fitter then steps headlines, sub lines
     // and side values down the same grid when they don't fit.
-    const kickF = fontOf(R.kick) || st.head, sysF = fontOf(R.sys) || 'JetBrains Mono';
-    const FONT = { kick: kickF, label: kickF, sub: fontOf(subRole) || st.text, val: st.head, vals: st.head, foot: st.text, sys: sysF };
+    const FONT = { kick: kickF, label: kickF, sub: subF, val: st.head, vals: valsF, foot: st.text, sys: sysF };
     const SMALL = { kick: true, label: true, foot: true, sys: true };
     const sized = {};
     Object.keys(DEF_PX).forEach(k => {
@@ -3300,11 +3639,12 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       v['--z-' + k] = sized[k] != null ? cq(sized[k]) : Z[k] ? cq(Z[k]) : null;
     });
     // The rest of the screen's text (chip, toast, menu tiles, setup screen, power screens), only for pixel fonts.
+    // A look can set these sizes too.
     const snapV = (font, px, small) => { const n = snapPx(font, px, small); return n != null ? cq(n) : null; };
     Object.assign(v, {
-      '--z-chip': snapV(kickF, .88 * (sized.kick || Z.kick || DEF_PX.kick), true),
-      '--z-toast': snapV(st.text, 15.36, true), '--z-wol': snapV(st.text, 16.64, true), '--z-wfoot': snapV(st.text, 12.8, true),
-      '--z-tv': snapV(st.head, 28.16), '--z-tv2': snapV(st.head, 23.04), '--z-hold': snapV(st.head, 32), '--z-splash': snapV(st.head, 57.6),
+      '--z-chip': snapV(kickF, Z.chip || .88 * (sized.kick || Z.kick || DEF_PX.kick), true),
+      '--z-toast': snapV(st.text, Z.toast || 15.36, true), '--z-wol': snapV(st.text, Z.wol || 16.64, true), '--z-wfoot': snapV(st.text, Z.wfoot || 12.8, true),
+      '--z-tv': snapV(tvF, Z.tv || 28.16), '--z-tv2': snapV(tvF, Z.tv2 || 23.04), '--z-hold': snapV(st.head, Z.hold || 32), '--z-splash': snapV(st.head, Z.splash || 57.6),
     });
     ['t', 'r', 'b', 'l'].forEach((k, i) => {
       v['--pm-' + k] = st.pad ? cq(st.pad[i]) : null;
@@ -3349,7 +3689,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       if (inp) inp.value = (v || BASE[k]).toLowerCase();
     });
     document.querySelectorAll('.sbtn').forEach(b => sbtnColor(b, b.dataset.id === 'pomodoro' ? pomo.phase : b.dataset.id));
-    try { localStorage.setItem(STORE, JSON.stringify(style)); } catch (e) {}
+    saveStyle();
     markApplied();
     lastKey = '';
     render();
@@ -3358,7 +3698,7 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
   $('fText').addEventListener('change', e => edit({ text: e.target.value }));
   // Everything in a look except its fonts.
   const TREATMENT = ['headlineCase', 'labelCase', 'sidePanel', 'accentBar', 'accentWidth', 'cornerRadius', 'base', 'colors', 'tints',
-    'roles', 'weights', 'sizes', 'kickTrack', 'lh', 'wordLH', 'titleLH', 'pad', 'padSide', 'barStyle'];
+    'roles', 'weights', 'sizes', 'kickTrack', 'lh', 'wordLH', 'titleLH', 'pad', 'padSide', 'barStyle', 'layout', 'ladder'];
   $('sMode').addEventListener('change', e => {
     // A new mode starts from the applied direction's treatment when that direction uses the mode. Otherwise dark
     // starts from Low Glare (its colors, which read on near-black, its tints and sentence-case headlines), and
@@ -3372,12 +3712,14 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     say(`style: ${MODES[mode].label.toLowerCase()}${from === LOW_GLARE ? ', starting from Low Glare' : ''}`);
   });
   $('sCase').addEventListener('change', e => { edit({ headlineCase: e.target.value }); say(`style: headlines ${e.target.value === 'none' ? 'as written' : 'in uppercase'}`); });
+  // Reset brings back the default look, which is the user's pick (Low Glare Pixel).
   $('styleReset').addEventListener('click', () => {
-    style = DEFAULT_STYLE;
+    style = freshDefault();
     applyStyle();
     $('styleOut').hidden = true;
-    $('styleMsg').textContent = 'Back to the defaults';
-    say('style: back to the default look');
+    document.querySelectorAll('.dir-card [data-msg]').forEach(m => { m.textContent = ''; });
+    $('styleMsg').textContent = 'Back to the default look: Low Glare Pixel';
+    say('style: back to the default look, Low Glare Pixel');
   });
   $('styleCopy').addEventListener('click', () => {
     const d = DIRS.find(x => x.id === style.direction), m = MODES[style.mode] || MODES.solid;
@@ -3399,6 +3741,11 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
       // A pixel font's grid in screen pixels: every size of it is a whole multiple.
       pixelGrid: Object.fromEntries([['headline', style.head], ['text', style.text]]
         .filter(([, n]) => PIXEL_FONTS[n]).map(([r, n]) => [r, PIXEL_FONTS[n].grid || 'none'])),
+      // Variable fonts are pinned to these instances; the firmware converts static copies of them.
+      fontVariations: Object.fromEntries([['headline', style.head, 'vs'], ['sideValue', style.head, 'vsVal'], ['text', style.text, 'vs']]
+        .filter(([, n, k]) => PIXEL_FONTS[n] && PIXEL_FONTS[n][k]).map(([r, n, k]) => [r, PIXEL_FONTS[n][k]])),
+      equalWidthDigits: PIXEL_FONTS[style.head] && PIXEL_FONTS[style.head].cells
+        ? 'tools/fonts/equalize_digits.py --grid 100 --colon --tnum-shapes (every digit 7 dots wide, ink centered)' : null,
       accentWidth: (style.accentBar ?? m.accentBar) ? (style.accentWidth || 6) : null,
       barStyle: style.barStyle || 'plain',
       kickerTracking: style.kickTrack ?? .14,
@@ -3409,6 +3756,9 @@ USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each 
     ALL_KEYS.forEach(k => { out.colors[k] = style.colors[k] || BASE[k]; });
     if (style.tints) out.tints = style.tints;
     if (style.sizes) out.sizes = style.sizes;
+    // The sizes each kind of headline and value steps through, largest first, and the layout's fixed lines.
+    if (style.ladder) out.sizeLadder = style.ladder;
+    if (style.layout) out.layout = style.layout;
     if (style.lh) out.lineHeights = { small: style.lh[0], sub: style.lh[1] };
     const text = JSON.stringify(out, null, 2);
     const pre = $('styleOut');

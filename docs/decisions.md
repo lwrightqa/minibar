@@ -109,8 +109,65 @@ These are the product manager's suggested defaults for questions the user hasn't
 ## Look
 
 - **Low Glare layout in a pixel font (decided 2026-10-04).** The user reviewed the four design directions on a separate page (`docs/design-directions.html`) and prefers the **Low Glare** layout: a warm near-black background, a 6 px edge bar in the status color, a colored sentence-case headline, a faint side tint, warm off-white and muted text, a status-color frame instead of the white alarm flash, and a paused timer shown steadily in the muted color instead of blinking. It is to be set in a **pixel font**.
-- **Open: which pixel font.** It's being compared in `docs/pixel-fonts.html`. Until the user picks one, the mock-up shows the choice as the **Low Glare Pixel** direction, with Jersey 15 headlines and Jersey 10 small text as a stand-in, and the simulator's default look stays as it is. The default switches once the font is chosen.
+- **Pixel font (decided 2026-10-04): option D, with Handjet for the small text.** The user picked option D of the font study (`docs/pixel-fonts.html`): **Bitcount Prop Single in round dots** for the headlines, the timer and the clock, with **Handjet** replacing option D's Tiny5 for the small text. This is the user's choice over the team's recommendation: the UX designer, lead developer and product manager had all ranked option A (Jersey 15 with Micro 5) first, for its bold solid word across the room, real lowercase and perfectly sharp pixels. The team set the pick up as **option G**, first on the font study page, and fixed what the study had flagged (see the type spec and trade-offs below).
+  - *History:* until 2026-10-04 this was open. The mock-up showed the choice as the **Low Glare Pixel** direction with Jersey 15 headlines and Jersey 10 small text as a stand-in, and the simulator's default look stayed as it was, to switch once the font was chosen.
+  - Now that it's chosen, the Low Glare Pixel direction and the simulator's default switch to option G. **Not done yet:** `docs/mockup.html` still shows the Jersey stand-in (see Follow-ups).
 - In the Style panel, the **dark** screen mode is the Low Glare treatment: choosing it starts from Low Glare's colors (brightened so they read on near-black), tints and sentence-case headlines, and keeps the fonts already chosen.
+
+### Type spec: option G (2026-10-04)
+
+The details, with every measurement, are in `docs/pixel-fonts.html` (option G). Colors are Low Glare's: background #111110, text #e2ddd3, muted #9a948a, and the status colors and side tints. Positions are on the 640 × 172 screen with its 6 px edge bar; text starts at x 26 in the main column (408 px wide) and x 470 in the side column (154 px wide).
+
+- **Three font files, built by the team** rather than the downloads:
+  - **TinyBarBitcount-Round.ttf:** Bitcount Prop Single at wght 400, ELSH 0, CRSV 0 (cursive a and f off), ELXP 0, slnt 0. Headlines, timer, clock, splash and Wi-Fi setup titles.
+  - **TinyBarBitcount-Square.ttf:** the same font at wght 384.88, ELSH 50 (square dots that exactly fill the grid). Side value and the hold screen's title.
+  - **Handjet-Snap17.ttf:** Handjet's solid squares (wght 400, ELSH 2, ELGR 1) with every element moved onto a whole pixel at 17 px. All other text, at 17 px (1x) and 34 px (2x).
+  - Both Bitcount files are built with `tools/fonts/equalize_digits.py --grid 100 --colon --tnum-shapes`: all ten digits share one 700-unit width with their ink centered, the 1 is the one with a base that option D showed, the colon has a dot of space on each side, and kerning that involves a digit is removed. Checked 2026-10-04 in the built files: digits 700 units, colon 300, no digit kerning.
+- **Headline** (round dots, status color; the clock in the text color). Bitcount has 10 dots per em, so sizes are multiples of 10 px. Each headline takes the largest step that fits the main column:
+  - **100 px:** Busy (220 px of ink), On a call (390), short messages, and the splash's "TinyBar" (350, text color, with the tomato sprite).
+  - **80 px:** Available (328; 410 at 100).
+  - **60 px:** In a meeting (360), Break time and Back to it (a matching pair), meeting titles ("Design review" 402), and the full-width Wi-Fi setup titles ("Wrong password" 492 of about 588).
+  - **50 px:** Back at 12:30 (350; 420 at 60) and "Scan to set up" on the QR screen.
+  - **40 px:** meeting titles too long for 60, then an ellipsis. Messages use 100, 80 or 60 px, and longer ones scroll at 60.
+  - **Timer and clock, 120 px, digits and colon only:** every MM:SS is 372 px wide (348 of ink) and the colon never moves. The clock adds AM or PM in Handjet 34 px in the same color, right after the last digit.
+  - Placement: the headline's cap-plus-descender box is centered between the kicker's baseline (y 28) and the sub line's cap top (y 146), so Busy's baseline is at y 112, the timer's at 117 and In a meeting's at 102. Text that starts with a digit is placed so the first digit's ink sits on the column's left edge.
+- **Side value:** Bitcount square at 40 px (4x) in the text color, cap top y 102, baseline 126 (one size down from option D; see Proposed). "45m" is 88 px, "1h 5m" 124, "1h 20m" and "9h 59m" 152. Values that are words ("Not set up", "Off", "Nothing", Next-up titles) use Handjet 34 px, cut with an ellipsis at 154 px. The hold screen's title ("Keep holding", "Powering off") uses the square font in sentence case.
+- **Small text, Handjet Snap17 at 17 px:**
+  - Kicker: capitals, 1 px letter-spacing, muted, cap top y 17, baseline 28. Side label: the same, cap top y 81.
+  - Sub line (see Proposed): text color, sentence case, no letter-spacing, baseline y 157. Foot: muted, baseline y 157. Status row: muted, cap top y 17.
+  - Toasts, Wi-Fi setup steps (21 px line pitch), setup kickers and feet, the line under the hold title, and the Pomodoro corner pill: 17 px.
+  - Source chips (MAC, CALENDAR): 17 px capitals with 1 px letter-spacing in the status color, a 1 px status-color outline, 3 px padding above and below, 5 px at the sides and a 3 px radius, cap-aligned on the kicker line.
+  - Menu tiles: values at 34 px in the text color ("Show again" on two lines), labels at 17 px in capitals with 1 px letter-spacing, feet at 17 px wrapping to two lines.
+- **Firmware fonts:** lv_font_conv with `--autohint-off` and its default compression, about **105 KB** in all (under 1% of the 16 MB flash):
+  - Round dots at 100, 80, 60, 50 and 40 px with the full character set, plus 120 px with digits and colon only, all at 2 bpp. 2 bpp looks the same as 4 bpp on the dots; 1 bpp turns them into octagons.
+  - Square dots at 40 px, and Handjet Snap17 at 17 and 34 px, at 1 bpp.
+  - Checked in the converted 120 px font: every digit is 84 px wide, the colon 36 px, and there are no kerning pairs.
+- **Mock-up:** Bitcount comes from Google Fonts; the 2.9 KB Snap17 file is embedded as a data URI. Google's Bitcount still jitters with tabular figures, so each digit sits in a 0.7 em cell and each colon in a 0.3 em cell to match the device. The CSS is in `docs/pixel-fonts.html`.
+
+### Trade-offs and how they're handled (2026-10-04)
+
+- **Bitcount's digits aren't equal width.** On the device the cause is the narrow default 1 and Bitcount's digit kerning, since lv_font_conv ignores the tabular-figure feature. **Fixed** by `equalize_digits.py`: "18:41", "18:46", "11:11" and "17:07" were 264 to 336 px wide with 4 of 5 columns moving; now all are 372 px and nothing moves.
+- **Round dots are anti-aliased on the device, by design.** 23 to 27% of lit pixels are partly lit at 60 to 120 px, 48% at 50 px and 75% at 40 px. The smaller sizes are used only for Back at 12:30, the QR screen's title and long meeting titles. Kept, since it's the round-dot look the user chose. It costs flash: the round set is about 94 KB at 2 bpp (everything at 4 bpp would be 167 KB).
+- **Handjet is sharp only at 34 px and up as served, and 34 px doesn't fit.** At 34 px "MEETING ENDS IN" and "1 done · 31m focused" overflow the 154 px side column. As served, Handjet at 17 px is 32.6% soft on the device because many elements sit on half pixels, which also drops muted text to about 2.6:1 contrast. **Fixed** by Handjet Snap17: 0.3% soft at 17 px (only the grave accent) and 0% at 34 px.
+- **Handjet's round dots can't echo Bitcount's.** Below about 68 px they render as solid squares (17 px) or a gray stroke (34 px), so small text uses the solid squares.
+- **The headline changes size a lot** (100 down to 40 px), more than in any other option, because Bitcount is wide. Shorter copy helps: "Back 12:30" fits at 60 px.
+- **Small text is small:** 11 px capitals, about 1.5 mm on the 8.6 cm screen, for reading up close. There's no sharp Handjet size between 17 and 34 px.
+- **Look-alike characters:** Handjet's I and l are identical, and Bitcount's B and 8 can read as 6, as in option D. Not addressed.
+- **Correction to the font study's figures:** Handjet at 34 px and Bitcount's squares at 50 and 20 px are 0% soft, not 7% and 2%. The earlier scripts counted lv_font_conv's origin markers as soft pixels.
+
+### Proposed (2026-10-04, waiting for the user's OK)
+
+- **Proposed: the line under the headline moves to Handjet 17 px,** out of option D's square dots. D's 20 px line overflows real copy: "Please don't interrupt · break at 12:55 PM" is 416 px of 408, the Wi-Fi setup line is 562 px, and meeting details would be cut at about 29 characters. Handjet 17 fits all current copy (235 px for that line, 309 px on the full-width setup screen), with less presence from across the room. If the user wants D's line back, the copy has to be shorter ("Don't interrupt · break at 12:55 PM", about 348 px) and meeting details are cut at about 29 characters.
+- **Proposed: the side value is one size down from option D,** 40 px instead of 50. At 50 px, durations over an hour ("1h 5m", "1h 20m") don't fit the side column.
+- **Proposed: from 10 hours on, durations show hours only** ("10h"), since "10h 20m" is 180 px at 40 px.
+- **Proposed: menu tiles' inner padding drops from 12.8 to 10 px,** so "QR code" (90 px), "Medium" and "Restart" (88 px) fit at 34 px.
+- **Proposed: check the 17 px small text on the real bar** before the firmware's screens are final.
+
+### Follow-ups (open)
+
+- **Done (2026-10-04): mock-up.** The Low Glare Pixel direction and the simulator's default use option G (fonts, sizes, digit cells, positions and the embedded Snap17), and Bitcount Prop Single and Handjet Snap17 are in the Style panel's pixel fonts.
+- **Done (2026-10-04): font tools.** `snap17.py` is in `tools/fonts/`, and the README describes option G and the Snap17 build. Option G's new sizes (Bitcount round at 80, 60 and 50 px, square at 40 px, Snap17 at 17 and 34 px) still need converting with lv_font_conv and measuring for flash. **Proposed:** like the Bitcount copies, the snapped Handjet gets a TinyBar family name (the README's build command does this) and a modification note in its name table, keeping Handjet's copyright and license. Handjet declares no Reserved Font Name, so its current name is allowed.
+- **Done (2026-10-04): font study page.** Handjet's solid shape is 0% soft in the glance table. The dot variant's softness on option C's card is real (the lead measured 33%), so it stays.
 
 ## Mock-up-only tools
 
@@ -118,6 +175,7 @@ These are the product manager's suggested defaults for questions the user hasn't
   - Since 2026-10-04 its font lists include **pixel fonts**: Jersey 10, Jersey 15, Jersey 20, Silkscreen, Pixelify Sans, VT323, Press Start 2P, DotGothic16, Tiny5, Micro 5 and Handjet, with only the weights Google Fonts serves and no synthesized bold. Text in a pixel font snaps to whole multiples of that font's own pixel grid, and each headline takes the largest such size that fits, so every font can be judged fairly. With a pixel headline font other than Jersey 10 or 15, the line under the headline uses the text font, since the others are too wide or too big for it.
 - **Design directions** (decided 2026-10-04): four complete looks (fonts, colors and treatment) side by side on the mock-up page. Each has a live preview and an **Apply** button that puts it on the simulator. Applying one also sets the Style panel, so the look can be fine-tuned and copied. The direction the user picks goes to the firmware.
   - **Updated 2026-10-04:** a fifth card, **Low Glare Pixel** (the user's pick, with the font still to be chosen), comes first across the full row. It uses Jersey 15 and Jersey 10, like Pixel Arcade, as a stand-in, and Bold Signal and Low Glare share Barlow Condensed; the "no shared fonts" rule for directions is waived now that the user has picked.
+  - **Updated 2026-10-04 (font chosen):** the Low Glare Pixel card is to use option G, Bitcount round dots with Handjet Snap17, instead of the Jersey stand-in, and becomes the simulator's default. Not built yet (see Look).
   - **Proposed:** every direction keeps all screen text at a contrast of 4.5:1 or better on every status color. It uses only what LVGL 9 can draw: solid fills, simple gradients, and Google Fonts under the OFL or Apache license. (The current default misses 4.5:1 with white text on Available, about 4.0:1; on Focus, about 3.2:1; and on Short break, about 4.2:1.)
 - **Simulate controls** (decided 2026-10-04): buttons that start and end a call or a meeting, so the automatic statuses can be tried before the Mac app exists. They're clearly labeled mock-up only, and they sit outside the Remote panel.
 

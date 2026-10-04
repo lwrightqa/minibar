@@ -17,12 +17,17 @@ script fixes the digits in the font itself, before conversion:
      license entries and, with --license, in the upstream OFL.txt, and refuses to write a name that
      contains one.
 
+Options: --colon gives the colon the digits' side bearings, so a time is spaced evenly around it;
+--tnum-shapes uses the font's own tabular-figure glyphs (for Bitcount, the wider 1 with a base that
+docs/pixel-fonts.html shows, since that page sets digits with tabular-nums).
+
 The output is deterministic: the same input and options give a byte-identical file (the head
 table's modified date is kept from the input unless SOURCE_DATE_EPOCH is set).
 
 Usage (see README.md):
-  python3 equalize_digits.py IN.ttf OUT.ttf --family "TinyBar Bitcount Round" \
-      --axes wght=400,ELSH=0,CRSV=0,ELXP=0,slnt=0 --grid 100 --license OFL.txt
+  python3 equalize_digits.py 'BitcountPropSingle[CRSV,ELSH,ELXP,slnt,wght].ttf' TinyBarBitcount-Round.ttf \
+      --family "TinyBar Bitcount Round" --axes wght=400,ELSH=0,CRSV=0,ELXP=0,slnt=0 \
+      --grid 100 --colon --tnum-shapes --license tools/fonts/licenses/Bitcount-OFL.txt
 """
 
 import argparse
@@ -129,6 +134,53 @@ def equalize(font, digit_glyphs, grid):
         hmtx[gname] = (target, g.xMin)
         rows.append((gname, adv, x0, x1, dx, g.xMin, target - g.xMax))
     return target, rows
+
+
+def space_colon(font, target, digit_glyphs, grid):
+    """Center the colon with the same side bearing the widest digits now have."""
+    glyf, hmtx = font['glyf'], font['hmtx']
+    cname = font.getBestCmap().get(ord(':'))
+    if not cname or glyf[cname].numberOfContours == 0:
+        return None
+    widest = max(glyf[d].xMax - glyf[d].xMin for d in digit_glyphs)
+    sb = int((target - widest) / 2 / grid + 0.5) * grid
+    g = glyf[cname]
+    g.recalcBounds(glyf)
+    adv, x0, x1 = hmtx[cname][0], g.xMin, g.xMax
+    dx = sb - x0
+    shift_glyph(font, cname, dx)
+    g = glyf[cname]
+    hmtx[cname] = (g.xMax + sb, g.xMin)
+    return (cname, adv, x0, x1, dx, g.xMin, sb)
+
+
+def use_tnum_shapes(font):
+    """Point the cmap's digits at the glyphs the font's tnum feature would substitute."""
+    alt = {}
+    if 'GSUB' in font:
+        gsub = font['GSUB'].table
+        for fr in gsub.FeatureList.FeatureRecord:
+            if fr.FeatureTag != 'tnum':
+                continue
+            for li in fr.Feature.LookupListIndex:
+                lk = gsub.LookupList.Lookup[li]
+                for st in lk.SubTable:
+                    ltype = lk.LookupType
+                    if ltype == 7:
+                        ltype, st = st.ExtensionLookupType, st.ExtSubTable
+                    if ltype == 1:
+                        alt.update(st.mapping)
+    done = []
+    for table in font['cmap'].tables:
+        if not table.isUnicode():
+            continue
+        for d in DIGITS:
+            g = table.cmap.get(ord(d))
+            if g in alt:
+                table.cmap[ord(d)] = alt[g]
+                if f'{g}->{alt[g]}' not in done:
+                    done.append(f'{g}->{alt[g]}')
+    return done
 
 
 # ---------------------------------------------------------------- kerning and features
@@ -251,6 +303,10 @@ def main(argv=None):
                     help='round each shift to a multiple of this many font units (Bitcount: 100, one dot)')
     ap.add_argument('--license', help="the font's upstream OFL.txt, checked for a Reserved Font Name")
     ap.add_argument('--keep-kerning', action='store_true', help='leave kerning pairs with digits in place')
+    ap.add_argument('--colon', action='store_true',
+                    help="give the colon the digits' side bearings, so 18:41 is spaced evenly around the colon")
+    ap.add_argument('--tnum-shapes', action='store_true',
+                    help="map 0-9 to the font's tabular-figure glyphs (its tnum feature) before equalizing")
     a = ap.parse_args(argv)
 
     font = TTFont(a.input, recalcTimestamp=False)
@@ -291,9 +347,14 @@ def main(argv=None):
     missing = [d for d in DIGITS if ord(d) not in cmap]
     if missing:
         sys.exit(f'error: no glyph for {missing}')
+    remapped = []
+    if a.tnum_shapes:
+        remapped = use_tnum_shapes(font)
+        cmap = font.getBestCmap()
     digit_glyphs = list(dict.fromkeys(cmap[ord(d)] for d in DIGITS))
 
     target, rows = equalize(font, digit_glyphs, a.grid)
+    colon = space_colon(font, target, digit_glyphs, a.grid) if a.colon else None
     kern_removed = 0 if a.keep_kerning else strip_digit_kerning(font, set(digit_glyphs))
     dropped = drop_numeric_alternates(font, digit_glyphs)
     for t in ('hdmx', 'LTSH', 'VDMX'):                    # per-size device metrics would now be stale
@@ -304,6 +365,8 @@ def main(argv=None):
 
     note = (f'Modified by the TinyBar project from {src_desc}: digits 0-9 share one advance width '
             f'({target} units) with centered outlines'
+            + (', using the tabular-figure shapes' if remapped else '')
+            + (', the colon has the digits\' side bearings' if colon else '')
             + ('' if a.keep_kerning else ', and kerning pairs with digits are removed')
             + '. Licensed under the SIL Open Font License 1.1.')
     ps = rename(font, family, note)
@@ -316,9 +379,11 @@ def main(argv=None):
     print(f'{a.input} -> {a.output}')
     print(f'  family "{family}" ({ps}); reserved font names declared: {", ".join(rfns) if rfns else "none"}'
           + ('' if a.license else ' (name table only; pass --license to check OFL.txt)'))
+    if remapped:
+        print(f'  cmap now uses the tnum shapes: {", ".join(remapped)}')
     print(f'  common digit advance: {target} units ({target / font["head"].unitsPerEm:.3f} em)')
     print('  glyph        old adv  ink x0..x1    shift  new lsb  new rsb')
-    for gname, adv, x0, x1, dx, lsb, rsb in rows:
+    for gname, adv, x0, x1, dx, lsb, rsb in rows + ([colon] if colon else []):
         flag = '' if abs(lsb - rsb) <= a.grid else '  (off center: grid)'
         print(f'  {gname:12s} {adv:7d}  {x0:5d}..{x1:<5d}  {dx:+6d}  {lsb:7d}  {rsb:7d}{flag}')
     print(f'  kerning pairs with a digit removed: {kern_removed}')
