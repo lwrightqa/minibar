@@ -23,6 +23,7 @@
   --s-long: #2563c0;
   --s-away: #4f5863;
   --s-message: #9b3a8e;
+  --s-call: #c41563;
   --s-clock: #0b0c0e;
   --s-setup: #1d3557;
   --s-fg: #ffffff;
@@ -124,7 +125,8 @@ h1 .dot { color: var(--state); transition: color .3s; }
 .hwlabel.boot { top: calc(22% + 1px); }
 .hwlabel.pwr { top: calc(44% + 1px); }
 
-.screen {
+/* .scr is any 640 x 172 screen: the simulator and the Design direction previews. */
+.scr {
   container-type: inline-size;
   position: relative;
   width: 100%;
@@ -134,6 +136,9 @@ h1 .dot { color: var(--state); transition: color .3s; }
   border-radius: 4px;
   background: var(--lcd-off);
   color: var(--s-fg);
+  font-synthesis: none;
+}
+.screen {
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
@@ -150,30 +155,47 @@ h1 .dot { color: var(--state); transition: color .3s; }
   grid-template-columns: 1fr 29%;
 }
 .device.flipped .lcd { transform: rotate(180deg); }
-.screen.off .lcd { opacity: 0; }
+.scr.off .lcd { opacity: 0; }
 
+/* Sizes, weights and font roles are variables so a design direction can change them; the fallbacks are the default look. */
 .main {
   min-width: 0;
-  padding: 2.6cqw 3.2cqw;
+  padding: var(--pm-t, 2.6cqw) var(--pm-r, 3.2cqw) var(--pm-b, 2.6cqw) var(--pm-l, 3.2cqw);
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: .4cqw;
 }
 .kicker {
-  font-family: var(--f-screen);
-  font-weight: 700;
-  font-size: 2.3cqw;
-  letter-spacing: .14em;
+  font-family: var(--f-kick, var(--f-screen));
+  font-weight: var(--w-kick, 700);
+  font-size: var(--z-kick, 2.3cqw);
+  letter-spacing: var(--ls-kick, .14em);
   text-transform: uppercase;
   opacity: .82;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.kicker.auto { opacity: 1; }
+/* Source chip on automatic screens: MAC or CALENDAR. In LVGL it's one label with a background. */
+.chip {
+  display: inline-block;
+  margin-right: .6em;
+  padding: 0 .45em;
+  border-radius: .3em;
+  font-size: .88em;
+  line-height: 1.35;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  vertical-align: .06em;
+  background: color-mix(in srgb, var(--sc) 75%, #000);
+  color: #fff;
+}
 .word {
   font-family: var(--f-screen);
-  font-weight: 800;
+  font-weight: var(--w-word, 800);
+  font-size: calc(var(--fs, 10) * var(--ws, 1) * 1cqw);
   line-height: .84;
   letter-spacing: .005em;
   text-transform: uppercase;
@@ -184,9 +206,9 @@ h1 .dot { color: var(--state); transition: color .3s; }
 }
 .word.title { text-transform: none; line-height: .95; }
 .sub {
-  font-family: var(--f-body);
-  font-weight: 500;
-  font-size: 2.9cqw;
+  font-family: var(--f-sub, var(--f-body));
+  font-weight: var(--w-sub, 500);
+  font-size: var(--z-sub, 2.9cqw);
   opacity: .9;
   white-space: nowrap;
   overflow: hidden;
@@ -200,7 +222,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
 .side {
   min-width: 0;
   background: rgba(0,0,0,.2);
-  padding: 2.6cqw 2.8cqw;
+  padding: var(--ps-t, 2.6cqw) var(--ps-r, 2.8cqw) var(--ps-b, 2.6cqw) var(--ps-l, 2.8cqw);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -210,8 +232,8 @@ h1 .dot { color: var(--state); transition: color .3s; }
   align-items: center;
   justify-content: space-between;
   gap: 1cqw;
-  font-family: var(--f-mono);
-  font-size: 1.9cqw;
+  font-family: var(--f-sys, var(--f-mono));
+  font-size: var(--z-sys, 1.9cqw);
   opacity: .85;
   font-variant-numeric: tabular-nums;
 }
@@ -219,25 +241,25 @@ h1 .dot { color: var(--state); transition: color .3s; }
 .sys .icons { display: flex; align-items: center; gap: .9cqw; }
 .sys svg { width: 2.6cqw; height: 2.6cqw; display: block; }
 .ctx-label {
-  font-family: var(--f-screen);
-  font-weight: 700;
-  font-size: 2cqw;
-  letter-spacing: .14em;
+  font-family: var(--f-kick, var(--f-screen));
+  font-weight: var(--w-kick, 700);
+  font-size: var(--z-label, 2cqw);
+  letter-spacing: var(--ls-kick, .14em);
   text-transform: uppercase;
   opacity: .75;
 }
 .ctx-value {
   font-family: var(--f-screen);
-  font-weight: 800;
-  font-size: 6.4cqw;
+  font-weight: var(--w-val, 800);
+  font-size: var(--z-val, 6.4cqw);
   line-height: .95;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.ctx-value.small { font-size: 3.6cqw; line-height: 1.05; }
-.ctx-foot { font-size: 2cqw; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ctx-value.small { font-size: var(--z-vals, 3.6cqw); line-height: 1.05; }
+.ctx-foot { font-size: var(--z-foot, 2cqw); opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tomatoes { display: flex; gap: 1cqw; margin-top: .8cqw; }
 .tomato { position: relative; display: block; }
 .tomato img { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; image-rendering: pixelated; }
@@ -267,7 +289,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
 .menu[hidden] { display: none; }
 .device.flipped .menu { transform: rotate(180deg); }
 .tile {
-  border-radius: 1.4cqw;
+  border-radius: var(--r, 1.4cqw);
   background: #1d2026;
   padding: 2cqw;
   display: flex;
@@ -275,9 +297,10 @@ h1 .dot { color: var(--state); transition: color .3s; }
   justify-content: space-between;
   min-width: 0;
 }
-.tile b { font-family: var(--f-screen); font-weight: 700; font-size: 2cqw; letter-spacing: .1em; text-transform: uppercase; color: #9aa3ad; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile b { font-family: var(--f-kick, var(--f-screen)); font-weight: 700; font-size: 2cqw; letter-spacing: .1em; text-transform: uppercase; color: #9aa3ad; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tile span { font-family: var(--f-screen); font-weight: 800; font-size: 4.4cqw; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tile small { font-size: 1.8cqw; line-height: 1.25; color: #9aa3ad; }
+.tile span.two { white-space: normal; font-size: 3.6cqw; line-height: 1.05; }
 
 .caption {
   display: flex;
@@ -332,8 +355,8 @@ h1 .dot { color: var(--state); transition: color .3s; }
 .sbtn i { width: 12px; height: 12px; border-radius: 50%; background: var(--c); flex: none; }
 .sbtn:hover { border-color: var(--c); }
 .sbtn:focus-visible { outline: 2px solid var(--c); outline-offset: 2px; }
-.sbtn[aria-pressed="true"] { background: var(--c); border-color: var(--c); color: #fff; }
-.sbtn[aria-pressed="true"] i { background: #fff; }
+.sbtn[aria-pressed="true"] { background: var(--c); border-color: var(--c); color: var(--cfg, #fff); }
+.sbtn[aria-pressed="true"] i { background: var(--cfg, #fff); }
 
 .seg { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
 .seg button {
@@ -402,7 +425,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
 /* Pomodoro on the screen */
 .sys .pill {
   padding: .15cqw .9cqw;
-  border-radius: 9cqw;
+  border-radius: var(--r-pill, 9cqw);
   background: var(--pc);
   box-shadow: 0 0 0 .2cqw rgba(255,255,255,.5);
   font-weight: 500;
@@ -438,7 +461,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
   background: rgba(8,9,11,.88);
   color: #fff;
   padding: .7cqw 2.2cqw;
-  border-radius: 3cqw;
+  border-radius: var(--r, 3cqw);
   font-family: var(--f-body);
   font-weight: 600;
   font-size: 2.4cqw;
@@ -496,7 +519,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
   gap: 3.2cqw;
   padding: 2.6cqw 3.2cqw;
 }
-.wsetup .qr { height: 21cqw; aspect-ratio: 1; flex: none; background: #fff; border-radius: 1.2cqw; padding: .9cqw; }
+.wsetup .qr { height: 21cqw; aspect-ratio: 1; flex: none; background: #fff; border-radius: var(--r, 1.2cqw); padding: .9cqw; }
 .wsetup .qr svg { display: block; width: 100%; height: 100%; }
 .wsetup .wtext { min-width: 0; display: flex; flex-direction: column; gap: .5cqw; }
 .wsetup ol { margin: .4cqw 0 0; padding-left: 3cqw; font-family: var(--f-body); font-size: 2.6cqw; line-height: 1.35; }
@@ -560,7 +583,6 @@ h1 .dot { color: var(--state); transition: color .3s; }
 .sw { display: grid; justify-items: center; gap: 4px; font-size: 12px; color: var(--muted); cursor: pointer; }
 .sw input { width: 46px; height: 32px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: transparent; cursor: pointer; }
 .style-out { margin: 0; padding: 12px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); font-family: var(--f-mono); font-size: 12px; overflow-x: auto; white-space: pre; }
-.screen { font-synthesis: none; }
 .ripen { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; border-top: 1px solid var(--line); padding-top: 16px; }
 .ripen-big { width: 96px; height: 96px; flex: none; }
 .ripen-big .tomato { width: 100%; height: 100%; }
@@ -646,10 +668,155 @@ table.controls td.none { color: var(--muted); }
 .check { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
 .check input { width: 16px; height: 16px; accent-color: var(--state); margin: 0; }
 
+/* ---------- Screen treatments ----------
+   The Style panel and the Design directions set these attributes and variables on the simulator and on each preview.
+   data-mode: solid (the status color fills the screen, today's look), dark (near-black with color accents), light (pale tints, ink text).
+   --sc is the status color, --tc and --tsc a direction's own main and side tints, --b-* its base background, text and muted text.
+   Everything maps to LVGL 9: solid fills, borders and one image opacity. */
+.scr[data-dir] .kicker, .scr[data-dir] .sub, .scr[data-dir] .ctx-label, .scr[data-dir] .ctx-foot,
+.scr[data-dir] .sys, .scr[data-dir] .wsetup .wfoot { opacity: 1; }
+.scr[data-case="none"] .word, .scr[data-case="none"] .splash { text-transform: none; }
+.scr[data-case="none"] .word { line-height: 1.22; margin-top: -.28em; }
+.scr[data-case="none"] .endrow .word { margin-top: 0; }
+.scr[data-case="none"] .kicker, .scr[data-case="none"] .sub { line-height: 1.2; }
+.scr[data-labels="none"] .kicker, .scr[data-labels="none"] .ctx-label, .scr[data-labels="none"] .tile b { text-transform: none; letter-spacing: 0; }
+.scr[data-labels="none"] .chip { letter-spacing: .04em; }
+.scr[data-accent="1"] .lcd::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--z-accent, .9375cqw); background: var(--sc); z-index: 1; }
+.scr[data-accent="1"] .main { padding-left: calc(var(--z-accent, .9375cqw) + var(--pm-l, 3.2cqw)); }
+.scr[data-accent="1"] .wsetup { padding-left: calc(var(--z-accent, .9375cqw) + 3.2cqw); }
+.scr[data-accent="1"] .bar { left: var(--z-accent, .9375cqw); }
+
+/* Solid: the status color fills the screen. A "tint" side panel is a darker shade of it. */
+.scr[data-mode="solid"][data-side="tint"] .side { background: var(--tsc, color-mix(in srgb, var(--sc) 76%, #000)); }
+.scr[data-mode="solid"][data-dir] .ctx-label, .scr[data-mode="solid"][data-dir] .ctx-foot { color: var(--b-muted, inherit); }
+
+/* Dark: a near-black field; the status color moves to the headline, an edge bar and a faint side tint. */
+.scr[data-mode="dark"] .lcd { background: var(--b-bg); color: var(--b-text); }
+.scr[data-mode="dark"] .word { color: var(--sc); }
+.scr[data-mode="dark"][data-k="clock"] .word, .scr[data-mode="dark"][data-k="setup"] .word, .scr[data-mode="dark"] .splash { color: var(--b-text); }
+.scr[data-mode="dark"] .kicker, .scr[data-mode="dark"] .ctx-label, .scr[data-mode="dark"] .ctx-foot, .scr[data-mode="dark"] .sys,
+.scr[data-mode="dark"] .wsetup ol, .scr[data-mode="dark"] .wsetup .wfoot { color: var(--b-muted); }
+.scr[data-mode="dark"] .sub, .scr[data-mode="dark"] .ctx-value { color: var(--b-text); }
+.scr[data-mode="dark"][data-side="tint"] .side { background: var(--tsc, color-mix(in srgb, var(--sc) 8%, var(--b-bg))); }
+.scr[data-mode="dark"] .bar { height: .625cqw; background: color-mix(in srgb, var(--sc) 22%, var(--b-bg)); }
+.scr[data-mode="dark"] .bar i { background: var(--sc); }
+.scr[data-mode="dark"] .tomato.ghost img, .scr[data-mode="dark"] .tomato img.faint { opacity: .5; }
+/* A paused timer holds still in the muted color instead of blinking next to the neighbors. */
+.scr[data-mode="dark"] .word.blink { animation: none; color: var(--b-muted); }
+/* The alarm blinks a frame in the status color instead of a white full-screen flash. */
+.scr[data-mode="dark"] .lcd.alert::after { background: transparent; box-shadow: inset 0 0 0 .9375cqw var(--sc); animation: frame .55s steps(1, end) 3; }
+@keyframes frame { 0% { opacity: 1; } 60% { opacity: 0; } }
+.scr[data-mode="dark"] .sys .pill { background: color-mix(in srgb, var(--pc) 18%, var(--b-bg)); color: var(--pc); box-shadow: inset 0 0 0 .234cqw var(--pc); }
+.scr[data-mode="dark"] .chip { background: transparent; color: var(--sc); box-shadow: inset 0 0 0 .156cqw var(--sc); }
+.scr[data-mode="dark"] .menu, .scr[data-mode="dark"] .hold { background: color-mix(in srgb, var(--b-bg) 96%, transparent); color: var(--b-text); }
+.scr[data-mode="dark"] .tile { background: color-mix(in srgb, var(--b-text) 6%, var(--b-bg)); color: var(--b-text); }
+.scr[data-mode="dark"] .tile[data-action] { box-shadow: inset 0 0 0 .234cqw color-mix(in srgb, var(--b-text) 18%, var(--b-bg)); }
+.scr[data-mode="dark"] .tile[data-action]:hover { background: color-mix(in srgb, var(--b-text) 11%, var(--b-bg)); }
+.scr[data-mode="dark"] .tile.info { background: transparent; box-shadow: none; }
+.scr[data-mode="dark"] .tile.done { background: color-mix(in srgb, var(--b-text) 12%, var(--b-bg)); color: var(--b-text); box-shadow: inset 0 0 0 .3125cqw var(--b-text); }
+.scr[data-mode="dark"] .tile b, .scr[data-mode="dark"] .tile small, .scr[data-mode="dark"] .tile.done b, .scr[data-mode="dark"] .hold small { color: var(--b-muted); }
+.scr[data-mode="dark"] .toast { background: color-mix(in srgb, var(--b-text) 9%, var(--b-bg)); color: var(--b-text); box-shadow: inset 0 0 0 .156cqw color-mix(in srgb, var(--b-text) 18%, var(--b-bg)); }
+.scr[data-mode="dark"] .hold .track { background: color-mix(in srgb, var(--b-text) 12%, var(--b-bg)); }
+.scr[data-mode="dark"] .hold .track i { background: var(--b-text); }
+.scr[data-mode="dark"] .wsetup .qr { background: var(--b-text); }
+.scr[data-mode="dark"] .wsetup .qr path { fill: var(--b-bg); }
+
+/* Solid side panel: the side column is a block of the status color with ink text (the idle Clock keeps a raised panel). */
+.scr[data-side="solid"] .side, .scr[data-side="solid"] .side .ctx-label, .scr[data-side="solid"] .side .ctx-foot,
+.scr[data-side="solid"] .side .ctx-value, .scr[data-side="solid"] .side .sys { color: var(--b-bg, #000); }
+.scr[data-side="solid"] .side { background: var(--sc); }
+.scr[data-side="solid"][data-k="clock"] .side, .scr[data-side="solid"][data-k="clock"] .side .ctx-value { color: var(--b-text); }
+.scr[data-side="solid"][data-k="clock"] .side .ctx-label, .scr[data-side="solid"][data-k="clock"] .side .ctx-foot, .scr[data-side="solid"][data-k="clock"] .side .sys { color: var(--b-muted); }
+.scr[data-side="solid"] .sys .pill { background: var(--b-bg); color: var(--pc); box-shadow: none; }
+.scr[data-side="solid"] .tomatoes .tomato { background: var(--b-bg); }
+.scr[data-side="solid"] .tomatoes .tomato img { inset: 6%; width: 88%; height: 88%; }
+/* Segmented progress bar: 14 px blocks with 2 px gaps, under the main column only. */
+.scr[data-bar="seg"] .bar { right: 29%; background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--b-text) 12%, var(--b-bg)) 0 2.1875cqw, transparent 2.1875cqw 2.5cqw); }
+.scr[data-bar="seg"] .bar i { background: repeating-linear-gradient(90deg, var(--sc) 0 2.1875cqw, transparent 2.1875cqw 2.5cqw); }
+
+/* Light: pale tints of the status color with ink text and a colored edge. No text is drawn in the status color. */
+.scr[data-mode="light"] .lcd { background: var(--tc, color-mix(in srgb, var(--sc) 16%, var(--b-bg))); color: var(--b-text); }
+.scr[data-mode="light"] .side { background: var(--tsc, color-mix(in srgb, var(--sc) 32%, var(--b-bg))); }
+.scr[data-mode="light"] .kicker, .scr[data-mode="light"] .ctx-label, .scr[data-mode="light"] .ctx-foot, .scr[data-mode="light"] .sys,
+.scr[data-mode="light"] .wsetup ol, .scr[data-mode="light"] .wsetup .wfoot { color: var(--b-muted); }
+.scr[data-mode="light"] .bar { height: .9375cqw; background: var(--tsc, color-mix(in srgb, var(--sc) 32%, var(--b-bg))); }
+.scr[data-mode="light"] .bar i { background: var(--sc); }
+.scr[data-mode="light"] .lcd.alert::after { background: var(--sc); animation-name: flash85; }
+@keyframes flash85 { from { opacity: .85; } to { opacity: 0; } }
+.scr[data-mode="light"] .sys .pill { background: #fff; color: var(--b-text); box-shadow: inset 0 0 0 .3125cqw var(--pc); }
+.scr[data-mode="light"] .chip { background: var(--sc); color: #fff; }
+.scr[data-mode="light"] .menu, .scr[data-mode="light"] .hold { background: var(--b-bg); color: var(--b-text); }
+.scr[data-mode="light"] .tile { background: #fff; color: var(--b-text); box-shadow: inset 0 0 0 .3125cqw #e3ded5; }
+.scr[data-mode="light"] .tile[data-action]:hover { background: #f4f1ec; }
+.scr[data-mode="light"] .tile.info { background: transparent; box-shadow: none; }
+.scr[data-mode="light"] .tile b, .scr[data-mode="light"] .tile small, .scr[data-mode="light"] .hold small { color: var(--b-muted); }
+.scr[data-mode="light"] .tile.done { background: var(--b-text); color: var(--b-bg); box-shadow: none; }
+.scr[data-mode="light"] .tile.done b, .scr[data-mode="light"] .tile.done small { color: #c9ccd1; }
+.scr[data-mode="light"] .toast { background: var(--b-text); color: var(--b-bg); }
+.scr[data-mode="light"] .hold .track { background: #e3ded5; }
+.scr[data-mode="light"] .hold .track i { background: var(--b-text); }
+.scr[data-mode="light"] .wsetup .qr { box-shadow: inset 0 0 0 .3125cqw #e3ded5; }
+
+/* ---------- Automatic status on the Remote ---------- */
+.auto { display: grid; gap: 12px; }
+.auto > p { margin: 0; }
+.auto-now { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; font-weight: 600; }
+.auto-card { display: grid; gap: 10px; padding: 14px; border-radius: 16px; border: 1px solid var(--line); min-width: 0; }
+.auto-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.auto-head b { font-size: 15px; }
+.badge { font-size: 11px; font-weight: 600; letter-spacing: .04em; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.badge.ok { border-color: var(--s-available); color: var(--ink); }
+.badge.later { border-style: dashed; }
+.badge.pick { border-color: var(--ink); color: var(--ink); }
+.auto-card .auto-line { margin: 0; font-size: 13px; color: var(--muted); }
+.mask { font-family: var(--f-mono); font-size: 12px; overflow-wrap: anywhere; }
+.check:has(input:disabled) { opacity: .55; cursor: not-allowed; }
+.setup .auto-card p.note-small { font-size: 13px; }
+details.help summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: var(--muted); display: grid; gap: 3px; }
+.auto-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; margin-bottom: 8px; border-radius: 12px; border: 1px solid var(--c); }
+.auto-banner > div { display: grid; min-width: 0; }
+.auto-banner b { font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.auto-banner b::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--c); flex: none; }
+.auto-banner small { font-size: 12px; color: var(--muted); }
+.auto-banner .btn { flex: none; }
+.link-btn { font: inherit; font-size: 13px; color: var(--ink); text-decoration: underline; }
+
+/* ---------- Simulate panel and Design directions (mock-up only) ---------- */
+.sim-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+.sim-box { display: grid; gap: 10px; align-content: start; padding: 14px; border-radius: 16px; border: 1px dashed var(--line); }
+.sim-box .setting { grid-template-columns: 52px minmax(0, 1fr); }
+.sim-state { margin: 0; font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.dir-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap: 16px; }
+.dir-card { display: grid; gap: 10px; align-content: start; min-width: 0; padding: 16px; border-radius: 16px; border: 1px solid var(--line); }
+.dir-card.on { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.dir-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.dir-top h3 { margin: 0; margin-right: auto; font-size: 20px; line-height: 1.2; }
+.dir-card p { margin: 0; font-size: 14px; color: var(--muted); }
+.dir-fonts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 12px; margin: 0; font-size: 13px; }
+.dir-fonts dt { color: var(--muted); }
+.dir-fonts dd { margin: 0; }
+.dir-sw { display: flex; flex-wrap: wrap; gap: 6px 4px; }
+.dir-sw span { display: grid; justify-items: center; gap: 2px; width: 50px; font-size: 10px; line-height: 1.15; color: var(--muted); text-align: center; }
+.dir-sw i { width: 28px; height: 20px; border-radius: 5px; box-shadow: inset 0 0 0 1px rgba(127,127,127,.45); }
+.pv-frame { padding: 6px; border-radius: 10px; background: var(--chassis); }
+.scr.pv { border-radius: 3px; pointer-events: none; user-select: none; }
+.pv-cap { font-family: var(--f-mono); font-size: 11px; color: var(--muted); letter-spacing: .04em; }
+.pv-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pv-pair figure { margin: 0; display: grid; gap: 4px; min-width: 0; }
+
+/* ---------- Mac app API (planned) ---------- */
+.api { display: grid; gap: 14px; min-width: 0; }
+.api h2 { font-family: var(--f-screen); font-weight: 800; font-size: 28px; letter-spacing: .02em; margin: 0; text-transform: uppercase; }
+.api > p, .api li { color: var(--muted); max-width: 78ch; }
+.api > p { margin: 0; }
+.api ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+.api code { font-family: var(--f-mono); font-size: 12.5px; }
+
 @media (prefers-reduced-motion: reduce) {
   .device, .lcd, .bar i { transition: none; }
   .marquee.scroll .word { animation: none; padding-left: 0; }
-  .word.blink, .lcd.alert::after { animation: none; }
+  .word.blink, .lcd.alert::after, .scr .lcd.alert::after { animation: none; }
 }
 </style>
 
@@ -662,7 +829,7 @@ table.controls td.none { color: var(--muted); }
 
   <section class="bench" aria-label="Device simulator">
     <div class="device" id="device">
-      <div class="screen" id="screen" tabindex="0" role="button" aria-label="TinyBar screen. Tap for next status or to pause the Pomodoro, swipe to change status, long-press for menu.">
+      <div class="screen scr" id="screen" tabindex="0" role="button" aria-label="TinyBar screen. Tap for next status or to pause the Pomodoro, swipe to change status, long-press for menu.">
         <div class="lcd" id="lcd"></div>
         <div class="bar" id="bar"><i id="barFill"></i></div>
         <div class="menu" id="menu" hidden></div>
@@ -678,15 +845,66 @@ table.controls td.none { color: var(--muted); }
     </div>
   </section>
 
+  <section class="style-panel" aria-labelledby="simTitle">
+    <div class="style-head">
+      <div class="eyebrow">Mock-up only · not on the device</div>
+      <h2 id="simTitle">Simulate · mock-up only</h2>
+      <p>These buttons stand in for your calendar and the Mac app, which is built later, so you can watch automatic status take over and hand back. They send what the real calendar and Mac would send; the switches on the Remote still decide what the bar does with it.</p>
+    </div>
+    <div class="sim-grid">
+      <div class="sim-box" role="group" aria-labelledby="simCalTitle">
+        <span class="field-label" id="simCalTitle">Calendar</span>
+        <div class="row">
+          <button class="btn" id="simMeetStart" type="button">Meeting starts now</button>
+          <button class="btn ghost" id="simMeetEnd" type="button">Meeting ends now</button>
+        </div>
+        <label class="check" for="simPrivate"><input type="checkbox" id="simPrivate"> Private (the bar never shows its title)</label>
+        <p class="note-small" style="margin:0">Starts the next sample meeting now, for 30 minutes. Pressed during a meeting, the next one follows straight on.</p>
+      </div>
+      <div class="sim-box" role="group" aria-labelledby="simMacTitle">
+        <span class="field-label" id="simMacTitle">Mac app</span>
+        <div class="setting">
+          <span id="lSimApp">App</span>
+          <div class="seg" id="simApp" role="group" aria-labelledby="lSimApp">
+            <button data-v="Slack" aria-pressed="true">Slack</button><button data-v="Google Meet">Meet</button><button data-v="Zoom">Zoom</button><button data-v="">None</button>
+          </div>
+        </div>
+        <div class="setting">
+          <span id="lSimLink">Link</span>
+          <div class="seg" id="simLink" role="group" aria-labelledby="lSimLink">
+            <button data-v="usb" aria-pressed="true">USB</button><button data-v="wifi">Wi-Fi</button>
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn" id="simCallStart" type="button">Call starts</button>
+          <button class="btn ghost" id="simCallEnd" type="button">Call ends</button>
+          <button class="btn ghost" id="simQuiet" type="button">Mac goes quiet</button>
+        </div>
+      </div>
+    </div>
+    <p class="sim-state" id="simState" aria-live="polite"></p>
+  </section>
+
+  <section class="style-panel" aria-labelledby="dirsTitle">
+    <div class="style-head">
+      <div class="eyebrow">Mock-up only · not on the device</div>
+      <h2 id="dirsTitle">Design directions</h2>
+      <p>Complete looks for the screen, side by side. The large preview in each card follows the simulator live; the small ones show Busy and the Pomodoro. Apply puts a direction on the simulator and in the Style panel below, where you can fine-tune it. Reset to defaults there brings back today's look.</p>
+    </div>
+    <div class="dir-grid" id="dirGrid"></div>
+  </section>
+
   <section class="style-panel" aria-labelledby="styleTitle">
     <div class="style-head">
       <div class="eyebrow">Mock-up only · not on the device</div>
       <h2 id="styleTitle">Style</h2>
-      <p>Try fonts and colors on the screen. Your choices stay in this browser. Copy them when you've found a look you like, and send them to me for the firmware.</p>
+      <p>Try fonts, colors and screen modes on the screen. Your choices stay in this browser. Copy them when you've found a look you like, and send them to me for the firmware.</p>
     </div>
     <div class="style-grid">
       <label class="field"><span class="field-label">Headline font</span><select id="fHead"></select></label>
       <label class="field"><span class="field-label">Text font</span><select id="fText"></select></label>
+      <label class="field"><span class="field-label">Screen mode</span><select id="sMode"></select></label>
+      <label class="field"><span class="field-label">Headline case</span><select id="sCase"><option value="upper">UPPERCASE</option><option value="none">As written</option></select></label>
       <div class="swatches" id="swatches"></div>
       <div class="ripen">
         <div class="ripen-big" id="ripenBig" aria-hidden="true"></div>
@@ -727,7 +945,8 @@ table.controls td.none { color: var(--muted); }
         <div class="setup-msg" id="guestWarn" hidden>This network needs a sign-in web page, which TinyBar can't fill in. Ask IT whether there's a network for devices.</div>
         <label class="field" id="userField" hidden><span class="field-label">Work username</span><input id="wUser" type="text" autocomplete="off"></label>
         <label class="field" id="passField"><span class="field-label">Password</span><input id="wPass" type="password" autocomplete="off"></label>
-        <label class="field"><span class="field-label">Calendar link (optional)</span><input id="wCal" type="url" placeholder="Paste a calendar feed link"></label>
+        <label class="field"><span class="field-label">Secret iCal address (optional)</span><input id="wCal" type="text" inputmode="url" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics"></label>
+        <p class="note-small">Find it on a computer: Google Calendar › Settings › your calendar › Integrate calendar › "Secret address in iCal format". You can also add it later on the Remote.</p>
         <button class="btn" id="wConnect" type="button">Connect</button>
         <p class="note-small">In the mock-up, any password of 8 or more characters works and shorter ones fail, so you can see the error screen.</p>
       </div>
@@ -735,6 +954,10 @@ table.controls td.none { color: var(--muted); }
       <div id="remoteMain" class="setup">
       <div>
         <span class="field-label">Status</span>
+        <div class="auto-banner" id="autoBanner" hidden>
+          <div><b id="abTitle"></b><small id="abSub"></small></div>
+          <button class="btn ghost" id="abBtn" type="button">Set aside</button>
+        </div>
         <div class="status-grid" id="statusGrid"></div>
       </div>
       <div>
@@ -777,6 +1000,13 @@ table.controls td.none { color: var(--muted); }
           <div class="checks">
             <label class="check" for="pAuto"><input type="checkbox" id="pAuto"> Start next phase on its own</label>
             <label class="check" for="pSound"><input type="checkbox" id="pSound" checked> Chime</label>
+            <label class="check" for="pTick"><input type="checkbox" id="pTick"> Ticking during focus</label>
+          </div>
+          <div class="setting">
+            <span id="lTick">Ticking</span>
+            <div class="seg" id="tickSeg" role="group" aria-labelledby="lTick">
+              <button data-v="soft" aria-pressed="true">Soft</button><button data-v="medium">Medium</button>
+            </div>
           </div>
           <div class="setting">
             <span id="lSpeed">Demo speed</span>
@@ -793,6 +1023,66 @@ table.controls td.none { color: var(--muted); }
           <button class="btn" type="submit">Show</button>
         </div>
       </form>
+      <div>
+        <span class="field-label">Automatic status</span>
+        <div class="auto">
+          <p class="note-small">Your calendar and your Mac can set the status for you, separately or together. Whatever you pick yourself wins until the call or meeting ends.</p>
+          <div class="auto-now"><span id="autoNow" aria-live="polite">Showing your status</span><button class="btn ghost" id="autoShowAgain" type="button" hidden>Show again</button></div>
+
+          <div class="auto-card" id="calCard">
+            <div class="auto-head"><b>Calendar</b><span class="badge" id="calBadge">Connected</span></div>
+            <label class="check" for="calOn"><input type="checkbox" id="calOn" checked> Calendar meetings</label>
+            <p class="auto-line" id="calLine"></p>
+            <p class="note-small" id="calOnNote" hidden>Add your calendar's secret address first. This switch turns on when it's saved.</p>
+            <div id="calSaved">
+              <div class="mask" id="calMask"></div>
+              <div class="row" id="calActions">
+                <button class="btn ghost" id="calSync" type="button">Sync now</button>
+                <button class="btn ghost" id="calReplace" type="button">Replace</button>
+                <button class="btn ghost" id="calRemove" type="button">Remove</button>
+              </div>
+              <div class="setup-msg" id="calConfirm" hidden>
+                <p style="margin:0 0 8px">Remove your calendar? The bar stops showing meetings and Next up.</p>
+                <div class="row"><button class="btn" id="calRemoveYes" type="button">Remove calendar</button><button class="btn ghost" id="calRemoveNo" type="button">Keep it</button></div>
+              </div>
+            </div>
+            <div class="setup" id="calForm" hidden>
+              <label class="field" for="calInput"><span class="field-label">Secret address in iCal format</span></label>
+              <div class="msg-row">
+                <input id="calInput" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics">
+                <button class="btn ghost" id="calShow" type="button" aria-pressed="false">Show</button>
+              </div>
+              <details class="help">
+                <summary>Where do I find it?</summary>
+                <ol>
+                  <li>On a computer, open Google Calendar. The phone app doesn't have this setting.</li>
+                  <li>Click the gear, then Settings.</li>
+                  <li>On the left, under Settings for my calendars, click your calendar.</li>
+                  <li>Click Integrate calendar.</li>
+                  <li>Under "Secret address in iCal format", click the copy button, then paste the address here.</li>
+                </ol>
+                <p class="note-small">Google Calendar › Settings › your calendar › Integrate calendar › "Secret address in iCal format". Keep it private: anyone with it can read your calendar. TinyBar only reads it and never shows it again after you save it. If the setting is missing, your work account may have it turned off; ask IT.</p>
+              </details>
+              <div class="row">
+                <button class="btn" id="calSave" type="button">Add</button>
+                <button class="btn ghost" id="calCancel" type="button" hidden>Cancel</button>
+                <button class="btn ghost" id="calSample" type="button">Use a sample address (mock-up only)</button>
+              </div>
+            </div>
+            <div class="setup-msg" id="calMsg" hidden></div>
+            <label class="check" for="calTitles"><input type="checkbox" id="calTitles"> Show meeting titles</label>
+            <p class="note-small" id="calTitlesNote">Off: the bar and this page show meeting times only. Everyone near your desk can read titles, and events marked Private never show one.</p>
+            <p class="note-small">In the mock-up, a secret address ending in 0000/basic.ics gets the "Google didn't recognize that address" error, so you can see it.</p>
+          </div>
+
+          <div class="auto-card" id="macCard">
+            <div class="auto-head"><b>Connect your Mac</b><span class="badge later">Mac app coming later</span></div>
+            <label class="check" for="macOn"><input type="checkbox" id="macOn" checked> Calls from your Mac</label>
+            <p class="auto-line" id="macLine"></p>
+            <p class="note-small">A small menu-bar app will set On a call whenever your Mac's mic or camera is in use, so Slack huddles and Google Meet calls show up even when they aren't on your calendar. It talks to TinyBar over USB when the bar is powered from your Mac, otherwise over Wi-Fi. <a href="#api">How the Mac app talks to TinyBar</a></p>
+          </div>
+        </div>
+      </div>
       </div>
       <div>
         <span class="field-label">Try the hardware</span>
@@ -862,6 +1152,39 @@ table.controls td.none { color: var(--muted); }
       <div class="fig-scroll"><svg viewBox="0 0 990 210" role="img" aria-label="Wi-Fi setup: the QR screen leads to connecting, then connected and your status; a failed connection goes to an error screen and a tap returns to the QR code; Skip goes offline."><defs><marker id="ah-wifi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z"/></marker></defs><rect class="dg-box " x="30" y="30" width="140" height="48" rx="8"/><text class="dg-k" x="100.0" y="48" text-anchor="middle">QR CODE</text><text class="dg-t" x="100.0" y="65" text-anchor="middle">Set up Wi-Fi</text><rect class="dg-box " x="300" y="30" width="140" height="48" rx="8"/><text class="dg-k" x="370.0" y="48" text-anchor="middle">WI-FI</text><text class="dg-t" x="370.0" y="65" text-anchor="middle">Connecting</text><rect class="dg-box " x="570" y="30" width="140" height="48" rx="8"/><text class="dg-k" x="640.0" y="48" text-anchor="middle">CONNECTED</text><text class="dg-t" x="640.0" y="65" text-anchor="middle">tinybar.local</text><rect class="dg-box " x="830" y="30" width="130" height="48" rx="8"/><text class="dg-t" x="895.0" y="58.5" text-anchor="middle">Your status</text><rect class="dg-box " x="30" y="150" width="140" height="48" rx="8"/><text class="dg-k" x="100.0" y="168" text-anchor="middle">NO WI-FI</text><text class="dg-t" x="100.0" y="185" text-anchor="middle">Offline</text><rect class="dg-box " x="300" y="150" width="140" height="48" rx="8"/><text class="dg-k" x="370.0" y="168" text-anchor="middle">ERROR</text><text class="dg-t" x="370.0" y="185" text-anchor="middle">Couldn't connect</text><path class="dg-e" d="M170 54 L298 54" marker-end="url(#ah-wifi)"/><text class="dg-l" x="235" y="46" text-anchor="middle">Connect on phone</text><path class="dg-e" d="M440 54 L568 54" marker-end="url(#ah-wifi)"/><text class="dg-l" x="505" y="46" text-anchor="middle">joins</text><path class="dg-e" d="M710 54 L828 54" marker-end="url(#ah-wifi)"/><text class="dg-l" x="770" y="46" text-anchor="middle">after 3 s or tap</text><path class="dg-e" d="M370 78 L370 148" marker-end="url(#ah-wifi)"/><text class="dg-l" x="378" y="118" text-anchor="start">wrong password or no signal</text><path class="dg-e" d="M300 174 L235 174 L235 68 L172 68" marker-end="url(#ah-wifi)"/><text class="dg-l" x="243" y="128" text-anchor="start">tap</text><path class="dg-e" d="M65 78 L65 148" marker-end="url(#ah-wifi)"/><text class="dg-l" x="57" y="118" text-anchor="end">Skip</text><path class="dg-e" d="M135 150 L135 80" marker-end="url(#ah-wifi)"/><text class="dg-l" x="143" y="118" text-anchor="start">Wi-Fi menu</text></svg></div>
       <figcaption><b>Wi-Fi setup.</b> On first start, or after Set up again, the bar shows a QR code that joins your phone to its own TinyBar-Setup network, where a page lets you pick the office network and enter the password, plus a work username if the network needs one. If it can't connect, the bar says why and a tap returns to the QR code. Skip, in the hold menu, uses the bar without Wi-Fi: statuses and the Pomodoro still work, but the calendar and Remote don't.</figcaption>
     </figure>
+  </section>
+
+  <section class="api" id="api" aria-labelledby="apiTitle">
+    <div class="eyebrow">Planned · the Mac app comes later</div>
+    <h2 id="apiTitle">How the Mac app talks to TinyBar</h2>
+    <p>The bar's side is ready now, so the Mac app can be added without changing the bar. The app sends one thing: whether you're on a call, and optionally the app's name. Over Wi-Fi it uses the bar's local web address; when the bar is powered from the Mac it uses the USB cable instead, which also works without Wi-Fi.</p>
+    <pre class="style-out">POST http://tinybar.local/api/call
+Content-Type: application/json
+Authorization: Bearer &lt;token&gt;        (reserved for pairing, not checked yet)
+
+{"active": true, "app": "Slack"}     →  200 {"ok": true, "showing": "call"}
+{"active": false}                    →  200 {"ok": true, "showing": "own"}
+                                        ("meeting" if a calendar meeting is on)
+When Calls from your Mac is off      →  403 {"ok": false, "error": "calls_off"}
+Not valid JSON, or no "active"       →  400 {"ok": false, "error": "bad_request"}
+
+GET http://tinybar.local/api/status
+→ {"showing": "call", "own": "busy",
+   "call": {"active": true, "app": "Slack", "via": "usb", "since": "2026-10-04T14:12:00-07:00"},
+   "meeting": {"active": false, "next": "15:00"},
+   "sources": {"calendar": true, "mac": true}}
+
+USB serial: one JSON object per line, UTF-8, ending in \n. The bar answers each line with one line.
+→ {"cmd": "hello"}                              ← {"ok": true, "device": "TinyBar", "fw": "1.0.0"}
+→ {"cmd": "call", "active": true, "app": "Slack"}  ← {"ok": true, "showing": "call"}
+→ {"cmd": "status"}                             ← the same object as GET /api/status</pre>
+    <ul>
+      <li><code>active</code> is required. <code>app</code> is optional: the bar shows up to 24 characters of it, and the Mac app can leave it out.</li>
+      <li>The app sends its state on every change and repeats it every 30 seconds. After 90 seconds without a message, the bar ends On a call on its own, so it can't get stuck.</li>
+      <li><code>showing</code> is <code>call</code>, <code>meeting</code>, <code>own</code> (your own status, including a call or meeting you set aside), <code>setup</code> or <code>off</code>.</li>
+      <li>No reply ever contains the calendar's secret address. Meeting titles are left out when Show meeting titles is off.</li>
+      <li>If both links work, the app prefers USB. The bar accepts either, and the latest message wins.</li>
+    </ul>
   </section>
 </div>
 
