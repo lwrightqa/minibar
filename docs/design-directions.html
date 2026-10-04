@@ -1,0 +1,255 @@
+<title>TinyBar Design Directions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@500;600;700&family=Atkinson+Hyperlegible+Next:wght@400;500;600&family=Nunito:wght@700;800&family=Nunito+Sans:wght@600;700&family=Jersey+10&family=Jersey+15&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a catalog of four directions. Each section pairs a short brief (left) with the same three screens rendered at the device's true 640 x 172 proportions (right). */
+:root {
+  --bg: #eef0f3;
+  --surface: #ffffff;
+  --ink: #16181c;
+  --muted: #5b636e;
+  --line: #d6dbe1;
+  --frame: #1c1f24;
+  --f-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --f-body: "Atkinson Hyperlegible Next", "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #101215; --surface: #181b20; --ink: #e9ecef; --muted: #9aa3ad; --line: #2a2f36; --frame: #050608; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #101215; --surface: #181b20; --ink: #e9ecef; --muted: #9aa3ad; --line: #2a2f36; --frame: #050608; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 32px 64px; display: grid; gap: 44px; }
+@media (max-width: 480px) { .wrap { padding-inline: 16px; padding-block: 20px 48px; gap: 36px; } }
+
+header { display: grid; gap: 8px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(38px, 6vw, 58px); line-height: 1; margin: 0; text-wrap: balance; }
+.lede { margin: 0; max-width: 68ch; color: var(--muted); }
+
+.dir { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 28px; align-items: start; padding-top: 28px; border-top: 1px solid var(--line); }
+@media (max-width: 900px) { .dir { grid-template-columns: minmax(0, 1fr); } }
+.brief { display: grid; gap: 12px; min-width: 0; }
+.brief .num { font-family: var(--f-mono); font-size: 12px; color: var(--muted); letter-spacing: .06em; }
+.brief h2 { margin: 0; font-size: 34px; line-height: 1; text-wrap: balance; }
+.brief p { margin: 0; color: var(--muted); }
+.brief dl { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; font-size: 13px; }
+.brief dt { color: var(--muted); }
+.brief dd { margin: 0; }
+.brief ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
+.tradeoff { font-size: 14px; padding: 10px 12px; border-left: 3px solid var(--line); color: var(--muted); }
+.tradeoff b { color: var(--ink); }
+.swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.sw { display: grid; justify-items: center; gap: 2px; font-size: 11px; color: var(--muted); width: 48px; }
+.sw i { width: 30px; height: 30px; border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(127,127,127,.35); }
+.shots { display: grid; gap: 12px; min-width: 0; }
+.shot { display: grid; gap: 4px; }
+.shot figcaption { font-family: var(--f-mono); font-size: 11px; color: var(--muted); letter-spacing: .04em; }
+.bezel { background: var(--frame); border-radius: 14px; padding: 10px; max-width: 680px; }
+.fit { position: relative; width: 100%; aspect-ratio: 640 / 172; max-width: 100%; overflow: hidden; border-radius: 3px; }
+.px { position: absolute; left: 0; top: 0; width: 640px; height: 172px; transform-origin: 0 0; overflow: hidden; }
+.px img { image-rendering: pixelated; display: block; }
+footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 18px; max-width: 80ch; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">TinyBar · Design directions</div>
+    <h1>Four looks for the bar</h1>
+    <p class="lede">The same three moments in each direction: Busy, a Pomodoro focus session, and On a call (the new automatic status from the Mac app). Screens are drawn at the device's real 640 × 172 proportions with each direction's own fonts. Pick one, or mix parts of several. Live versions you can apply to the simulator are coming to the mock-up.</p>
+  </header>
+  <div id="dirs"></div>
+  <footer>Directions by the team's four UX designers. Every font is a Google Font under the SIL Open Font License, and every text color was checked against its background for at least 4.5:1 contrast (WCAG AA). Sample times, durations and app names are examples.</footer>
+</div>
+
+<script>
+(() => {
+  const RIPE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAADgUlEQVR4nO2WzWsbRxjGfzMrybHlRJZNUGoTO1/CqKHQlNA0kFNrSg4tJtAm8bXQnIrJOYUeTNI/wKSnHEpcaOMakkObEoLTWzB1C6kpjuyYNDgOwoqw3LUlBX3sTg672kjW7lquDj00LyzS7M77PM88884HvI7/OESL+apVLNkK+crCMa5MxlqAaE0AABO3DrUK4RnK43G+X5mMbX3XTF5dBPwUxM+e4NexEgATcykME74aSTtgN5f6gHSVFMCZEsO02t/dOsDSj795cmxXOA7wR5f2OS+X/j7I4o0ZBs+fZPHGDACD508SP/TE6fPz16tN8TRTuQ32xc+eAMBUCileQXiM1JdjWweudg0A8GaswPuLGVYWjvHtgxQA129a3z77ZNlJ+PJcmvHoANKW/cU/y748fgLU7d5e9kSKBCW8N7/WQP54ahaAw5++y+ULjzi1/yATcylLRKQfpEAqfxFeRahu9/bSEy1y5OPDaCEN5meYmEvVFJVNAoxOzTIyBWM/pNDshX20s0wyHwJgPDrA6PqychPhpkrd7XuDzs4iiXODBKNdFN86Q8/QBafDeKQfKQTH+3IAzD4LW0L0p06f+4ke8hshHuVDmDbL6HqjE64OaED8w34Cu4KEL/5CGFibBu3+dZS9vjLTSbuv4HRkg6yuMY7liBQCYW7SvqcE+RBS4YjYGq4CAm0Gpqwv/u4PPicLhB5MArB3KEFmOolhL5LuiMHpyAYagvSaQEmBBBLhEklbhFu4bsWmKXl8ZwWjbKCPnSJ77xrZe9ca+u0dSqDZjlZ/M7pESYG5FXMnDgAY0sooZnPw0zeEIh2U9AIVl761IsyKQmBNY0UJDEeBuwWuAsyyQGtTPPw+SfxoJ+b+KCW94HzP/f7ULY30Wv0wVUWzuT2PAm8HlO3AxuomrG56AlRjs1BPXlH17eHuDkb1xjzXGpjPBTGMV8DVx4+88KL+XXX0C7kgSO9cTwf+TId5O5ZvINrdocjolm6z0mhtuewC6TH/4L0Vq+oud3xfDhkQnoR+5HPr7QAMd7Uz8GTBlc/3LKgeRO/E6mugdn4DQlFRwrF8J+SwzYWkunb/eL4bqSwhW4urogRGKei0/9LbnP/DXe1+8HiqqgkF1mECWFuqfQeovQvULTO74GpG7svT7FXaEmLXhV9Vg3PoNIW/07u8fxX+e9zX8T+Ol86jXDVytxGEAAAAAElFTkSuQmCC';
+  const UNRIPE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAADHElEQVR4nO2XzWsTURTFf2+msVVRkZbGr6ZgDa1CYxUkuHDtQt1YkFhcuBDxXyh2ozT4H4jLSkVLF4KYjW5cF0Ft/aLUWAwJadIk1tqWatJ5Ll7mtUlmkpEgLvRAFnnz3jn3nnvfnQT+4y9DNHleNstlNCOenO0lOrm/CYrmAgBg7HGgWQpXSJePfh6d3F+95uVcBVrqRRCMhHlxawmA+9PLANy8lNZkTz74gbQtClBTkrHHAeYmplw1GjWOJg5dPwxA23bJ10wncxNTBCNhTR6MhNnrz1IqKspXdz970vHSuTX2BSNhx40umdbVaOhANHYCgO5giSu9b0nO9upy2A149WICAMOUDA8uMPp0ACEEUkpGLrypq1MvAPkwHtJfhnpmasS32n/7WpwzXe2Mv/tWEQTAzfOvXbXcmlCL93X2U7J+ADPcn17eIpwmGjtRznKKyxMQnfRhmIpg36EfLCRbEUIw+nSAkQtvpFMQTlHJ8dl+BHDsgAqiu3WI9m3n9IY7z46r9SOqPeY/mhg+i+Gz03rPg9l+1tdKZFJtSKn2OZXD9Rra4qEd9wDI/3xOsvgIAFO0kPg+h1lOtyNskFvO6MAULNp2KHq7FE6oOwe2Yo95mqKVJ7PxHIDAriCpVXXVJBYdu/10nASfuZ3k4ry6OpbEf3CdTKrNldd1FL9PKjtn1m6QK8bIFWOAyt7GwZ1qNhjCRAiBEILk4rzXnIAGDpjGNjasnzrr6gBs8QpYqt7CEJVzWzpPY+cAyiQziZeEAqdqHtvWAwgMXeOFfFoJW7Jmern1gbsDhgBLklrZtNRuumpIKVlZ/w5bhS2JMDZF+46XnGWcFr98atEu5As5Ckt58oVczT5RPp5bzrC6slIbmCXrNiC4OCCEIBH3EegpaiJhCLK5DJ0dfrKFLKK87gVu9VdJuJyxp1z3EWfrvCAR9wHK/sGut456btdQlOe3JvkT4tDgGtqdm4j7PLth7xXCvfEqNBo8l4B+6dQbqfpAud5HBzbszOvqeP0prQOxRez3PWw6VfXS8cT/u7/lvbV98/83/uMfwi8XOVSvwQBOXQAAAABJRU5ErkJggg==';
+
+  const wifi = c => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5.5 12.5a10 10 0 0 1 13 0"/><path d="M9 16a5 5 0 0 1 6 0"/><circle cx="12" cy="19.5" r="1" fill="${c}"/></svg>`;
+
+  // The three sample moments, shared by every direction.
+  const MOMENTS = {
+    busy: { kicker: 'Status', word: 'Busy', sub: 'Heads down, message me instead', label: 'Busy for', value: '45m', foot: 'since 10:15 AM' },
+    focus: { kicker: 'Pomodoro · focus 2 of 4', word: '18:42', sub: "Please don't interrupt · break at 2:55 PM", label: 'Today', tomatoes: true, foot: '1 done · 31m focused', bar: .25 },
+    call: { kicker: 'From your Mac · Slack', word: 'On a call', sub: 'Message me instead', label: 'On the call', value: '12m', foot: 'since 2:04 PM' },
+  };
+
+  const DIRS = [
+    {
+      id: 'signal', name: 'Bold Signal',
+      tagline: 'Full-bleed status color with big white road-sign capitals, and a calmer, darker info column.',
+      fonts: 'Barlow Condensed 700 headlines, Barlow text',
+      changes: [
+        'Barlow Condensed, designed after highway signs, replaces Big Shoulders Display and stays legible from farther away.',
+        'Colors are darkened slightly so white text passes 4.5:1 on every status (Available, Focus and Short break fall short today).',
+        'On a call gets cobalt blue; Meeting moves to purple and Long break to petrol so every status stays distinct.',
+      ],
+      tradeoff: 'The most visible from across the room, and the brightest of the four: a lit color panel all day.',
+      colors: { available: '#0F7F3C', busy: '#D01B3A', meeting: '#8B3AE5', focus: '#B0590D', short: '#0B7A70', long: '#12708F', away: '#545C65', message: '#C0198C', call: '#1450B4' },
+      side: { busy: '#9E152C', focus: '#86440A', call: '#0F3D89' },
+      track: { focus: '#723A08' },
+      render(m, id) {
+        const c = this.colors[id], side = this.side[id];
+        const size = id === 'call' ? 100 : 112;
+        return frame(c, `
+          <div style="position:absolute;left:0;top:0;width:448px;height:172px;padding:0 20px 0 24px;color:#fff">
+            <div style="position:absolute;left:24px;top:16px;font:700 15px/1 Barlow,sans-serif;letter-spacing:1.5px;text-transform:uppercase">${m.kicker}</div>
+            <div style="position:absolute;left:24px;top:${id === 'call' ? 46 : 40}px;font:700 ${size}px/.82 'Barlow Condensed',sans-serif;text-transform:uppercase;white-space:nowrap;font-variant-numeric:tabular-nums">${m.word}</div>
+            <div style="position:absolute;left:24px;top:136px;font:500 19px/1 Barlow,sans-serif;white-space:nowrap">${m.sub}</div>
+          </div>
+          <div style="position:absolute;left:448px;top:0;width:192px;height:172px;background:${side};color:#fff;padding:14px 16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;font:600 15px/1 Barlow,sans-serif">2:41 PM ${wifi('#fff')}</div>
+            <div style="position:absolute;left:16px;top:80px;font:700 12px/1 Barlow,sans-serif;letter-spacing:1.2px;text-transform:uppercase;color:#DFE5EA">${m.label}</div>
+            ${m.tomatoes ? tomatoes(96, 16, 8, .35) : `<div style="position:absolute;left:16px;top:94px;font:700 46px/1 'Barlow Condensed',sans-serif">${m.value}</div>`}
+            <div style="position:absolute;left:16px;top:140px;font:500 14px/1 Barlow,sans-serif;color:#DFE5EA;white-space:nowrap">${m.foot}</div>
+          </div>
+          ${m.bar ? `<div style="position:absolute;left:0;bottom:0;width:448px;height:6px;background:${this.track[id]}"><i style="display:block;height:100%;width:${m.bar * 100}%;background:#fff"></i></div>` : ''}`);
+      },
+    },
+    {
+      id: 'lowglare', name: 'Low Glare',
+      tagline: 'A warm near-black screen where the status lives in a colored headline, a thin edge bar and a faint tint.',
+      fonts: 'Barlow Condensed 500 headlines, Atkinson Hyperlegible Next text',
+      changes: [
+        'A dark field gives off a fraction of the light, so it stays calm for neighbors and doesn’t reflect on nearby monitors.',
+        'Sentence case and warm off-white text instead of shouting caps and pure white.',
+        'The white alarm flash becomes a blinking frame in the status color, and a paused timer dims instead of blinking.',
+      ],
+      tradeoff: 'Gentlest on the room, but the status is a little harder to read from far away than a full color field.',
+      colors: { available: '#5ccf72', busy: '#ff5f57', meeting: '#a588ff', focus: '#ff9945', short: '#36c6c0', long: '#6cbcfa', away: '#b4ab9e', message: '#f27ab8', call: '#f2d04f' },
+      side: { busy: '#241716', focus: '#241c14', call: '#232015' },
+      track: { focus: '#452f1c' },
+      render(m, id) {
+        const c = this.colors[id], side = this.side[id];
+        const size = id === 'focus' ? 109 : 93;
+        return frame('#111110', `
+          <div style="position:absolute;left:0;top:0;width:6px;height:172px;background:${c}"></div>
+          <div style="position:absolute;left:26px;top:0;width:408px;height:172px">
+            <div style="position:absolute;left:0;top:16px;font:600 15px/1 'Barlow Condensed',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#9a948a">${m.kicker}</div>
+            <div style="position:absolute;left:-2px;top:${id === 'focus' ? 24 : 30}px;font:500 ${size}px/1 'Barlow Condensed',sans-serif;color:${c};white-space:nowrap;font-variant-numeric:tabular-nums">${m.word}</div>
+            <div style="position:absolute;left:0;top:142px;font:500 18px/1 'Atkinson Hyperlegible Next',sans-serif;color:#e2ddd3;white-space:nowrap">${m.sub}</div>
+          </div>
+          <div style="position:absolute;left:454px;top:0;width:186px;height:172px;background:${side};padding:14px 16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;font:400 12px/1 'JetBrains Mono',monospace;color:#9a948a">2:41 PM ${wifi('#9a948a')}</div>
+            <div style="position:absolute;left:16px;top:80px;font:600 13px/1 'Barlow Condensed',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#9a948a">${m.label}</div>
+            ${m.tomatoes ? tomatoes(96, 16, 6, .5) : `<div style="position:absolute;left:16px;top:96px;font:500 41px/1 'Barlow Condensed',sans-serif;color:#e2ddd3">${m.value}</div>`}
+            <div style="position:absolute;left:16px;top:142px;font:400 13px/1 'Atkinson Hyperlegible Next',sans-serif;color:#9a948a;white-space:nowrap">${m.foot}</div>
+          </div>
+          ${m.bar ? `<div style="position:absolute;left:6px;bottom:0;width:634px;height:4px;background:${this.track[id]}"><i style="display:block;height:100%;width:${m.bar * 100}%;background:${c}"></i></div>` : ''}`);
+      },
+    },
+    {
+      id: 'softlight', name: 'Soft Light',
+      tagline: 'Paper-pale tints of each status color, dark ink type in rounded Nunito, and a slim colored edge, like a well-made notebook.',
+      fonts: 'Nunito 800 headlines, Nunito Sans text',
+      changes: [
+        'The whole screen takes a pale tint of the status, the info column a stronger one, and an 8 px edge the full color.',
+        'Dark ink on pale tints gives the strongest text contrast of the four (13:1 or better).',
+        'Busy becomes a soft salmon rather than a stop-sign red: a friendly "is now a good time?" instead of a warning.',
+      ],
+      tradeoff: 'Friendly and very readable up close, but pale screens send more light into the room than dark ones, and statuses are less urgent at a glance.',
+      colors: { available: '#0b8440', busy: '#d1313f', meeting: '#6f57e0', focus: '#b45a06', short: '#08807c', long: '#0a77b3', away: '#776f63', message: '#b23fb0', call: '#8a6f00' },
+      tint: { busy: '#ffdddb', focus: '#ffe6d3', call: '#ffeeba' },
+      side: { busy: '#feb5b1', focus: '#fec89c', call: '#ffdb69' },
+      render(m, id) {
+        const c = this.colors[id], tint = this.tint[id], side = this.side[id];
+        const size = id === 'focus' ? 92 : 76;
+        const dot = id === 'call' ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${c};margin-right:7px;vertical-align:1px"></span>` : '';
+        return frame(tint, `
+          <div style="position:absolute;left:0;top:0;width:8px;height:172px;background:${c}"></div>
+          <div style="position:absolute;left:28px;top:0;width:410px;height:172px;color:#1c1f24">
+            <div style="position:absolute;left:0;top:15px;font:700 17px/1.1 'Nunito Sans',sans-serif;color:#454b54;white-space:nowrap">${dot}${m.kicker}</div>
+            <div style="position:absolute;left:-2px;top:${id === 'focus' ? 34 : 44}px;font:800 ${size}px/1 Nunito,sans-serif;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums">${m.word}</div>
+            <div style="position:absolute;left:0;top:136px;font:600 19px/1.1 'Nunito Sans',sans-serif;white-space:nowrap">${m.sub}</div>
+          </div>
+          <div style="position:absolute;left:454px;top:0;width:186px;height:172px;background:${side};padding:12px 12px 16px 14px;color:#1c1f24">
+            <div style="display:flex;justify-content:space-between;align-items:center;font:700 13px/1 'Nunito Sans',sans-serif;color:#454b54">2:41 PM ${wifi('#454b54')}</div>
+            <div style="position:absolute;left:14px;top:76px;font:700 15px/1 'Nunito Sans',sans-serif;color:#454b54">${m.label}</div>
+            ${m.tomatoes ? tomatoes(96, 14, 6, .35) : `<div style="position:absolute;left:14px;top:96px;font:800 38px/1 Nunito,sans-serif">${m.value}</div>`}
+            <div style="position:absolute;left:14px;top:144px;font:600 13px/1 'Nunito Sans',sans-serif;color:#454b54;white-space:nowrap">${m.foot}</div>
+          </div>
+          ${m.bar ? `<div style="position:absolute;left:8px;bottom:0;width:632px;height:6px;background:${side}"><i style="display:block;height:100%;width:${m.bar * 100}%;background:${c}"></i></div>` : ''}`);
+      },
+    },
+    {
+      id: 'pixel', name: 'Pixel Arcade',
+      tagline: 'A retro game screen: chunky Jersey pixel lettering in the status color on near-black, with a solid status-colored side panel where the tomatoes sit in inventory slots.',
+      fonts: 'Jersey 15 headlines, Jersey 10 small text',
+      changes: [
+        'True bitmap-grid fonts that match the pixel-art tomatoes and stay perfectly crisp at whole-number sizes on the device.',
+        'Mostly near-black for low glare, with the status carried by a solid color block on the right and a huge colored word.',
+        'Square corners everywhere, a segmented progress bar, and tomatoes in square slots.',
+      ],
+      tradeoff: 'The most playful and the most distinctive. Pixel type suits short words and numbers, and is less refined for long messages.',
+      colors: { available: '#5cc070', busy: '#e8545e', meeting: '#9479e2', focus: '#f08a45', short: '#5fd3cf', long: '#68b2f2', away: '#a59f93', message: '#ef86b6', call: '#f2c45a' },
+      render(m, id) {
+        const c = this.colors[id];
+        const size = id === 'call' ? 108 : 135;
+        const lh = .6;
+        const seg = m.bar ? Array.from({ length: 28 }, (_, i) => `<i style="display:block;width:14px;height:6px;background:${i < Math.round(28 * m.bar) ? c : '#2b2838'}"></i>`).join('') : '';
+        const slots = m.tomatoes ? `<div style="position:absolute;left:14px;top:96px;display:flex;gap:4px">${[['ripe', 1], ['unripe', 1], ['ripe', .35], ['ripe', .35]].map(([k, o]) =>
+          `<span style="width:36px;height:36px;background:#16141f;display:grid;place-items:center"><img src="${k === 'ripe' ? RIPE : UNRIPE}" width="32" height="32" alt="" style="opacity:${o}"></span>`).join('')}</div>` : '';
+        return frame('#16141f', `
+          <div style="position:absolute;left:0;top:0;width:454px;height:172px;padding:16px 14px 16px 20px">
+            <div style="font:400 18.67px/1 'Jersey 10',monospace;letter-spacing:1px;text-transform:uppercase;color:#b5ad98;white-space:nowrap">${m.kicker}</div>
+            <div style="margin-top:4px;font:400 ${size}px/${lh} 'Jersey 15',monospace;text-transform:uppercase;color:${c};white-space:nowrap;font-variant-numeric:tabular-nums">${m.word}</div>
+            <div style="position:absolute;left:20px;top:134px;font:400 27px/.75 'Jersey 15',monospace;color:#f3ead3;white-space:nowrap">${m.sub}</div>
+            ${m.bar ? `<div style="position:absolute;left:0;bottom:0;display:flex;gap:2px;width:448px">${seg}</div>` : ''}
+          </div>
+          <div style="position:absolute;left:454px;top:0;width:186px;height:172px;background:${c};color:#16141f;padding:12px 14px 14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;font:400 18.67px/1 'Jersey 10',monospace">2:41 PM ${wifi('#16141f')}</div>
+            <div style="position:absolute;left:14px;top:72px;font:400 18.67px/1 'Jersey 10',monospace;letter-spacing:1px;text-transform:uppercase">${m.label}</div>
+            ${m.tomatoes ? slots : `<div style="position:absolute;left:14px;top:92px;font:400 54px/.75 'Jersey 15',monospace">${m.value}</div>`}
+            <div style="position:absolute;left:14px;top:144px;font:400 18.67px/1 'Jersey 10',monospace;white-space:nowrap">${m.foot}</div>
+          </div>`);
+      },
+    },
+  ];
+
+  function frame(bg, inner) {
+    return `<div class="px" style="background:${bg}">${inner}</div>`;
+  }
+  // Four session tomatoes: one done, one in progress (still green), two to come.
+  function tomatoes(top, left, gap, ghost) {
+    const t = [[RIPE, 1], [UNRIPE, 1], [RIPE, ghost], [RIPE, ghost]];
+    return `<div style="position:absolute;left:${left}px;top:${top}px;display:flex;gap:${gap}px">${t.map(([src, o]) => `<img src="${src}" width="32" height="32" alt="" style="opacity:${o}">`).join('')}</div>`;
+  }
+
+  const LABELS = { busy: 'Busy', focus: 'Pomodoro · focus', call: 'On a call · from the Mac app' };
+  const SW = [['available', 'Avail.'], ['busy', 'Busy'], ['meeting', 'Meeting'], ['focus', 'Focus'], ['short', 'Short'], ['long', 'Long'], ['away', 'Away'], ['message', 'Msg.'], ['call', 'Call']];
+
+  document.getElementById('dirs').innerHTML = DIRS.map((d, i) => `
+    <section class="dir" aria-labelledby="h-${d.id}">
+      <div class="brief">
+        <div class="num">Direction ${'ABCD'[i]}</div>
+        <h2 id="h-${d.id}">${d.name}</h2>
+        <p>${d.tagline}</p>
+        <dl><dt>Type</dt><dd>${d.fonts}</dd></dl>
+        <div class="swatches" role="list" aria-label="Status colors">${SW.map(([k, l]) => `<span class="sw" role="listitem"><i style="background:${d.colors[k]}" title="${d.colors[k]}"></i>${l}</span>`).join('')}</div>
+        <ul>${d.changes.map(c => `<li>${c}</li>`).join('')}</ul>
+        <div class="tradeoff"><b>Trade-off.</b> ${d.tradeoff}</div>
+      </div>
+      <div class="shots">
+        ${['busy', 'focus', 'call'].map(id => `
+          <figure class="shot" style="margin:0">
+            <div class="bezel"><div class="fit" role="img" aria-label="${d.name}: ${LABELS[id]} screen">${d.render(MOMENTS[id], id)}</div></div>
+            <figcaption>${LABELS[id]}</figcaption>
+          </figure>`).join('')}
+      </div>
+    </section>`).join('');
+
+  // Scale each 640 x 172 screen to its box.
+  const fit = () => document.querySelectorAll('.fit').forEach(f => {
+    const px = f.firstElementChild;
+    if (px) px.style.transform = `scale(${f.clientWidth / 640})`;
+  });
+  fit();
+  if ('ResizeObserver' in window) new ResizeObserver(fit).observe(document.body);
+  else addEventListener('resize', fit);
+})();
+</script>
