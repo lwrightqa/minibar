@@ -916,11 +916,13 @@ table.controls td.none { color: var(--muted); }
 .scr[data-layout="pixel"] .tomatoes { margin-top: calc(.625cqw - var(--mb-label, .15625cqw)); gap: 1.25cqw; }
 .scr[data-layout="pixel"] .tomatoes .tomato { flex: none; width: 5cqw; height: 5cqw; }
 .scr[data-layout="pixel"] .ctx-foot.after-tomatoes { margin-top: 1.875cqw; }
-/* Toasts sit 16 px above the bottom edge, centered on a whole pixel (round() where the browser has it). While the
-   info column shows, a toast centers on the main column (x 230) and is at most its 408 px, so it never covers the
-   column; over a menu or a full-width screen it centers on the screen. */
-.scr[data-layout="pixel"] .toast { bottom: 2.5cqw; padding: .9375cqw 1.875cqw; transform: translateX(round(-50%, 1px)); }
-.device.flipped .scr[data-layout="pixel"] .toast { bottom: auto; top: 2.5cqw; transform: translateX(round(-50%, 1px)) rotate(180deg); }
+/* Toasts sit 8 px above the bottom edge (y 135 to 164, the text's baseline at 155), centered on a whole pixel
+   (round() where the browser has it): clear of the progress bar, and of the descenders of a 102 px headline, which
+   reach y 131 (the spec's 16 px would cover the tail of the y in Busy). While the info column shows, a toast centers
+   on the main column (x 230) and is at most its 408 px, so it never covers the column; over a menu or a full-width
+   screen it centers on the screen. */
+.scr[data-layout="pixel"] .toast { bottom: 1.25cqw; padding: .9375cqw 1.875cqw; transform: translateX(round(-50%, 1px)); }
+.device.flipped .scr[data-layout="pixel"] .toast { bottom: auto; top: 1.25cqw; transform: translateX(round(-50%, 1px)) rotate(180deg); }
 .scr[data-layout="pixel"]:has(> .lcd > .side):has(> .menu[hidden]) > .toast { left: 35.9375%; max-width: 63.75cqw; }
 .device.flipped .scr[data-layout="pixel"]:has(> .lcd > .side):has(> .menu[hidden]) > .toast { left: 64.0625%; }
 /* Menu tiles: 20 px around, 10 px between and 10 px inside. LVGL sizes a label by its advance, so "QR code" and
