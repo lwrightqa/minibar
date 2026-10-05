@@ -26,6 +26,37 @@ The running record of what has been decided, and why. The product manager keeps 
 - A dark screen wakes on the first tap or button press. A ringing alarm is answered by any tap, hold, swipe, button or flip.
 - **Proposed (2026-10-04):** on an automatic screen (On a call, or In a meeting from the calendar), a tap or BOOT goes back to your own status. See Automatic status.
 
+## Help and the controls tour (Proposed 2026-10-05)
+
+- **The request (2026-10-05):** the user wrote: "We may want a screen that tells the user about the controls and how to use it." The bar has seven controls (tap, swipe, hold, flip, BOOT, a PWR press and a 3-second PWR hold), and some of them do different things on different screens. The hint line that explains them is on the mock-up page, not on the bar. The help is for the person who has just set up a MiniBar and for anyone in the office who walks up to one.
+- **Mock-up first.** It's built in `docs/mockup.html` and checked against the round's acceptance criteria before the firmware follows. New copy says **MiniBar** (see Product). Until the rename pass, the rest of the mock-up still says TinyBar.
+- **Proposed (2026-10-05, waiting for the user's OK): the coordinator's plan, refined by the product manager.**
+  1. **A short tour on the bar.** It has one card for each control: Tap, Swipe, BOOT, Hold, Flip and PWR, in that order, followed by a More help card. Each card has a small drawing of the gesture (the drawings follow the ones in `docs/controls-guide.html`) and one line saying what the control does.
+     - **Learn by doing, where it's safe.** On the Tap, Swipe and BOOT cards, the first time you use that control the card shows what it would have done (for example "Busy → In a meeting"). It changes nothing real: not the status, the timer, a call or meeting you've set aside, or the alarm.
+     - **Hold, flip and PWR do their real jobs, and that ends the tour.** A hold opens the menu for the screen underneath, which is how you leave the tour (the coordinator's "a hold leaves it"). A flip ends the tour and then does its three things, as the decided Flip rule requires (see the conflict below). A PWR press ends the tour and turns the screen dark. Holding PWR for 3 seconds powers the bar off; let go early and the tour carries on. The Hold, Flip and PWR cards explain their control and say that trying it ends the tour. That's why they come after the practice cards.
+     - **Moving through it:** a tap, BOOT or a swipe left goes to the next card, and a swipe right goes back. On the last card, a tap, BOOT or a swipe left finishes the tour.
+     - **When it shows:** by itself only once for each bar, the first time setup ends, whether the Wi-Fi was set up (after Connected) or skipped. After that, only from the **Help** tile.
+     - **Never a trap:** after 30 seconds without a touch or a button press the tour ends by itself. Every way out returns to the screen underneath. The tour never fills the screen with a status color, so nobody reads a card as a status. It makes no sound.
+  2. **A help page served by the bar** at `minibar.local/help`. It fits a phone screen and covers every control and the screens where they differ. It's linked from the Remote (including its pairing prompt) and from a QR code on the tour's last card. It works without internet: nothing comes from outside the bar, and it has no outside links. It's open without pairing because it controls nothing and shows nothing private.
+- **Proposed details (product manager, 2026-10-05):**
+  - **The Help tile** goes in the quick menu, as a sixth tile before Done, and in the timer menu's Settings, before Back. It's not in Setup options. *Measured 2026-10-05:* six equal tiles are 91.7 px wide. In Bold Signal the "CALENDAR" label is then clipped; Low Glare Pixel fits. The UX designer fits the row, for example with less padding or a narrower Done tile.
+  - **Interruptions are handled the way an open menu handles them.**
+    - A call or calendar meeting that starts during the tour waits underneath: the Pomodoro pauses and there's no sound, as decided. It shows when the tour ends.
+    - A Pomodoro phase that ends (the alarm, or an auto-start), a status or Pomodoro change made on the Remote, and a pairing code each end the tour and show at once.
+    - Wi-Fi dropping leaves the tour up. The last card swaps its QR code for "reconnecting".
+    - The first-run tour waits while something else holds the screen: a menu, an alarm, a pairing code, the power screens or a dark screen.
+    - On the first run it shows even if a call or meeting is on, because the person who just set the bar up is standing at it. The call or meeting shows when the tour ends.
+  - **"Tour seen"** is saved in flash as soon as the first-run tour appears, so an interrupted tour doesn't come back by itself; the Help tile is always there instead. It survives restarts, power off, Set up again and Forget all. A bar that's already set up when it first gets firmware with the tour (the user's bar) shows the tour once at its next start-up. In the mock-up, which starts set up and paired, the tour counts as seen; the "First-time Wi-Fi setup" demo resets it so the first-run tour can be tried.
+  - **The last card's QR code** opens the help page at the bar's IP address, which works on phones that can't look up `.local` names. The line under it shows the bar's real address (`minibar.local/help`, or `minibar-2.local/help` after a name clash). Offline (Wi-Fi skipped) there's no QR code; the card says the guide needs Wi-Fi and how to set it up. The setup network isn't opened just for help, as decided under Wi-Fi.
+  - **The Remote and the API:** while the tour is up, the Remote says the bar is showing its controls tour, and still shows the status underneath. `GET /api/v1/status` keeps reporting the real status, with a new screen value for the tour. The lead developer adds this to `docs/api.md`.
+  - **A Wi-Fi drop in the mock-up:** the Simulate panel gets "Wi-Fi drops" and "Wi-Fi is back" (mock-up only), using the firmware's proposed copy for a dropped Wi-Fi (see Firmware). Until now this case wasn't simulated.
+- **Conflict, flagged (2026-10-05): learning the flip by doing.** The coordinator's plan practices every control "without changing the real status or timer". But the decided Flip rule says a flip always turns the layout, silences any alarm and starts whatever the Pomodoro is waiting for, and is "never swallowed anywhere". A practice flip would break that rule. **Proposed:** keep the rule: in the tour a flip ends the tour and then does all three things, as it does on a pairing code. Making the flip a practice only, so that during the tour it just turns the layout, would be an exception that only the user can approve.
+- **Open, for the user (2026-10-05): where BOOT and PWR are.** The tour's drawings have to point at the real buttons. This round's brief says the user keeps BOOT and PWR **on top**. `docs/controls-guide.html` draws them on the **right edge** (BOOT the upper button, PWR the lower), moving to the left when the bar is turned over. Nothing about it is recorded here yet.
+- **Follow-ups (open):** the UX designer specifies the cards, their copy and drawings, the Help tile and the phone page in both looks. The mock-up builds them, along with its notes, controls table (a tour column) and menus diagram. Then:
+  - **Firmware:** the tour, the "tour seen" flag in NVS, and `web/help.html` under a size budget (**Proposed:** 100 KB or less, compressed).
+  - **`docs/api.md`:** the tour's screen value.
+  - **The controls guide:** mention the tour and the Help tile.
+
 ## Pomodoro
 
 - 25-minute focus, 5-minute short break, 15-minute long break after every 4th session. All adjustable from the Remote.
@@ -565,3 +596,9 @@ Where the mock-up has no answer, the firmware picked one. The ones marked **Prop
 - On USB the board is always powered; "power off" on USB means deep sleep woken by PWR.
 - Battery connector MX1.25, **pin 2 positive**. Charger ETA6098 at 1.2 A. The board has battery protection and reverse-polarity protection.
 - Flashing: merged images go at **0x0**; use **115200** baud (a faster write once left the screen showing noise).
+- **Verified on the user's bar (2026-10-05, firmware 1.0.0 and 1.0.1):**
+  - It powers on, holds its own power, and draws the screen. The Wi-Fi setup QR code shows on first start.
+  - Wi-Fi setup works from an Android phone with 1.0.1 (see Automatic status, the setup address).
+  - Sound works: the focus ticking is audible through the ES8311 and the amplifier.
+  - Orientation: the user stands the bar with the **buttons on top**. The motion sensor's steady reading is right (the picture rights itself), but the first frame at power-on came up upside down. Fixed in 1.0.2, not yet tested on the bar.
+  - Not yet reported: touch and BOOT, PWR off and on, the chime at a phase's end, the clock from the internet, the Remote and pairing.
