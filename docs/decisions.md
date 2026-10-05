@@ -25,6 +25,7 @@ The running record of what has been decided, and why. The product manager keeps 
 - **No dead ends:** every control does something in every state, every screen has a way back, menus have a Done tile and close after 8 s, and every action shows a short confirmation.
 - A dark screen wakes on the first tap or button press. A ringing alarm is answered by any tap, hold, swipe, button or flip.
 - **Proposed (2026-10-04):** on an automatic screen (On a call, or In a meeting from the calendar), a tap or BOOT goes back to your own status. See Automatic status.
+- **Proposed (2026-10-05):** since the screen has no haptics, a short, quiet click confirms a tap, swipe or hold that the bar acts on. It never plays during a call or meeting. See Sound, Touch click.
 
 ## Help and the controls tour (Proposed 2026-10-05)
 
@@ -68,6 +69,48 @@ The running record of what has been decided, and why. The product manager keeps 
   - **Proposed (2026-10-04), waiting for the user's OK:** "when the bar is off" also covers a **dark screen** (one PWR press), not only powered off, because a dark screen often means you've stepped away. The mock-up is built this way. Both volumes stay below the alarm chime. *(Changed 2026-10-05 after the first test on the real bar: Soft was too quiet to hear from a reasonable distance, and so was Medium. A 25 ms tick sounds far quieter than its peak level suggests, so both now peak near the chime's peak: Soft about 3 dB below it (-16 dBFS) and Medium about 3 dB above it (-10 dBFS). Before, they peaked 18 and 10 dB below the chime. Still to be judged on the bar.)*
 - Stop ends the run, keeps today's tomatoes, and returns to the previous status.
 - **Tomatoes:** PixelLab pixel-art sprites with **no faces** (`assets/tomato_ripe.png`, `assets/tomato_unripe.png`, pixel-aligned). Finished sessions are red, upcoming ones faded red, and the current one **ripens like a real tomato**: from the blossom end up toward the stem, through yellow and orange to red.
+
+## Sound
+
+The bar has a small speaker, driven by the ES8311 codec, and no vibration motor. Its other sounds are decided elsewhere: the Pomodoro chime and the optional focus ticking under Pomodoro, and "no sound while a call is on or a calendar meeting is in progress" under Automatic status. "Tick" means the focus tick. "Click" means the touch click below.
+
+### Touch click (Proposed 2026-10-05, waiting for the user's OK)
+
+- **The request (2026-10-05):** the user wrote: "This doesn't have haptics to confirm a tap went through. Can we use a 'click' sound?" The screen can't buzz under the finger, so a tap the bar took feels the same as one it missed. Today the only confirmation is the screen changing, which a finger or a side-on view can hide. A hold gives no sign that it has reached 550 ms.
+- **Proposed (2026-10-05): the coordinator's plan, refined by the product manager.** The acceptance criteria for the mock-up and the firmware go with this round's brief.
+  1. **What clicks:** a tap, swipe or hold that the bar acts on, one click per touch at most. A tap or swipe clicks when the finger lifts. A hold clicks at 550 ms, when its menu opens, while the finger is still down. This covers menu tiles, a tap off the tiles that closes a menu, the Wi-Fi setup screens and the touch that cancels a pairing code.
+  2. **What never clicks:**
+     - BOOT and PWR, which are physical buttons that click on their own.
+     - A flip.
+     - Touches the bar ignores: a swipe on an open menu, or a touch that began before a pairing code appeared.
+     - The finger going down.
+     - Anything not done by touching the bar: the Remote, the API, the Mac app, the calendar, the timer.
+  3. **When it's silent:**
+     - While a call is on or a calendar meeting is in progress, even one you set aside, because your mic may be live. This is the same rule as the chime and ticking.
+     - On a dark screen. The touch that wakes it doesn't click, since the screen lighting up is the confirmation.
+     - While starting up, powering off and powered off.
+     - A touch made while the bar was silent never clicks later.
+  4. **The sound:** short and dry, for the person at the bar rather than the room. It's no louder than Soft ticking and clearly different from the focus tick, so a tap made during ticking still stands out. The UX designer specifies it, and it's tuned on the real bar.
+  5. **Latency:** under about 30 ms from the finger lifting (or from the hold reaching 550 ms) to the sound.
+  6. **A setting, Touch click,** on or off, on the bar and on the Remote. It's kept like every other setting. In the API it's `sound.touch_click` (`docs/api.md` 10.4, Proposed).
+- **Proposed defaults for the open choices (product manager, 2026-10-05):**
+  - **On by default.** The user asked for it, it only sounds when someone touches the bar, and it's silent during calls and meetings. The coordinator's "quiet by default" is read as a quiet level with the click on. *The other choice:* off by default, like ticking.
+  - **On the bar, a Click tile in the Display menu** (the theme round's Proposed menu, which would read Light, Theme, Click, Back). Like Theme, it's reached from every screen except the Pomodoro screen, where holding opens the timer menu. *The other choice:* next to Ticking in the timer menu's Settings, which keeps the sound settings together but only works from the Pomodoro screen. If the Display menu isn't approved, the click needs another home.
+  - **On the Remote, a Touch click switch in the Display section,** next to Theme. *The other choice:* with Chime and Ticking in the Pomodoro section.
+  - **On or off only,** at one level tuned on the bar. If a volume choice is ever wanted, it would be a separate field, as `pomodoro.tick_volume` is.
+  - **The hold gets its own short sound** from the UX designer, so you can hear the difference between a hold that has opened the menu and a tap. *The other choice:* the same click for both.
+  - **A touch that answers a ringing alarm clicks** like that touch would at any other time. During a call or meeting it's silent anyway. *The other choice:* no click, since the alarm stopping is the confirmation.
+  - **The tap that turns Touch click on clicks**, as a sample of the sound. The tap that turns it off doesn't. The toasts are "Touch click on" and "Touch click off". During a call or meeting the toast says the click is silent for now. A change made on the Remote makes no sound.
+  - **Whether a touch clicks** depends on the state when the gesture is recognized, before its action runs. So the Restart and Power off tiles click, and the waking touch doesn't.
+- **Conflict with a proposal, flagged (2026-10-05): the controls tour "makes no sound"** (see Help, Proposed). **Proposed:** the tour adds no sounds of its own, but the click still confirms touches during it, because the tour teaches the controls as they really behave. Otherwise the tour would be the one place where a tap doesn't click. Not a conflict with any decision.
+- **Known limit:** the bar only knows about calls that the Mac app reports, after its 3-second start delay, and about meetings in the calendar. A phone call, a call on another computer, or the first seconds of a call can still pick up a click. For those, turn Touch click off.
+- **Firmware risk (for the lead developer):** with the amplifier gate on, the amplifier switches off after 1.5 s of silence and needs 40 ms to come back on (`BRD_AMP_LEAD_MS`). That delay alone is over the 30 ms target, and the touch read period and the audio task's 10 ms chunks add to it. Measure it on the bar.
+- **Follow-ups (open):**
+  - **UX designer:** the tap and hold sounds and their levels, plus the copy for the tile, the Remote switch and the toasts.
+  - **Mock-up:** the click through Web Audio, the tile, the Remote switch, and updates to the notes, the controls table, the menus diagram, the hint line and the API section. Then republish the Artifact.
+  - **Firmware (after the mock-up):** a click effect from core, the sound in `board_audio`, the setting in the store and the API, the tile, and the Remote page. Then measure latency and loudness on the user's bar.
+  - **The controls guide and the help page:** mention the click.
+  - **`docs/api.md`:** 10.4 was written by the product manager; the lead developer reviews it.
 
 ## Wi-Fi
 
