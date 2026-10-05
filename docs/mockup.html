@@ -1,4 +1,4 @@
-<title>TinyBar Screen Mock-up</title>
+<title>MiniBar Screen Mock-up</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700&family=Barlow+Condensed:wght@500;600;700;800&family=Big+Shoulders+Display:wght@500;700;800&family=Handjet:wght,ELGR,ELSH@400,1,2&family=JetBrains+Mono:wght@400;500&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
@@ -3808,7 +3808,7 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
   // host after a name clash ("tinybar-2.local", 90 px) isn't, so the foot takes the first that fits on one line: the
   // host, the IP address (which the bar answers on too, api.md 2.2; up to about 13 characters fit), or "pair at its" /
   // "IP address", pointing at the Network tile beside it. The firmware measures the same way (lv_text_get_size against
-  // the tile's content width). Each foot breaks where the markup does (LVGL: "\n").
+  // the tile's content width; both themes take Bold Signal's choice). Each foot breaks where the markup does (LVGL: "\n").
   function showWifiMenu() {
     const off = s.wifi.mode === 'offline', n = tokens.length;
     const foot = `<span>${esc(BAR.name)}</span><span>${off ? 'not connected' : `${esc(BAR.host)} · ${esc(s.wifi.ip)}`}</span>`;
@@ -3821,14 +3821,15 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
       <div class="tile done" data-action="close"><b>Close</b><span>Back</span><small>or wait 8 s</small></div>`, true);
     const where = menu.querySelector('[data-where]');
     if (where) {
+      // Both themes say the same words, so the choice is always made against Bold Signal's tile (86.5 px in Barlow
+      // 500 at 14 px), as the firmware's view model makes it, whichever theme draws it. Handjet's 17 px is narrower,
+      // so in Low Glare Pixel the chosen line always fits too.
       const fits = t => {
-        const x = document.createElement('span');
-        x.style.whiteSpace = 'nowrap';
-        x.textContent = t;
-        where.appendChild(x);
-        const ok = x.getBoundingClientRect().width <= where.getBoundingClientRect().width + .5;
-        x.remove();
-        return ok;
+        try {
+          titleCtx = titleCtx || document.createElement('canvas').getContext('2d');
+          titleCtx.font = '500 14px Barlow, "Helvetica Neue", Arial, sans-serif';
+          return titleCtx.measureText(t).width <= 86.5 + .5;
+        } catch (e) { return t.length <= 13; }
       };
       const a = [BAR.host, s.wifi.ip].find(fits);
       where.innerHTML = a ? `pair at<br>${esc(a)}` : 'pair at its<br>IP address';
