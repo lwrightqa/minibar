@@ -25,7 +25,7 @@ The running record of what has been decided, and why. The product manager keeps 
 - **No dead ends:** every control does something in every state, every screen has a way back, menus have a Done tile and close after 8 s, and every action shows a short confirmation.
 - A dark screen wakes on the first tap or button press. A ringing alarm is answered by any tap, hold, swipe, button or flip.
 - **Proposed (2026-10-04):** on an automatic screen (On a call, or In a meeting from the calendar), a tap or BOOT goes back to your own status. See Automatic status.
-- **Proposed (2026-10-05):** since the screen has no haptics, a short, quiet click confirms a tap, swipe or hold that the bar acts on. It never plays during a call or meeting. See Sound, Touch click.
+- **Proposed (2026-10-05):** since the screen has no haptics, a short, quiet click confirms a tap, swipe or hold that the bar acts on. It never plays during a call or meeting. See Sound, Tap sound.
 
 ## Help and the controls tour (Proposed 2026-10-05)
 
@@ -74,7 +74,9 @@ The running record of what has been decided, and why. The product manager keeps 
 
 The bar has a small speaker, driven by the ES8311 codec, and no vibration motor. Its other sounds are decided elsewhere: the Pomodoro chime and the optional focus ticking under Pomodoro, and "no sound while a call is on or a calendar meeting is in progress" under Automatic status. "Tick" means the focus tick. "Click" means the touch click below.
 
-### Touch click (Proposed 2026-10-05, waiting for the user's OK)
+### Tap sound (touch click; Proposed 2026-10-05, placement decided)
+
+- **Decided (2026-10-05): the setting is called "Tap sound" and sits with the theme switch.** The user wrote: "Put the Tap sound setting with the theme switch." On the bar that's a **Tap sound** tile in the Display menu, next to Theme; on the Remote, a **Tap sound** switch in the Display section, next to Theme. Wherever the theme switch ends up, Tap sound goes with it. The rest of this entry is still Proposed.
 
 - **The request (2026-10-05):** the user wrote: "This doesn't have haptics to confirm a tap went through. Can we use a 'click' sound?" The screen can't buzz under the finger, so a tap the bar took feels the same as one it missed. Today the only confirmation is the screen changing, which a finger or a side-on view can hide. A hold gives no sign that it has reached 550 ms.
 - **Proposed (2026-10-05): the coordinator's plan, refined by the product manager.** The acceptance criteria for the mock-up and the firmware go with this round's brief.
@@ -92,18 +94,18 @@ The bar has a small speaker, driven by the ES8311 codec, and no vibration motor.
      - A touch made while the bar was silent never clicks later.
   4. **The sound:** short and dry, for the person at the bar rather than the room. It's no louder than Soft ticking and clearly different from the focus tick, so a tap made during ticking still stands out. The UX designer specifies it, and it's tuned on the real bar.
   5. **Latency:** under about 30 ms from the finger lifting (or from the hold reaching 550 ms) to the sound.
-  6. **A setting, Touch click,** on or off, on the bar and on the Remote. It's kept like every other setting. In the API it's `sound.touch_click` (`docs/api.md` 10.4, Proposed).
+  6. **A setting, Tap sound,** on or off, on the bar and on the Remote, next to the theme switch (decided). It's kept like every other setting. In the API it's `sound.tap_sound` (`docs/api.md` 10.4, Proposed).
 - **Proposed defaults for the open choices (product manager, 2026-10-05):**
   - **On by default.** The user asked for it, it only sounds when someone touches the bar, and it's silent during calls and meetings. The coordinator's "quiet by default" is read as a quiet level with the click on. *The other choice:* off by default, like ticking.
-  - **On the bar, a Click tile in the Display menu** (the theme round's Proposed menu, which would read Light, Theme, Click, Back). Like Theme, it's reached from every screen except the Pomodoro screen, where holding opens the timer menu. *The other choice:* next to Ticking in the timer menu's Settings, which keeps the sound settings together but only works from the Pomodoro screen. If the Display menu isn't approved, the click needs another home.
-  - **On the Remote, a Touch click switch in the Display section,** next to Theme. *The other choice:* with Chime and Ticking in the Pomodoro section.
+  - **On the bar, a Tap sound tile in the Display menu, next to Theme** (decided 2026-10-05: with the theme switch; the menu would read Light, Theme, Tap sound, Back). Like Theme, it's reached from every screen except the Pomodoro screen, where holding opens the timer menu. If the theme switch moves, Tap sound moves with it.
+  - **On the Remote, a Tap sound switch in the Display section, next to Theme** (decided 2026-10-05).
   - **On or off only,** at one level tuned on the bar. If a volume choice is ever wanted, it would be a separate field, as `pomodoro.tick_volume` is.
   - **The hold gets its own short sound** from the UX designer, so you can hear the difference between a hold that has opened the menu and a tap. *The other choice:* the same click for both.
   - **A touch that answers a ringing alarm clicks** like that touch would at any other time. During a call or meeting it's silent anyway. *The other choice:* no click, since the alarm stopping is the confirmation.
-  - **The tap that turns Touch click on clicks**, as a sample of the sound. The tap that turns it off doesn't. The toasts are "Touch click on" and "Touch click off". During a call or meeting the toast says the click is silent for now. A change made on the Remote makes no sound.
+  - **The tap that turns Tap sound on clicks**, as a sample of the sound. The tap that turns it off doesn't. The toasts are "Tap sound on" and "Tap sound off". During a call or meeting the toast says the click is silent for now. A change made on the Remote makes no sound.
   - **Whether a touch clicks** depends on the state when the gesture is recognized, before its action runs. So the Restart and Power off tiles click, and the waking touch doesn't.
 - **Conflict with a proposal, flagged (2026-10-05): the controls tour "makes no sound"** (see Help, Proposed). **Proposed:** the tour adds no sounds of its own, but the click still confirms touches during it, because the tour teaches the controls as they really behave. Otherwise the tour would be the one place where a tap doesn't click. Not a conflict with any decision.
-- **Known limit:** the bar only knows about calls that the Mac app reports, after its 3-second start delay, and about meetings in the calendar. A phone call, a call on another computer, or the first seconds of a call can still pick up a click. For those, turn Touch click off.
+- **Known limit:** the bar only knows about calls that the Mac app reports, after its 3-second start delay, and about meetings in the calendar. A phone call, a call on another computer, or the first seconds of a call can still pick up a click. For those, turn Tap sound off.
 - **Firmware risk (for the lead developer):** with the amplifier gate on, the amplifier switches off after 1.5 s of silence and needs 40 ms to come back on (`BRD_AMP_LEAD_MS`). That delay alone is over the 30 ms target, and the touch read period and the audio task's 10 ms chunks add to it. Measure it on the bar.
 - **Follow-ups (open):**
   - **UX designer:** the tap and hold sounds and their levels, plus the copy for the tile, the Remote switch and the toasts.

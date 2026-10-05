@@ -899,7 +899,7 @@ Scope `full`.
 | `pomodoro.tick_volume` | `"soft"` or `"medium"` | `"soft"` | Kept while ticking is off, as on the Remote. |
 | `display.brightness` | 10 to 100 (percent) | 70 | The bar's Light tile steps through 40, 70 and 100; from any other value its next tap goes to the next of those above it (from 100, to 40). |
 | `display.theme` | `"bold_signal"` or `"low_glare_pixel"` (*open*) | `"bold_signal"` | **Proposed (2026-10-05), see 10.3.** The bar's look: Bold Signal, or Low Glare Pixel (the Low Glare layout set in Handjet). Not in the example above until it's approved. |
-| `sound.touch_click` | boolean | `true` (**Proposed**) | **Proposed (2026-10-05), see 10.4.** Touch click: a short, quiet click when the bar acts on a tap, swipe or hold on its screen. It's always silent during a call or meeting. Not in the example above until it's approved. |
+| `sound.tap_sound` | boolean | `true` (**Proposed**) | **Proposed (2026-10-05), see 10.4.** Tap sound: a short, quiet click when the bar acts on a tap, swipe or hold on its screen. It's always silent during a call or meeting. Not in the example above until it's approved. |
 | `automatic.calendar` | boolean | `true` once an address is saved, `false` before | Calendar meetings. Can't be `true` with no address saved. |
 | `automatic.mac` | boolean | `true` | Calls from your Mac. |
 | `automatic.meeting_titles` | boolean | `false` | Show meeting titles. Needs a saved address. |
@@ -975,36 +975,36 @@ bar → mac  @tb {"id": 9, "http_status": 200, "ok": true, "settings": {"pomodor
 - **The Mac app needs nothing.** It doesn't read or change settings, and it ignores fields it doesn't know (2.1).
 - **The setup network (section 13) doesn't offer it.** A bar in setup shows its setup screens in the saved theme.
 
-### 10.4 Proposed: `sound.touch_click`, the click on touch
+### 10.4 Proposed: `sound.tap_sound`, the click on touch
 
-**Proposed (2026-10-05), waiting for the user's OK.** On 2026-10-05 the user asked for a click sound to confirm that a tap went through, since the bar has no haptics (`decisions.md`, Sound, Touch click). This section is how the setting travels. It's built in the mock-up first, and the firmware follows.
+**Proposed (2026-10-05), waiting for the user's OK.** On 2026-10-05 the user asked for a click sound to confirm that a tap went through, since the bar has no haptics (`decisions.md`, Sound, Tap sound). This section is how the setting travels. It's built in the mock-up first, and the firmware follows.
 
 | | |
 |---|---|
-| Name | `sound.touch_click`, in a new `sound` group |
+| Name | `sound.tap_sound`, in a new `sound` group |
 | Values | `true` or `false` |
 | Default | `true` (**Proposed**; the other choice is `false`, like ticking). It applies on a new bar and on a bar updated from firmware that had no touch click. |
-| Read | `GET /api/v1/settings` (10.1): `settings.sound.touch_click`, always present. |
+| Read | `GET /api/v1/settings` (10.1): `settings.sound.tap_sound`, always present. |
 | Change | `PATCH /api/v1/settings` (10.2), scope `full`. Over USB, `request` (6.6) with no token, like every other setting. |
 | On the bar | A Click tile, On or Off (**Proposed:** in the quick menu's Display menu, `decisions.md`). |
-| On the Remote | A Touch click switch (**Proposed:** in its Display section, next to Theme). |
+| On the Remote | A Tap sound switch in its Display section, next to Theme (placement decided 2026-10-05). |
 
 ```json
-{"sound": {"touch_click": false}}
+{"sound": {"tap_sound": false}}
 ```
 
-- **Checks:** the value must be `true` or `false`. Anything else (a string such as `"off"`, a number, `null`) is `400 bad_value` with `"field": "sound.touch_click"`, and nothing else in the request applies (10.2). No new error codes.
+- **Checks:** the value must be `true` or `false`. Anything else (a string such as `"off"`, a number, `null`) is `400 bad_value` with `"field": "sound.tap_sound"`, and nothing else in the request applies (10.2). No new error codes.
 
   ```json
-  {"ok": false, "error": "bad_value", "message": "touch_click must be true or false.", "field": "sound.touch_click"}
+  {"ok": false, "error": "bad_value", "message": "tap_sound must be true or false.", "field": "sound.tap_sound"}
   ```
 
-- **What changes on the bar:** from then on, touches click or don't. The bar shows the toast "Touch click on" or "Touch click off". During a call or meeting, the toast also says the click is silent for now (copy from the UX designer). A change made through the API never makes the bar click, because only touches on the bar click. Like any change from the Remote, the toast waits on a dark screen or while a pairing code shows. Nothing else changes.
+- **What changes on the bar:** from then on, touches click or don't. The bar shows the toast "Tap sound on" or "Tap sound off". During a call or meeting, the toast also says the click is silent for now (copy from the UX designer). A change made through the API never makes the bar click, because only touches on the bar click. Like any change from the Remote, the toast waits on a dark screen or while a pairing code shows. Nothing else changes.
 - **The value it already has:** changes nothing and shows no toast. The reply is still `200` with the full settings.
 - **When the bar clicks** is decided on the bar, not here: only for a touch it acts on, never during a call or meeting, never on a dark screen, and never for BOOT, PWR or a flip (`decisions.md`). No status or event field reports clicks.
 - **Kept** with the other settings, across Restart and power off and on. Wi-Fi setup, Skip and Forget all don't change it.
 - **`rev`:** a change, including one made on the bar, bumps `rev` in `GET /api/v1/status` (7.3), so the Remote shows it within about 2 seconds. `status` itself doesn't carry it.
-- **Why a `sound` group:** the chime and ticking are Pomodoro settings (`pomodoro.chime`, `pomodoro.ticking`), but the click isn't. If a loudness choice is wanted later, it would be a separate field (for example `sound.touch_click_volume`), as `pomodoro.tick_volume` is, so this field never changes type.
+- **Why a `sound` group:** the chime and ticking are Pomodoro settings (`pomodoro.chime`, `pomodoro.ticking`), but the click isn't. If a loudness choice is wanted later, it would be a separate field (for example `sound.tap_sound_volume`), as `pomodoro.tick_volume` is, so this field never changes type.
 - **Version:** a new group and field, so it's an addition under 2.1 (API 1.1). Clients that speak 1.0 ignore it.
 - **The Mac app needs nothing.** It doesn't read or change settings, and it ignores fields it doesn't know (2.1).
 - **The setup network (section 13) doesn't offer it.**
@@ -1252,7 +1252,7 @@ The mock-up's "How the Mac app talks to TinyBar" and `decisions.md` need these b
 - **Away's back-at time and note** (8.1).
 - **The default bar name "TinyBar 2A1C"** (section 3).
 - **The theme setting `display.theme`** (10.3), for the alternate theme the user decided on 2026-10-05.
-- **The touch click setting `sound.touch_click`** (10.4), for the click the user asked for on 2026-10-05, and its default (`true`, Proposed).
+- **The touch click setting `sound.tap_sound`** (10.4), for the click the user asked for on 2026-10-05, and its default (`true`, Proposed).
 
 ### 14.3 Needs design (UX designer, then the mock-up)
 
