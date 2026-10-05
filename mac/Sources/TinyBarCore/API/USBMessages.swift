@@ -24,8 +24,10 @@ public struct ReadyEvent: Codable, Hashable, Sendable {
 }
 
 /// The USB `request` command (api.md 6.6): any endpoint over USB. The Mac app
-/// doesn't need it in v1 (it uses `hello`, `call`, `status` and `pair`), but it
-/// is part of the contract and handy for debugging.
+/// uses `hello`, `call`, `status` and `pair` for everything but one thing:
+/// Forget This TinyBar while the bar is plugged in sends
+/// `DELETE /api/v1/clients/{token_id}` this way (api.md 12.2), since USB
+/// carries no token for `clients/self`.
 public struct USBRequestCommand: Codable, Hashable, Sendable {
     public var method: HTTPMethod
     /// Starts `/api/v1/`; may include a query.

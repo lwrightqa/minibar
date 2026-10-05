@@ -468,7 +468,11 @@ final class ConnectionTests: XCTestCase {
 
         await rig.connection.forget()
         await rig.settle()
-        XCTAssertEqual(rig.bar.state.withLock { $0.revoked }, [token], "DELETE /api/v1/clients/self")
+        // Plugged in: over the cable, by token_id (api.md 12.2), since USB
+        // carries no token for clients/self.
+        XCTAssertEqual(rig.bar.state.withLock { $0.revoked }, [token], "DELETE /api/v1/clients/{token_id}")
+        XCTAssertTrue(rig.bar.log.contains("usb unpair 74d8a526"), "\(rig.bar.log)")
+        XCTAssertFalse(rig.bar.log.contains("wifi unpair"))
         XCTAssertNil(try rig.tokens.token(for: "f412fa3f2a1c"))
         var state = await rig.state
         XCTAssertNil(state.bar)
@@ -485,6 +489,47 @@ final class ConnectionTests: XCTestCase {
         state = await rig.state
         XCTAssertEqual(state.bar?.deviceID, "f412fa3f2a1c", "replugged: paired again over the cable")
         XCTAssertEqual(state.phase, .connected)
+        await rig.connection.stop()
+    }
+
+    /// Forget This TinyBar for a bar only ever reached over USB (Wi-Fi
+    /// skipped, or client isolation): the token still comes off the bar, as a
+    /// USB `request` for `DELETE /api/v1/clients/{token_id}` (api.md 12.2,
+    /// Appendix A), so it doesn't keep one of the bar's 10 places.
+    func test_forgetOverUSBOnly() async throws {
+        let rig = ConnectionRig()
+        rig.bar.set { $0.wifi = .offline }
+        await rig.start()
+        await rig.plugIn()
+        var state = await rig.state
+        XCTAssertEqual(state.phase, .connected)
+        XCTAssertEqual(state.bar?.tokenID, "00000001", "the token_id from the USB pair reply")
+        let token = try XCTUnwrap(try rig.tokens.token(for: "f412fa3f2a1c"))
+
+        await rig.connection.forget()
+        await rig.settle()
+        XCTAssertEqual(rig.bar.log.filter { $0.hasPrefix("usb unpair") }, ["usb unpair 00000001"])
+        XCTAssertEqual(rig.bar.state.withLock { $0.revoked }, [token], "the bar forgot the Mac")
+        XCTAssertTrue(rig.bar.state.withLock { $0.tokens.isEmpty }, "no place kept")
+        XCTAssertFalse(rig.factory.made.contains { $0.token == token }, "nothing was tried over Wi-Fi")
+        XCTAssertNil(try rig.tokens.token(for: "f412fa3f2a1c"))
+        state = await rig.state
+        XCTAssertNil(state.bar)
+        XCTAssertEqual(state.phase, .notSetUp)
+        await rig.connection.stop()
+    }
+
+    /// Not plugged in: `DELETE /api/v1/clients/self` over Wi-Fi (api.md 12.3).
+    func test_forgetOverWiFi() async throws {
+        let rig = ConnectionRig.paired()
+        rig.factory.place(rig.bar, at: ConnectionRig.barAddress)
+        await rig.start()
+        let token = try XCTUnwrap(try rig.tokens.token(for: "f412fa3f2a1c"))
+        await rig.connection.forget()
+        await rig.settle()
+        XCTAssertEqual(rig.bar.log.filter { $0.hasSuffix("unpair") || $0.hasPrefix("usb unpair") }, ["wifi unpair"])
+        XCTAssertEqual(rig.bar.state.withLock { $0.revoked }, [token])
+        XCTAssertNil(try rig.tokens.token(for: "f412fa3f2a1c"))
         await rig.connection.stop()
     }
 

@@ -45,7 +45,10 @@ final class EngineRig {
         settings.didShowWelcome = true
         change?(&settings)
         let rig = EngineRig(settings: settings, tokens: ["f412fa3f2a1c": token])
-        rig.bar.set { $0.tokens.insert(token) }
+        rig.bar.set {
+            $0.tokens.insert(token)
+            $0.tokenIDs["74d8a526"] = token
+        }
         return rig
     }
 

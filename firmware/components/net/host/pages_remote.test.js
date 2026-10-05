@@ -158,8 +158,69 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   check(await p.isDisabled('#pairInput') && await vis('#pairNew') && !(await vis('#pairGo')), 'the field is disabled and Show a new code offered');
   check(await active() === 'pairNew', 'focus moves to Show a new code');
 
-  // the right code: paired
+  // the next device's code within the poll: this phone's code is canceled on the bar and the Mac asks right away, so
+  // info still says "showing"; pairing_seq tells the prompt the code isn't its own (the mock-up's pair.id === phone.pid)
+  await sim('/_sim/restart', '');           // the tap above was one failed pairing; a second in a row would lock pair/start
   await p.click('#pairNew');
+  await sleep(300);
+  s = await state();
+  check(s.pairing && s.who === 'Phone', 'a new code for this phone');
+  await sleep(1100);
+  await sim('/_sim/tap', '');               // canceled on the bar...
+  mac = await usb('POST', '/api/v1/pair/start', { kind: 'mac', scope: 'call', client: MAC });
+  check(mac.http_status === 202 && (await state()).who === 'Mac', '...and the Mac asks within the poll: the bar shows the Mac\'s code');
+  await sleep(2500);
+  check(await text('#pairErr') === 'That code has expired or was canceled on TinyBar. Show a new code to try again.', 'the prompt still notices within about 2 s: ' + await text('#pairErr'));
+  check(await p.isDisabled('#pairInput') && await vis('#pairNew'), 'the field is disabled and Show a new code offered');
+  await usb('POST', '/api/v1/pair/cancel', { pairing_id: mac.pairing_id });
+  await sim('/_sim/restart', '');           // the two cancels would lock pair/start: a restart clears that
+  await sleep(2500);
+
+  // a reload while this phone's own code is on the bar: the prompt comes back to its field, with the same code and
+  // countdown, and Cancel still takes the code off the bar (decisions.md, Pairing)
+  await p.click('#pairNew');
+  await sleep(300);
+  s = await state();
+  check(s.pairing && s.who === 'Phone', 'a code for this phone before the reload');
+  await sleep(1500);
+  await p.reload();
+  await sleep(900);
+  check(await vis('#pairCode') && !(await vis('#pairStart')), 'after a reload the prompt is back at its field');
+  check(/^The code works for 2 minutes · 1:5\d left\.$/.test(await text('#pairLine')), 'with the same countdown: ' + await text('#pairLine'));
+  check((await state()).code === s.code && (await state()).who === 'Phone', 'the bar still shows this phone\'s code');
+  await p.click('#pairCancel');
+  await sleep(400);
+  s = await state();
+  check(!s.pairing && s.toast === 'Pairing canceled', 'Cancel after the reload still takes the code off the bar: ' + s.toast);
+  check(await p.textContent('#phoneSay') === 'Pairing canceled. The code is gone from TinyBar.', 'and says so');
+  await sim('/_sim/restart', '');
+  await sleep(1100);
+  // a reload when the code on the bar is another device's: the prompt starts over, and Pair this phone says busy
+  mac = await usb('POST', '/api/v1/pair/start', { kind: 'mac', scope: 'call', client: MAC });
+  await p.reload();
+  await sleep(900);
+  check(await vis('#pairStart') && !(await vis('#pairCode')), 'a reload under another device\'s code starts over');
+  await p.click('#pairAsk');
+  await sleep(300);
+  check((await text('#pairAskErr')).startsWith('Another device is pairing with this TinyBar.'), 'and the Mac\'s code is reported as busy, not taken for this phone\'s');
+  await sleep(1000);
+  await usb('POST', '/api/v1/pair/cancel', { pairing_id: mac.pairing_id });
+  await sim('/_sim/restart', '');
+  await sleep(2500);
+  // a reload after this phone's code is gone from the bar: the prompt starts over
+  await p.click('#pairAsk');
+  await sleep(300);
+  await sleep(1100);
+  await sim('/_sim/tap', '');
+  await p.reload();
+  await sleep(900);
+  check(await vis('#pairStart') && !(await vis('#pairCode')), 'a reload after the code is gone starts over');
+  check(await p.evaluate(() => { try { return sessionStorage.getItem('tb_pair'); } catch (e) { return 'x'; } }) === null, 'and the stale record is dropped');
+  await sim('/_sim/restart', '');
+  await sleep(1100);
+
+  // the right code: paired
+  await p.click('#pairAsk');
   await sleep(300);
   s = await state();
   await sleep(1000);

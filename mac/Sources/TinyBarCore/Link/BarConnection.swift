@@ -508,13 +508,25 @@ public actor BarConnection {
         wake()
     }
 
-    /// Forget This TinyBar: tells the bar (`DELETE /api/v1/clients/self`, best
-    /// effort), deletes the token, and leaves a plugged-in bar's port alone
-    /// until it's replugged (mac-app-ux.md 5.7).
+    /// Forget This TinyBar: tells the bar (best effort, 2 seconds at most),
+    /// deletes the token, and leaves a plugged-in bar's port alone until it's
+    /// replugged (mac-app-ux.md 5.7).
+    ///
+    /// Over the link in use: while the bar is plugged in, `DELETE
+    /// /api/v1/clients/{token_id}` as a USB `request` (api.md 12.2), since USB
+    /// carries no token and `clients/self` can't name the Mac there (Appendix
+    /// A), and the cable may be the only way to reach it (Wi-Fi skipped, or
+    /// client isolation); otherwise `DELETE /api/v1/clients/self` over Wi-Fi
+    /// (12.3). Either way the token stops holding one of the bar's 10 places.
     public func forget() async {
         guard let bar = state.bar else { return }
         messagesStopped = true
-        if let token = token(for: bar), let endpoint = wifi?.endpoint ?? wifiEndpoint() {
+        if let usb, usb.info.deviceID == bar.deviceID, let tokenID = bar.tokenID, token(for: bar) != nil {
+            let command = USBRequestCommand(method: .delete, path: Endpoints.client(tokenID: tokenID).path)
+            await BarConnection.withTimeout(2, clock: clock) {
+                _ = try? await usb.transport.request(command)
+            }
+        } else if let token = token(for: bar), let endpoint = wifi?.endpoint ?? wifiEndpoint() {
             let transport: any WiFiLinkTransport
             if let wifi, wifi.endpoint == endpoint, wifi.token == token {
                 transport = wifi.transport

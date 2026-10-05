@@ -367,18 +367,22 @@ static bool same_call(const tb_call_t *a, const tb_call_t *b)
            a->since == b->since && !strcmp(a->app, b->app);
 }
 
-/* Hand the Mac table's sum to core when it changed: the call (lead names why it ended, or NULL) and the icon. */
-static void push_macs(const char *lead, const tb_clock_t *now)
+/* Hand the Mac table's sum to core when it changed: the call (lead names why it ended, or NULL) and the icon.
+ * Returns true when core announced a call's end with lead ("Removed Mac · back to Busy"), so the caller doesn't toast
+ * the same thing again a moment later. */
+static bool push_macs(const char *lead, const tb_clock_t *now)
 {
-    if (!s_app) return;
+    if (!s_app) return false;
+    bool said = false;
     tb_call_t agg;
     tb_link_t link;
     net_macs_aggregate(&s_macs, &agg, &link, NULL);
     if (!same_call(&agg, &s_pushed)) {
         s_pushed = agg;
-        tb_app_set_call(s_app, agg.active ? &agg : NULL, agg.active ? NULL : lead, now);
+        said = tb_app_set_call(s_app, agg.active ? &agg : NULL, agg.active ? NULL : lead, now);
     }
     if (link != s_app->mac_link) tb_app_set_mac_link(s_app, link, now);
+    return said;
 }
 
 static const char *link_name(tb_link_t l)
@@ -421,7 +425,13 @@ static void add_info(rt_t *r)
     cJSON_AddStringToObject(r->o, "api", NET_API_VERSION);
     cJSON_AddStringToObject(r->o, "host", bar_host(&w));
     cJSON_AddStringToObject(r->o, "auth", s_bearer ? "bearer" : "none");
-    cJSON_AddStringToObject(r->o, "pairing", net_pair_state(&s_pair, &r->now));
+    const char *pairing = net_pair_state(&s_pair, &r->now);
+    cJSON_AddStringToObject(r->o, "pairing", pairing);
+    /* The number of the code on the screen, counted from start-up, null when none (api.md 7.1): the device that asked
+     * compares it with the one pair/start gave it, so its prompt can tell its own code from the next device's within
+     * one poll, without anyone learning the pairing_id (the mock-up's remotePoll() compares pair.id === phone.pid). */
+    if (!strcmp(pairing, "showing")) cJSON_AddNumberToObject(r->o, "pairing_seq", s_pair.seq);
+    else cJSON_AddNullToObject(r->o, "pairing_seq");
     /* How many devices are paired (api.md 7.1, firmware alignment): a phone that isn't paired yet reads it to clear
      * "already has 10 paired devices" once a place is free, and to tell Forget all from a removal after a 401. */
     cJSON_AddNumberToObject(r->o, "paired", net_pair_count(&s_pair));
@@ -1252,6 +1262,7 @@ static void h_pair_start(rt_t *r, cJSON *b)
     tb_app_pairing_show(s_app, s_pair.code, label, pk, &r->now);
     ok(r, 202);
     cJSON_AddStringToObject(r->o, "pairing_id", pid);
+    cJSON_AddNumberToObject(r->o, "pairing_seq", s_pair.seq);     /* info carries it while this code shows (7.1) */
     cJSON_AddNumberToObject(r->o, "expires_in_s", NET_PAIR_CODE_MS / 1000);
     cJSON_AddNumberToObject(r->o, "code_length", NET_PAIR_CODE_LEN);
     cJSON_AddNumberToObject(r->o, "attempts", NET_PAIR_TRIES);
@@ -1364,10 +1375,12 @@ static void revoke(rt_t *r, const net_token_t *t)
     net_pair_revoke(&s_pair, id);
     if (r->tok == t) r->tok = NULL;
     paired_changed();
-    if (net_macs_forget_token(&s_macs, id, client)) push_macs(NULL, &r->now);
     char toast[TB_TOAST_BYTES];
     snprintf(toast, sizeof toast, "Removed %s", name);
-    tb_app_notify(s_app, toast, &r->now);
+    /* A call it reported over Wi-Fi ends with the removal as the lead ("Removed Mac · back to Busy"), as the mock-up's
+     * removeDevice() does (if (!syncAuto(gone)) toast(gone)) and as Forget all does; the removal alone otherwise. */
+    bool said = net_macs_forget_token(&s_macs, id, client) && push_macs(toast, &r->now);
+    if (!said) tb_app_notify(s_app, toast, &r->now);
     ok(r, 200);
     cJSON_AddStringToObject(r->o, "revoked", id);
 }

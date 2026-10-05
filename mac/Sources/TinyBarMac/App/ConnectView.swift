@@ -206,7 +206,8 @@ private struct WiFiPage: View {
         .onChange(of: flow.step, initial: true) { _, step in
             model.stepChanged(to: step)
             switch step {
-            case .enterCode, .failed(.wrongCode, _, _), .failed(.rateLimited, _, _), .failed(.noAnswer, _, _):
+            case .enterCode, .failed(.wrongCode, _, _), .failed(.rateLimited, _, _), .failed(.busyForASecond, _, _),
+                 .failed(.noAnswer, _, _):
                 codeFocused = true
             default:
                 break
@@ -308,10 +309,10 @@ private struct WiFiPage: View {
                 }
             }
 
-        case .rateLimited, .noAnswer:
+        case .rateLimited, .busyForASecond, .noAnswer:
             if let bar, flow.acceptsCode {
                 // The code is still on the bar: send it again (Pair) once
-                // the wait is over.
+                // the wait is over (a second, after `.busyForASecond`).
                 barName(bar)
                 codeEntry(bar: bar, message: message, busy: false)
             } else {

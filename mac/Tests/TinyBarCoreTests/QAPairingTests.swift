@@ -40,7 +40,9 @@ final class QAPairingScenarios {
 
     /// A wrong code, then the right one typed again within a second: the bar
     /// answers 429 (`POST /pair` is limited to one a second, api.md 4.9). Its
-    /// code is still on screen. Expected: Pair works again after the wait.
+    /// code is still on screen. The app waits that second itself and sends
+    /// the same code once more, with no message in between (the review of
+    /// 2026-10-05), so the pairing goes through.
     func rateLimitedPairKeepsTheCodeUsable() async throws {
         let wrong = BarError.api(APIErrorBody(error: .wrongCode, attemptsLeft: 2), httpStatus: 403)
         let limited = BarError.api(APIErrorBody(error: .rateLimited, retryAfterS: 1), httpStatus: 429)
@@ -49,13 +51,16 @@ final class QAPairingScenarios {
         flow.choose(PairingScenarios.bar)
         await flow.requestCode()
         await flow.submit(code: "111111")
-        await flow.submit(code: "482913")
-        XCTAssertEqual(flow.step, .failed(.rateLimited(retryAfter: 1), bar: PairingScenarios.bar, retryAt: clock.now().addingTimeInterval(1)))
+        XCTAssertEqual(flow.step, .failed(.wrongCode(attemptsLeft: 2), bar: PairingScenarios.bar, retryAt: nil))
+        let sending = Task { await flow.submit(code: "482913") }
+        guard await clock.waitForSleepers(1) else { return XCTFail("the app should wait the second before sending again") }
+        XCTAssertEqual(flow.step, .pairing(PairingScenarios.bar), "no message: the refused request had no effect")
         clock.advance(by: 1)
-        await flow.submit(code: "482913")
+        await sending.value
         guard case .paired = flow.step else {
             return XCTFail("after a 1-second rate limit the code on the bar can't be sent any more (pairing_id forgotten); step: \(flow.step), requests: \(factory.log.get())")
         }
+        XCTAssertEqual(factory.log.get().filter { $0.hasPrefix("pair {") }.count, 3, "wrong, refused, sent again")
     }
 
     /// The Keychain refuses to store the token. The message shown is the one

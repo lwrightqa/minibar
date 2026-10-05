@@ -261,6 +261,7 @@ net_pair_err_t net_pair_start(net_pair_t *p, const char *name, net_kind_t kind, 
     while (r >= 4294000000u);    /* uniform over the million codes */
     snprintf(p->code, sizeof p->code, "%06u", (unsigned)(r % 1000000u));
     p->showing = true;
+    p->seq++;
     p->tries_left = NET_PAIR_TRIES;
     p->expires = now->mono + NET_PAIR_CODE_MS;
     tb_strlcpy(p->name, name ? name : "", sizeof p->name);

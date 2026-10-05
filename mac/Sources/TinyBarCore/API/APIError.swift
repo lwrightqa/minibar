@@ -135,6 +135,12 @@ public enum BarError: Error, Hashable, Sendable {
         return nil
     }
 
+    /// `retry_after_s`, if the bar's answer carried it (`rate_limited`, `pairing_busy`).
+    public var retryAfterSeconds: Int? {
+        if case .api(let body, _) = self { return body.retryAfterS }
+        return nil
+    }
+
     /// `401 unauthorized`: the bar doesn't accept this app's token (api.md 4.5).
     public var isUnauthorized: Bool {
         if case .api(let body, let status) = self {

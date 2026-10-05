@@ -82,11 +82,19 @@ final class TestHTTPServer: @unchecked Sendable {
         handle { _ in .respond(status: status, body: body) }
     }
 
-    /// Closes the listening socket and any held connections, once. A second
-    /// call does nothing: `deinit` calls this again, on whichever thread lets
-    /// go of the server last (its accept thread), possibly after the next
-    /// test's server has been given the same descriptor number, and closing
-    /// that would refuse the next test's connections.
+    /// Shuts the listening socket down (which wakes a blocked `accept` with
+    /// an error) and closes any held connections, once. A second call does
+    /// nothing: `deinit` calls this again, on whichever thread lets go of the
+    /// server last.
+    ///
+    /// The listening descriptor is **not** closed here: only the accept thread
+    /// closes it, when it leaves `acceptLoop`. Closed from the test thread,
+    /// the descriptor number could be handed to the next test's server while
+    /// this server's accept thread was still about to call `accept()` on it
+    /// (it was starting, or had just spawned the serve thread for the
+    /// previous request); that thread would then take one of the next test's
+    /// connections and close it without a reply (an empty reply or a reset
+    /// on the client side, about one run in three).
     func stop() {
         let held: [Int32]? = state.withLock { state in
             guard !state.stopped else { return nil }
@@ -97,7 +105,6 @@ final class TestHTTPServer: @unchecked Sendable {
         guard let held else { return }
         held.forEach { _ = shutdown($0, Int32(SHUT_RDWR)); _ = close($0) }
         _ = shutdown(listenFD, Int32(SHUT_RDWR))
-        _ = close(listenFD)
     }
 
     deinit {
@@ -105,6 +112,8 @@ final class TestHTTPServer: @unchecked Sendable {
     }
 
     private func acceptLoop() {
+        // The only thread that uses the descriptor closes it, after its last `accept()`.
+        defer { _ = close(listenFD) }
         while true {
             let connection = accept(listenFD, nil, nil)
             if connection < 0 {

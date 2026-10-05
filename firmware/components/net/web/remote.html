@@ -12,7 +12,8 @@
   reply redraws the page. No external resources: system fonts, inline styles and script, tomato sprites as data URIs.
   Pairing (api.md 4; the mock-up's pairing round and its fix round): a 401 shows the pairing prompt in place of every
   control; the bar sets an HttpOnly cookie, so the page never sees the token. Every refusal on the prompt follows the
-  bar (GET /api/v1/info every 2 s: pairing, paired, wifi), and Cancel takes the code off the bar (pair/cancel).
+  bar (GET /api/v1/info every 2 s: pairing, pairing_seq, paired, wifi), Cancel takes the code off the bar (pair/cancel),
+  and the code this phone asked for survives a reload (sessionStorage) while it's still on the bar.
   Times are shown in the bar's own time zone, and "ago" is worked out against the bar's clock.
   Mock-up-only parts left out: Demo speed, Simulate, "Fill in a sample", the mock-up notes.
 -->
@@ -512,9 +513,34 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
 
   // ---------- pairing (api.md 4.6 to 4.9; the mock-up's prompt) ----------
   // step: 'start' or 'code'; pid: the pairing_id of the code this phone asked for, while it may still be on the bar;
-  // codeUntil: when that code runs out (performance.now()); askErr: the refusal under Pair this phone ({error,
-  // until}); err: the reply about the code ({kind, left}); note: the line above the prompt; okUntil: "Paired." shows.
-  const phone = { step: 'start', pid: null, codeUntil: 0, askErr: null, err: null, note: '', okUntil: 0, trying: false };
+  // seq: that code's number (pairing_seq, api.md 4.6), which info carries while the code shows; codeUntil: when that
+  // code runs out (performance.now()); askErr: the refusal under Pair this phone ({error, until}); err: the reply
+  // about the code ({kind, left}); note: the line above the prompt; okUntil: "Paired." shows.
+  const phone = { step: 'start', pid: null, seq: null, codeUntil: 0, askErr: null, err: null, note: '', okUntil: 0, trying: false };
+  // The code this phone asked for outlives a reload (or a phone's browser discarding the tab) in sessionStorage, so
+  // the prompt comes back to its field while that code is still on the bar, and Cancel can still take it off
+  // (decisions.md, Pairing: pressing Pair this phone again while its own code is up returns to the field). A per-tab
+  // convenience only, wrapped in try/catch; the record names the bar (device_id) and the code (pairing_seq), so
+  // another bar's or another device's code is never taken for this phone's.
+  const PAIR_KEY = 'tb_pair';
+  function keepPair() {
+    try {
+      if (phone.pid) sessionStorage.setItem(PAIR_KEY, JSON.stringify({ device_id: info && info.device_id, pid: phone.pid, seq: phone.seq,
+        until: Date.now() + Math.max(0, phone.codeUntil - performance.now()) }));
+      else sessionStorage.removeItem(PAIR_KEY);
+    } catch (e) { /* storage blocked: the code is forgotten with the page */ }
+  }
+  function restorePair() {
+    let k = null;
+    try { k = JSON.parse(sessionStorage.getItem(PAIR_KEY)); } catch (e) { k = null; }
+    const left = k ? k.until - Date.now() : 0;
+    const mine = k && info && k.device_id === info.device_id && info.pairing === 'showing' && left > 1000
+      && (info.pairing_seq == null || info.pairing_seq === k.seq);
+    if (!mine) { keepPair(); return; }      // nothing of this phone's on the bar: a stale record goes
+    Object.assign(phone, { step: 'code', pid: k.pid, seq: k.seq, codeUntil: performance.now() + left, askErr: null, err: null, note: '' });
+    $('pairInput').value = '';
+    updatePhonePair();
+  }
   // Screen readers hear each change of the prompt once, from this polite region.
   function phoneSay(text) { const el = $('phoneSay'); el.textContent = ''; setTimeout(() => { el.textContent = text; }, 30); }
   // The Remote names itself after the kind of phone, when the browser says; otherwise it sends no name and the bar
@@ -639,8 +665,9 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
       phoneSay(askErrText(phone.askErr));
       return;
     }
-    Object.assign(phone, { step: 'code', pid: r.j.pairing_id, codeUntil: performance.now() + (r.j.expires_in_s || 120) * 1000,
-      askErr: null, err: null, note: '' });
+    Object.assign(phone, { step: 'code', pid: r.j.pairing_id, seq: r.j.pairing_seq == null ? null : r.j.pairing_seq,
+      codeUntil: performance.now() + (r.j.expires_in_s || 120) * 1000, askErr: null, err: null, note: '' });
+    keepPair();
     $('pairInput').value = '';
     updatePhonePair();
     $('pairInput').focus();
@@ -655,7 +682,8 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     if (r.status === 429) { await sleep(1100); r = await send(); }   // pair's one-a-second limit: once more
     phone.trying = false;
     if (r.status === 200) {
-      Object.assign(phone, { step: 'start', pid: null, codeUntil: 0, askErr: null, err: null, note: '', okUntil: Date.now() + 6000 });
+      Object.assign(phone, { step: 'start', pid: null, seq: null, codeUntil: 0, askErr: null, err: null, note: '', okUntil: Date.now() + 6000 });
+      keepPair();
       $('pairInput').value = '';
       etag = '';
       showMain();
@@ -668,15 +696,16 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     const j = r.j || {};
     phone.err = j.error === 'wrong_code' ? (j.attempts_left > 0 ? { kind: 'wrong', left: j.attempts_left } : { kind: 'out' })
       : j.error === 'not_pairing' ? { kind: 'gone' } : j.error === 'token_limit' ? { kind: 'full' } : { kind: 'noanswer' };
-    if (deadErr()) phone.pid = null;
+    if (deadErr()) { phone.pid = null; keepPair(); }
     if (phone.err.kind !== 'noanswer') $('pairInput').value = '';
     updatePhonePair();
     if (phone.err.kind === 'wrong' || phone.err.kind === 'noanswer') $('pairInput').focus(); else $('pairNew').focus();
     phoneSay(PAIR_ERR[phone.err.kind](phone.err));
   }
   // Every 2 s while the prompt shows: the refusals and the code follow the bar. A code this phone is waiting on that's
-  // gone from the bar (run out, or canceled there) replaces whatever the prompt said about it; once the bar answers
-  // again with the code still up, "didn't answer" goes.
+  // gone from the bar (run out, or canceled there) replaces whatever the prompt said about it, even when the next
+  // device's code took its place within the poll (pairing_seq tells them apart, as the mock-up's remotePoll() compares
+  // pair.id === phone.pid); once the bar answers again with the code still up, "didn't answer" goes.
   async function pairPoll() {
     if (paired || document.hidden || $('pairView').hidden) return;
     const r = await api('GET', '/info');
@@ -687,9 +716,10 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     const ae = phone.askErr;
     if (ae && (ASK_OVER[ae.error] || (() => false))(info)) phone.askErr = null;
     if (phone.step === 'code' && phone.pid && !deadErr()) {
-      if (info.pairing !== 'showing') {
+      if (info.pairing !== 'showing' || (info.pairing_seq != null && phone.seq != null && info.pairing_seq !== phone.seq)) {
         const typing = document.activeElement === $('pairInput');
         Object.assign(phone, { err: { kind: 'gone' }, pid: null });
+        keepPair();
         $('pairInput').value = '';
         updatePhonePair();
         if (typing) $('pairNew').focus();   // the field is disabled now
@@ -717,7 +747,8 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
   // else; the bar says "Pairing canceled". If the code is already gone, there's nothing to tell the bar.
   $('pairCancel').addEventListener('click', async () => {
     const pid = phone.pid;
-    Object.assign(phone, { step: 'start', pid: null, codeUntil: 0, err: null, askErr: null, note: '' });
+    Object.assign(phone, { step: 'start', pid: null, seq: null, codeUntil: 0, err: null, askErr: null, note: '' });
+    keepPair();
     $('pairInput').value = '';
     updatePhonePair();
     $('pairAsk').focus();
@@ -1191,6 +1222,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     await loadInfo();
     const r = await api('GET', '/status');     // a 401 shows the pairing prompt (lost())
     if (r.status === 200 && r.j) { gotStatus(r.j, r.etag); showMain(); loadDevices(); }
+    else if (!paired && !$('pairView').hidden) restorePair();   // back to this phone's own code, if it's still on the bar
   }
   start();
 })();

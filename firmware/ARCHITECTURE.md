@@ -373,7 +373,9 @@ rendered at 640 × 172 in headless Chromium per `docs/testing.md`):
   safeguard (the code ends, "Pairing canceled", not a failed pairing); `POST /api/v1/pair/cancel` ends the asking
   device's own code as a failed pairing and shares `pair`'s one-a-second limit; only a code typed right, Power off
   and Restart clear the back-off; `pair` no longer answers `in_setup` (setup ends any code, so it's `not_pairing`);
-  and `info` reports `paired`, the count the Remote's prompt needs to clear its 10-device refusal (api.md 7.1).
+  and `info` reports `paired`, the count the Remote's prompt needs to clear its 10-device refusal (api.md 7.1), and
+  `pairing_seq`, the number of the code on the screen, so the prompt can tell its own code from the next device's
+  without the `pairing_id` ever leaving the device that asked.
 - **Logging and secrets:** `cal_sync_init()` silences esp_http_client's own log tag (`HTTP_CLIENT`) for the whole
   firmware, because some of its messages print the URL, and the calendar address is a secret. A later feature that
   uses esp_http_client (OTA, say) won't see its log either.
@@ -618,3 +620,17 @@ they changed):
   app 2,137,008 bytes (0x209bb0), 66% of the slot free; DIRAM 141,311 bytes used statically, 200,449 free; the merged
   image `dist/tinybar-1.0.2.bin` (2,333,616 bytes) checked as above. 452 host tests (core 158, calendar 67, net 144,
   ui 30, board 53) under ASan and UBSan with no warnings: the alignment's 434 plus the orientation fix's 18.
+- **The review of the pairing alignment (2026-10-05, 1.0.3):** `tb_app_set_call()` now returns whether core announced
+  the call's end with the caller's lead, so `revoke()` passes "Removed Mac" as the lead (as Forget all does) and only
+  toasts it itself when nothing ended: one toast, "Removed Mac · back to Busy", instead of "Call ended · back to Busy"
+  replaced by "Removed Mac" in the same tick. `net_pair_t.seq` counts the codes shown since start-up and goes out as
+  `pairing_seq` in `pair/start`'s reply and in `info` while the code shows (api.md 4.6, 7.1), which is how the
+  Remote's prompt tells its own code from the next device's within one poll (the mock-up compares `pair.id ===
+  phone.pid` directly); the page also keeps its code's `pairing_id`, `pairing_seq` and expiry in `sessionStorage`,
+  keyed by `device_id`, so a reload comes back to the field. A fresh `build-lead-r4/`: no warnings; app 2,137,920
+  bytes (0x209f40); DIRAM 141,319 used statically, 200,441 free; the merged image `dist/tinybar-1.0.3.bin`
+  (2,334,528 bytes; `dist/tinybar-1.0.0.bin` identical) checked as above. 459 host tests (core 158, calendar 67,
+  net 151, ui 30, board 53): 7 new in `net/test_align_fix.c`. The Remote's Playwright suite is 163 checks (14 new);
+  the setup page's suite (20) polls for each message instead of sleeping a fixed time, so it no longer misreads the
+  previous message when the machine is loaded. The fake bar's `/_sim/forget` toasts in core's order (the count first,
+  then net's "· back to" lead).

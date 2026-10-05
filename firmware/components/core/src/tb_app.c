@@ -1713,9 +1713,9 @@ void tb_app_set_time_zone(tb_app_t *a, const char *iana, const tb_clock_t *now)
 /* ======================================================================================================== */
 
 /* The Mac's call (simCallStart / simCallEnd / macTimers in the mock-up; net's Mac table on the device). */
-void tb_app_set_call(tb_app_t *a, const tb_call_t *call, const char *lead, const tb_clock_t *now)
+bool tb_app_set_call(tb_app_t *a, const tb_call_t *call, const char *lead, const tb_clock_t *now)
 {
-    if (a->powered_off) return;
+    if (a->powered_off) return false;
     bool had = tb_app_call_now(a);
     if (call && call->active) {
         a->call = *call;
@@ -1726,9 +1726,13 @@ void tb_app_set_call(tb_app_t *a, const tb_call_t *call, const char *lead, const
         a->aside_call = 0;
     }
     tb_bump(a);
-    /* macTimers(): if (!syncAuto('Lost contact with your Mac')) { if (hadCall) notify('Lost contact ... · call ended') } */
-    if (!sync_auto(a, lead, now) && lead && had && !tb_app_call_now(a)) notifyf(a, now, "%s \xC2\xB7 call ended", lead);
+    /* macTimers(): if (!syncAuto('Lost contact with your Mac')) { if (hadCall) notify('Lost contact ... · call ended') }
+     * removeDevice(): if (!syncAuto('Removed Mac')) toast('Removed Mac'), which is the caller's job when this says false. */
+    bool changed = sync_auto(a, lead, now);
+    bool ended_aside = !changed && lead && had && !tb_app_call_now(a);
+    if (ended_aside) notifyf(a, now, "%s \xC2\xB7 call ended", lead);
     settle(a, now);
+    return lead && (changed || ended_aside);
 }
 
 void tb_app_set_mac_link(tb_app_t *a, tb_link_t link, const tb_clock_t *now)

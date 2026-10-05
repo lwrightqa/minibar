@@ -152,6 +152,12 @@ public protocol USBLinkTransport: Transport {
     /// The USB `pair` command (api.md 6.6): a Wi-Fi token without a code.
     func pair(_ request: USBPairRequest) async throws -> PairReply
 
+    /// The USB `request` command (api.md 6.6): any endpoint over the cable,
+    /// answered with its `http_status`. The app uses it for Forget This
+    /// TinyBar while the bar is plugged in (`DELETE /api/v1/clients/{token_id}`,
+    /// api.md 12.2), since USB carries no token for `clients/self`.
+    func request(_ command: USBRequestCommand) async throws -> JSONValue
+
     /// `ready` events, log lines, and `.closed` when the port goes away.
     /// One consumer only.
     var events: AsyncStream<USBEvent> { get }

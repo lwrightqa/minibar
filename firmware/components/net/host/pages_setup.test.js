@@ -9,6 +9,9 @@ const path = require('path'), os = require('os');
 const FB = process.env.FAKEBAR || path.join(__dirname, '../../../build-host-net/net/tb_fakebar');
 const OUT = process.env.OUT_DIR || os.tmpdir();
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+// Polls for a condition rather than sleeping a fixed time: the fake bar's join takes 2.5 s and the page polls every
+// 2 s, so a fixed wait reads the previous message on a loaded machine.
+const waitFor = async (fn, ms, step = 100) => { const t0 = Date.now(); let v; while (!(v = await fn()) && Date.now() - t0 < ms) await sleep(step); return v; };
 let fails = 0;
 const check = (c, what) => { if (!c) { fails++; console.log('FAIL', what); } else console.log('ok  ', what); };
 (async () => {
@@ -48,23 +51,21 @@ const check = (c, what) => { if (!c) { fails++; console.log('FAIL', what); } els
   check(await p.isDisabled('#wConnect'), 'Connect disabled while connecting');
   let s = await sim('/_sim/state');
   check(s.wifi_mode === 3, 'bar shows Connecting');
-  await sleep(3500);
-  check((await p.textContent('#setupMsg')) === "Couldn't connect to Office-WiFi: the password was wrong. Check it and try again.", 'failed: ' + await p.textContent('#setupMsg'));
+  const failedMsg = "Couldn't connect to Office-WiFi: the password was wrong. Check it and try again.";
+  check(await waitFor(async () => (await p.textContent('#setupMsg')) === failedMsg, 10000), 'failed: ' + await p.textContent('#setupMsg'));
   s = await sim('/_sim/state');
   check(s.wifi_mode === 5, 'bar shows Couldn\'t connect');
   await p.fill('#wPass', 'correct horse battery staple');
   await p.fill('#wCal', 'webcal://calendar.google.com/calendar/ical/me/private-abcd1234ef/basic.ics');
   await p.click('#wConnect');
-  await sleep(4000);
-  check((await p.textContent('#setupMsg')).startsWith('Connected to Office-WiFi.'), 'connected: ' + await p.textContent('#setupMsg'));
+  check(await waitFor(async () => (await p.textContent('#setupMsg')).startsWith('Connected to Office-WiFi.'), 10000), 'connected: ' + await p.textContent('#setupMsg'));
   check((await p.inputValue('#wPass')) === '', 'password cleared');
   s = await sim('/_sim/state');
   check(s.wifi_mode === 4, 'bar shows Connected');
   const sw = await p.evaluate(() => document.scrollingElement.scrollWidth);
   check(sw <= 390, 'no horizontal scroll (' + sw + ')');
   await p.screenshot({ path: path.join(OUT, 'setup_390.png'), fullPage: true });
-  await sleep(2000);
-  s = await sim('/_sim/state');
+  s = await waitFor(async () => { const x = await sim('/_sim/state'); return x.toast.startsWith('Calendar synced') ? x : null; }, 6000) || await sim('/_sim/state');
   check(s.toast.startsWith('Calendar synced'), 'calendar from setup saved once online: ' + s.toast + ' / ' + s.pending);
   check(errors.length === 0, 'no page errors: ' + errors.join(' | '));
   await b.close();

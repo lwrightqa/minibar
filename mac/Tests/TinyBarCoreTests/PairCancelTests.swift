@@ -55,6 +55,10 @@ final class PairCancelTests: XCTestCase {
         try await PairCancelScenarios().waitsAfterBusyAndRateLimited()
     }
 
+    func test_rateLimitedPairIsSentOnceMore() async throws {
+        try await PairCancelScenarios().rateLimitedPairIsSentOnceMore()
+    }
+
     // Through the engine: quitting and sleep, as the app does them.
 
     func test_quitTakesTheCodeOff() async throws {
@@ -67,6 +71,18 @@ final class PairCancelTests: XCTestCase {
 
     func test_aClosedWindowsCodeIsCanceledOnce() async throws {
         try await PairCancelScenarios().aClosedWindowsCodeIsCanceledOnce()
+    }
+
+    func test_quitWhileTheCodeIsBeingSentWaitsForTheAnswer() async throws {
+        try await PairCancelScenarios().quitWhileTheCodeIsBeingSentWaitsForTheAnswer()
+    }
+
+    func test_quittingWaitsForAClosedWindowsCancel() async throws {
+        try await PairCancelScenarios().quittingWaitsForAClosedWindowsCancel()
+    }
+
+    func test_shutdownIsBoundedWhenTheBarHangs() async throws {
+        try await PairCancelScenarios().shutdownIsBoundedWhenTheBarHangs()
     }
 }
 
@@ -168,15 +184,6 @@ final class PairCancelScenarios {
             await flush()
             XCTAssertEqual(cancels(factory), [])
         }
-        // Run out: 2 minutes have passed.
-        do {
-            let factory = ScriptedWiFiFactory()
-            let flow = await showingCode(factory)
-            clock.advance(by: 120)
-            XCTAssertNil(flow.cancel())
-            await flush()
-            XCTAssertEqual(cancels(factory), [])
-        }
         // Answers to `pair` that end the code on the bar.
         let endings: [(BarError, PairingProblem)] = [
             (Self.api(.wrongCode, 403, attemptsLeft: 0), .codeUsedUp),
@@ -209,11 +216,12 @@ final class PairCancelScenarios {
     }
 
     /// A wrong code with tries left, `rate_limited` and no answer leave the
-    /// code on the bar, so Back takes it off.
+    /// code on the bar, so Back takes it off. So does the app's own 2-minute
+    /// timer running out.
     func aCodeStillOnTheBarIsCanceled() async throws {
         let outlives: [(BarError, PairingProblem)] = [
             (Self.api(.wrongCode, 403, attemptsLeft: 2), .wrongCode(attemptsLeft: 2)),
-            (Self.api(.rateLimited, 429, retryAfter: 1), .rateLimited(retryAfter: 1)),
+            (Self.api(.rateLimited, 429, retryAfter: 30), .rateLimited(retryAfter: 30)),
             (.timedOut, .noAnswer),
         ]
         for (error, problem) in outlives {
@@ -225,10 +233,86 @@ final class PairCancelScenarios {
             await flow.cancel()?.value
             XCTAssertEqual(cancels(factory), [Self.cancelFirst], "\(problem)")
         }
+
+        // 2 minutes passed on the Mac's clock: the bar may still show the
+        // code (its 2 minutes start when the code appears, api.md 4.8), so
+        // it's canceled all the same. If it had ended, the bar's
+        // `not_pairing` costs nothing.
+        let late = ScriptedWiFiFactory()
+        let lateFlow = await showingCode(late)
+        clock.advance(by: 120)
+        let request = lateFlow.cancel()
+        XCTAssertNotNil(request, "canceled even after the app's own timer ran out")
+        await request?.value
+        XCTAssertEqual(cancels(late), [Self.cancelFirst])
     }
 
-    /// Back while `pair/start` is on its way: the code the bar then shows
-    /// comes off again at once, and the page that has gone never shows it.
+    /// `429 rate_limited` from `pair` is the limit `pair` shares with
+    /// `pair/cancel`, one request a second (api.md 4.9), not a verdict on
+    /// the code: a phone's `pair/cancel` landed in the same second. The
+    /// refused request had no effect, so the app waits the second and sends
+    /// the same code once more, as the Remote does; only a second refusal
+    /// shows a message, and not "Too many tries".
+    func rateLimitedPairIsSentOnceMore() async throws {
+        let limited = Self.api(.rateLimited, 429, retryAfter: 1)
+        let sent = #"pair {"code":"482913","pairing_id":"d407580a9215e992"}"#
+
+        // Refused once, then taken.
+        let once = ScriptedWiFiFactory(.init(pair: [.failure(limited), .success(ScriptedWiFiFactory.paired)]))
+        let flow = await showingCode(once)
+        let sending = Task { await flow.submit(code: "482913") }
+        await waitFor(1, "pair {", in: once)
+        guard await clock.waitForSleepers(1) else { return XCTFail("not waiting the second before sending again") }
+        XCTAssertEqual(flow.step, .pairing(Self.bar), "no message for the first refusal")
+        clock.advance(by: 1)
+        await sending.value
+        guard case .paired = flow.step else { return XCTFail("\(flow.step)") }
+        XCTAssertEqual(once.log.get().filter { $0.hasPrefix("pair {") }, [sent, sent], "the same code, once more")
+
+        // Refused twice: the message, with the code still on the bar and
+        // Pair back after a second.
+        let twice = ScriptedWiFiFactory(.init(pair: [.failure(limited), .failure(limited), .success(ScriptedWiFiFactory.paired)]))
+        let flow2 = await showingCode(twice)
+        let sending2 = Task { await flow2.submit(code: "482913") }
+        await waitFor(1, "pair {", in: twice)
+        guard await clock.waitForSleepers(1) else { return XCTFail("not waiting the second before sending again") }
+        clock.advance(by: 1)
+        await sending2.value
+        XCTAssertEqual(flow2.step, .failed(.busyForASecond, bar: Self.bar, retryAt: clock.now().addingTimeInterval(1)))
+        XCTAssertEqual(PairingProblem.busyForASecond.message(barName: "TinyBar 2A1C"), "TinyBar is busy for a second. Try again.")
+        XCTAssertTrue(flow2.acceptsCode, "the code is still on the bar")
+        XCTAssertFalse(flow2.canRetryNow())
+        clock.advance(by: 1)
+        XCTAssertTrue(flow2.canRetryNow())
+        await flow2.submit(code: "482913")
+        guard case .paired = flow2.step else { return XCTFail("\(flow2.step)") }
+        XCTAssertEqual(twice.log.get().filter { $0.hasPrefix("pair {") }.count, 3)
+
+        // Back after the message: the code comes off the bar.
+        let gaveUp = ScriptedWiFiFactory(.init(pair: [.failure(limited)]))
+        let flow3 = await showingCode(gaveUp)
+        let sending3 = Task { await flow3.submit(code: "482913") }
+        await waitFor(1, "pair {", in: gaveUp)
+        guard await clock.waitForSleepers(1) else { return XCTFail("not waiting the second before sending again") }
+        clock.advance(by: 1)
+        await sending3.value
+        guard case .failed(.busyForASecond, _, _) = flow3.step else { return XCTFail("\(flow3.step)") }
+        await flow3.cancel()?.value
+        XCTAssertEqual(cancels(gaveUp), [Self.cancelFirst])
+
+        // Without `retry_after_s` the wait is still that second (api.md 4.9),
+        // not the minute a `pair/start` back-off without the field gets; a
+        // longer limit from a later bar is shown as a wait.
+        XCTAssertEqual(WiFiPairingFlow.problem(for: Self.api(.rateLimited, 429), from: .pair), .busyForASecond)
+        XCTAssertEqual(WiFiPairingFlow.problem(for: Self.api(.rateLimited, 429), from: .pairStart), .rateLimited(retryAfter: 60))
+        XCTAssertEqual(WiFiPairingFlow.problem(for: Self.api(.rateLimited, 429, retryAfter: 30), from: .pair),
+                       .rateLimited(retryAfter: 30))
+    }
+
+    /// Back (or quitting) while `pair/start` is on its way: the code the bar
+    /// then shows comes off again at once, and the page that has gone never
+    /// shows it. Quitting waits for the answer, so the code can come off
+    /// before the app is gone.
     func backWhileAskingForACode() async throws {
         let gate = Gate()
         let factory = ScriptedWiFiFactory(.init(pairStartGate: gate))
@@ -237,12 +321,17 @@ final class PairCancelScenarios {
         let asking = Task { await flow.requestCode() }
         await reach(gate)
         XCTAssertEqual(flow.step, .requestingCode(Self.bar))
-        XCTAssertNil(flow.cancel(), "no pairing_id yet: the bar's answer decides")
-        XCTAssertEqual(cancels(factory), [])
+        let waiting = flow.cancel()
+        XCTAssertNotNil(waiting, "no pairing_id yet: the bar's answer decides, and quitting waits for it")
+        XCTAssertEqual(cancels(factory), [], "nothing to cancel yet")
+        let done = Locked(false)
+        Task { await waiting?.value; done.set(true) }
+        await flush()
+        XCTAssertFalse(done.get(), "still waiting for the answer")
         gate.open()
         await asking.value
-        await waitFor(1, "pair/cancel ", in: factory)
-        XCTAssertEqual(cancels(factory), [Self.cancelFirst])
+        await waiting?.value
+        XCTAssertEqual(cancels(factory), [Self.cancelFirst], "the code came off before quitting would finish")
         XCTAssertEqual(flow.step, .requestingCode(Self.bar), "never .enterCode")
         XCTAssertFalse(flow.acceptsCode)
 
@@ -254,15 +343,17 @@ final class PairCancelScenarios {
         flow2.choose(Self.bar)
         let asking2 = Task { await flow2.requestCode() }
         await reach(refusingGate)
-        flow2.cancel()
+        let waiting2 = flow2.cancel()
         refusingGate.open()
         await asking2.value
+        await waiting2?.value
         await flush()
         XCTAssertEqual(cancels(refusing), [])
     }
 
-    /// Back while the code is on its way (`pair`): the answer decides. A
-    /// success keeps the pairing; a code still on the bar is taken off.
+    /// Back (or quitting) while the code is on its way (`pair`): the answer
+    /// decides. A success keeps the pairing; a code still on the bar is
+    /// taken off. Quitting waits for the answer either way.
     func backWhileSendingTheCode() async throws {
         func backWhileSending(_ answer: Result<PairReply, BarError>) async -> (WiFiPairingFlow, ScriptedWiFiFactory) {
             let gate = Gate()
@@ -271,9 +362,12 @@ final class PairCancelScenarios {
             let sending = Task { await flow.submit(code: "482913") }
             await reach(gate)
             XCTAssertEqual(flow.step, .pairing(Self.bar))
-            XCTAssertNil(flow.cancel(), "the code is on its way: its answer decides")
+            let waiting = flow.cancel()
+            XCTAssertNotNil(waiting, "the code is on its way: its answer decides, and quitting waits for it")
+            XCTAssertEqual(cancels(factory), [], "nothing is sent before the answer")
             gate.open()
             await sending.value
+            await waiting?.value
             return (flow, factory)
         }
 
@@ -352,9 +446,11 @@ final class PairCancelScenarios {
         let flow2 = await showingCode(sending)
         let submitting = Task { await flow2.submit(code: "482913") }
         await reach(gate)
-        XCTAssertNil(flow2.macWillSleep(), "the answer decides")
+        let waiting = flow2.macWillSleep()
+        XCTAssertNotNil(waiting, "the answer decides; sleep waits for it briefly")
         gate.open()
         await submitting.value
+        await waiting?.value
         guard case .paired = flow2.step else { return XCTFail("\(flow2.step)") }
         await flush()
         XCTAssertEqual(cancels(sending), [])
@@ -425,12 +521,22 @@ final class PairCancelScenarios {
         await flow.submit(code: "482913")
         XCTAssertEqual(factory.log.get().last, #"pair {"code":"482913","pairing_id":"5c0e7a91b2d34f60"}"#)
 
-        // Its own code has run out: busy is someone else's code.
-        let other = ScriptedWiFiFactory()
+        // Its own code has run out on the Mac's clock. The bar's may not
+        // have (its 2 minutes start when the code appears, api.md 4.8), so
+        // busy still means its own code: back to typing it, and the bar's
+        // `not_pairing` says it had in fact ended. Only then is busy someone
+        // else's code.
+        let other = ScriptedWiFiFactory(.init(pair: [.failure(Self.api(.notPairing, 409))]))
         let flow2 = await showingCode(other)
+        let ownExpiresAt = clock.now().addingTimeInterval(120)
         clock.advance(by: 120)
         other.script.withLock { $0.pairStart = .failure(Self.api(.pairingBusy, 409, retryAfter: 74)) }
         await flow2.requestCode()
+        XCTAssertEqual(flow2.step, .enterCode(Self.bar, pairingID: Self.firstID, expiresAt: ownExpiresAt),
+                       "its own code, as far as the app can tell")
+        await flow2.submit(code: "482913")
+        XCTAssertEqual(flow2.step, .failed(.expired, bar: Self.bar, retryAt: nil))
+        await flow2.requestCode()   // Show a New Code
         XCTAssertEqual(flow2.step, .failed(.busy(retryAfter: 74), bar: Self.bar, retryAt: clock.now().addingTimeInterval(74)))
         XCTAssertEqual(PairingProblem.busy(retryAfter: 74).message(barName: "TinyBar 2A1C"),
                        "Someone else is pairing with this TinyBar. Try again in 2 minutes.")
@@ -584,5 +690,111 @@ final class PairCancelScenarios {
         await plain.begin()
         await plain.engine.shutdown()
         XCTAssertEqual(cancelLines(plain), [])
+    }
+
+    /// Quit while `pair` is on its way: quitting waits for the bar's answer
+    /// (mac-app-ux.md 5.4, "its answer decides"). A wrong code leaves the
+    /// code on the bar, so it comes off before the app is gone; a right code
+    /// leaves a token on the bar, which the Mac keeps rather than losing one
+    /// of the bar's 10 places.
+    func quitWhileTheCodeIsBeingSentWaitsForTheAnswer() async throws {
+        // Wrong code: the answer starts the cancel, and quitting waits for both.
+        let gate = Gate()
+        let factory = ScriptedWiFiFactory(.init(pair: [.failure(Self.api(.wrongCode, 403, attemptsLeft: 2))], pairGate: gate))
+        let flow = await showingCode(factory)
+        let sending = Task { await flow.submit(code: "111111") }
+        await reach(gate)
+        let quitWaitsFor = flow.cancel()   // what shutdown() awaits
+        XCTAssertNotNil(quitWaitsFor, "quitting waits for the answer")
+        let done = Locked(false)
+        Task { await quitWaitsFor?.value; done.set(true) }
+        await flush()
+        XCTAssertFalse(done.get(), "still waiting for the answer")
+        XCTAssertEqual(cancels(factory), [])
+        gate.open()
+        await sending.value
+        await quitWaitsFor?.value
+        XCTAssertEqual(cancels(factory), [Self.cancelFirst], "the code came off before quitting finished")
+
+        // Right code, through the engine: the token is kept and the bar adopted.
+        let rig = EngineRig.paired()
+        rig.factory.place(rig.bar, at: ConnectionRig.barAddress)
+        await rig.begin()
+        let engineFlow = rig.engine.makeWiFiPairingFlow()
+        engineFlow.choose(Self.found)
+        await engineFlow.requestCode()
+        guard case .enterCode = engineFlow.step else { return XCTFail("\(engineFlow.step)") }
+        let slow = Gate()
+        rig.factory.hold(at: ConnectionRig.barAddress, with: slow)   // the bar is slow to answer `pair`
+        let submitting = Task { await engineFlow.submit(code: "482913") }
+        guard await slow.waitForArrivals(1) else { return XCTFail("pair didn't reach the bar") }
+        let quitting = Task { await rig.engine.shutdown() }
+        await flush()
+        guard case .pairing = engineFlow.step else { return XCTFail("quitting didn't wait: \(engineFlow.step)") }
+        slow.open()
+        await submitting.value
+        await quitting.value
+        guard case .paired = engineFlow.step else { return XCTFail("\(engineFlow.step)") }
+        XCTAssertNotNil(try rig.tokens.token(for: "f412fa3f2a1c"), "the token the bar issued is kept")
+        XCTAssertEqual(rig.store.load()?.bar?.tokenID, "00000001", "the bar's new token_id is saved for the next launch")
+        XCTAssertEqual(cancelLines(rig), [], "nothing to cancel after a success")
+    }
+
+    /// The Connect window was closed (its code's `pair/cancel` is on its
+    /// way) and the app quits right after: the engine keeps the cancel the
+    /// window started, so quitting waits for it (bounded), whether or not the
+    /// window still holds its flow. Over USB `leaving` goes out at once
+    /// meanwhile.
+    func quittingWaitsForAClosedWindowsCancel() async throws {
+        let rig = EngineRig.paired()
+        rig.factory.place(rig.bar, at: ConnectionRig.barAddress)
+        await rig.begin()
+        await rig.plugIn()   // `leaving` goes over the cable at once
+        var flow: WiFiPairingFlow? = rig.engine.makeWiFiPairingFlow()
+        flow?.choose(Self.found)
+        await flow?.requestCode()
+        guard case .enterCode = flow?.step else { return XCTFail("\(String(describing: flow?.step))") }
+        let slow = Gate()
+        rig.factory.hold(at: ConnectionRig.barAddress, with: slow)   // the bar is slow to answer the cancel
+        flow?.cancel()   // the window closed
+        flow = nil       // and let go of its flow
+        guard await slow.waitForArrivals(1) else { return XCTFail("the cancel didn't reach the bar") }
+        let done = Locked(false)
+        let quitting = Task { await rig.engine.shutdown(); done.set(true) }
+        await flush()
+        XCTAssertFalse(done.get(), "quitting waits for the cancel the closed window started")
+        XCTAssertEqual(rig.bar.messages.last?.request.leaving, true, "leaving went out meanwhile")
+        slow.open()
+        await quitting.value
+        XCTAssertEqual(cancelLines(rig), ["wifi pair/cancel d407580a9215e992"], "the cancel reached the bar before the app quit")
+    }
+
+    /// Quitting never takes more than about 2 seconds for pairing, even when
+    /// the bar takes the requests and never answers.
+    func shutdownIsBoundedWhenTheBarHangs() async throws {
+        let rig = EngineRig.paired()
+        rig.factory.place(rig.bar, at: ConnectionRig.barAddress)
+        await rig.begin()
+        let flow = rig.engine.makeWiFiPairingFlow()
+        flow.choose(Self.found)
+        await flow.requestCode()
+        guard case .enterCode = flow.step else { return XCTFail("\(flow.step)") }
+        rig.factory.hang(at: ConnectionRig.barAddress)
+        let start = rig.clock.now()
+        let done = Locked(false)
+        let quitting = Task { await rig.engine.shutdown(); done.set(true) }
+        var steps = 0
+        while !done.get(), steps < 20 {
+            _ = await rig.clock.waitForSleepers(1, timeout: 0.2)
+            rig.clock.advance(by: 0.25)
+            try? await Task.sleep(nanoseconds: 5_000_000)
+            steps += 1
+        }
+        guard done.get() else { return XCTFail("shutdown didn't finish within 5 s on the clock") }
+        await quitting.value
+        let took = rig.clock.now().timeIntervalSince(start)
+        XCTAssertLessThanOrEqual(took, 2.5, "within the 2-second cancel limit")
+        XCTAssertGreaterThanOrEqual(took, 1.9, "the hanging pair/cancel was what it waited for: \(took) s")
+        withExtendedLifetime(flow) {}
     }
 }

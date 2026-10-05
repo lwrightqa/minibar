@@ -24,6 +24,8 @@ final class FakeBar: @unchecked Sendable {
         var aside = false
         /// Tokens the bar accepts over Wi-Fi.
         var tokens: Set<String> = []
+        /// Each token's public `token_id`, for `DELETE /api/v1/clients/{token_id}`.
+        var tokenIDs: [String: String] = [:]
         /// Tokens the bar knows but that were paired for another `client`:
         /// a call with one gets `403 wrong_client` (api.md 5.2).
         var foreignTokens: Set<String> = []
@@ -110,13 +112,16 @@ final class FakeBar: @unchecked Sendable {
             }
             s.issued += 1
             let token = "tb1_" + String(format: "%043d", s.issued)
+            let tokenID = String(format: "%08x", s.issued)
             s.tokens.insert(token)
-            return .success(PairReply(token: token, tokenID: String(format: "%08x", s.issued), deviceID: s.deviceID,
+            s.tokenIDs[tokenID] = token
+            return .success(PairReply(token: token, tokenID: tokenID, deviceID: s.deviceID,
                                       name: s.name, host: "tinybar.local"))
         }
         return try result.get()
     }
 
+    /// `DELETE /api/v1/clients/self` with `token` (api.md 12.3).
     func revoke(_ token: String?) throws(BarError) -> RevokeReply {
         let result: Result<RevokeReply, BarError> = state.withLock { s in
             s.log.append("wifi unpair")
@@ -127,6 +132,21 @@ final class FakeBar: @unchecked Sendable {
             return .success(RevokeReply(revoked: "00000001"))
         }
         return try result.get()
+    }
+
+    /// `DELETE /api/v1/clients/{token_id}` as a USB `request` (api.md 12.2):
+    /// the reply as the bar's `request` command gives it, with `http_status`.
+    func revoke(tokenID: String) -> JSONValue {
+        let reply: [String: JSONValue] = state.withLock { s in
+            s.log.append("usb unpair \(tokenID)")
+            guard let token = s.tokenIDs.removeValue(forKey: tokenID), s.tokens.remove(token) != nil else {
+                return ["ok": .bool(false), "http_status": .int(404), "error": .string("not_found"),
+                        "message": .string("No paired device has that token_id."), "field": .string("token_id")]
+            }
+            s.revoked.append(token)
+            return ["ok": .bool(true), "http_status": .int(200), "revoked": .string(tokenID)]
+        }
+        return .object(reply)
     }
 
     var status: StatusReply {
@@ -187,6 +207,19 @@ final class FakeUSBTransport: USBLinkTransport, @unchecked Sendable {
         try live().pairOverUSB(request)
     }
 
+    /// Only `DELETE /api/v1/clients/{token_id}` is played; anything else is
+    /// `404 not_found`, as the bar answers an unknown path.
+    func request(_ command: USBRequestCommand) async throws -> JSONValue {
+        let bar = try live()
+        let prefix = "\(TinyBarAPI.basePath)/clients/"
+        if command.method == .delete, command.path.hasPrefix(prefix) {
+            return bar.revoke(tokenID: String(command.path.dropFirst(prefix.count)))
+        }
+        bar.record("usb request \(command.method.rawValue) \(command.path)")
+        return .object(["ok": .bool(false), "http_status": .int(404), "error": .string("not_found"),
+                        "message": .string("No such endpoint."), "field": .null])
+    }
+
     /// The bar sends an event (`ready`), or the port goes away (`closed`).
     func emit(_ event: USBEvent) {
         continuation.yield(event)
@@ -212,13 +245,16 @@ final class FakeWiFiTransport: WiFiLinkTransport, @unchecked Sendable {
     let bar: FakeBar?
     /// Never answer (sendLeaving's time-out).
     let hangs: Bool
+    /// Answer only once the test opens the gate (a slow bar).
+    let gate: Gate?
     private let closed = Locked(false)
 
-    init(endpoint: BarEndpoint, token: String?, bar: FakeBar?, hangs: Bool = false) {
+    init(endpoint: BarEndpoint, token: String?, bar: FakeBar?, hangs: Bool = false, gate: Gate? = nil) {
         self.endpoint = endpoint
         self.token = token
         self.bar = bar
         self.hangs = hangs
+        self.gate = gate
     }
 
     var endpointDescription: String { endpoint.description }
@@ -227,6 +263,10 @@ final class FakeWiFiTransport: WiFiLinkTransport, @unchecked Sendable {
         guard !closed.get() else { throw .closed }
         if hangs {
             do { try await Task.sleep(nanoseconds: 60_000_000_000) } catch { throw .cancelled }
+        }
+        if let gate {
+            await gate.wait()
+            if Task.isCancelled { throw .cancelled }
         }
         guard let bar else { throw .unreachable("nobody at \(endpoint)") }
         if let failure = bar.failure(for: .wifi) {
@@ -283,6 +323,7 @@ final class FakeTransportFactory: TransportFactory, @unchecked Sendable {
         var usbBars: [UInt64: FakeBar] = [:]
         var wifiBars: [BarEndpoint: FakeBar] = [:]
         var hangingEndpoints: Set<BarEndpoint> = []
+        var gates: [BarEndpoint: Gate] = [:]
         var openError: (any Error)?
         var opened: [FakeUSBTransport] = []
         var made: [FakeWiFiTransport] = []
@@ -304,6 +345,11 @@ final class FakeTransportFactory: TransportFactory, @unchecked Sendable {
         state.withLock { _ = $0.hangingEndpoints.insert(endpoint) }
     }
 
+    /// Transports made from now on for this address answer only once `gate` is open.
+    func hold(at endpoint: BarEndpoint, with gate: Gate) {
+        state.withLock { $0.gates[endpoint] = gate }
+    }
+
     func failOpening(with error: (any Error)?) {
         state.withLock { $0.openError = error }
     }
@@ -323,7 +369,7 @@ final class FakeTransportFactory: TransportFactory, @unchecked Sendable {
     func makeWiFi(endpoint: BarEndpoint, token: String?) -> any WiFiLinkTransport {
         state.withLock { s in
             let transport = FakeWiFiTransport(endpoint: endpoint, token: token, bar: s.wifiBars[endpoint],
-                                              hangs: s.hangingEndpoints.contains(endpoint))
+                                              hangs: s.hangingEndpoints.contains(endpoint), gate: s.gates[endpoint])
             s.made.append(transport)
             return transport
         }
@@ -358,7 +404,10 @@ final class ConnectionRig: @unchecked Sendable {
         let known = KnownBar(deviceID: "f412fa3f2a1c", name: "TinyBar 2A1C", host: "tinybar.local",
                              lastEndpoint: barAddress, auth: .bearer, tokenID: "74d8a526")
         let rig = ConnectionRig(known: known, tokens: ["f412fa3f2a1c": token], configuration: configure)
-        rig.bar.set { $0.tokens.insert(token) }
+        rig.bar.set {
+            $0.tokens.insert(token)
+            $0.tokenIDs["74d8a526"] = token
+        }
         return rig
     }
 

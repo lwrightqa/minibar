@@ -266,7 +266,6 @@ final class PairingWireScenarios {
             ((409, W.notPairing), .expired, false),
             ((409, W.tokenLimit), .tokenLimit, false),
             ((409, W.inSetup), .inSetup, false),
-            ((429, W.oneASecond), .rateLimited(retryAfter: 1), true),
         ]
         for (reply, problem, outlives) in pairReplies {
             answer("pair/start", (202, W.started))
@@ -290,6 +289,24 @@ final class PairingWireScenarios {
                 XCTAssertEqual(cancelBodies().last, #"{"pairing_id":"d407580a9215e992"}"#)
             }
         }
+
+        // `429 rate_limited` from `pair`, the shared one-a-second limit
+        // (api.md 4.9), with `Retry-After: 1`: the app waits that second and
+        // sends the same code once more; the bar takes it.
+        answer("pair/start", (202, W.started))
+        answer("pair", (429, W.oneASecond), (200, W.paired))
+        let limited = flow()
+        limited.choose(bar)
+        await limited.requestCode()
+        let pairsBefore = server.requests.filter { $0.path == "/api/v1/pair" }.count
+        let sending = Task { await limited.submit(code: "482913") }
+        guard await clock.waitForSleepers(1) else { return XCTFail("not waiting the second before sending again") }
+        XCTAssertEqual(limited.step, .pairing(bar), "no message for the first refusal")
+        clock.advance(by: 1)
+        await sending.value
+        guard case .paired = limited.step else { return XCTFail("\(limited.step)") }
+        let pairs = server.requests.filter { $0.path == "/api/v1/pair" }.dropFirst(pairsBefore).map(\.bodyText)
+        XCTAssertEqual(pairs, Array(repeating: #"{"code":"482913","pairing_id":"d407580a9215e992"}"#, count: 2))
 
         // And the code that works.
         answer("pair/start", (202, W.started))

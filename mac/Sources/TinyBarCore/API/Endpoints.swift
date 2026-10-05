@@ -33,4 +33,11 @@ public enum Endpoints {
     public static let pairCancel = Endpoint(.post, "\(TinyBarAPI.basePath)/pair/cancel", sendsToken: false)
     /// Unpair this Mac (Forget This TinyBar).
     public static let clientsSelf = Endpoint(.delete, "\(TinyBarAPI.basePath)/clients/self", sendsToken: true)
+    /// Revoke the token with this `token_id` (api.md 12.2). Scope `full` over
+    /// Wi-Fi, which the app doesn't have; the app sends it only over USB, as
+    /// a `request` command, for Forget This TinyBar while the bar is plugged
+    /// in (USB carries no token, so `clients/self` can't name the Mac there).
+    public static func client(tokenID: String) -> Endpoint {
+        Endpoint(.delete, "\(TinyBarAPI.basePath)/clients/\(tokenID)", sendsToken: false)
+    }
 }

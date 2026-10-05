@@ -416,6 +416,7 @@ final class FlakyUSB: USBLinkTransport, @unchecked Sendable {
     func hello(_ request: HelloRequest) async throws -> InfoReply { try await inner.hello(request) }
     func sendCall(_ request: CallRequest) async throws -> CallReply { try await inner.sendCall(request) }
     func status() async throws -> StatusReply { try await inner.status() }
+    func request(_ command: USBRequestCommand) async throws -> JSONValue { try await inner.request(command) }
     func pair(_ request: USBPairRequest) async throws -> PairReply {
         let n = attempts.withLock { $0 += 1; return $0 }
         if n == 1 { throw BarError.api(APIErrorBody(error: .busy, message: "Saving."), httpStatus: nil) }

@@ -21,7 +21,10 @@ How the code is organized, and why, is in [ARCHITECTURE.md](ARCHITECTURE.md).
 > the Remote pairs with the code on the bar (which of 1.0.1's changes fixed the phone isn't confirmed; see "What's
 > verified"), but its first frame came up upside down with the side buttons on top, which is how the bar stands,
 > until it righted itself. 1.0.2 fixes that, confirmed on the bar (the picture is right straight away), and is
-> merged here with the pairing alignment.
+> merged here with the pairing alignment. **1.0.3** (2026-10-05) answers the review of that alignment: removing a Mac
+> that is on a Wi-Fi call toasts once ("Removed Mac · back to Busy"), the Remote's prompt keeps its code across a
+> reload and tells its own code from the next device's (`pairing_seq` in `info`), and the setup page's test polls
+> instead of sleeping. 459 host tests and both page suites pass; nothing of it has run on the bar yet.
 > Everything else that touches the hardware or the radio is unverified until it runs on the bar. See "What's
 > verified" at the end, and the bring-up checklists in `components/board/README.md`, `components/net/README.md` and
 > `components/calendar/README.md`.
@@ -112,18 +115,19 @@ Flash **one merged image at address 0x0, at 115200 baud**. A faster write once l
 
    ```sh
    cd build-<name> && mkdir -p ../dist
-   esptool.py --chip esp32s3 merge_bin -o ../dist/tinybar-1.0.2.bin @flash_args
+   esptool.py --chip esp32s3 merge_bin -o ../dist/tinybar-1.0.3.bin @flash_args
    ```
 
    The version is `PROJECT_VER` in `CMakeLists.txt` (also what `GET /api/v1/info` reports as `fw`). The image in
-   `dist/` today is `dist/tinybar-1.0.2.bin`, built on 2026-10-05 from the merge of the orientation fix into the
-   pairing alignment (2.33 MB; the app 2.04 MB; it reports `fw` 1.0.2, this tree's `PROJECT_VER`).
+   `dist/` today is `dist/tinybar-1.0.3.bin`, built on 2026-10-05 after the review of the pairing alignment (2.33 MB;
+   the app 2.04 MB; it reports `fw` 1.0.3, this tree's `PROJECT_VER`). `dist/tinybar-1.0.0.bin` is the same image
+   under the name the alignment round asked for; `dist/tinybar-1.0.2.bin` is the one the user has flashed.
 2. Plug the bar into the computer with a USB-C **data** cable (a charge-only cable shows no port). If the Mac app is
    running, choose **Pause USB** in its menu first, so it lets go of the serial port.
 3. Open the Espressif web flasher in Chrome or Edge (<https://espressif.github.io/esptool-js/>), set the baud rate to
    **115200**, click Connect and pick the "USB JTAG/serial debug unit" port. The flasher puts the chip into download
    mode through the port itself; if it can't, see Troubleshooting.
-4. Add `dist/tinybar-1.0.2.bin` at flash address **0x0** and click Program.
+4. Add `dist/tinybar-1.0.3.bin` at flash address **0x0** and click Program.
 5. Unplug and plug the bar back in (or press its reset), and it starts.
 
 **Flashing the merged image starts the bar from scratch.** The file covers the whole start of the flash, and the gaps
@@ -184,9 +188,11 @@ and a code on its screen for a new device holds one of the 10 places until it en
 - **A phone (the Remote):** open `http://tinybar.local` and choose **Pair this phone**. The bar shows the code
   ("PAIRING · IPHONE", "Type it on your phone · tap to cancel"; the Remote names itself iPhone, iPad or Android phone
   when the browser says, otherwise the bar says Phone); type it on the phone, which pairs at the sixth digit. Cancel
-  on the phone takes the code off the bar (`pair/cancel`). The phone gets full control, and the Remote lists every
-  paired device, each with Remove (asked first, in place). While the bar is busy with another code or waiting after
-  failed pairings, Pair this phone is dimmed and says how long; each such message goes as soon as its cause is over.
+  on the phone takes the code off the bar (`pair/cancel`). If the page reloads meanwhile (or the phone's browser
+  discards the tab), it comes back to its field with the same code and countdown while that code is still on the
+  bar. The phone gets full control, and the Remote lists every paired device, each with Remove (asked first, in
+  place). While the bar is busy with another code or waiting after failed pairings, Pair this phone is dimmed and
+  says how long; each such message goes as soon as its cause is over.
 - **On the bar:** a tap, swipe, hold or BOOT cancels a code ("Pairing canceled"); a PWR press cancels it and darkens
   the screen; flipping the bar cancels it and does what a flip does. The info column counts down "Code expires in"
   over the bar's name, so in an office with several bars you can check it's the one you meant.
@@ -242,6 +248,30 @@ powers off (on USB, a deep sleep), and a press turns it back on; flip the bar ov
 alarm and start what the Pomodoro is waiting for.
 
 ## What's verified
+
+**2026-10-05, 1.0.3: the review of the pairing alignment answered** (details in ARCHITECTURE.md section 14):
+
+- **Compiled:** a fresh `build-lead-r4/` from `sdkconfig.defaults` alone (`-Y` up axis and the 180° turn set, so
+  `board_imu.c`'s check stays quiet), with **no warnings**; the app reports `fw` 1.0.3. App 2,137,920 bytes
+  (0x209f40, 2.04 MB; 66% of the 6 MB slot free; +912 bytes). Internal RAM: 141,319 bytes used statically (DIRAM),
+  200,441 free for the heap (+8 bytes: the code counter). The Remote page is 25,135 bytes gzipped in flash (was
+  24 KB). The merged image `dist/tinybar-1.0.3.bin` (2,334,528 bytes; `dist/tinybar-1.0.0.bin` is a byte-for-byte
+  copy under the name the round asked for) was made with `esptool.py merge_bin @flash_args` and checked: the
+  bootloader, partition table, OTA data and app byte for byte at 0x0, 0x8000, 0xF000 and 0x30000 with 0xFF in the
+  gaps, the partition table decoded, and the app's and bootloader's checksums and SHA-256 valid (`image_info`:
+  "App version: 1.0.3").
+- **Tested on the host:** 459 tests in 5 runners under AddressSanitizer and UBSan, no warnings (core 158, calendar
+  67, net 151, ui 30, board 53): the merge's 452 plus 7 in `net/test_align_fix.c` (removing a Mac on a Wi-Fi call,
+  without a call, with its call set aside, and unpairing itself on a call, each toasting once; `pairing_seq` in
+  `pair/start`, `info` and `hello`; `retry_after_s` 1 on `pair` and `pair/cancel` and a repeated cancel counting
+  nothing; kind "device" in the list). The Remote's Playwright suite is now 163 checks (14 new: the next device's
+  code within the poll noticed within about 2 s, a reload back to the field with the same countdown and Cancel
+  still taking the code off, a reload under another device's code or after the code is gone starting over) and the
+  setup page's 20 pass, also with the host tests running alongside. The ui host tools (snapshots, layout and touch
+  tests) weren't run again: ui didn't change.
+- **Unverified until it runs on the bar:** the toast after Remove on a real call from the Mac app, the Remote's
+  reload on a real phone's browser (sessionStorage after a discarded tab on iOS Safari and Android Chrome), and
+  everything in the lists below.
 
 **2026-10-05, `orient-fix` merged into the main branch: 1.0.2 together with the pairing alignment** (details in
 ARCHITECTURE.md section 14):

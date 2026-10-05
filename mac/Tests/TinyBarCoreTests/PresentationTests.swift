@@ -424,7 +424,7 @@ final class PresentationTests: XCTestCase {
         // No straight apostrophes anywhere in the app's copy (mac-app-ux.md 2).
         let all: [PairingProblem] = [.noneFound, .localNetworkBlocked, .nothingAt("x"), .notATinyBar, .addressNotAllowed,
                                      .wrongCode(attemptsLeft: 2), .codeUsedUp, .expired, .busy(retryAfter: 1),
-                                     .rateLimited(retryAfter: 1), .tokenLimit, .inSetup, .noAnswer]
+                                     .rateLimited(retryAfter: 1), .busyForASecond, .tokenLimit, .inSetup, .noAnswer]
         XCTAssertFalse(all.contains { $0.message(barName: name).contains("'") })
     }
 

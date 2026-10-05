@@ -164,8 +164,8 @@ final class PairingTests: XCTestCase {
         try await PairingScenarios().test_C22_eachProblem()
     }
 
-    func test_C22_aCodePastItsTimeIsntSent() async throws {
-        try await PairingScenarios().test_C22_aCodePastItsTimeIsntSent()
+    func test_C22_aCodePastItsTimeOnTheMacsClockIsStillSent() async throws {
+        try await PairingScenarios().test_C22_aCodePastItsTimeOnTheMacsClockIsStillSent()
     }
 
     func test_lookingAndChoosing() async throws {
@@ -288,7 +288,10 @@ final class PairingScenarios {
             (api(.wrongCode, status: 403, attemptsLeft: 1), .wrongCode(attemptsLeft: 1)),
             (api(.wrongCode, status: 403, attemptsLeft: 0), .codeUsedUp),
             (api(.notPairing, status: 409), .expired),
-            (api(.rateLimited, status: 429, retryAfter: 1), .rateLimited(retryAfter: 1)),
+            // A longer limit than api.md 4.9's one a second (a later bar): shown
+            // as a wait. The one-a-second kind is sent once more first
+            // (PairCancelTests, rateLimitedPairIsSentOnceMore).
+            (api(.rateLimited, status: 429, retryAfter: 30), .rateLimited(retryAfter: 30)),
             (.timedOut, .noAnswer),
         ]
         for (error, problem) in pairCases {
@@ -310,18 +313,27 @@ final class PairingScenarios {
         XCTAssertEqual(tokens.deviceIDs, [])
     }
 
-    func test_C22_aCodePastItsTimeIsntSent() async throws {
-        let factory = ScriptedWiFiFactory()
+    /// The 2 minutes ran out on the Mac's clock. The bar's 2 minutes start
+    /// when the code appears on its screen, which can be later (api.md 4.8),
+    /// so the code is still sent, and the bar's `not_pairing` is what says it
+    /// has expired ("That code has expired or was canceled on TinyBar").
+    func test_C22_aCodePastItsTimeOnTheMacsClockIsStillSent() async throws {
+        let factory = ScriptedWiFiFactory(.init(pair: [.failure(.api(APIErrorBody(error: .notPairing), httpStatus: 409)),
+                                                      .success(ScriptedWiFiFactory.paired)]))
         let flow = flow(factory)
         flow.choose(Self.bar)
         await flow.requestCode()
         clock.advance(by: 120)
+        XCTAssertTrue(flow.acceptsCode, "Pair stays enabled; only the bar knows")
         await flow.submit(code: "482913")
         XCTAssertEqual(flow.step, .failed(.expired, bar: Self.bar, retryAt: nil))
-        XCTAssertFalse(factory.log.get().contains { $0.hasPrefix("pair {") })
-        // Show a New Code.
+        XCTAssertEqual(factory.log.get().filter { $0.hasPrefix("pair {") }.count, 1, "sent, and the bar decided")
+        XCTAssertFalse(flow.acceptsCode, "now the code is known to be gone")
+        // Show a New Code, and the new one works.
         await flow.requestCode()
         guard case .enterCode = flow.step else { return XCTFail("\(flow.step)") }
+        await flow.submit(code: "482913")
+        guard case .paired = flow.step else { return XCTFail("\(flow.step)") }
     }
 
     func test_lookingAndChoosing() async throws {

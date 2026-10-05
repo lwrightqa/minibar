@@ -454,10 +454,12 @@ static void handle(int fd, bool *quit)
         tb_app_pointer(&s_app, false, 300, 80, TB_TILE_NONE, &now);
         respond(fd, 200, "text/plain", NULL, "ok", 2);
     } else if (!strcmp(q.path, "/_sim/forget")) {
+        /* In the firmware core toasts "Forgot 3 devices" first and net's effect runs after it, so a Wi-Fi call that
+         * ends with the tokens replaces the toast with "Forgot 3 devices · back to Busy"; the same order here. */
         char t[TB_TOAST_BYTES];
         snprintf(t, sizeof t, "Forgot %u device%s", (unsigned)s_app.paired_count, s_app.paired_count == 1 ? "" : "s");
-        net_api_forget_devices(&now);
         tb_app_notify(&s_app, t, &now);
+        net_api_forget_devices(&now);
         respond(fd, 200, "text/plain", NULL, "ok", 2);
     } else if (!strcmp(q.path, "/_sim/restart")) {
         if (s_app.pairing.active) tb_app_pairing_end(&s_app, TB_PAIR_END_CANCELED, NULL, &now);

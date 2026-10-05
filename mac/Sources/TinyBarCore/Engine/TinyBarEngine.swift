@@ -21,6 +21,8 @@ import Observation
 /// - On sleep and power-off: `sendLeaving()` (after a power-off, carrying on
 ///   if the app is still running 10 seconds later), and a pairing code the
 ///   Connect window asked for comes off the bar (`pair/cancel`), as on quit.
+///   Quitting also waits (briefly) for pairing requests still on their way,
+///   the closed window's included, so their answers can take a code off.
 ///   On wake: a fresh start (`didWake`, a new grace period, and the state at once).
 /// - Keeps "Count … Again" available while the app or camera is still in use.
 @MainActor
@@ -112,6 +114,12 @@ public final class TinyBarEngine {
     /// The Connect window's Pair Over Wi-Fi flow, while the window keeps it,
     /// so quitting and sleep can take its code off the bar.
     @ObservationIgnored private weak var pairingFlow: WiFiPairingFlow?
+    /// Pairing requests still on their way from any flow, whether or not the
+    /// window still holds it: a `pair/cancel` for a code given up (the window
+    /// closed), or the wait for an answer that decides (`pair/start`, `pair`)
+    /// and the cancel it may start. Each gives up after
+    /// `WiFiPairingFlow.cancelTimeout`; quitting waits for them all.
+    @ObservationIgnored private var pairingWork: Set<Task<Void, Never>> = []
 
     /// How long to wait before trying a monitor that failed to start again.
     public static let monitorRetryInterval: TimeInterval = 60
@@ -231,14 +239,16 @@ public final class TinyBarEngine {
     /// Quitting: sends `leaving` (best effort, about a second at most) and,
     /// while the Connect window has asked a bar for a code, takes that code
     /// off the bar (`pair/cancel`, at the same time, `WiFiPairingFlow.cancelTimeout`
-    /// at most), then stops everything. Call from `applicationShouldTerminate`
-    /// and reply `.terminateLater` until it returns.
+    /// at most), then stops everything. A pairing request still on its way
+    /// (from this window, or from one closed a moment ago) is waited for the
+    /// same way, so its answer can take the code off the bar. Call from
+    /// `applicationShouldTerminate` and reply `.terminateLater` until it returns.
     public func shutdown() async {
         guard !stopped else { return }
         stopped = true
-        let codeCanceled = pairingFlow?.cancel()
+        if let codeCanceled = pairingFlow?.cancel() { keep(codeCanceled) }
         await connection.sendLeaving()
-        await codeCanceled?.value
+        for work in Array(pairingWork) { await work.value }
         await connection.stop()
         dependencies.mic.stop()
         dependencies.camera.stop()
@@ -375,7 +385,9 @@ public final class TinyBarEngine {
 
     /// A new Pair Over Wi-Fi flow for the Connect window. The engine keeps a
     /// weak reference to the latest one, so quitting and sleep can take its
-    /// code off the bar.
+    /// code off the bar, and keeps every request the flow starts in the
+    /// background (`pairingWork`), so quitting can wait for those even after
+    /// the window has let go of the flow.
     public func makeWiFiPairingFlow() -> WiFiPairingFlow {
         let flow = WiFiPairingFlow(
             clientID: state.settings.installID,
@@ -385,10 +397,20 @@ public final class TinyBarEngine {
             transports: dependencies.transports,
             tokens: dependencies.tokens,
             needsLocalNetworkExplanation: dependencies.hasLocalNetworkPrivacy && !state.settings.didExplainLocalNetwork,
-            onPaired: { [weak self] bar in self?.adopt(bar) }
+            onPaired: { [weak self] bar in self?.adopt(bar) },
+            onBackgroundWork: { [weak self] work in self?.keep(work) }
         )
         pairingFlow = flow
         return flow
+    }
+
+    /// Keeps a pairing request that runs in the background until it's done.
+    private func keep(_ work: Task<Void, Never>) {
+        guard pairingWork.insert(work).inserted else { return }
+        Task { [weak self] in
+            await work.value
+            self?.pairingWork.remove(work)
+        }
     }
 
     private func adopt(_ bar: KnownBar) {

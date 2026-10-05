@@ -25,6 +25,12 @@ public struct PairStartReply: Codable, Hashable, Sendable {
     public var ok: Bool
     /// Ties the code to this client. Send it back with the code.
     public var pairingID: String
+    /// This code's number, counted from the bar's start-up (api.md 4.6,
+    /// added 2026-10-05): `info.pairing_seq` carries the same number while
+    /// the code is on the screen, so the Remote can tell its code from a
+    /// later one. `nil` from firmware that doesn't send it. The Mac app
+    /// doesn't use it.
+    public var pairingSeq: Int?
     /// 120.
     public var expiresInS: Int
     /// 6.
@@ -32,9 +38,10 @@ public struct PairStartReply: Codable, Hashable, Sendable {
     /// Tries allowed for this code: 3.
     public var attempts: Int
 
-    public init(pairingID: String, expiresInS: Int = 120, codeLength: Int = 6, attempts: Int = 3) {
+    public init(pairingID: String, pairingSeq: Int? = nil, expiresInS: Int = 120, codeLength: Int = 6, attempts: Int = 3) {
         self.ok = true
         self.pairingID = pairingID
+        self.pairingSeq = pairingSeq
         self.expiresInS = expiresInS
         self.codeLength = codeLength
         self.attempts = attempts
@@ -43,6 +50,7 @@ public struct PairStartReply: Codable, Hashable, Sendable {
     enum CodingKeys: String, CodingKey {
         case ok
         case pairingID = "pairing_id"
+        case pairingSeq = "pairing_seq"
         case expiresInS = "expires_in_s"
         case codeLength = "code_length"
         case attempts

@@ -192,6 +192,7 @@ final class NotReadyUSB: USBLinkTransport, @unchecked Sendable {
     func sendCall(_ request: CallRequest) async throws -> CallReply { try await inner.sendCall(request) }
     func status() async throws -> StatusReply { try await inner.status() }
     func pair(_ request: USBPairRequest) async throws -> PairReply { try await inner.pair(request) }
+    func request(_ command: USBRequestCommand) async throws -> JSONValue { try await inner.request(command) }
     func close() async { await inner.close() }
 }
 
@@ -275,16 +276,20 @@ final class PairingFixScenarios {
         await flow.submit(code: "482913")
         guard case .paired = flow.step else { return XCTFail("\(flow.step)") }
 
-        // After the code expires, it isn't sent again.
+        // After the app's own 2 minutes it's still sent: the bar's 2 minutes
+        // start when the code appears on its screen (api.md 4.8), so only the
+        // bar's answer says whether the code is gone.
+        let lateFactory = ScriptedWiFiFactory(.init(pair: [.failure(.timedOut)]))
         let late = WiFiPairingFlow(clientID: ConnectionRig.client, macName: nil, clock: clock, discovery: FakeBarDiscovery(),
-                                   transports: ScriptedWiFiFactory(.init(pair: [.failure(.timedOut)])), tokens: InMemoryTokenStore(),
+                                   transports: lateFactory, tokens: InMemoryTokenStore(),
                                    needsLocalNetworkExplanation: false, onPaired: { _ in })
         late.choose(PairingScenarios.bar)
         await late.requestCode()
         clock.advance(by: 121)
         await late.submit(code: "482913")
-        XCTAssertEqual(late.step, .failed(.expired, bar: PairingScenarios.bar, retryAt: nil))
-        XCTAssertFalse(late.acceptsCode)
+        XCTAssertEqual(lateFactory.log.get().filter { $0.hasPrefix("pair {") }.count, 1, "sent")
+        XCTAssertEqual(late.step, .failed(.noAnswer, bar: PairingScenarios.bar, retryAt: nil))
+        XCTAssertTrue(late.acceptsCode, "and can be sent again")
     }
 
     /// The wait after `rate_limited` is on the flow's clock.

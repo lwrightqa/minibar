@@ -143,7 +143,7 @@ Some errors add a field: `retry_after_s` (with `429 rate_limited` and `409 pairi
 ### 2.6 Retries and time-outs
 
 - Clients time out an HTTP request after **5 seconds** and a USB reply after **3 seconds**.
-- `GET`, `PUT`, `PATCH`, `DELETE` and `POST /api/v1/call` are safe to repeat: each carries the whole state it sets. The other `POST`s (Pomodoro actions, message, set aside, pairing) aren't: a repeated Skip skips twice. Clients repeat those only when the connection failed before the request was sent.
+- `GET`, `PUT`, `PATCH`, `DELETE`, `POST /api/v1/call` and `POST /api/v1/pair/cancel` are safe to repeat: each carries the whole state it sets (a repeated `pair/cancel` answers `409 not_pairing` and changes nothing, counting no second failed pairing). The other `POST`s (Pomodoro actions, message, set aside, `pair/start` and `pair`) aren't: a repeated Skip skips twice, a repeated `pair` costs a try. Clients repeat those only when the connection failed before the request was sent.
 - The bar may close an idle connection at any time. When a request fails because of that, the client retries once on a new connection.
 
 ---
@@ -256,15 +256,18 @@ The Remote page pairing itself:
 ```http
 HTTP/1.1 202 Accepted
 
-{"ok": true, "pairing_id": "d407580a9215e992", "expires_in_s": 120, "code_length": 6, "attempts": 3}
+{"ok": true, "pairing_id": "d407580a9215e992", "pairing_seq": 7, "expires_in_s": 120, "code_length": 6, "attempts": 3}
 ```
+
+`pairing_seq` is this code's number, counted from the bar's start-up. `GET /api/v1/info` carries the same number while the code is on the screen (7.1), so the device that asked can tell its own code from a later one, even one that took its place within a 2-second poll, without anyone learning the `pairing_id`. The Remote's prompt uses it; the Mac app can ignore it. *(Added 2026-10-05, from the review of the firmware's alignment. Not secret: it says nothing but which code is up.)*
 
 | Error | When |
 |---|---|
 | `409 pairing_busy` | Another code is on the screen. `retry_after_s` says when it expires. |
 | `409 token_limit` | 10 tokens already exist. Revoke one first (section 12). Checked here, and the code then holds a place until it ends (4.3), so no one is shown a code that can't work. |
 | `429 rate_limited` | Too many pairings ended without success (4.9). `retry_after_s` says when to try again. |
-| `409 in_setup` | The bar is on its Wi-Fi setup screens (only reachable over USB then). |
+| `409 in_setup` | The bar is on its Wi-Fi setup screens: over USB on any of them, and over Wi-Fi on the Connected screen (the bar is back on the office Wi-Fi there). On the QR code, Connecting and Couldn't connect screens the bar can't be reached over Wi-Fi at all, so a device there gets no answer, not this error. |
+| `503 busy` | The bar is powering off (`retry_after_s` 1): no code is shown that the power-off would take away a moment later. Clients show "didn't answer", as for no reply. |
 
 ```json
 {"ok": false, "error": "pairing_busy", "message": "Another device is pairing. Try again in 74 seconds.", "field": null, "retry_after_s": 74}
@@ -305,7 +308,7 @@ With `"cookie": true` the body has `"token": null` and the response carries `Set
 | `403 wrong_code` | The code doesn't match. `attempts_left` says how many tries this code has left; at 0 the pairing ends. |
 | `409 not_pairing` | No code is on the screen for this `pairing_id`: it expired, was canceled on the bar, was already used, or ran out of tries. Start again. |
 | `409 token_limit` | A safeguard only, since the code holds a place (4.3): the bar has no room for this device. The pairing ends ("Pairing canceled" on the bar) without counting as a failed pairing. |
-| `429 rate_limited` | More than one `pair` request a second. |
+| `429 rate_limited` | More than one `pair` request a second (`pair/cancel` counts too). `retry_after_s` is 1, and the Mac app waits exactly that long. |
 
 ```json
 {"ok": false, "error": "wrong_code", "message": "That code doesn't match. 2 tries left.", "field": "code", "attempts_left": 2}
@@ -324,7 +327,7 @@ With `"cookie": true` the body has `"token": null` and the response carries `Set
 | Error | When |
 |---|---|
 | `409 not_pairing` | No code is on the screen for this `pairing_id` (it already ended). Nothing to do. |
-| `429 rate_limited` | Shares `pair`'s limit of one request a second. |
+| `429 rate_limited` | Shares `pair`'s limit of one request a second (`retry_after_s` 1). |
 
 ### 4.8 On the bar
 
@@ -387,7 +390,7 @@ These screens are drawn in the mock-up's pairing round and built into the firmwa
 - **Who may report for a `client`** *(2026-10-04, security review)*: a call over Wi-Fi is tied to the token it came with, so one device can't end or restart another's call.
   - A token paired with a `client` (the Mac app's always is) reports only for that `client`.
   - A token paired without one (a script) reports for one `client` at a time, and only one that no other paired device holds and that isn't the latest from the Mac on USB. Reporting for a new `client` drops its previous one, and that call ends.
-  - Anything else gets `403 wrong_client`, with `field` `"client"`, and changes nothing.
+  - Anything else gets `403 wrong_client`, with `field` `"client"`, and changes nothing. For the Mac app this can only mean its token was paired for another install ID (the app's settings were reset while the Keychain kept the token), so the app reads it like a `401` (section 16) and pairs again. It may first send `DELETE /api/v1/clients/self` with the refused token (12.3): the token is still valid, only tied to another `client`, so the bar revokes it and toasts "Removed Mac" as for any self-unpairing, and the stale token doesn't keep one of the 10 places.
   - USB needs no token: a USB message is accepted for any `client`, and that Mac's call then belongs to the cable until its token reports for it again over Wi-Fi.
 - **Links:** the app uses USB when the bar answers on it and Wi-Fi otherwise, one link at a time. Switching needs nothing special: same `client`, next `seq`. `via` follows the link of the Mac's latest message.
 - **After the bar restarts** it has forgotten every Mac (this state isn't saved). The next heartbeat brings the call back within 30 seconds, at once over USB thanks to the `ready` event (6.7), with its duration from `elapsed_s`. That's how "after a restart or power-on, the bar picks up a call that's still going" works for calls.
@@ -575,7 +578,7 @@ bar → mac  @tb {"id": 3, "ok": true, "device_id": "f412fa3f2a1c", "rev": 1843,
 
 ```text
 mac → bar  @tb {"cmd": "hello", "id": 1, "client": "6F1C2A9E-5B7D-4E0A-9C3B-2D8F1A7E4B60", "app_version": "1.0 (12)", "api": "1.0", "time": "2026-10-04T14:11:58-07:00", "time_zone": "America/Los_Angeles"}
-bar → mac  @tb {"id": 1, "ok": true, "device": "TinyBar", "device_id": "f412fa3f2a1c", "name": "TinyBar 2A1C", "fw": "1.0.0", "api": "1.0", "host": "tinybar.local", "auth": "bearer", "pairing": "idle", "paired": 3, "heartbeat_s": 30, "timeout_s": 90, "time": "2026-10-04T14:11:58-07:00", "time_source": "ntp", "wifi": "connected"}
+bar → mac  @tb {"id": 1, "ok": true, "device": "TinyBar", "device_id": "f412fa3f2a1c", "name": "TinyBar 2A1C", "fw": "1.0.0", "api": "1.0", "host": "tinybar.local", "auth": "bearer", "pairing": "idle", "pairing_seq": null, "paired": 3, "heartbeat_s": 30, "timeout_s": 90, "time": "2026-10-04T14:11:58-07:00", "time_source": "ntp", "wifi": "connected"}
 ```
 
 The reply is the `info` object (7.1) plus `id`. A `hello` counts as a heartbeat and marks the Mac connected over USB, but doesn't change its call state; the app sends a `call` right after it.
@@ -657,7 +660,7 @@ When the app sees it, it sends `hello` and then its current call state at once, 
 No token needed. Who this bar is, before pairing. The USB `hello` reply is the same object.
 
 ```json
-{"ok": true, "device": "TinyBar", "device_id": "f412fa3f2a1c", "name": "TinyBar 2A1C", "fw": "1.0.0", "api": "1.0", "host": "tinybar.local", "auth": "bearer", "pairing": "idle", "paired": 3, "heartbeat_s": 30, "timeout_s": 90, "time": "2026-10-04T14:11:58-07:00", "time_source": "ntp", "wifi": "connected"}
+{"ok": true, "device": "TinyBar", "device_id": "f412fa3f2a1c", "name": "TinyBar 2A1C", "fw": "1.0.0", "api": "1.0", "host": "tinybar.local", "auth": "bearer", "pairing": "idle", "pairing_seq": null, "paired": 3, "heartbeat_s": 30, "timeout_s": 90, "time": "2026-10-04T14:11:58-07:00", "time_source": "ntp", "wifi": "connected"}
 ```
 
 | Field | Meaning |
@@ -669,6 +672,7 @@ No token needed. Who this bar is, before pairing. The USB `hello` reply is the s
 | `host` | The mDNS name the bar has now. |
 | `auth` | `"bearer"` (pairing required) or `"none"` (4.1). |
 | `pairing` | `"idle"`, `"showing"` (a code is on screen) or `"locked"` (back-off, 4.9). |
+| `pairing_seq` | While `pairing` is `"showing"`, the number of the code on the screen, the same `pairing_seq` its `pair/start` reply carried (4.6); otherwise `null`. A device waiting on its code compares the two, so it notices its code is gone even when the next device's code took its place within the same poll. *(Added 2026-10-05, from the review of the firmware's alignment; the Remote's prompt uses it, and clients that don't need it ignore it.)* |
 | `paired` | How many devices are paired, 0 to 10 (4.3). *(Added 2026-10-05 in the firmware's alignment with the mock-up's pairing round, which left this open: a phone that isn't paired can't read the list (12.1), so the Remote's pairing prompt reads this to clear "already has 10 paired devices" as soon as a place is free (counting a code on the screen, which holds one), and after a `401` to say "TinyBar forgot this phone" when it's 0 (Forget all) rather than "This phone isn't paired … anymore". Together with `pairing` and `wifi` (`"setup"` until the Connected screen is over), it lets every refusal on the prompt clear once its cause is over. Clients that don't need it ignore it.)* |
 | `heartbeat_s`, `timeout_s` | 5.3. |
 | `time`, `time_source` | The bar's clock, and where it came from: `"ntp"`, `"rtc"` (the clock chip, kept since the last sync), `"mac"` (set over USB) or `"none"`. |
@@ -771,7 +775,7 @@ The reply is the full status object (7.3), for example after the first request a
 |---|---|
 | `400 bad_value` | Unknown `status`, a bad `back_at`, or `back_at` or `note` with a status other than `"away"`. |
 | `409 no_message` | `"message"` when no message was ever set. |
-| `409 in_setup` | The bar is on its Wi-Fi setup screens (only reachable over USB then, section 13). |
+| `409 in_setup` | The bar is on its Wi-Fi setup screens (over USB, or over Wi-Fi on the Connected screen; section 13 and 4.6). |
 
 ```json
 {"ok": false, "error": "bad_value", "message": "Unknown status \"on_a_call\". On a call is set by the Mac app only.", "field": "status"}
@@ -1139,7 +1143,7 @@ Scope `full`. The Remote's "Paired devices" list.
 }
 ```
 
-`self` marks the token this request came with. `last_ip` is `null` for a token only used over USB.
+`self` marks the token this request came with. `last_ip` is `null` for a token only used over USB. `kind` is `"mac"`, `"remote"`, `"automation"`, or `"device"` for a token paired with a kind the bar didn't know (4.6 lets future clients send one; the bar labels it "Device" on the screen and keeps only that, not the original string). The Remote shows "Device" for it.
 
 ### 12.2 `DELETE /api/v1/clients/{token_id}`
 
@@ -1310,6 +1314,7 @@ The mock-up's "How the Mac app talks to TinyBar" and `decisions.md` need these b
 - **Pairing:** when the bar is on USB and the app has no token, pair over USB at once (6.6). Over Wi-Fi only, pair with the code (4.2), showing "Look at your TinyBar and type the code it shows".
 - **Keychain:** one generic-password item per bar: service `TinyBar`, account = `device_id`, accessible after first unlock on this device only (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`). *(Note 2026-10-04, Mac app only, no change to the wire format: an ad-hoc-signed app can't use the data-protection keychain, and the file-based login keychain it uses ignores this attribute (Apple TN3137), so "this device only" isn't enforced there. The item stays in the user's login keychain.)*
 - **On `401`,** first check `GET /api/v1/info`: if its `device_id` isn't the paired bar's, the address now belongs to another bar (an office network can hand the same address to a different device), so find the right bar again and keep the token. Only when the paired bar itself refuses the token, delete it and ask to pair again. Check `device_id` in every `call` reply for the same reason.
+- **On `403 wrong_client` from a call** (5.2), do the same as on `401`: the token was paired for another install ID (the app's settings were reset while the Keychain kept the token), so check `info`, drop the token and offer to pair again. The app may also send `DELETE /api/v1/clients/self` with the refused token first, best effort, so the stale token doesn't keep one of the bar's 10 places or show twice in the Remote's Paired devices; the bar accepts it and toasts "Removed Mac", as for any self-unpairing. *(2026-10-05: this is what the Mac app does; recorded here so the contract names it.)*
 - **Discovery:** browse `_tinybar._tcp` (for example with `NWBrowser`) and match `id` to the paired `device_id` (section 3). macOS 15 asks the user for **Local Network** access: add `NSLocalNetworkUsageDescription` and list `_tinybar._tcp` under `NSBonjourServices` in Info.plist. Without that permission, Wi-Fi fails silently, so the app explains it.
 - **USB:** find and open the port as in 6.1 to 6.3. Never touch DTR or RTS, and offer Pause USB for flashing.
 - **Retries:** on a network error, retry at the next heartbeat; back off to at most every 30 seconds while the bar can't be reached, and say so in the menu ("Can't reach TinyBar · last sent 2:04 PM").
@@ -1377,6 +1382,6 @@ A method a path doesn't support gets `405 method_not_allowed` with an `Allow` he
 | 429 | `rate_limited` | Too many requests or failed pairings; `retry_after_s`. |
 | 500 | `internal` | A firmware bug. The `message` helps the firmware team. |
 | 503 | `offline` | Needs Wi-Fi, and the bar has none. |
-| 503 | `busy` | The bar is starting up or saving; retry after a second. |
+| 503 | `busy` | The bar is starting up, saving or powering off (`pair/start` on the Powering off screen, 4.6); `retry_after_s` 1. |
 | — | `unknown_cmd`, `unsupported_api` | USB only (6.6). |
 | — | `calendar_rejected`, `calendar_unreachable`, `not_a_calendar` | Calendar check and sync results, reported in `GET /api/v1/calendar` (11.2), never as an HTTP status. |

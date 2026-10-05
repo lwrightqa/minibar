@@ -126,8 +126,9 @@ public final class USBTransport: USBLinkTransport, @unchecked Sendable {
         try await perform(.pair, body: request, as: PairReply.self)
     }
 
-    /// Any endpoint over USB (api.md 6.6). Not used by the app in v1; for
-    /// debugging. The reply's `http_status` is passed to `WireJSON.decodeReply`.
+    /// Any endpoint over USB (api.md 6.6). The app uses it for Forget This
+    /// TinyBar while the bar is plugged in (`DELETE /api/v1/clients/{token_id}`).
+    /// The reply's `http_status` is passed to `WireJSON.decodeReply`.
     public func request(_ command: USBRequestCommand) async throws -> JSONValue {
         try await perform(.request, body: command, as: JSONValue.self, usesHTTPStatus: true)
     }

@@ -308,9 +308,10 @@ void tb_app_set_time_zone(tb_app_t *a, const char *iana, const tb_clock_t *now);
 
 /* ---------- Automatic sources ---------- */
 /* The bar's call changed (net's Mac table). call == NULL or !call->active: no call. lead names why it ended when the
- * caller knows ("Lost contact with your Mac"), else NULL ("Call ended"). Call ids must be nonzero and new for each
- * call (0 is stored as 1). */
-void tb_app_set_call(tb_app_t *a, const tb_call_t *call, const char *lead, const tb_clock_t *now);
+ * caller knows ("Lost contact with your Mac", "Removed Mac"), else NULL ("Call ended"). Call ids must be nonzero and
+ * new for each call (0 is stored as 1). Returns true when the bar announced the change with lead ("Removed Mac · back
+ * to Busy"), so the caller doesn't toast it a second time; false when nothing was said about lead. */
+bool tb_app_set_call(tb_app_t *a, const tb_call_t *call, const char *lead, const tb_clock_t *now);
 /* Whether any Mac is connected (the status row's Mac icon), and over which link. */
 void tb_app_set_mac_link(tb_app_t *a, tb_link_t link, const tb_clock_t *now);
 /* Today's and tomorrow's meetings that count, sorted by start (calendar; at most TB_MEETINGS_MAX). Ids must be

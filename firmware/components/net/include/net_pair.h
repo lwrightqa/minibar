@@ -62,6 +62,8 @@ typedef struct {
     net_token_t tokens[NET_TOKENS_MAX];
     /* the code on screen */
     bool showing;
+    uint32_t seq;                   /* codes shown since start-up; the number of the one on screen (api.md 4.6, 7.1
+                                     * pairing_seq). RAM only, not secret: it only tells one code from the next. */
     char pairing_id[17];
     char code[NET_PAIR_CODE_LEN + 1];
     uint8_t tries_left;

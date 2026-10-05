@@ -59,6 +59,11 @@ public struct InfoReply: Codable, Hashable, Sendable {
     public var host: String?
     public var auth: AuthMode
     public var pairing: PairingState
+    /// While `pairing` is `"showing"`, the number of the code on the screen,
+    /// the same `pairing_seq` its `pair/start` reply carried (api.md 7.1,
+    /// added 2026-10-05 for the Remote's pairing prompt); otherwise `null`,
+    /// and `nil` from firmware that doesn't send it. The Mac app doesn't use it.
+    public var pairingSeq: Int?
     /// How many devices are paired, 0 to 10 (api.md 7.1, added 2026-10-05
     /// for the Remote's pairing prompt). `nil` from firmware that doesn't
     /// send it. The Mac app doesn't use it.
@@ -79,6 +84,7 @@ public struct InfoReply: Codable, Hashable, Sendable {
         host: String? = TinyBarAPI.Bonjour.defaultHost,
         auth: AuthMode = .bearer,
         pairing: PairingState = .idle,
+        pairingSeq: Int? = nil,
         paired: Int? = nil,
         heartbeatS: Int = TinyBarAPI.Defaults.heartbeatSeconds,
         timeoutS: Int = TinyBarAPI.Defaults.timeoutSeconds,
@@ -95,6 +101,7 @@ public struct InfoReply: Codable, Hashable, Sendable {
         self.host = host
         self.auth = auth
         self.pairing = pairing
+        self.pairingSeq = pairingSeq
         self.paired = paired
         self.heartbeatS = heartbeatS
         self.timeoutS = timeoutS
@@ -106,7 +113,9 @@ public struct InfoReply: Codable, Hashable, Sendable {
     enum CodingKeys: String, CodingKey {
         case ok, device
         case deviceID = "device_id"
-        case name, fw, api, host, auth, pairing, paired
+        case name, fw, api, host, auth, pairing
+        case pairingSeq = "pairing_seq"
+        case paired
         case heartbeatS = "heartbeat_s"
         case timeoutS = "timeout_s"
         case time
