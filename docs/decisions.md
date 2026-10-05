@@ -166,6 +166,43 @@ The bar has a small speaker, driven by the ES8311 codec, and no vibration motor.
     `/hotspot-detect.html`, `/connecttest.txt` and the like) with the redirect whatever their host, and offers no DHCP
     captive-portal option (114), which RFC 8908 reserves for an HTTPS API address. During "Set up again" the bar
     leaves the office Wi-Fi when the setup network opens (it restarts the radio for it), which matches criterion 19.
+- **Once set up, the bar stops broadcasting its setup network (2026-10-05, the user's request; firmware 1.0.4, lead
+  developer).** The user wrote: "Once the bar is setup, I want to make it stop broadcasting its network." What the bar
+  does:
+  - Once a join works, the Connected screen shows for 3 s (or until a tap, swipe, hold or BOOT), and MiniBar-Setup
+    closes 15 s after that, so the setup page can still read the result: about 18 s after the join in all. It never
+    comes back on its own: not after Restart, power off or unplugging (the bar starts on the saved network, with no
+    access point), and not when the office Wi-Fi drops or can't be rejoined (the bar keeps trying the saved network,
+    at most every 30 s). Only a person opens it again, with hold, Wi-Fi, Set up, which shows the QR code. Every
+    firmware so far (1.0.0 to 1.0.3) closes it this way, so the user's bar, set up on 1.0.1 and updated app-only to
+    1.0.2, shouldn't have broadcast it since, unless Set up was chosen again. Not yet checked on the bar (no serial log;
+    the net bring-up checklist, item 5, says what to look for).
+  - **1.0.4 makes that hold when a step goes wrong,** with no change to any screen: a close that fails is tried again
+    (after three tries the radio restarts in station mode, which drops the office Wi-Fi for about a second), a close
+    the busy Wi-Fi worker dropped is queued again, net finishes setup itself if core's "setup is done" was lost, a
+    setup network found up outside setup is closed within a second, and the saved network is written again if saving
+    it failed (without it, the next start would open the setup network).
+  - **Connected is the end of setup for the page too:** from the moment a join works, the setup page's Connect (and the
+    same request over USB) gets "MiniBar isn't in Wi-Fi setup anymore.", so nobody else on the open network can point
+    the bar elsewhere during Connected, or keep the network up by sending again (api.md 13.2). Before 1.0.4 a second
+    send during the 3 s Connected screen was taken.
+  - **What brings it back, by design:** flashing the merged image at 0x0, which wipes the saved Wi-Fi (the bar starts
+    like a new one, on the QR code); flash only the app at 0x30000 to update (firmware README, Flash). Also an NVS
+    partition the bar can't read at start-up (it's erased so settings can be kept again), or a save of the network
+    that failed six times over about 43 minutes (logged).
+  - **A phone can still list it for a while:** Android drops a network that stopped broadcasting from its Wi-Fi list
+    within about 15 to 25 s, an iPhone in about 20 s, and Windows can take a minute or more. A phone that joined it
+    keeps it under saved (Android) or known (iPhone) networks until it's forgotten; that's the phone's memory, not the
+    bar broadcasting. The firmware README's Troubleshooting says how to tell the two apart.
+  - **Open, for the user (Proposed by the lead developer): a setup started on purpose and then left.** Hold, Wi-Fi,
+    Set up opens the setup network and leaves the office Wi-Fi until a join works, Skip or a restart. If nobody comes
+    back, it stays up indefinitely, the Remote and calendar are cut off meanwhile, and anyone nearby can set the bar's
+    Wi-Fi. One tap starts it, with no confirmation. The choices: (a) keep it as it is, since a person started it;
+    (b) with a network saved, close the setup network after 10 minutes with no phone on it and rejoin the saved
+    network, with a toast such as "Setup timed out · back on Office-WiFi"; (c) a "Keep current network" tile in the
+    setup menu, next to Skip, that goes back to the saved network at once. **Proposed:** (b) and (c) together. Both
+    change the screens, so they go into the mock-up first, each with its way out, toast, controls-table row and
+    diagram.
 
 ## Remote
 

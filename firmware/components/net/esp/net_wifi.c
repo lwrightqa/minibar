@@ -1160,6 +1160,9 @@ void net_wifi_setup_skip(void)
         esp_wifi_stop();    /* offline: the radio goes off */
         s_running = false;
     }
+    LOCK();
+    s_ap_open = false;      /* gone with the radio (AP_STOP says so too, a moment later) */
+    UNLOCK();
     RADIO_UNLOCK();
     ESP_LOGI(TAG, "Wi-Fi skipped");
 }

@@ -29,7 +29,12 @@ How the code is organized, and why, is in [ARCHITECTURE.md](ARCHITECTURE.md).
 > "MiniBar"`, the default name "MiniBar 2A1C" (a bar that still has the old default is renamed once when it starts)
 > and the file names (`minibar.bin`, `dist/minibar-<version>.bin`); internal names keep the old prefix (`tb_`,
 > `@tb `, `tb1_`, the NVS namespace, `CONFIG_TINYBAR_*`; ARCHITECTURE.md section 14). 460 host tests and
-> both page suites pass; nothing of it has run on the bar yet.
+> both page suites pass; nothing of it has run on the bar yet. **1.0.4** (2026-10-05) answers the user's "Once the
+> bar is setup, I want to make it stop broadcasting its network": it already closed MiniBar-Setup about 18 s after
+> the join and never reopened it on its own, and now that holds when a step goes wrong too (a close that fails is
+> checked and tried again, a lost "setup is done" is caught up, a stray setup network is closed within a second, a
+> failed save of the network is tried again), and the setup page can't send a second network once a join has worked.
+> No screen changes. 474 host tests and both page suites pass; update with the app alone at 0x30000 (see Flash).
 > Everything else that touches the hardware or the radio is unverified until it runs on the bar. See "What's
 > verified" at the end, and the bring-up checklists in `components/board/README.md`, `components/net/README.md` and
 > `components/calendar/README.md`.
@@ -56,7 +61,8 @@ firmware/
                         RTC, audio, watchdog
   fonts/                Barlow TTF sources and their OFL license                   (ui builder)
   test/host/            Linux test runner (CMake + ctest); one folder per module   (lead; folders: builders)
-  dist/                 the merged image to flash, minibar-<version>.bin           (lead; not in git)
+  dist/                 minibar-<version>.bin (merged, for 0x0) and               (lead; not in git)
+                        minibar-<version>-app.bin (the app, for updates at 0x30000)
 ```
 
 ## Build
@@ -115,34 +121,43 @@ ctest --test-dir build-host-ui-<name>                       # the touch test (st
 
 ## Flash
 
-Flash **one merged image at address 0x0, at 115200 baud**. A faster write once left the screen showing noise
-(decisions.md, hardware notes).
+**Updating a bar that's already set up? Flash the app alone, `dist/minibar-1.0.4-app.bin`, at 0x30000** (steps 2 to
+5 below, with that file and address). It keeps the saved Wi-Fi, settings, paired devices and calendar address, so the
+bar comes back on its statuses with no setup network. The merged image is for a new bar: it wipes all of that, and the
+bar starts on the QR code with MiniBar-Setup open until it's set up again.
+
+For a new bar, flash **one merged image at address 0x0, at 115200 baud**. A faster write once left the screen showing
+noise (decisions.md, hardware notes).
 
 1. Make the merged image (bootloader, partition table, OTA data and the app in one file), from your build directory:
 
    ```sh
    cd build-<name> && mkdir -p ../dist
-   esptool.py --chip esp32s3 merge_bin -o ../dist/minibar-1.0.3.bin @flash_args
+   esptool.py --chip esp32s3 merge_bin -o ../dist/minibar-1.0.4.bin @flash_args
+   cp minibar.bin ../dist/minibar-1.0.4-app.bin       # the app alone, for updates
    ```
 
-   The version is `PROJECT_VER` in `CMakeLists.txt` (also what `GET /api/v1/info` reports as `fw`). The image in
-   `dist/` today is `dist/minibar-1.0.3.bin`, built on 2026-10-05 from this tree with the rename to MiniBar (the app
-   2.04 MB; it reports `fw` 1.0.3, this tree's `PROJECT_VER`; see "What's verified"). The older files keep their names:
-   `dist/tinybar-1.0.3.bin` is the pairing alignment's review before the rename, `dist/tinybar-1.0.0.bin` the same
-   image under the name the alignment round asked for, and `dist/tinybar-1.0.2.bin` the one the user has flashed.
+   The version is `PROJECT_VER` in `CMakeLists.txt` (also what `GET /api/v1/info` reports as `fw`). The images in
+   `dist/` today are `dist/minibar-1.0.4.bin` (merged, for 0x0) and `dist/minibar-1.0.4-app.bin` (the app, for
+   0x30000), built on 2026-10-05 from this tree (the app 2.04 MB; it reports `fw` 1.0.4; see "What's verified").
+   The older files keep their names: `dist/minibar-1.0.3.bin` is the rename to MiniBar, `dist/tinybar-1.0.3.bin`
+   the pairing alignment's review before the rename, `dist/tinybar-1.0.0.bin` the same image under the name the
+   alignment round asked for, and `dist/tinybar-1.0.2.bin` the one the user has flashed.
 2. Plug the bar into the computer with a USB-C **data** cable (a charge-only cable shows no port). If the Mac app is
    running, choose **Pause USB** in its menu first, so it lets go of the serial port.
 3. Open the Espressif web flasher in Chrome or Edge (<https://espressif.github.io/esptool-js/>), set the baud rate to
    **115200**, click Connect and pick the "USB JTAG/serial debug unit" port. The flasher puts the chip into download
    mode through the port itself; if it can't, see Troubleshooting.
-4. Add `dist/minibar-1.0.3.bin` at flash address **0x0** and click Program.
+4. Add `dist/minibar-1.0.4.bin` at flash address **0x0** (or, to update a bar that's set up,
+   `dist/minibar-1.0.4-app.bin` at **0x30000**) and click Program.
 5. Unplug and plug the bar back in (or press its reset), and it starts.
 
 **Flashing the merged image starts the bar from scratch.** The file covers the whole start of the flash, and the gaps
 between its parts are blank, so it also wipes the settings, the saved Wi-Fi, paired devices and the calendar address
-(the NVS partitions at 0x9000 and 0x12000). The bar comes up on the Wi-Fi setup QR code, as on a first start. To
-update while keeping all that, flash only the app instead: `build/minibar.bin` at **0x30000** (the app slot), with the
-same flasher and baud rate. Erase Flash isn't needed in either case (the merged image already clears the crash dump
+(the NVS partitions at 0x9000 and 0x12000). The bar comes up on the Wi-Fi setup QR code, as on a first start, with
+the open MiniBar-Setup network up until it's set up again: it's the one ordinary way the setup network comes back on
+its own. To update while keeping all that, flash only the app instead: `dist/minibar-1.0.4-app.bin` (or your build's
+`minibar.bin`) at **0x30000** (the app slot), with the same flasher and baud rate. Erase Flash isn't needed in either case (the merged image already clears the crash dump
 too).
 
 With the command line instead: `idf.py -p <port> -b 115200 flash` (keeps NVS too), then `idf.py -p <port> monitor`.
@@ -167,7 +182,9 @@ With the command line instead: `idf.py -p <port> -b 115200 flash` (keeps NVS too
    network. Guest networks with a sign-in page aren't supported, and the page says so. The calendar's secret iCal
    address can be pasted here too (optional).
 4. The bar shows **Connecting**, then **Connected** with its address (`minibar.local`), and moves on after 3 seconds
-   or a tap. If it can't connect, it says why; a tap goes back to the QR code.
+   or a tap. If it can't connect, it says why; a tap goes back to the QR code. **MiniBar-Setup closes 15 seconds
+   after Connected moves on** (the page shows the result meanwhile) and stays closed: a restart, power off, or the
+   office Wi-Fi dropping never brings it back. Only hold, Wi-Fi, Set up opens it again.
 5. To use the bar without Wi-Fi, hold the screen on the QR code and choose **Skip**. Statuses and the Pomodoro work;
    the calendar and the Remote don't. **The bar remembers it:** after Restart or power-on it starts offline, with its
    radio off and no MiniBar-Setup network. Wi-Fi can be set up later from the quick menu (hold, Wi-Fi, Set up), which
@@ -231,6 +248,23 @@ and a code on its screen for a new device holds one of the 10 places until it en
   rebuild. If it's right one way up but doesn't turn after a flip, the IMU axis is wrong (bring-up step 5). The
   axis's sign and the turn go together: inverting both changes nothing once the IMU has a reading, only which pose
   counts as upright.
+- **MiniBar-Setup still shows in my Wi-Fi list:** first check which list.
+  - **Saved or known networks** (Android: Settings › Network & internet › Internet › Saved networks; iPhone: Settings
+    › Wi-Fi › Edit): that's the phone remembering a network it joined (TinyBar-Setup for a bar set up before 1.0.3),
+    not the bar broadcasting. Forget it there if you like; nothing changes on the bar.
+  - **Networks in range, just after setup:** the phone's list is a little behind. The bar stops broadcasting about
+    18 s after the join (15 s after Connected moves on). Android then drops it within about 15 to 25 s (up to about
+    35 s if a scan failed), an iPhone in about 20 s, and Windows can take a minute or more (opening its Wi-Fi list
+    makes it look again). So a minute after Connected it's gone.
+  - **Networks in range, long after setup:** look at the bar. On the QR code or Couldn't connect, someone chose hold,
+    Wi-Fi, Set up: finish setup, Skip, or Restart (it rejoins the saved network). On its statuses, the name may be
+    another MiniBar's that's on its QR code nearby (every bar uses MiniBar-Setup). For this bar, the log
+    (`idf.py -p <port> monitor`) shows `net.wifi: setup network closed`, then `setup network down`, about 18 s after
+    Connected; `closing the setup network failed` or `up outside setup` lines mean a close was tried again. Restart
+    ends it in any case.
+  - **Right after flashing the merged image at 0x0:** that image wipes the saved Wi-Fi, so the bar starts on the QR
+    code with MiniBar-Setup open, as on a first start. Set it up again, and update with the app alone next time (see
+    Flash).
 - **A computer opens msn.com instead of the setup page:** Windows sends its sign-in check out any other connection it
   has (a network cable or a dock), so the page it opens comes from Microsoft. Type `http://4.3.2.1` in the browser
   instead; that address always goes through the bar's own Wi-Fi.
@@ -262,6 +296,44 @@ powers off (on USB, a deep sleep), and a press turns it back on; flip the bar ov
 alarm and start what the Pomodoro is waiting for.
 
 ## What's verified
+
+**2026-10-05, 1.0.4: the setup network stays closed once the bar is set up** (the user's request; decisions.md, Wi-Fi;
+details in ARCHITECTURE.md sections 10 and 14):
+
+- **Compiled:** a fresh `build-setupap/` from `sdkconfig.defaults` alone, with **no warnings**; the app reports `fw`
+  1.0.4 (`image_info`: project `minibar`, app version 1.0.4, checksum and SHA-256 valid). App 2,140,624 bytes
+  (0x20a9d0, 2.04 MB; 66% of the 6 MB slot free; +2,576 bytes on 1.0.3). Internal RAM: 141,355 bytes used
+  statically (DIRAM), 200,405 free for the heap (+36 bytes). `dist/minibar-1.0.4.bin` (merged, 2,337,232 bytes) was
+  made with `esptool.py merge_bin @flash_args` and checked: the bootloader, partition table, OTA data and app byte for
+  byte at 0x0, 0x8000, 0xF000 and 0x30000 with 0xFF in the gaps; `dist/minibar-1.0.4-app.bin` is `minibar.bin` byte
+  for byte, for an update at 0x30000. The image's Remote and setup pages decompress to `web/` as it stands.
+- **Tested on the host:** 474 tests in 5 runners under AddressSanitizer and UBSan, no warnings (core 163, calendar
+  67, net 161, ui 30, board 53): 1.0.3's 460 plus `net/test_setup_network.c` (10: `setup/wifi` refused on the
+  Connected screen, over USB too, and as soon as net has joined; still taken while connecting and after a failed
+  join, and again after Set up again; the catch-up, stray and retry rules; a lost `TB_FX_WIFI_DONE` and a lost
+  `_SKIP` made by a flood of settings changes over USB, as main would see them) and `core/test_setup_network.c` (4:
+  one `TB_FX_WIFI_DONE` whichever way Connected ends; no `TB_FX_WIFI_SETUP` after 50 link drops, a day offline and
+  every control; none at a start that can't rejoin; only the Set up tile opens it). The setup page's Playwright suite
+  is 22 checks (2 new: Connect again after Connected gets "MiniBar isn't in Wi-Fi setup anymore." and the bar stays
+  put) and the Remote's 163 pass, against the fake bar.
+- **Simulated (scratch, not in the tree):** `net_wifi.c` compiled on Linux against two models of ESP-IDF 5.4.2, the
+  setup network round's harnesses. On 1.0.3 they reproduce every path below; on 1.0.4 each closes. A failed mode
+  change: 1.0.3 left the network up a day later, 1.0.4 closes it 1 s later (three failures: the radio restarts in
+  station mode and rejoins the office; a mode change that never works: the radio's stop closes it). A mode change
+  that says OK but leaves APSTA: caught by `esp_wifi_get_mode()`. A full job queue when the linger ends: 1.0.3 up an
+  hour later, 1.0.4 closed 1 s later. A lost `TB_FX_WIFI_DONE`: 1.0.3 up for good, 1.0.4 closed 15 s after Connected.
+  An access point the driver brings back by itself: closed within 1 s. Set up again while a close runs: the new
+  setup keeps its network. A setup that ended before its network opened, then Set up again: 1.0.3 showed the QR code
+  with no network, 1.0.4 opens it. A failed save of the network: 1.0.3 opened the setup network at the next start,
+  1.0.4 saves it on a later try. In the randomized model (every Wi-Fi, mutex, queue and timer call a point where the
+  tasks may interleave), set_mode failing 30% of the time while scanning or connecting left the network up in 40 of
+  4,000 runs on 1.0.3; on 1.0.4 none of 40,000 runs at 30% and 90% did (the longest stretch up outside setup 18 s),
+  and with no faults, or with slow NVS and lost scans, the longest stretch stays 15.00 s over 100,000 runs. The code
+  model's 25 scenarios pass under ASan and UBSan.
+- **Unverified until it runs on the bar:** the close itself on the real driver (the log lines and a phone's list in
+  `components/net/README.md`, bring-up item 5), whether `esp_wifi_set_mode()` ever fails there, the radio restart's
+  effect on the office link, and the phones' list timings, which come from Android's source and published
+  measurements, not from the user's phones.
 
 **2026-10-05, 1.0.3: the rename to MiniBar** (details in ARCHITECTURE.md section 14):
 

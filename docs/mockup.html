@@ -1095,7 +1095,6 @@ table.controls td.none { color: var(--muted); }
 .auto-head b { font-size: 15px; }
 .badge { font-size: 11px; font-weight: 600; letter-spacing: .04em; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
 .badge.ok { border-color: var(--s-available); color: var(--ink); }
-.badge.later { border-style: dashed; }
 .badge.pick { border-color: var(--ink); color: var(--ink); }
 .auto-card .auto-line { margin: 0; font-size: 13px; color: var(--muted); }
 .mask { font-family: var(--f-mono); font-size: 12px; overflow-wrap: anywhere; }
@@ -1110,6 +1109,13 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
 .auto-banner small { font-size: 12px; color: var(--muted); }
 .auto-banner .btn { flex: none; }
 .link-btn { font: inherit; font-size: 13px; color: var(--ink); text-decoration: underline; }
+a.link-btn:focus-visible { outline: 2px solid var(--state); outline-offset: 2px; }
+/* Download for Mac (Proposed): a plain link in the Remote's button style, so the browser saves the file like any
+   download. The helper line's parts each stay whole, so a wrap moves a whole part down rather than leaving "MB" alone. */
+a.btn { display: inline-block; text-decoration: none; }
+.mac-get { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; }
+.dl-line .part { white-space: nowrap; }
+.mac-get details.help p.note-small { margin: 6px 0 0; }
 
 /* ---------- Pairing on the Remote ----------
    The prompt that replaces the Remote's controls until this phone is paired, and the Paired devices list. */
@@ -1146,6 +1152,8 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
 .sim-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
 .sim-box { display: grid; gap: 10px; align-content: start; padding: 14px; border-radius: 16px; border: 1px dashed var(--line); }
 .sim-box .setting { grid-template-columns: 52px minmax(0, 1fr); }
+/* A longer label sits above its choices. */
+.sim-box .setting.stack { grid-template-columns: minmax(0, 1fr); gap: 6px; }
 .sim-state { margin: 0; font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
 .dir-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap: 16px; }
 .dir-card { display: grid; gap: 10px; align-content: start; min-width: 0; padding: 16px; border-radius: 16px; border: 1px solid var(--line); }
@@ -1224,18 +1232,19 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
    tour's, on Bold Signal's tour panel. */
 .phone-head .help-link { margin-left: auto; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; text-decoration: underline; cursor: pointer; }
 .phone-head .help-link:focus-visible { outline: 2px solid var(--state); outline-offset: 2px; }
-.help-page { display: grid; gap: 14px; min-width: 0; font-size: 15px; }
+/* Body text at 16 px, as the bar's own web/help.html serves it to phones. */
+.help-page { display: grid; gap: 14px; min-width: 0; font-size: 16px; line-height: 1.45; }
 .help-page h3 { font-size: 18px; line-height: 1.25; margin: 4px 0 6px; }
-.help-page h4 { font-size: 15px; margin: 0; }
+.help-page h4 { font-size: 16px; margin: 0; }
 .help-page p, .help-page li { margin: 0; color: var(--ink); }
 .help-page ul { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 3px; }
 .help-page .lead, .help-page .how { color: var(--muted); }
 .hp-top { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 16px; background: #1D3557; color: #fff; }
 .hp-top .tomato { width: 48px; height: 48px; flex: none; }
 .hp-top b { font-size: 21px; line-height: 1.15; display: block; }
-.hp-top small { display: block; margin-top: 4px; font-size: 13px; color: #DFE5EA; }
+.hp-top small { display: block; margin-top: 4px; font-size: 14px; color: #DFE5EA; }
 .hp-nav { display: flex; flex-wrap: wrap; gap: 6px; }
-.hp-nav a { font-size: 13px; padding: 3px 10px; border-radius: 99px; border: 1px solid var(--line); color: var(--ink); text-decoration: none; white-space: nowrap; }
+.hp-nav a { font-size: 14px; padding: 3px 10px; border-radius: 99px; border: 1px solid var(--line); color: var(--ink); text-decoration: none; white-space: nowrap; }
 .hp-nav a:focus-visible { outline: 2px solid var(--state); outline-offset: 2px; }
 .hp-ctl { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px; border-radius: 14px; border: 1px solid var(--line); }
 .hp-ctl svg { width: 72px; height: 72px; display: block; border-radius: 8px; }
@@ -1246,7 +1255,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
 .help-page details { padding: 8px 12px; border-radius: 12px; border: 1px solid var(--line); }
 .help-page summary { font-weight: 600; cursor: pointer; }
 .help-page details p { margin-top: 6px; }
-.help-page code { font-family: var(--f-mono); font-size: 12.5px; overflow-wrap: anywhere; }
+.help-page code { font-family: var(--f-mono); font-size: 14px; overflow-wrap: anywhere; }
 /* The Remote's line while the bar shows its tour (criteria F, 46). */
 .tour-note { margin: 0 0 8px; }
 
@@ -1291,7 +1300,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     <div class="style-head">
       <div class="eyebrow">Mock-up only · not on the device</div>
       <h2 id="simTitle">Simulate · mock-up only</h2>
-      <p>These buttons stand in for your calendar and the Mac app, so you can watch automatic status take over and hand back, and try pairing. They send what the real calendar and Mac would send; the switches on the Remote still decide what the bar does with it. The last two boxes stand in for a phone's camera and the office Wi-Fi, and play the bar's sounds.</p>
+      <p>These buttons stand in for your calendar and the Mac app, so you can watch automatic status take over and hand back, try pairing, and choose whether the bar carries the Mac app for the Remote's Download for Mac. They send what the real calendar and Mac would send; the switches on the Remote still decide what the bar does with it. The last two boxes stand in for a phone's camera and the office Wi-Fi, and play the bar's sounds.</p>
     </div>
     <div class="sim-grid">
       <div class="sim-box" role="group" aria-labelledby="simCalTitle">
@@ -1322,6 +1331,19 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
           <button class="btn ghost" id="simCallEnd" type="button">Call ends</button>
           <button class="btn ghost" id="simQuiet" type="button">Mac goes quiet</button>
         </div>
+        <div class="setting stack">
+          <span id="lSimMacApp">App on the bar</span>
+          <div class="seg" id="simMacApp" role="group" aria-labelledby="lSimMacApp">
+            <button data-v="carried" aria-pressed="true">Carried</button><button data-v="none" aria-pressed="false">None</button><button data-v="damaged" aria-pressed="false">Damaged copy</button>
+          </div>
+        </div>
+        <div class="setting stack">
+          <span id="lSimOpenedOn">Remote opened on</span>
+          <div class="seg" id="simOpenedOn" role="group" aria-labelledby="lSimOpenedOn">
+            <button data-v="phone" aria-pressed="true">Phone</button><button data-v="mac" aria-pressed="false">Mac</button>
+          </div>
+        </div>
+        <p class="note-small" style="margin:0">App on the bar stands in for the copy of the Mac app in the bar's flash, which the Remote's Download for Mac hands out: None is a bar without one (never flashed with it, or erased), and Damaged copy one whose copy failed its check at start-up. Either way the Remote shows no button, only a line saying why. Remote opened on: Mac shows the download as a Mac's browser sees it, without the line that says to open minibar.local on your Mac; the Remote still pairs as an iPhone. Download for Mac saves a harmless 22-byte stand-in with the real file's name.</p>
       </div>
       <div class="sim-box" role="group" aria-labelledby="simPairTitle">
         <span class="field-label" id="simPairTitle">Pairing</span>
@@ -1465,6 +1487,9 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
             </div>
           </div>
         </div>
+        <!-- Download for Mac needs no pairing (info and the zip need no token), so a Mac that comes here only for the app
+             gets it without taking one of the bar's 10 places. Under the prompt, so it never pushes the code field down. -->
+        <p class="note-small" id="pairDl" style="margin:0">Just want the Mac app? <a class="link-btn mac-dl" id="pairDlLink" href="data:application/zip;base64,UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA==" download="MiniBar-1.0.zip" aria-describedby="pairDlLine">Download for Mac</a> · <span class="dl-line" id="pairDlLine"></span></p>
       </div>
 
       <div class="setup" id="setupView" hidden>
@@ -1548,7 +1573,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
             <details><summary>More than one MiniBar in the office</summary><p>Each bar has its own name, like MiniBar 2A1C. Hold the screen and tap Wi-Fi to see this bar's name and address.</p></details>
           </div>
         </section>
-        <p class="note-small" style="margin:0">The quick tour on the bar: hold the screen, then tap Help. <button class="link-btn" id="helpBack2" type="button" style="padding:0;border:0;background:none;cursor:pointer">Open the Remote</button> · <a href="#hp-controls">Back to top</a></p>
+        <p class="lead">The quick tour on the bar: hold the screen, then tap Help. <button class="link-btn" id="helpBack2" type="button" style="padding:0;border:0;background:none;cursor:pointer;font:inherit;color:var(--ink);text-decoration:underline">Open the Remote</button> · <a href="#hp-controls">Back to top</a></p>
       </div>
 
       <div id="remoteMain" class="setup">
@@ -1692,11 +1717,32 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
           </div>
 
           <div class="auto-card" id="macCard">
-            <div class="auto-head"><b>Connect your Mac</b><span class="badge later">Coming later</span></div>
+            <div class="auto-head"><b>Connect your Mac</b><span class="badge" id="macBadge">Not connected</span></div>
             <label class="check" for="macOn"><input type="checkbox" id="macOn" checked> Calls from your Mac</label>
             <p class="auto-line" id="macLine"></p>
-            <p class="note-small">A small menu-bar app will set On a call whenever your Mac's mic or camera is in use, so Slack huddles and Google Meet calls show up even when they aren't on your calendar. It talks to MiniBar over USB when the bar is powered from your Mac, otherwise over Wi-Fi. <a href="#api">How the Mac app talks to MiniBar</a></p>
-            <p class="note-small">To pair your Mac, plug this MiniBar into it once. Or, in the MiniBar menu on your Mac, choose Connect…, then Pair Over Wi-Fi. This MiniBar shows the code.</p>
+            <p class="note-small" id="macIntro">MiniBar for Mac is a small menu-bar app. It sets On a call whenever your Mac's mic or camera is in use, so Slack huddles and Google Meet calls show up even when they aren't on your calendar. It talks to MiniBar over USB when the bar is powered from your Mac, otherwise over Wi-Fi. Only whether you're on a call, and optionally the app's name, leaves your Mac. <a href="#api">How the Mac app talks to MiniBar</a></p>
+            <!-- Download for Mac (Proposed): the bar hands out the Mac app's zip from its own flash (api.md 17). On the bar
+                 the link is info.mac_app.path (/mac/app.zip); the mock-up links a 22-byte stand-in zip with the real file's
+                 name. The helper line comes from info.mac_app; with no app (or a damaged copy) the block goes and #macNone
+                 says why. -->
+            <div class="mac-get" id="macGet">
+              <div><a class="btn mac-dl" id="macDl" href="data:application/zip;base64,UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA==" download="MiniBar-1.0.zip" aria-describedby="macDlLine">Download for Mac</a></div>
+              <p class="auto-line dl-line" id="macDlLine"></p>
+              <details class="help" id="macSteps">
+                <summary>How to install it</summary>
+                <p class="note-small">macOS stops an app it can't check the first time you open it. These steps take about a minute, and you only do them once.</p>
+                <ol>
+                  <li>Open your Downloads folder and double-click <span data-dl-file>MiniBar-1.0.zip</span> to unzip it (Safari may have unzipped it already). You get an app called MiniBar.</li>
+                  <li>Drag MiniBar into your Applications folder. It needs to be there to start when you log in.</li>
+                  <li>Open MiniBar from Applications. The first time, macOS stops it, because it isn't signed through Apple. Close the message and keep the app.</li>
+                  <li>Right away, open System Settings › Privacy &amp; Security and scroll down to Security. Next to the line that says MiniBar was blocked, choose Open Anyway, then confirm with your password or Touch ID. If macOS asks once more, confirm again.</li>
+                </ol>
+                <p class="note-small">MiniBar then sits in your menu bar and opens like any other app. The first time, its Welcome to MiniBar window takes it from there: plug this MiniBar into the Mac with USB, or choose Pair Over Wi-Fi and type the code this MiniBar shows.</p>
+                <p class="note-small">Open Anyway only shows for a while after macOS stopped the app, so do step 4 straight after step 3. On a Mac your company manages, Open Anyway may be missing; ask IT.</p>
+              </details>
+            </div>
+            <p class="auto-line" id="macNone" hidden></p>
+            <p class="note-small" id="macPair">To pair your Mac, plug this MiniBar into it once. Or, in the MiniBar menu on your Mac, choose Connect…, then Pair Over Wi-Fi. This MiniBar shows the code.</p>
           </div>
         </div>
       </div>
@@ -1731,11 +1777,11 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
           <dt>BOOT and PWR</dt><dd>Both buttons sit on the bar's top long edge, slightly inset, so the bar can rest on that edge turned over without pressing them (turned over, they're on the bottom edge). BOOT jumps to the next status without looking; on a call or meeting screen it goes back to your own status, like a tap. A press of PWR turns the screen off and on, holding it for 3 seconds powers the bar off, and a press turns it back on. If the screen is dark or an alarm is ringing, the first press of either button only wakes the screen or silences the alarm. On a pairing code, BOOT cancels it, and a PWR press cancels it and turns the screen off. While Keep holding or Powering off shows, BOOT does nothing. Neither button makes the Tap sound click; they click on their own.</dd>
           <dt>Power</dt><dd>On battery, the software is what keeps the bar switched on, so it also handles switching off: hold PWR for 3 seconds, or use Power in the quick menu, which also has Restart. A watchdog restarts the bar if the software ever freezes, so it can't get stuck on, and it shuts itself down before the battery runs flat. On USB the bar always has power, so powering off puts it into a deep sleep until you press PWR. While it's off, the Remote page can't reach it and says so.</dd>
           <dt>Wi-Fi setup</dt><dd>On first start the bar shows a QR code. Scanning it joins your phone to the bar's own network, where a page lets you choose the office Wi-Fi, enter the password and paste your calendar's secret iCal address (optional). You can also skip Wi-Fi; statuses and the Pomodoro work without it, but the calendar and the Remote don't. Once it's on the Wi-Fi, the bar shows its name and address (MiniBar 2A1C at minibar.local) on the Connected screen and in the Wi-Fi menu. A second MiniBar on the same network takes the next free address (minibar-2.local) and shows that instead, so you can tell them apart. The default name, MiniBar plus the last four characters of the bar's ID, is proposed. When a new bar's first setup ends, with Connected or with Skip, its quick tour of the controls follows once. If the office Wi-Fi drops later, the bar keeps following its saved calendar and reconnects on its own; the Calendar tile says Offline meanwhile.</dd>
-          <dt>Phone remote</dt><dd>The device serves a small page at minibar.local on your Wi-Fi, like the Remote panel on this page, with the bar's name at the top. The first time, it asks you to pair: MiniBar shows a code, and you type it on the phone. Its Display section switches the bar's theme, Bold Signal or Low Glare Pixel, at once, and turns Tap sound on or off. A change made on the Remote while the bar's screen is dark happens underneath and shows, with its confirmation, when the screen is woken. The Help link at the top opens the help page the bar serves, which needs no pairing. Its Automatic status section has a switch for each source, holds your calendar's secret address, and shows what the bar is showing and why. Paired devices lists every phone, Mac and script that can control the bar, each with Remove. A message with characters the bar can't draw, such as an emoji, says which ones before you send it. Characters nobody can see (an odd-width space, a zero-width space, a direction mark) are tidied away rather than refused, and accents typed as a separate mark are joined to their letter.</dd>
+          <dt>Phone remote</dt><dd>The device serves a small page at minibar.local on your Wi-Fi, like the Remote panel on this page, with the bar's name at the top. The first time, it asks you to pair: MiniBar shows a code, and you type it on the phone. Its Display section switches the bar's theme, Bold Signal or Low Glare Pixel, at once, and turns Tap sound on or off. A change made on the Remote while the bar's screen is dark happens underneath and shows, with its confirmation, when the screen is woken. The Help link at the top opens the help page the bar serves, which needs no pairing. Its Automatic status section has a switch for each source, holds your calendar's secret address, and shows what the bar is showing and why. Proposed: its Connect your Mac card has Download for Mac, which hands out the Mac app from the bar's own flash (MiniBar-1.0.zip, with its version and size), and the steps for opening it the first time, when macOS stops an app it can't check until you choose Open Anyway in System Settings › Privacy &amp; Security. The pairing prompt has the same link, since downloading needs no pairing, and on a phone the line under it says the easy way is to open minibar.local on your Mac. A bar that doesn't carry the app, or whose copy is damaged, shows no button, only a line saying why. Paired devices lists every phone, Mac and script that can control the bar, each with Remove. A message with characters the bar can't draw, such as an emoji, says which ones before you send it. Characters nobody can see (an odd-width space, a zero-width space, a direction mark) are tidied away rather than refused, and accents typed as a separate mark are joined to their letter.</dd>
           <dt>Calendar</dt><dd>Paste your calendar's secret iCal address on the Remote, or during Wi-Fi setup (Google Calendar › Settings › your calendar › Integrate calendar › "Secret address in iCal format"). Meetings then show as In a meeting on their own and fill in Next up. Once saved, the address is never shown again; the Remote shows a short masked form with Replace and Remove. Show meeting titles is off by default, so the bar shows times only, and events marked Private never show a title. The bar syncs about every 10 minutes, or when you choose Sync now, and switches at each meeting's exact start and end time. Skipping Wi-Fi turns the calendar off; if Wi-Fi drops, the bar follows its last synced copy.</dd>
           <dt>Automatic status</dt><dd>Two sources, each with its own switch on the Remote: meetings from your calendar, and calls from your Mac. On a call wins over In a meeting, which wins over your own status. A tap, swipe, BOOT, flip or a choice on the Remote sets the call or meeting aside until it ends, and a small headset or calendar glyph stays in the corner. Show again, in the quick menu, the timer menu or on the Remote, brings it back, and the next call or meeting always takes over again. A call or meeting that takes over pauses the Pomodoro, and the bar makes no sound while one is on.</dd>
-          <dt>Mac app</dt><dd>A small menu-bar app sets On a call whenever your Mac's mic or camera is in use, over USB when the bar is powered from the Mac and otherwise over Wi-Fi. Only whether you're on a call, and optionally the app's name, leaves the Mac. To use Wi-Fi it pairs once: plugged into the Mac with USB it pairs on its own, or in its menu you choose Connect…, then Pair Over Wi-Fi, and type the code the bar shows. <a href="#api">How the Mac app talks to MiniBar</a></dd>
-          <dt>Local API</dt><dd>The bar answers on your Wi-Fi at minibar.local, under <code>/api/v1/</code>: <code>POST /api/v1/call</code> sets or ends On a call, and <code>GET /api/v1/status</code> says what the bar is showing and which sources are on. With pairing, every Wi-Fi request carries the token the device got when it paired. The same JSON works over USB serial, one line at a time marked <code>@tb</code>, with no token. It never returns the calendar address. <code>docs/api.md</code> is the full contract.</dd>
+          <dt>Mac app</dt><dd>A small menu-bar app sets On a call whenever your Mac's mic or camera is in use, over USB when the bar is powered from the Mac and otherwise over Wi-Fi. Only whether you're on a call, and optionally the app's name, leaves the Mac. To use Wi-Fi it pairs once: plugged into the Mac with USB it pairs on its own, or in its menu you choose Connect…, then Pair Over Wi-Fi, and type the code the bar shows. Proposed: the bar carries the app and hands it out, so you get it from the Remote's Download for Mac, in Connect your Mac or on the pairing prompt, with no pairing. It isn't signed through Apple, so the first time you open it macOS stops it until you choose Open Anyway in System Settings › Privacy &amp; Security; the card's steps walk through that, and you only do it once. A bar that doesn't carry the app (never flashed with it, or a damaged copy) says so on the card instead of showing the button. <a href="#api">How the Mac app talks to MiniBar</a></dd>
+          <dt>Local API</dt><dd>The bar answers on your Wi-Fi at minibar.local, under <code>/api/v1/</code>: <code>POST /api/v1/call</code> sets or ends On a call, and <code>GET /api/v1/status</code> says what the bar is showing and which sources are on. Proposed: outside the API, <code>GET /mac/app.zip</code> hands out the Mac app, with no token. With pairing, every Wi-Fi request carries the token the device got when it paired. The same JSON works over USB serial, one line at a time marked <code>@tb</code>, with no token. It never returns the calendar address. <code>docs/api.md</code> is the full contract.</dd>
           <dt>Pairing</dt><dd>Approved on 2026-10-04 (details in <code>docs/api.md</code> section 4). So that nobody else on the office Wi-Fi can change your bar, a phone, Mac or script pairs once with a 6-digit code that MiniBar shows only on its own screen: the code lasts 2 minutes and allows 3 tries, only the device that asked can use it, and only someone who can see the bar can read it. One code shows at a time, and Cancel on the device that asked takes it off the bar at once. After two failed pairings in a row (timed out, canceled or out of tries), the bar waits 30 seconds before it shows another, then 1, 2, 4 minutes and so on, up to an hour. A bar keeps up to 10 devices, and a code on its screen holds one of those places until it ends, so the code it shows always works. Plugged in with USB, your Mac pairs on its own, with no code. The Remote lists paired devices with Remove; the Wi-Fi menu's Devices tile forgets them all at once, and with nothing paired it says where to pair (minibar.local). Try it with Pairing in the Simulate panel.</dd>
           <dt>Flip</dt><dd>Turning the bar over always does three things: the layout turns the right way up, any alarm goes quiet, and the Pomodoro starts whatever it's waiting for (the next session or break, or a paused timer). A timer that's already running is left alone, so a flip never skips anything. On a call or meeting screen it also shows the Pomodoro, which sets the call or meeting aside. On a pairing code, or the quick tour, it ends that first, then does the same three things. While the bar is starting up or powering off, the layout still turns with it, and its other jobs wait until it's on.</dd>
           <dt>Alarm</dt><dd>When a session or break ends, the bar flashes and chimes every few seconds until you tap, press a button or flip it, and gives up after a minute. With auto-start on, it chimes once and carries on. During a call or meeting it flashes without the chime. While a pairing code shows, the alarm waits, and it rings once when pairing ends. The mock-up plays the chime in your browser.</dd>
@@ -1786,7 +1832,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     <figure class="fig">
       <p class="scroll-hint">Scroll sideways to see the whole diagram →</p>
       <div class="fig-scroll"><svg viewBox="0 0 990 240" role="img" aria-label="Wi-Fi setup: the QR screen leads to connecting, then connected, which shows the bar's name and address, and your status; a failed connection goes to an error screen and a tap returns to the QR code; Skip goes offline. The first time a bar is set up, the quick tour of the controls shows once when setup ends, after Connected or after Skip, and your status shows when it ends."><defs><marker id="ah-wifi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z"/></marker></defs><rect class="dg-box " x="30" y="30" width="140" height="48" rx="8"/><text class="dg-k" x="100.0" y="48" text-anchor="middle">QR CODE</text><text class="dg-t" x="100.0" y="65" text-anchor="middle">Set up Wi-Fi</text><rect class="dg-box " x="300" y="30" width="140" height="48" rx="8"/><text class="dg-k" x="370.0" y="48" text-anchor="middle">WI-FI</text><text class="dg-t" x="370.0" y="65" text-anchor="middle">Connecting</text><rect class="dg-box " x="570" y="23" width="140" height="62" rx="8"/><text class="dg-k" x="640.0" y="41" text-anchor="middle">CONNECTED</text><text class="dg-t" x="640.0" y="58" text-anchor="middle">MiniBar 2A1C</text><text class="dg-t" x="640.0" y="75" text-anchor="middle">minibar.local</text><rect class="dg-box " x="830" y="30" width="130" height="48" rx="8"/><text class="dg-t" x="895.0" y="58.5" text-anchor="middle">Your status</text><rect class="dg-box " x="30" y="150" width="140" height="48" rx="8"/><text class="dg-k" x="100.0" y="168" text-anchor="middle">NO WI-FI</text><text class="dg-t" x="100.0" y="185" text-anchor="middle">Offline</text><rect class="dg-box " x="300" y="150" width="140" height="48" rx="8"/><text class="dg-k" x="370.0" y="168" text-anchor="middle">ERROR</text><text class="dg-t" x="370.0" y="185" text-anchor="middle">Couldn't connect</text><rect class="dg-box " x="830" y="150" width="130" height="48" rx="8"/><text class="dg-k" x="895.0" y="168" text-anchor="middle">QUICK TOUR</text><text class="dg-t" x="895.0" y="185" text-anchor="middle">7 tips</text><path class="dg-e" d="M170 54 L298 54" marker-end="url(#ah-wifi)"/><text class="dg-l" x="235" y="46" text-anchor="middle">Connect on phone</text><path class="dg-e" d="M440 54 L568 54" marker-end="url(#ah-wifi)"/><text class="dg-l" x="505" y="46" text-anchor="middle">joins</text><path class="dg-e" d="M710 54 L828 54" marker-end="url(#ah-wifi)"/><text class="dg-l" x="770" y="46" text-anchor="middle">after 3 s or tap</text><path class="dg-e" d="M370 78 L370 148" marker-end="url(#ah-wifi)"/><text class="dg-l" x="378" y="118" text-anchor="start">wrong password or no signal</text><path class="dg-e" d="M300 174 L235 174 L235 68 L172 68" marker-end="url(#ah-wifi)"/><text class="dg-l" x="243" y="128" text-anchor="start">tap</text><path class="dg-e" d="M65 78 L65 148" marker-end="url(#ah-wifi)"/><text class="dg-l" x="57" y="118" text-anchor="end">Skip</text><path class="dg-e" d="M135 150 L135 80" marker-end="url(#ah-wifi)"/><text class="dg-l" x="143" y="118" text-anchor="start">Wi-Fi menu</text><path class="dg-e" d="M640 85 L640 174 L828 174" marker-end="url(#ah-wifi)"/><text class="dg-l" x="735" y="146" text-anchor="middle">first setup only: the tour</text><text class="dg-l" x="735" y="159" text-anchor="middle">shows once, over your status</text><path class="dg-e" d="M910 150 L910 80" marker-end="url(#ah-wifi)"/><text class="dg-l" x="902" y="112" text-anchor="end">last tip, or hold, flip,</text><text class="dg-l" x="902" y="125" text-anchor="end">PWR or 30 s untouched</text><path class="dg-e dash" d="M100 198 L100 226 L880 226 L880 200" marker-end="url(#ah-wifi)"/><text class="dg-l" x="490" y="220" text-anchor="middle">after Skip too, the first time</text></svg></div>
-      <figcaption><b>Wi-Fi setup.</b> On first start, or after Set up again, the bar shows a QR code that joins your phone to its own MiniBar-Setup network, where a page lets you pick the office network and enter the password, plus a work username if the network needs one. If it can't connect, the bar says why and a tap returns to the QR code. Once it says Connected, setup is done: a tap moves on and holding opens the quick menu. Connected shows the bar's name (MiniBar 2A1C), its address (minibar.local) and its IP address, so you can tell bars apart in an office with several; the Wi-Fi menu's Network tile shows them again later. Skip, in the hold menu, uses the bar without Wi-Fi: statuses and the Pomodoro still work, but the calendar and Remote don't. The setup page also takes your calendar's secret iCal address, if you've copied it already. Shortly after Connected moves on, the bar closes MiniBar-Setup and stops broadcasting it, and your phone goes back to its usual Wi-Fi. The setup network opens again only for Set up again; a restart rejoins the saved network without it, and a skipped setup stays offline with the radio off. The first time a bar is set up, the quick tour of the controls shows once when setup ends, after Connected or after Skip; ending Connected with a hold opens the quick menu first, and the tour follows when it closes.</figcaption>
+      <figcaption><b>Wi-Fi setup.</b> On first start, or after Set up again, the bar shows a QR code that joins your phone to its own MiniBar-Setup network, where a page lets you pick the office network and enter the password, plus a work username if the network needs one. If it can't connect, the bar says why and a tap returns to the QR code. Once it says Connected, setup is done: a tap moves on and holding opens the quick menu. Connected shows the bar's name (MiniBar 2A1C), its address (minibar.local) and its IP address, so you can tell bars apart in an office with several; the Wi-Fi menu's Network tile shows them again later. Skip, in the hold menu, uses the bar without Wi-Fi: statuses and the Pomodoro still work, but the calendar and Remote don't. The setup page also takes your calendar's secret iCal address, if you've copied it already. Shortly after Connected moves on (about 15 seconds, so the setup page can show it worked), the bar closes MiniBar-Setup and stops broadcasting it, and your phone goes back to its usual Wi-Fi. Only Set up again opens it again: a restart rejoins the saved network without it, a dropped office Wi-Fi is retried rather than reopening it, and a skipped setup stays offline with the radio off. The first time a bar is set up, the quick tour of the controls shows once when setup ends, after Connected or after Skip; ending Connected with a hold opens the quick menu first, and the tour follows when it closes.</figcaption>
     </figure>
     <figure class="fig">
       <p class="scroll-hint">Scroll sideways to see the whole diagram →</p>
@@ -1796,7 +1842,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     <figure class="fig">
       <p class="scroll-hint">Scroll sideways to see the whole diagram →</p>
       <div class="fig-scroll"><svg viewBox="0 0 990 362" role="img" aria-label="Automatic status: three sources feed the bar. You pick your own status on the bar or the Remote, the calendar sets In a meeting, and the Mac app sets On a call. On a call beats In a meeting, which beats your status. A meeting or call starting takes over from your status; a call starting during a meeting takes over from the meeting. When a call ends during a meeting the bar goes back to the meeting, and when the call or meeting ends it goes back to your status. A tap, swipe, BOOT, flip or a Remote choice sets a call or meeting aside and shows your status; Show again brings it back. Taking over pauses the Pomodoro, and the bar makes no sound while either is on."><defs><marker id="ah-auto" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z"/></marker></defs><text class="dg-g" x="16" y="58">SOURCES</text><text class="dg-g" x="16" y="218">SCREEN</text><rect class="dg-box " x="95" y="30" width="170" height="48" rx="8"/><text class="dg-k" x="180.0" y="48" text-anchor="middle">YOU</text><text class="dg-t" x="180.0" y="65" text-anchor="middle">Bar or Remote</text><rect class="dg-box " x="435" y="30" width="170" height="48" rx="8"/><text class="dg-k" x="520.0" y="48" text-anchor="middle">CALENDAR</text><text class="dg-t" x="520.0" y="65" text-anchor="middle">Secret iCal address</text><rect class="dg-box " x="775" y="30" width="170" height="48" rx="8"/><text class="dg-k" x="860.0" y="48" text-anchor="middle">MAC APP</text><text class="dg-t" x="860.0" y="65" text-anchor="middle">Mic or camera in use</text><rect class="dg-group" x="420" y="168" width="540" height="128" rx="12"/><text class="dg-g" x="952" y="161" text-anchor="end">AUTOMATIC</text><rect class="dg-box " x="95" y="190" width="170" height="48" rx="8"/><text class="dg-k" x="180.0" y="208" text-anchor="middle">YOUR STATUS</text><text class="dg-t" x="180.0" y="225" text-anchor="middle">Manual or Pomodoro</text><rect class="dg-box meet" x="435" y="190" width="170" height="48" rx="8"/><text class="dg-k" x="520.0" y="208" text-anchor="middle">IN A MEETING</text><text class="dg-t" x="520.0" y="225" text-anchor="middle">Beats your status</text><rect class="dg-box call" x="775" y="190" width="170" height="48" rx="8"/><text class="dg-k" x="860.0" y="208" text-anchor="middle">ON A CALL</text><text class="dg-t" x="860.0" y="225" text-anchor="middle">Beats a meeting</text><path class="dg-e" d="M180 78 L180 188" marker-end="url(#ah-auto)"/><text class="dg-l" x="172" y="136" text-anchor="end">picks a status</text><path class="dg-e" d="M520 78 L520 188" marker-end="url(#ah-auto)"/><text class="dg-l" x="528" y="136" text-anchor="start">a meeting is on</text><path class="dg-e" d="M860 78 L860 188" marker-end="url(#ah-auto)"/><text class="dg-l" x="868" y="136" text-anchor="start">on a call: yes or no</text><path class="dg-e" d="M470 168 L470 118 L230 118 L230 188" marker-end="url(#ah-auto)"/><text class="dg-l" x="350" y="97" text-anchor="middle">tap, swipe, BOOT, flip</text><text class="dg-l" x="350" y="110" text-anchor="middle">or a Remote choice (set aside)</text><path class="dg-e" d="M250 190 L250 146 L450 146 L450 166" marker-end="url(#ah-auto)"/><text class="dg-l" x="350" y="140" text-anchor="middle">Show again</text><path class="dg-e" d="M265 204 L433 204" marker-end="url(#ah-auto)"/><text class="dg-l" x="342" y="196" text-anchor="middle">meeting starts</text><path class="dg-e" d="M435 226 L267 226" marker-end="url(#ah-auto)"/><text class="dg-l" x="342" y="240" text-anchor="middle">meeting ends</text><path class="dg-e" d="M605 204 L773 204" marker-end="url(#ah-auto)"/><text class="dg-l" x="690" y="196" text-anchor="middle">call starts</text><path class="dg-e" d="M775 226 L607 226" marker-end="url(#ah-auto)"/><text class="dg-l" x="690" y="240" text-anchor="middle">call ends,</text><text class="dg-l" x="690" y="253" text-anchor="middle">meeting still on</text><text class="dg-l" x="435" y="282" text-anchor="start">taking over pauses the Pomodoro; no sound while either is on</text><path class="dg-e" d="M160 238 L160 315 L880 315 L880 240" marker-end="url(#ah-auto)"/><text class="dg-l" x="520" y="309" text-anchor="middle">call starts</text><path class="dg-e" d="M900 238 L900 345 L140 345 L140 240" marker-end="url(#ah-auto)"/><text class="dg-l" x="520" y="339" text-anchor="middle">call ends</text></svg></div>
-      <figcaption><b>Automatic status.</b> On a call beats In a meeting, which beats your own status, and a choice you make during a call or meeting beats both until it ends. Each source has its own switch on the Remote: Calendar meetings reads your secret iCal address, and Calls from your Mac waits for the Mac app, which comes later. When a call or meeting ends, the bar drops to the next one down. Show again, in the quick menu, the timer menu or on the Remote, brings back a call or meeting you set aside, and the next call or meeting always takes over again. The power screens, Wi-Fi setup, an open menu and a pairing code are never interrupted, and a dark screen stays dark until you wake it. With pairing, calls a Mac reports over Wi-Fi only count once it's paired; over USB they always do.</figcaption>
+      <figcaption><b>Automatic status.</b> On a call beats In a meeting, which beats your own status, and a choice you make during a call or meeting beats both until it ends. Each source has its own switch on the Remote: Calendar meetings reads your secret iCal address, and Calls from your Mac follows the Mac app, which the Remote's Download for Mac hands out. When a call or meeting ends, the bar drops to the next one down. Show again, in the quick menu, the timer menu or on the Remote, brings back a call or meeting you set aside, and the next call or meeting always takes over again. The power screens, Wi-Fi setup, an open menu and a pairing code are never interrupted, and a dark screen stays dark until you wake it. With pairing, calls a Mac reports over Wi-Fi only count once it's paired; over USB they always do.</figcaption>
     </figure>
     <figure class="fig">
       <p class="scroll-hint">Scroll sideways to see the whole diagram →</p>
@@ -1806,9 +1852,9 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
   </section>
 
   <section class="api" id="api" aria-labelledby="apiTitle">
-    <div class="eyebrow">Planned · the Mac app comes later · a summary of docs/api.md</div>
+    <div class="eyebrow">The Mac app · a summary of docs/api.md</div>
     <h2 id="apiTitle">How the Mac app talks to MiniBar</h2>
-    <p>The bar's side is ready now, so the Mac app can be added without changing the bar. The app reports one thing, whether you're on a call, and optionally the app's name, with a random install ID so the bar can tell Macs apart. Over Wi-Fi it uses the bar's local web address and a token it got by pairing; when the bar is powered from the Mac it uses the USB cable instead, which needs no token and also works without Wi-Fi.</p>
+    <p>The bar hands out the Mac app itself (the Remote's Download for Mac, Proposed), and its side of the conversation is ready. The app reports one thing, whether you're on a call, and optionally the app's name, with a random install ID so the bar can tell Macs apart. Over Wi-Fi it uses the bar's local web address and a token it got by pairing; when the bar is powered from the Mac it uses the USB cable instead, which needs no token and also works without Wi-Fi.</p>
     <pre class="style-out">POST http://minibar.local/api/v1/call
 Content-Type: application/json
 Authorization: Bearer tb1_…                 (checked; the Mac app's token has the call scope)
@@ -1851,7 +1897,19 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
 ← @tb {"id": 2, "ok": true, "showing": "call", …}
 → @tb {"cmd": "pair", "id": 3, "client": "6F1C2A9E-…"}          (a Wi-Fi token, no code over the cable)
 ← @tb {"id": 3, "ok": true, "token": "tb1_…", "scope": "call", …}
-→ @tb {"cmd": "status", "id": 4}                                  ← the same object as GET /api/v1/status</pre>
+→ @tb {"cmd": "status", "id": 4}                                  ← the same object as GET /api/v1/status
+
+Download for Mac (Proposed): no token, outside /api/, one download at a time
+GET http://minibar.local/api/v1/info           (no token, so the pairing prompt can read it too)
+  → {"ok": true, …, "mac_app": {"state": "ok", "reason": null, "version": "1.0", "build": "12", "bytes": 1834211,
+     "archs": ["arm64", "x86_64"], "min_macos": "14", "file": "MiniBar-1.0.zip", "path": "/mac/app.zip", "sha256": "9f2e…"}}
+     ("mac_app": null when the bar carries no app; "state": "damaged" when its copy failed the start-up check)
+GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no body)
+  → 200 Content-Type: application/zip
+        Content-Disposition: attachment; filename="MiniBar-1.0.zip"
+        Content-Length: 1834211, ETag: "&lt;sha256&gt;", Accept-Ranges: bytes, Cache-Control: no-cache
+  → 206 with Content-Range for one Range (a broken-off download resumes); 416 past the end
+  → 404 text/plain, one line saying why: "This MiniBar doesn't carry the Mac app." (or that its copy is damaged)</pre>
     <ul>
       <li><code>active</code> and <code>client</code> are required. <code>client</code> is a random install ID the app makes once, not a hardware ID or the computer's name; with <code>session</code> and <code>seq</code> it keeps Macs and links apart and drops a late message (sending them is proposed). <code>app</code> is optional: the bar shows up to 24 characters of it.</li>
       <li>Tokens: every Wi-Fi request carries one. The Mac app's has the <code>call</code> scope (report calls, read the status); the Remote's and scripts' have <code>full</code>. The Remote keeps its token in a cookie the bar sets. Remove one on the Remote's Paired devices, or all of them on the bar.</li>
@@ -1863,6 +1921,7 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
       <li>Proposed: the bar's theme is a setting, <code>display.theme</code>: <code>"bold_signal"</code> (the default) or <code>"low_glare_pixel"</code>. The Remote reads and changes it with <code>GET</code> and <code>PATCH /api/v1/settings</code> (scope <code>full</code>), as <code>{"display": {"theme": "low_glare_pixel"}}</code>; any other value is <code>400 bad_value</code>. A change bumps <code>rev</code> in the status, so a switch made on the bar reaches the Remote within about 2 seconds. The Mac app doesn't use it. See <code>docs/api.md</code> 10.3.</li>
       <li>Proposed: Tap sound is a setting too, <code>sound.tap_sound</code>: <code>true</code> (the default) or <code>false</code>, read as <code>settings.sound.tap_sound</code> and changed with <code>PATCH /api/v1/settings</code> (scope <code>full</code>), as <code>{"sound": {"tap_sound": false}}</code>; anything but <code>true</code> or <code>false</code> is <code>400 bad_value</code> with <code>"field": "sound.tap_sound"</code>. The bar shows "Tap sound on" or "Tap sound off"; a change through the API never makes it click, since only touches on the bar do. See <code>docs/api.md</code> 10.4.</li>
       <li>Proposed: the help page is a plain page at <code>/help</code> on the office network, outside the API. The bar serves it as it serves the Remote's page, and it needs no pairing, since it holds nothing private. The quick tour's last tip links to it by the bar's IP address, and the Remote's Help link and "How pairing works" open it.</li>
+      <li>Proposed: Download for Mac. The bar carries the Mac app's zip in its own flash and hands it out at <code>GET /mac/app.zip</code>, outside <code>/api/</code> since it isn't JSON, with no product name in the path; <code>Content-Disposition</code> carries the readable name (<code>MiniBar-1.0.zip</code>). It needs no token, like the Remote's page, and the host check applies. <code>HEAD</code> gets the same headers; one <code>Range</code> gets <code>206</code>, so a download that broke off resumes; with no app, or a damaged copy, it's a plain-text <code>404</code>. <code>GET /api/v1/info</code> (and the USB <code>hello</code>) reports the copy as <code>mac_app</code>: <code>null</code>, or <code>state</code>, <code>reason</code>, <code>version</code>, <code>build</code>, <code>bytes</code>, <code>archs</code>, <code>min_macos</code>, <code>file</code>, <code>path</code> and <code>sha256</code>, which is where the Remote's "MiniBar for Mac 1.0 (12) · 1.8 MB" comes from. The Mac app ignores it. See <code>docs/api.md</code> 17.</li>
     </ul>
     <p><code>docs/api.md</code> is the full contract between the bar and everything that talks to it (every endpoint and error code, the USB details, pairing's limits), and it wins wherever this summary differs.</p>
   </section>
@@ -2089,6 +2148,21 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
   // refused: its last message over Wi-Fi was refused for want of a token (pairing).
   const mac = { on: true, link: null, lastHeard: null, lostAt: null, quiet: false, quietMs: 0, call: null, refused: false };
   const MAC_TIMEOUT = 90000;
+  // Download for Mac (Proposed, api.md 17): the copy of the Mac app the bar carries in its own flash, as mac_app in
+  // GET /api/v1/info reports it. null: no app (never flashed with it, or erased); state 'damaged': the copy failed its
+  // check at start-up. Sample data, switched by the Simulate panel's App on the bar. It only changes when the bar is
+  // flashed, which restarts it, so the Remote reads it once rather than polling for it. window.mbInfo lets tests edit it.
+  const MAC_APP = { state: 'ok', reason: null, version: '1.0', build: '12', bytes: 1834211, archs: ['arm64', 'x86_64'], min_macos: '14', file: 'MiniBar-1.0.zip', path: '/mac/app.zip', sha256: '9f2e…' };
+  const info = window.mbInfo = { mac_app: { ...MAC_APP } };
+  // What the mock-up's link saves in place of the bar's mac_app.path: an empty zip (22 bytes) with the real file's name.
+  const MAC_STANDIN = 'data:application/zip;base64,UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA==';
+  // Which browser the Remote is open on (Simulate, Remote opened on). The bar's own page decides it from the browser: a
+  // user agent that says Macintosh, with no touch points (an iPad asking for the desktop site has some), is a Mac.
+  const remoteOn = { mac: false };
+  const macAppOk = () => info.mac_app && info.mac_app.state === 'ok' ? info.mac_app : null;
+  // Sizes as Finder shows them: decimal megabytes with one decimal ("1.8 MB"), or whole kilobytes under 1 MB.
+  const sizeText = n => n >= 1e6 ? `${(n / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1e3))} KB`;
+  const archText = a => a.includes('arm64') && a.includes('x86_64') ? 'Apple silicon and Intel' : a.includes('x86_64') ? 'Intel' : 'Apple silicon';
 
   // ---------- Pairing (docs/api.md section 4) ----------
   // Who this bar is. Proposed: the default name is "MiniBar" plus the last four characters of its ID (api.md 3), and
@@ -2181,6 +2255,7 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
   // last touch, button or flip, for the 30 s idle end; began: when it appeared (a touch that began earlier is ignored);
   // guardUntil: 700 ms after a practice result, when a tap, swipe or BOOT is ignored so the result can be read.
   const tour = { on: false, card: 0, done: {}, note: null, at: 0, began: 0, guardUntil: 0 };
+  let tourSaid = '';
   // "Tour seen", kept like a setting (the bar's flash; this browser in the mock-up). 'seen' (the mock-up starts as a bar
   // that has seen it), 'unseen' (forgotten: the next setup's end or start-up makes it due) or 'due' (it shows as soon as
   // the screen is free, and is 'seen' from the moment it appears).
@@ -2348,7 +2423,7 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     }
     const muted = pomo.sound && quiet() ? ` · chime muted during the ${quietWhy()}` : '';
     // A phase that ends closes the controls tour, as it closes a menu, and the alarm shows as always.
-    tour.on = false;
+    if (tour.on) { tour.on = false; tourSaid = ' · the tour closed'; }
     if (!pairing) chime(ended === 'focus');
     if (pomo.auto) { pomo.running = true; pomo.waiting = false; pomo.justEnded = null; }
     else {
@@ -2838,8 +2913,9 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
         l2 = `Or type ${BAR.host}/help into your phone's browser.`;
       }
     }
-    if (c === 0 && tour.note === 'first' && !d) l2 = 'This is the first tip. Swipe left for the next one.';
     if (d) { l2 = d.text; foot = card.after; }
+    // A swipe right on the first card says so, in place of its second line (or its practice result).
+    if (c === 0 && tour.note === 'first') l2 = 'This is the first tip. Swipe left for the next one.';
     return { title, l1, l2, foot, draw };
   }
 
@@ -3051,6 +3127,7 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
   function tourEnd(how) {
     if (!tour.on) return false;
     Object.assign(tour, { on: false, done: {}, note: null, guardUntil: 0 });
+    if (!['done', 'idle', 'hold', 'flip', 'pwr'].includes(how)) tourSaid = ' · the tour closed';
     renderTour();
     if (how === 'done' || how === 'idle') toast(tourExitToast(how), false, 4000);
     return true;
@@ -3440,6 +3517,7 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     $('tourNote').hidden = !(tour.on && s.powered);
     $('tapSound').checked = s.tapSound;
     updateAutoRemote();
+    updateMacDl();
     updatePhonePair();
     renderDevices();
     updateSim();
@@ -3489,8 +3567,10 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     // Messages sit right under the address field while it's open, otherwise under the saved address.
     const msgAt = $('calForm').hidden ? $('calSaved') : $('calInputRow');
     if (msgAt.nextElementSibling !== $('calMsg')) msgAt.after($('calMsg'));
-    // Mac
+    // Mac. The badge says what the line under it says, in one word; Off wins over Connected.
     $('macOn').checked = mac.on;
+    setText($('macBadge'), !mac.on ? 'Off' : mac.link ? 'Connected' : 'Not connected');
+    $('macBadge').className = 'badge' + (mac.on && mac.link ? ' ok' : '');
     const via = mac.link === 'usb' ? 'USB' : 'Wi-Fi';
     const heard = mac.quiet || (mac.link === 'wifi' && !wifiUp()) ? `last heard ${fmt(mac.lastHeard)}` : 'heard from it just now';
     // "Not connected yet" only when no Mac has ever paired or connected, so the line never contradicts Paired devices.
@@ -3499,6 +3579,31 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
       + (mac.link ? `Connected over ${via}${mac.call ? ` · on a call${mac.call.app ? ` (${mac.call.app})` : ''}` : ''} · ${heard}`
         : mac.lostAt ? `Not connected · last heard ${fmt(mac.lostAt)}`
         : mt ? `Not connected right now · paired over ${mt.via === 'usb' ? 'USB' : 'Wi-Fi'}` : 'Not connected yet');
+  }
+
+  // Download for Mac (Proposed): with the app carried, the button, its helper line from info.mac_app and the steps,
+  // and the pairing prompt's link; with no app or a damaged copy, no button anywhere (a button that can't work would
+  // be a dead end) and one line on the card saying why. Nothing else gates it: the Mac switch, a call, a pairing code
+  // and the theme leave it alone. Off or off the Wi-Fi, a click is stopped like every Remote control's (see below).
+  let dlKey = '';
+  function updateMacDl() {
+    const a = macAppOk(), m = info.mac_app, key = JSON.stringify([m, remoteOn.mac, BAR.host]);
+    if (key === dlKey) return;
+    dlKey = key;
+    $('macGet').hidden = !a;
+    $('pairDl').hidden = !a;
+    $('macNone').hidden = !!a;
+    setText($('macNone'), a ? '' : m
+      ? "The Mac app on this MiniBar is damaged, so it can't be downloaded. Flash its file onto the bar again; the firmware's Flash steps say how."
+      : "This MiniBar doesn't carry the Mac app. It's built on a Mac from the MiniBar project, then flashed onto the bar as a file of its own; the firmware's Flash steps say how.");
+    if (!a) return;
+    // On anything that isn't a Mac the link still works (a phone can pass the file on); the line says where it's easiest.
+    const part = t => `<span class="part">${esc(t)}</span>`;
+    const name = `MiniBar for Mac ${a.version} (${a.build})`, hint = remoteOn.mac ? '' : ` This is a Mac app; the easy way is to open ${esc(BAR.host)} on your Mac.`;
+    $('macDlLine').innerHTML = [name, sizeText(a.bytes), `macOS ${a.min_macos} or later`, archText(a.archs)].map(part).join(' · ') + (hint && '.' + hint);
+    $('pairDlLine').innerHTML = `${part(name)} · ${part(sizeText(a.bytes))}. Downloading needs no pairing: the app pairs on its own when you plug this MiniBar into your Mac.${hint}`;
+    document.querySelectorAll('a.mac-dl').forEach(l => { l.href = MAC_STANDIN; l.download = a.file; });
+    document.querySelectorAll('[data-dl-file]').forEach(el => { el.textContent = a.file; });
   }
   function calMsg(text, isErr) {
     const el = $('calMsg');
@@ -3531,7 +3636,9 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     const pairT = pair.code ? `code for ${pairLabel(pair.who)}, ${pair.shown ? `${mmss(Math.max(1, Math.ceil(pair.left / 1000)))} left` : 'waiting for the screen'}, ${pair.tries} ${pair.tries === 1 ? 'try' : 'tries'}`
       : pair.lockMs > 0 ? `refused for ${Math.ceil(pair.lockMs / 1000)} s (${pair.fails} failed in a row)`
       : `none · ${n} paired${pair.fails ? ` · ${pair.fails} failed in a row` : ''}`;
-    const text = `Calendar: ${calT} · Mac: ${macT}, ${macP}${q} · Pairing: ${pairT}`;
+    const m = info.mac_app;
+    const appT = !m ? 'none' : m.state === 'ok' ? `${m.version} (${m.build}), ${sizeText(m.bytes)}` : 'damaged';
+    const text = `Calendar: ${calT} · Mac: ${macT}, ${macP}${q} · Pairing: ${pairT} · App on the bar: ${appT} · Remote on ${remoteOn.mac ? 'a Mac' : 'a phone'}`;
     if ($('simState').textContent !== text) $('simState').textContent = text;
     $('simPairMsg').textContent = macPair.msg;
     pickSeg($('simPhone'), $('simPhone').querySelector(`[data-v="${phone.token ? 'paired' : 'unpaired'}"]`));
@@ -3617,7 +3724,9 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     if (aside) toast(`${cap(aside)} set aside · ${STATES[s.idx].name}`);
   }
 
-  function say(t) { log.textContent = t; }
+  // The log keeps one line. When something else closed the controls tour (the Remote, a phase ending, setup, the
+  // power), that thing's own line says so (tourSaid).
+  function say(t) { log.textContent = t + tourSaid; tourSaid = ''; }
 
   // ---------- Automatic status: taking over, setting aside, handing back ----------
   // Set aside whatever call or meeting is on screen. Returns 'call' or 'meeting', or null if nothing was showing.
@@ -4604,12 +4713,14 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
   function holdOpens(how) {
     touchAct('hold', () => {
       silence();
-      if (tour.on) { tourEnd('hold'); say(`${how}: tour closed`); }
+      const touring = tourEnd('hold');
       showMenu();
+      if (touring) say(`${how}: tour closed · ${log.textContent.replace(/^[a-z ]+: /, '')}`);
     });
   }
   let p = null, held = false, holdTimer = null;
   screen.addEventListener('pointerdown', e => {
+    if (s.powered && (s.booting || powerScreen())) say(`touch: ignored, MiniBar is ${s.booting ? 'starting up' : s.poweringOff ? 'powering off' : 'waiting for PWR to be held or let go'}`);
     if (s.off || !s.powered || s.booting || powerScreen()) { p = null; return; }
     p = { x: e.clientX, y: e.clientY, t: Date.now() };
     held = false;
@@ -4889,14 +5000,15 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
   phoneEl.addEventListener('click', e => {
     // The help links say for themselves when the bar can't be reached (openHelp()).
     if (e.target.closest('#helpLink, #pairHelp, #helpBack, #helpBack2')) return;
-    if (s.powered && (s.wifi.mode === 'offline' || linkDown()) && e.target.closest('#remoteMain button, #remoteMain input, #pairView button, #pairView input')) {
+    // Download for Mac is a link, not a button, but it needs the bar too: a browser would only show a failed download.
+    if (s.powered && (s.wifi.mode === 'offline' || linkDown()) && e.target.closest('#remoteMain button, #remoteMain input, #pairView button, #pairView input, a.mac-dl')) {
       e.preventDefault();
       e.stopPropagation();
       say(linkDown() ? 'remote: MiniBar has dropped off the Wi-Fi, so it can\'t be reached until it reconnects' : "remote: MiniBar isn't on Wi-Fi");
       return;
     }
     // The PWR stand-in and Flip are the bar itself, not the Remote, so they still work.
-    if (s.powered || !e.target.closest('button, input') || e.target.closest('#pwrHoldBtn, #flipBtn')) return;
+    if (s.powered || !e.target.closest('button, input, a.mac-dl') || e.target.closest('#pwrHoldBtn, #flipBtn')) return;
     e.preventDefault();
     e.stopPropagation();
     say('remote: MiniBar is off, press PWR to turn it on');
@@ -5168,6 +5280,36 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     if (!b) return;
     pickSeg($(id), b);
     say(id === 'simApp' ? `simulate: call app ${b.dataset.v || 'not shared'}` : `simulate: the Mac connects over ${b.textContent}`);
+  }));
+  // App on the bar: what the bar's flash holds for Download for Mac, as info.mac_app would report it after a flash.
+  // Remote opened on: which browser the Remote is on, which only changes the download's helper line. Neither is kept
+  // across a reload, so the page always starts with the app carried and the Remote on a phone.
+  $('simMacApp').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    pickSeg($('simMacApp'), b);
+    const v = b.dataset.v;
+    info.mac_app = v === 'carried' ? { ...MAC_APP } : v === 'damaged' ? { ...MAC_APP, state: 'damaged', reason: 'hash' } : null;
+    say(v === 'carried' ? `simulate: the bar carries the Mac app (MiniBar for Mac ${MAC_APP.version} (${MAC_APP.build}), ${sizeText(MAC_APP.bytes)})`
+      : v === 'none' ? 'simulate: the bar carries no Mac app' : "simulate: the bar's copy of the Mac app is damaged, so the Remote offers no download");
+    updateRemote();
+  });
+  $('simOpenedOn').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    pickSeg($('simOpenedOn'), b);
+    remoteOn.mac = b.dataset.v === 'mac';
+    say(`simulate: the Remote is open on ${remoteOn.mac ? 'a Mac' : 'a phone'}`);
+    updateRemote();
+  });
+  // Download for Mac: the browser saves the stand-in under the real file's name, the card's steps open so they're in
+  // view when it lands, and the log says what the bar would send. A bar that's off or off the Wi-Fi stops the click
+  // first, as it does for every Remote control.
+  document.querySelectorAll('a.mac-dl').forEach(l => l.addEventListener('click', () => {
+    const a = macAppOk();
+    if (!a) return;
+    if (l.id === 'macDl') $('macSteps').open = true;
+    say(`remote: Download for Mac · ${a.file}, ${sizeText(a.bytes)} (a stand-in; the bar sends the real one)`);
   }));
   $('simMeetStart').addEventListener('click', () => {
     if (!s.powered) { say('simulate: MiniBar is off, press PWR to turn it on'); return; }

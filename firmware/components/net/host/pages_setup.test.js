@@ -67,6 +67,13 @@ const check = (c, what) => { if (!c) { fails++; console.log('FAIL', what); } els
   await p.screenshot({ path: path.join(OUT, 'setup_390.png'), fullPage: true });
   s = await waitFor(async () => { const x = await sim('/_sim/state'); return x.toast.startsWith('Calendar synced') ? x : null; }, 6000) || await sim('/_sim/state');
   check(s.toast.startsWith('Calendar synced'), 'calendar from setup saved once online: ' + s.toast + ' / ' + s.pending);
+  // Connected is the end of setup (api.md 13.2, firmware 1.0.4): Connect again is refused, and the bar stays put.
+  await p.fill('#wPass', 'another-password');
+  await p.click('#wConnect');
+  check(await waitFor(async () => (await p.textContent('#setupMsg')) === "MiniBar isn't in Wi-Fi setup anymore.", 3000),
+        'Connect again after Connected refused: ' + await p.textContent('#setupMsg'));
+  s = await sim('/_sim/state');
+  check(s.wifi_mode !== 3 && s.wifi_mode !== 5, 'the bar isn\'t sent back to Connecting (' + s.wifi_mode + ')');
   check(errors.length === 0, 'no page errors: ' + errors.join(' | '));
   await b.close();
   fb.kill();

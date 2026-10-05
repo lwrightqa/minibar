@@ -61,7 +61,7 @@ No cycles, and nothing depends on main. net doesn't call board: it posts `TB_EV_
 | audio | board | 1 | 6 | 4 KB, internal | Mixes the chime and tick PCM into I2S; one tick a second while ticking is on |
 | httpd (IDF) | net | 0 | 5 | 6 KB, **PSRAM** | HTTP handlers: parse, then `tb_bus_exec(router)`; serves the gzipped pages directly. A request has 3 s from its first byte to arrive (headers and body), so one client can't hold the task |
 | usb_rx | net | 0 | 4 | 4 KB, **PSRAM** | Reads "@tb " lines (2 KB max), `tb_bus_exec(net_api_usb_line)`, writes the reply |
-| net | net | 0 | 4 | 4 KB, internal | Wi-Fi worker: saves credentials and the Wi-Fi skip, scans, opens the setup network (scan first, then the access point), starts mDNS and SNTP once online, hands the setup page's calendar address over |
+| net | net | 0 | 4 | 4 KB, internal | Wi-Fi worker: saves credentials (tried again if the save fails) and the Wi-Fi skip, scans, opens the setup network (scan first, then the access point) and closes it after setup (checked against the driver's mode, tried again until it's down), starts mDNS and SNTP once online, hands the setup page's calendar address over |
 | dns | net | 0 | 5 | 4 KB, **PSRAM** | Setup mode only: port 53 on every address, answers the setup subnet's A queries with 4.3.2.1 (NODATA for other types); priority 5 as in ESP-IDF's captive_portal example |
 | cal_sync | calendar | 0 | 2 | 10 KB, internal | HTTPS fetch streamed through the ICS reader; one at a time; blocks a tick after every 50 ms of work, from inside recurrence expansion too (the reader's tick hook) |
 | tiT (lwIP tcpip) | IDF | **0** (pinned) | 18 | 4 KB | |
@@ -75,7 +75,9 @@ No cycles, and nothing depends on main. net doesn't call board: it posts `TB_EV_
   2. poll the hold gesture, `tb_app_tick`, `net_api_tick` (once net is up);
   3. under `board_display_lock()`: run the effects, `ui_update`, `lv_timer_handler` (renders, flushes, reads the
      touch panel, whose samples reach core through ui's pointer callback), then the effects those touches caused, so
-     a wake or a chime doesn't wait a loop;
+     a wake or a chime doesn't wait a loop; then `net_setup_follow(core's Wi-Fi mode)`, which finishes setup in net
+     if core left its setup screens without net hearing it, and once a second closes a setup network that is up
+     outside setup (section 10);
   4. `settings_store_poll`, feed the watchdog.
 
   A loop that used its whole event budget yields one tick, so a flood of requests can't starve core 1's idle task.
@@ -163,7 +165,7 @@ Effects core asks for, and what main does with them (`run_effects`):
 | `TB_FX_CHIME`, `TB_FX_TICKING` | `board_audio_chime`, `board_audio_set_ticking` |
 | `TB_FX_BACKLIGHT`, `TB_FX_ROTATE` | `board_backlight_set`, `board_display_set_flipped` |
 | `TB_FX_POWER_OFF`, `TB_FX_RESTART` | save what's pending, sound off, `esp_wifi_stop()`, then `board_power_off()` or `board_restart()` |
-| `TB_FX_WIFI_SETUP`, `_SKIP`, `_DONE` | `net_setup_begin`, `net_setup_skip` (and `cal_sync_set_online(false)`), `net_setup_done`; held until net is up |
+| `TB_FX_WIFI_SETUP`, `_SKIP`, `_DONE` | `net_setup_begin`, `net_setup_skip` (and `cal_sync_set_online(false)`), `net_setup_done`; held until net is up. A `_DONE` or `_SKIP` lost to core's full queue (16 effects) is caught up by `net_setup_follow()` at the end of the same loop |
 | `TB_FX_CAL_SYNC` | `cal_sync_now()`; if the calendar refuses (it hasn't heard the link is up, or the address just went), core gets `TB_CALEV_SYNC_FAILED`, so the quick menu's "Sync…" ends in "Couldn't sync the calendar" |
 | `TB_FX_SAVE_SETTINGS` | NVS in 2 s; a changed time zone is applied (TZ and the calendar), a changed name goes to mDNS |
 | `TB_FX_SAVE_STATE` | NVS in 2 s |
@@ -316,6 +318,33 @@ rendered at 640 × 172 in headless Chromium per `docs/testing.md`):
   office link: the calendar is told at once (`cal_sync_set_online(false)`); core, which shows setup, is told once the
   Connected screen moves on if the link is still down then, and the station reconnects. A Skip that lands while the
   AP is opening leaves the radio off (the worker checks again under the radio lock).
+- **Closing the setup network once setup is over (1.0.4; decisions.md, Wi-Fi, the user's request of 2026-10-05).**
+  The rule: once the bar is set up, MiniBar-Setup is never on the air unless a person starts setup again (hold,
+  Wi-Fi, Set up). `TB_FX_WIFI_DONE` (Connected moved on) arms a 15 s linger, so the page can read the result; its
+  `J_STOP_AP` sets the radio to station mode, and the network counts as closed only once `esp_wifi_get_mode()` has no
+  AP bit (or the radio is off), since a mode change that fails inside the driver puts the old mode back. Each step
+  that could leave it up has a second chance, with the rules in `net_util.c` (host-tested):
+  - a close that fails is tried again after 1 and 2 s, then the radio is restarted in station mode after 5 and 10 s,
+    then every 30 s (`net_ap_close_retry_ms`); the restart drops the office link for about a second, and STA_START
+    joins it again;
+  - a `J_STOP_AP` the full worker queue dropped re-arms the linger for 1 s; at most one is queued (`s_close_queued`);
+  - `net_setup_follow()` (the app task, after core's effects) finishes or skips setup itself when core is off its
+    setup screens but net is still in setup (`net_setup_catch_up`: a lost `TB_FX_WIFI_DONE` or `_SKIP`), and once a
+    second closes a setup network that is up or wanted outside setup with no close on its way
+    (`net_setup_ap_stray`: an `AP_START` the driver posted by itself, say);
+  - a Set up again that lands while a close runs wins: the close is void, and if it took the network down it's
+    opened again for the new setup; a `J_SETUP_OPEN` that finds setup already over drops its "wanted" under the
+    same lock, so a later Set up again opens the network afresh;
+  - `setup/wifi` is refused from the moment a join works (api.md 13.2), so the network can't be kept up, or the bar
+    pointed elsewhere, by sending again during Connected;
+  - a save of the network that just worked is tried again after 5 s, 30 s, 2, 10 and 30 min
+    (`net_creds_save_retry_ms`), because without it the next start opens the setup network; a dropped `J_SAVE_CREDS`
+    is queued again after 1 s. A power cut in the milliseconds between the join and the save still loses it.
+
+  Cost: one more `esp_timer` (the save), a few bytes of state, and a mutex taken once per app loop. No flash writes
+  beyond the save's retries (a write that fails before NVS writes anything wears nothing). What still opens it
+  without a person: a start with no saved network (a merged image flashed at 0x0, an NVS partition that had to be
+  erased at start-up, or a save that failed six times).
 - **Why 4.3.2.1 (since 1.0.1):** what made the first Android test say "Connected, no internet" at 192.168.4.1 is
   **not confirmed**. The most likely cause: Android's captive-portal check (AOSP NetworkMonitor) has a rule, "a
   private IP DNS response means no internet" (flag `dns_probe_private_ip_no_internet`), that's off in stock AOSP but
@@ -475,7 +504,7 @@ that do I2C (the ISR is IRAM-safe and may read their buffers while the cache is 
 |---|---|---|---|
 | `nvs` / `tinybar` | `settings` (version + `tb_settings_t`) | main | 2 s after the last settings change |
 | `nvs` / `tinybar` | `state` (own status, last status, message, today's tomatoes, focused time, date) | main | 2 s after a change; and before power off and restart, always (with `settings`), so the focus minutes since the session started aren't lost (NVS skips an unchanged blob, so this costs no wear) |
-| `nvs` / `wifi` | ssid, security, username, password (plain until NVS encryption is agreed) | net | on a successful join |
+| `nvs` / `wifi` | ssid, security, username, password (plain until NVS encryption is agreed) | net | on a successful join; a save that fails is tried again after 5 s, 30 s, 2, 10 and 30 min (1.0.4), since without it the next start opens the setup network |
 | `nvs` / `wifi` | `skipped`: Skip was the last Wi-Fi choice | net | on Skip; erased by Set up and a working join |
 | `nvs` / `cal` | `list`: the last good meetings list and its sync time, packed (`cal_store.h`; a few hundred bytes, at most 4.7 KB) | calendar | when the list changes |
 | `nvs` / `board` | `pose`: the IMU axis that pointed up when the bar last stood still (a `brd_up_axis_t`; 1.0.2) | board (imu task) | once the bar has stood still for 10 s in an orientation other than the stored one |
@@ -672,3 +701,20 @@ they changed):
   (2,334,656 bytes) checked as above. 460 host tests (core 159, calendar 67, net 151, ui 30, board 53): 1 new,
   the name migration. The ui host tools: 89 scenes render, the touch and layout tests pass. The page suites are
   the web team's part of the round.
+- **The setup network once set up (2026-10-05, 1.0.4; the user's "Once the bar is setup, I want to make it stop
+  broadcasting its network"; decisions.md, Wi-Fi):** two traces of 1.0.0 to 1.0.3 found the network closes about
+  18 s after the join on every normal path and never reopens on its own, and listed what could leave it up or bring
+  it back. Each was reproduced first (scratch simulations of `net_wifi.c` on a modelled ESP-IDF, a host test for the
+  router), then fixed as section 10 says: the close checked against `esp_wifi_get_mode()` and tried again (mode
+  change, then a radio restart), a dropped `J_STOP_AP` or `J_SAVE_CREDS` queued again, `net_setup_follow()` from the
+  app task (a lost `TB_FX_WIFI_DONE` or `_SKIP`, and a setup network up outside setup), `setup/wifi` refused from the
+  moment a join works (api.md 13.2), a Set up again during a close keeping its network, `setup_open()` dropping a
+  stale "wanted" (1.0.3 could show the QR code with no network after a USB join during the first scan), and the save
+  of the network tried again. Not changed, and why: the merged image at 0x0 wiping Wi-Fi (by design; the README's
+  Flash now leads with the app-only update and `dist/` carries `minibar-<version>-app.bin`), a power cut in the
+  milliseconds between the join and the save, and a setup started on purpose and left (a product decision: Proposed
+  in decisions.md). No screen changes, so the mock-up has nothing to follow. A fresh `build-setupap/`: no warnings;
+  `fw` 1.0.4; app 2,140,624 bytes (0x20a9d0); DIRAM 141,355 used statically, 200,405 free; `dist/minibar-1.0.4.bin`
+  (2,337,232 bytes) checked as above and `dist/minibar-1.0.4-app.bin`. 474 host tests (core 163, calendar 67, net
+  161, ui 30, board 53): 14 new in `net/test_setup_network.c` and `core/test_setup_network.c`. The setup page's
+  Playwright suite is 22 checks (2 new), the Remote's 163.

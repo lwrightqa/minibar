@@ -26,6 +26,7 @@ This is the **contract** between the bar's firmware and every program that talks
 14. [Changes from the mock-up, and open questions](#14-changes-from-the-mock-up-and-open-questions)
 15. [Notes for the firmware](#15-notes-for-the-firmware)
 16. [Notes for the Mac app](#16-notes-for-the-mac-app)
+17. [Download for Mac](#17-download-for-mac): the Mac app's zip from the bar, and `mac_app` in `info` (Proposed)
 
 Appendices: [A, every endpoint](#appendix-a-every-endpoint) · [B, error codes](#appendix-b-error-codes)
 
@@ -86,6 +87,7 @@ bar → mac  @tb {"id": 2, "ok": true, "device_id": "f412fa3f2a1c", "showing": "
 - A body is one JSON object, UTF-8, with no byte-order mark. `GET` and `DELETE` have no body.
 - Every API response has `Content-Type: application/json; charset=utf-8`, `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`. The bar sends **no CORS headers**, so pages on other sites can't read its answers.
 - Everything outside `/api/` is the Remote web page (HTML, CSS, scripts). It's served without a token and holds no data of its own; it reads everything through the API.
+  - **Proposed (2026-10-05, Download for Mac):** one thing outside `/api/` isn't part of the page: the Mac app's zip at `/mac/app.zip`, also served without a token, with its own headers and plain-text errors (section 17).
 - **Host check.** The bar answers only when the `Host` header is its current mDNS name (`minibar.local`, or the name it got after a conflict, section 3), its IPv4 address, or `4.3.2.1` (the setup network's address) while it's in setup mode, each with or without `:80`. Anything else gets `421 wrong_host`. This stops a web page from reaching the bar through a DNS-rebinding trick. *(2026-10-04, security review:)* the Remote page and everything else outside `/api/` get the same check, answered with a plain-text `421`. The one exception is the setup network, where any other name gets a `302` to `http://4.3.2.1/` so phones open the setup page (section 13).
 
 ### 2.3 JSON
@@ -677,6 +679,7 @@ No token needed. Who this bar is, before pairing. The USB `hello` reply is the s
 | `heartbeat_s`, `timeout_s` | 5.3. |
 | `time`, `time_source` | The bar's clock, and where it came from: `"ntp"`, `"rtc"` (the clock chip, kept since the last sync), `"mac"` (set over USB) or `"none"`. |
 | `wifi` | `"connected"`, `"offline"` (skipped or dropped) or `"setup"`. Over USB, this tells the Mac app whether Wi-Fi is worth trying. |
+| `mac_app` | **Proposed (2026-10-05):** the copy of the Mac app the bar carries for Download for Mac, `null` when it carries none. The Remote's pairing prompt reads it without a token. Its fields are in 17.2. |
 
 ### 7.2 Polling
 
@@ -1171,6 +1174,8 @@ Forgetting all devices is on the bar only (the Devices tile, 4.8), so no single 
 
 While the bar shows its Wi-Fi setup screens, it runs its own network, **`MiniBar-Setup`**, and the setup page at `http://4.3.2.1/`. These endpoints exist **only then**, need no token, and are gone once the bar joins the office Wi-Fi. On the setup network the bar serves only them and `info`.
 
+*(2026-10-05, firmware 1.0.4, lead developer: how long "only then" lasts; decisions.md, Wi-Fi.)* Once a join works, `setup/wifi` is refused at once (13.2), while `setup/networks` and `setup/state` keep answering on the setup network so the page can read the result: during the Connected screen (3 s, or until a tap) and the **15 s** the network stays up after it. Then `MiniBar-Setup` closes (about 18 s after the join) and **never opens again on its own**: not after a restart or power-off, which join the saved network, and not when the office Wi-Fi drops or can't be rejoined. Only Set up again on the bar (hold, Wi-Fi, Set up) opens it. Flashing the merged image at 0x0 wipes the saved network, so that bar starts like a new one, on the QR code (firmware README, Flash).
+
 *(2026-10-05, firmware 1.0.1, lead developer, Proposed:)* the setup network's address is **4.3.2.1** (a /24), not 192.168.4.1. Some Android phones report "Connected, no internet" and never open the sign-in sheet when the captive-portal check's host resolves to a private address (Android's NetworkMonitor, "private IP DNS response means no internet"); see `decisions.md`, Wi-Fi. The setup network has no way out, so the address only stands in for the hosts phones check while they're on it. Phones' check paths (`/generate_204`, `/hotspot-detect.html`, `/connecttest.txt` and the like) get the `302` too, whatever their `Host`. The DHCP offer names the bar as gateway and DNS server and carries no captive-portal option (114), since RFC 8908 wants an HTTPS API address there.
 
 Over USB the whole API keeps working during setup: calls are recorded and show once setup closes, as `decisions.md` says. Picking a status, a message, a Pomodoro action and set aside or Show again (sections 8 and 9) answer `409 in_setup` meanwhile, as the bar's own controls do ("Finish setup, or hold to skip"); so do `pair/start` and `pair` (`pair/cancel` answers `409 not_pairing`, since starting setup ends any pairing). The USB `pair` command still works.
@@ -1217,6 +1222,8 @@ Answers `202` at once and starts connecting; the bar shows its Connecting screen
 
 Format errors (`400 bad_request`, `400 bad_value`, and the calendar codes in 11.2) come back at once.
 
+**Connected is the end of setup.** From the moment a join works (the bar has an address on the office Wi-Fi, which can be a moment before the Connected screen shows) until setup starts again on the bar, `setup/wifi` answers `404 not_found`, "MiniBar isn't in Wi-Fi setup anymore.", over the setup network and over USB alike, and the bar stays on Connected. So nobody else on the open network can point the bar at another network during the Connected screen, or keep the setup network up by sending again. While a join is still connecting, or after one failed (the Couldn't connect screen, or the QR code after it), the page can send again. *(2026-10-05, firmware 1.0.4: before 1.0.4 a second send during the Connected screen was taken, and sent the bar back to Connecting.)*
+
 ### 13.3 `GET /api/v1/setup/state`
 
 The page polls this. The phone may lose the setup network while the bar connects (the bar's radio moves to the office network's channel), so the bar's own screen always shows the result too.
@@ -1258,6 +1265,7 @@ The mock-up's "How the Mac app talks to TinyBar" and `decisions.md` need these b
 - **The default bar name "MiniBar 2A1C"** (section 3).
 - **The theme setting `display.theme`** (10.3), for the alternate theme the user decided on 2026-10-05.
 - **The touch click setting `sound.tap_sound`** (10.4), for the click the user asked for on 2026-10-05, and its default (`true`, Proposed).
+- **Download for Mac** (section 17): the download's address, headers and errors, and `mac_app` in `info`. The button itself and the carried app are decided.
 
 ### 14.3 Needs design (UX designer, then the mock-up)
 
@@ -1326,6 +1334,91 @@ The product was renamed from TinyBar to MiniBar on 2026-10-05 (`decisions.md`, P
 
 ---
 
+## 17. Download for Mac
+
+**Status:** the button and the carried app are decided (2026-10-05, `decisions.md`, Mac app › Download for Mac); the address, headers and `info` fields in this section are **Proposed**, written by the product manager and waiting for the lead developer's review and the user's OK.
+
+The bar carries the Mac app's zip in its own flash and hands it out on the office Wi-Fi, so a Mac gets the app from the bar itself. The Remote's **Download for Mac** button (in Connect your Mac, and as a link on the pairing prompt) links to it, with a helper line made from `mac_app` (17.2). Detecting a call still needs the app running on the Mac; this only makes installing it easy.
+
+- **Where the copy lives:** a read-only partition after the two app slots (`0xC30000`, `0x3D0000` long), starting with a small header the firmware checks once at start-up (its length and the zip's SHA-256), so a blank or damaged copy is never served. It's flashed as a file of its own (`dist/minibar-macapp-<version>.bin` at `0xC30000`); the usual merged image at `0x0` doesn't carry it, an app-only flash at `0x30000` leaves it alone, and so does a firmware built without the zip.
+- **The copy only changes when the bar is flashed,** which restarts it, so clients read `mac_app` once (at load, and after the bar comes back) rather than polling for it.
+
+### 17.1 `GET /mac/app.zip`
+
+**Proposed.** No token. The path is outside `/api/`, because every `/api/` reply is JSON (2.2) and this one is a file, and it carries no product name, so a rename doesn't move it; the readable name travels in `Content-Disposition`. Like the Remote page, it needs no pairing: the file is the project's own app with nothing private in it, and a Mac that comes to get it usually isn't paired, so pairing its browser would only use up one of the 10 places (4.3). The host check applies (2.2): another `Host` gets a plain-text `421`.
+
+```http
+GET /mac/app.zip HTTP/1.1
+Host: minibar.local
+```
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/zip
+Content-Length: 1834211
+Content-Disposition: attachment; filename="MiniBar-1.0.zip"
+ETag: "9f2e…"
+Cache-Control: no-cache
+Accept-Ranges: bytes
+X-Content-Type-Options: nosniff
+```
+
+The body is the zip, byte for byte. The `ETag` is the zip's SHA-256 in 64 hex digits, the same as `mac_app.sha256`.
+
+| Request | Answer |
+|---|---|
+| `GET`, the app carried | `200` with the headers above and the zip. |
+| `HEAD` | The same headers, no body. |
+| `If-None-Match` with the `ETag` | `304 Not Modified`, no body. |
+| One range: `Range: bytes=a-b`, `bytes=a-` or `bytes=-n` | `206 Partial Content` with `Content-Range: bytes a-b/<length>` and the matching `Content-Length`, so a browser can resume a download that broke off. |
+| A range that starts past the end | `416 Range Not Satisfiable` with `Content-Range: bytes */<length>`, no body. |
+| More than one range, a `Range` the bar can't read, or an `If-Range` that isn't the `ETag` | `200` with the whole file. |
+| No app carried (`mac_app` is `null`) | `404`, plain text: "This MiniBar doesn't carry the Mac app." |
+| A damaged copy (`mac_app.state` is `"damaged"`) | `404`, plain text: "The Mac app on this MiniBar is damaged, so it can't be downloaded. Flash its file onto the bar again." |
+| Another download is running | `503`, plain text: "Another download is in progress. Try again in a few seconds.", with `Retry-After: 5`. One download at a time. |
+| Any other method | `405` with `Allow: GET, HEAD`. |
+| On the setup network (section 13) | The `302` to the setup page, as for every other path. `MiniBar-Setup` never serves the zip. |
+
+- **Errors are plain text** (`text/plain; charset=utf-8`), not the JSON of 2.4, since the path is outside `/api/` and a browser that follows the link shows the line as it is.
+- **The file name** comes from the header and is checked twice (by the build tool and by the firmware): only letters, digits, `.`, `_` and `-`, at most 63 characters, ending in `.zip`. If it ever isn't, the bar sends `app.zip`.
+- **No CORS headers,** as for everything the bar serves (2.2).
+- **For the firmware:** the zip is sent in pieces straight from the memory-mapped partition, never copied into RAM, by a task of its own below the screen, touch and sound, so the screen keeps time and every other request (the Remote's polling, a Mac's calls) still answers within 1 second (2.5) during a download. A client that takes nothing for 3 seconds is dropped (the existing send time-out), and a download is ended after 5 minutes, so nobody can hold the one download slot for long.
+
+### 17.2 `mac_app` in `GET /api/v1/info`
+
+**Proposed.** `info` (7.1, no token, so the pairing prompt can read it) and the USB `hello` reply, which is the same object, gain `mac_app`: what the bar carries, from the partition's header and the start-up check.
+
+```json
+"mac_app": {"state": "ok", "reason": null, "version": "1.0", "build": "12", "bytes": 1834211, "archs": ["arm64", "x86_64"], "min_macos": "14", "file": "MiniBar-1.0.zip", "path": "/mac/app.zip", "sha256": "9f2e…"}
+```
+
+```json
+"mac_app": null
+```
+
+```json
+"mac_app": {"state": "damaged", "reason": "hash", "version": "1.0", "build": "12", "bytes": 1834211, "archs": ["arm64"], "min_macos": "14", "file": "MiniBar-1.0.zip", "path": "/mac/app.zip", "sha256": "9f2e…"}
+```
+
+| Field | Meaning |
+|---|---|
+| `mac_app` | `null` when the bar carries no app (a partition that was never flashed, or was erased). Otherwise this object, with every key present (2.3). |
+| `state` | `"ok"`, or `"damaged"` when the copy failed the start-up check. *Open:* a client treats an unknown value like `"damaged"`, and offers no download. |
+| `reason` | `null` when `ok`. For `damaged`, the check that failed: `"header"`, `"format"`, `"length"` or `"hash"`. For logs; the Remote says the same thing for all four. |
+| `version`, `build` | The app's version and build as the app itself reports them (`CFBundleShortVersionString`, `CFBundleVersion`): the Remote shows "MiniBar for Mac 1.0 (12)". `build` is a string, since Apple allows dotted builds. Both `null` when the header itself failed (`"header"`, `"format"`), and likewise the fields below. |
+| `bytes` | The zip's size. The Remote shows it as Finder does: decimal megabytes with one decimal ("1.8 MB"), or whole kilobytes under 1 MB. |
+| `archs` | The Macs it runs on: `"arm64"` (Apple silicon), `"x86_64"` (Intel), or both, for a build made with `UNIVERSAL=1`. The Remote shows "Apple silicon and Intel", "Apple silicon" or "Intel". |
+| `min_macos` | The oldest macOS it opens on, as `"14"`. The Remote shows "macOS 14 or later". |
+| `file` | The download's file name, the same as in `Content-Disposition`: `"MiniBar-1.0.zip"`. |
+| `path` | Where to get it: `"/mac/app.zip"`. Relative, so the link works at `minibar.local`, `minibar-2.local` or the bar's IP address alike. |
+| `sha256` | The zip's SHA-256 in 64 hex digits, also the `ETag`, so a script can check what it saved (`shasum -a 256`). |
+
+- **The Remote** shows Download for Mac only when `state` is `"ok"`. With `null` or `"damaged"` it shows no button anywhere, and the Connect your Mac card says why in one line (the mock-up's Remote has the words).
+- **Version:** a new field, so an addition under 2.1 (API 1.1). Clients that speak 1.0 ignore it.
+- **The Mac app needs nothing.** It ignores fields it doesn't know (2.1), and it doesn't check for a newer copy on the bar in version 1.
+
+---
+
 ## Appendix A: every endpoint
 
 | Method and path | Token scope | Over USB | Section |
@@ -1353,6 +1446,7 @@ The product was renamed from TinyBar to MiniBar on 2026-10-05 (`decisions.md`, P
 | `GET /api/v1/setup/networks` | none, setup network only | `request` | 13.1 |
 | `POST /api/v1/setup/wifi` | none, setup network only | `request` | 13.2 |
 | `GET /api/v1/setup/state` | none, setup network only | `request` | 13.3 |
+| `GET /mac/app.zip` and `HEAD` (Proposed; outside `/api/`, plain-text errors) | none | — (USB carries no files) | 17.1 |
 
 A method a path doesn't support gets `405 method_not_allowed` with an `Allow` header, `OPTIONS` and `HEAD` included (a reply to `HEAD` has no body); an unknown path under `/api/v1/` gets `404 not_found`.
 
@@ -1370,7 +1464,7 @@ A method a path doesn't support gets `405 method_not_allowed` with an `Allow` he
 | 403 | `bad_origin` | A cookie-authenticated request from another origin. |
 | 403 | `wrong_code` | Pairing code doesn't match; `attempts_left`. |
 | 403 | `wrong_client` | A call's `client` isn't one this token may report for (5.2). |
-| 404 | `not_found` | Unknown path or `token_id`. |
+| 404 | `not_found` | Unknown path or `token_id`; or `setup/wifi` once a join has worked, or outside setup (13.2). |
 | 405 | `method_not_allowed` | See the `Allow` header. |
 | 409 | `pairing_busy` | Another code is on screen; `retry_after_s`. |
 | 409 | `not_pairing` | No pairing in progress for that `pairing_id`. |
