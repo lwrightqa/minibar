@@ -548,7 +548,7 @@ TB_TEST(sec_status_reply_fits_at_its_largest)
 static nf_resp_t setup_wifi(const char *body)
 {
     net_req_t req = {.via = NET_VIA_SETUP, .method = "POST", .path = "/api/v1/setup/wifi", .body = body,
-                     .body_len = strlen(body), .content_type_json = true, .host = "192.168.4.1", .peer_ip = 0x0204a8c0};
+                     .body_len = strlen(body), .content_type_json = true, .host = NET_SETUP_IP, .peer_ip = 0x02020304};
     return nf_req(&req);
 }
 
@@ -713,7 +713,7 @@ TB_TEST(sec_host_check_names_only_this_bar)
     TB_FALSE(net_api_host_ok("tinybar.local:8080"));
     TB_FALSE(net_api_host_ok(""));
     TB_FALSE(net_api_host_ok(NULL));
-    TB_FALSE(net_api_host_ok("192.168.4.1"));      /* only while in setup */
+    TB_FALSE(net_api_host_ok(NET_SETUP_IP));      /* only while in setup */
 }
 
 TB_TEST(sec_other_methods_get_the_json_405_with_allow)

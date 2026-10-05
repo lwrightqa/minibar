@@ -47,6 +47,23 @@ The running record of what has been decided, and why. The product manager keeps 
     mode. Before this fix it came back on the QR code with the open setup network up, where anyone nearby could set its
     Wi-Fi and calendar address. Set up (hold, Wi-Fi, Set up) and a join that works end it. If a network was saved and
     you chose Set up again and then Skip, the bar stays offline too, rather than quietly rejoining the old network.
+- **Proposed (2026-10-05, firmware 1.0.1, lead developer): the setup network's address is 4.3.2.1, not 192.168.4.1.**
+  On the first test on the real bar, an Android phone joined TinyBar-Setup but said "Connected, no internet" and no
+  "Sign in to network" sheet appeared. Android's captive-portal check (NetworkMonitor in AOSP) has a rule, "a private IP
+  DNS response means no internet", that Google turns on with its server-side flags and phone makers can force on: when
+  the check's host (`connectivitycheck.gstatic.com`) resolves to a private address (10/8, 172.16/12, 192.168/16 or
+  169.254/16), the phone sends no HTTP check at all and reports no internet, so the bar never gets the chance to send
+  it to the setup page. The bar answers every name with its own address, so that address must not be private.
+  TinyBar-Setup has no way out to the internet, so 4.3.2.1 only stands in for the hosts phones check while they're on
+  it; it's the address ESP32 captive portals use for the same reason. What changes for people: if the sign-in sheet
+  doesn't open, the address to type is `http://4.3.2.1` (with mobile data off). The setup page shows it, and so does
+  the mock-up's phone. The other choice is to keep 192.168.4.1 and accept that some Android phones need the address
+  typed by hand. *(The published mock-up Artifact still shows 192.168.4.1 until it's republished.)*
+  - Same round: the setup network now opens after one scan (so a phone on it never loses packets to a scan; the bar
+    scans again while a phone is on it only if it found nothing), answers the phones' check paths (`/generate_204`,
+    `/hotspot-detect.html`, `/connecttest.txt` and the like) with the redirect whatever their host, and offers no DHCP
+    captive-portal option (114), which RFC 8908 reserves for an HTTPS API address. During "Set up again" the bar
+    leaves the office Wi-Fi when the setup network opens (it restarts the radio for it), which matches criterion 19.
 
 ## Remote
 

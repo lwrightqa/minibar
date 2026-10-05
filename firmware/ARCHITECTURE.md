@@ -59,8 +59,8 @@ No cycles, and nothing depends on main. net doesn't call board: it posts `TB_EV_
 | audio | board | 1 | 6 | 4 KB, internal | Mixes the chime and tick PCM into I2S; one tick a second while ticking is on |
 | httpd (IDF) | net | 0 | 5 | 6 KB, **PSRAM** | HTTP handlers: parse, then `tb_bus_exec(router)`; serves the gzipped pages directly. A request has 3 s from its first byte to arrive (headers and body), so one client can't hold the task |
 | usb_rx | net | 0 | 4 | 4 KB, **PSRAM** | Reads "@tb " lines (2 KB max), `tb_bus_exec(net_api_usb_line)`, writes the reply |
-| net | net | 0 | 4 | 4 KB, internal | Wi-Fi worker: saves credentials and the Wi-Fi skip, scans, starts mDNS and SNTP once online, hands the setup page's calendar address over |
-| dns | net | 0 | 3 | 4 KB, **PSRAM** | Setup mode only: answers every name with 192.168.4.1 |
+| net | net | 0 | 4 | 4 KB, internal | Wi-Fi worker: saves credentials and the Wi-Fi skip, scans, opens the setup network (scan first, then the access point), starts mDNS and SNTP once online, hands the setup page's calendar address over |
+| dns | net | 0 | 5 | 4 KB, **PSRAM** | Setup mode only: port 53 on every address, answers the setup subnet's A queries with 4.3.2.1 (NODATA for other types); priority 5 as in ESP-IDF's captive_portal example |
 | cal_sync | calendar | 0 | 2 | 10 KB, internal | HTTPS fetch streamed through the ICS reader; one at a time; blocks a tick after every 50 ms of work, from inside recurrence expansion too (the reader's tick hook) |
 | tiT (lwIP tcpip) | IDF | **0** (pinned) | 18 | 4 KB | |
 | sys_evt (event loop) | IDF | 0 | 20 | 5 KB | runs net's Wi-Fi and IP handlers |
@@ -295,11 +295,25 @@ rendered at 640 × 172 in headless Chromium per `docs/testing.md`):
 ## 10. Network
 
 - **Wi-Fi:** station with WPA2/WPA3 Personal, or WPA2-Enterprise (PEAP/MSCHAPv2, TTLS) through `esp_eap_client`.
-  Credentials in NVS namespace `wifi`. Setup mode is APSTA: the open `TinyBar-Setup` AP at 192.168.4.1, a DNS
-  catch-all, and the setup page; the station side scans and tries the chosen network while the AP stays up, so the
-  phone sees the result (api.md 13.3 `setup/state`).
-- **Captive portal:** during setup, any non-API request with a foreign `Host` gets `302` to `http://192.168.4.1/`
-  so phones open the sign-in sheet; API requests keep api.md's `421 wrong_host`.
+  Credentials in NVS namespace `wifi`. Setup mode is APSTA: the open `TinyBar-Setup` AP at 4.3.2.1/24, a DNS
+  catch-all, and the setup page; the station side tries the chosen network while the AP stays up, so the phone sees
+  the result (api.md 13.3 `setup/state`). The page's list comes from one scan made just before the AP opens; while a
+  phone is on the AP the bar scans again only if that list is empty, because an APSTA scan takes the radio off the
+  AP's channel for a second or two. The AP opens in the order of ESP-IDF's captive_portal example: the DHCP server
+  changed while it's stopped (address, the bar as DNS server, no option 114), then mode, AP settings and
+  `esp_wifi_start()`; the DNS catch-all starts on `WIFI_EVENT_AP_START`.
+- **Why 4.3.2.1 (since 1.0.1):** Android's captive-portal check (NetworkMonitor) has a "private IP DNS response means
+  no internet" rule, turned on by Google's server-side flags or the phone maker: when the check's host
+  (`connectivitycheck.gstatic.com`) resolves to 10/8, 172.16/12, 192.168/16 or 169.254/16 it sends no HTTP check at
+  all and reports "Connected, no internet" with no sign-in sheet. That's what the first Android test saw at
+  192.168.4.1. The setup network leads nowhere, so a public address only stands in for those hosts while a phone is
+  on it; 4.3.2.1 is the one ESP32 captive portals use for the same reason. It's `NET_SETUP_IP` (net_port.h).
+- **Captive portal:** during setup, the phones' check paths (`/generate_204`, `/hotspot-detect.html`,
+  `/connecttest.txt` and the others in `net_setup_probe_path()`) and any non-API request with a foreign `Host` get
+  `302` to `http://4.3.2.1/` with a short HTML body, so phones open the sign-in sheet; API requests keep api.md's
+  `421 wrong_host`. Which network a request came in on is the socket's own address (lwIP reports an IPv4 client on
+  the dual-stack listener as `::ffff:a.b.c.d`, which is unmapped); if that can't be read as IPv4, a peer in the setup
+  subnet while the AP is up counts as the setup network.
 - **mDNS:** host `tinybar` (or what it gets after a conflict), `_tinybar._tcp` and `_http._tcp` on port 80 with the
   TXT record of api.md section 3; instance name = `device.name`.
 - **HTTP:** `max_open_sockets` 7 with `lru_purge_enable`, header limit 2048 (sdkconfig), body limit 2048 (router),

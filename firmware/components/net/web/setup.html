@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="light dark">
 <title>TinyBar Wi-Fi setup</title>
 <!--
-  The setup page, served on the TinyBar-Setup network at http://192.168.4.1/ (net builder). A port of the mock-up's
+  The setup page, served on the TinyBar-Setup network at http://4.3.2.1/ (net builder). A port of the mock-up's
   setup view (docs/mockup.html: #setupView, syncSetupForm(), the Connect handler, the masked calendar field and
   checkIcal()) to api.md section 13: GET /api/v1/setup/networks, POST /api/v1/setup/wifi, GET /api/v1/setup/state.
   The bar's own screen always shows the result too: the phone may drop off this network while the bar connects.
@@ -63,7 +63,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
   <main class="phone" aria-label="TinyBar Wi-Fi setup">
     <div class="phone-head">
       <strong>Wi-Fi setup</strong>
-      <span>TinyBar-Setup · 192.168.4.1</span>
+      <span id="setupAddr">TinyBar-Setup · 4.3.2.1</span>
     </div>
     <div class="setup" id="setupView">
       <p>You're on TinyBar's own network. Choose the Wi-Fi it should use.</p>
@@ -265,8 +265,11 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
     }
   }
 
+  // The address this page came from: the setup network's (NET_SETUP_IP in the firmware).
+  $('setupAddr').textContent = 'TinyBar-Setup · ' + location.hostname;
   loadNets();
-  // The list fills in once the bar's first scan is done, and stays fresh while you pick.
+  // The list is the bar's scan from just before its setup network opened. The bar doesn't scan again while a phone
+  // is on it (a scan takes the radio off the network's channel), unless it found nothing; polling picks that up.
   setInterval(() => { if (!connecting && !document.hidden) loadNets(); }, 5000);
   setTimeout(loadNets, 2000);
 })();

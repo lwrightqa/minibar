@@ -2691,7 +2691,7 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     $('remoteMain').hidden = setupMode || !phone.token;
     $('pairView').hidden = setupMode || !!phone.token;
     $('phoneTitle').textContent = setupMode ? 'Wi-Fi setup' : 'Remote';
-    $('phoneAddr').textContent = setupMode ? 'TinyBar-Setup · 192.168.4.1' : `${BAR.name} · ${BAR.host}`;
+    $('phoneAddr').textContent = setupMode ? 'TinyBar-Setup · 4.3.2.1' : `${BAR.name} · ${BAR.host}`;
     const note = !s.powered ? "TinyBar is powered off, so this page can't reach it. Press PWR on the side of the bar to turn it on."
       : s.wifi.mode === 'offline' ? "TinyBar isn't on Wi-Fi, so this page can't reach it. Hold its screen, then choose Wi-Fi to set it up."
       : '';

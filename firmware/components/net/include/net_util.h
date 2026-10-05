@@ -40,8 +40,37 @@ bool net_time_mac_should_set(tb_epoch_t mac_time, const tb_clock_t *now, tb_ms_t
 
 /* ---------- the setup network's DNS catch-all ---------- */
 /* Answer a DNS query: every A question gets ip (network byte order) with a short TTL; other types get an empty
- * answer (so phones fall back to IPv4). Returns the answer's length, or 0 to send nothing (not a query, malformed). */
+ * answer (NODATA, so phones fall back to IPv4). Returns the answer's length, or 0 to send nothing (not a query,
+ * malformed). */
 size_t net_dns_answer(const uint8_t *q, size_t qlen, uint32_t ip, uint8_t *out, size_t cap);
+/* The first question of a DNS query, for the log: its name as text and its type (1 A, 28 AAAA, 65 HTTPS...). Bytes
+ * other than printable ASCII (and a dot inside a label) show as '?'; a name longer than cap - 1 ends in "...".
+ * Returns false (name "") if q isn't a standard query with a question net_dns_answer() would read. */
+bool net_dns_question(const uint8_t *q, size_t qlen, char *name, size_t cap, uint16_t *qtype);
+
+/* ---------- the setup network's captive portal ---------- */
+/* The paths phones and computers fetch to find out whether a network has a sign-in page: Android (/generate_204,
+ * /gen_204), iOS and macOS (/hotspot-detect.html, /library/test/success.html), Windows (/connecttest.txt,
+ * /ncsi.txt, /redirect), Firefox (/canonical.html, /success.txt). On the setup network each gets a 302 to the setup
+ * page whatever its Host, so the sign-in sheet opens. Case doesn't matter; a query or fragment is ignored. */
+bool net_setup_probe_path(const char *path);
+/* a and b (IPv4, network byte order) are in the same subnet. A zero mask or a zero b never matches. */
+bool net_ip_same_subnet(uint32_t a, uint32_t b, uint32_t mask);
+
+/* ---------- rate-limited logging ---------- */
+/* At most max lines a minute, so a chatty phone can't flood the port. The minute starts with its first line. */
+typedef struct {
+    bool started;
+    tb_ms_t start;
+    int n;          /* lines logged in this minute */
+    int dropped;    /* lines held back in this minute */
+} net_log_quota_t;
+/* Whether one more line may be logged at now. When a new minute starts, *dropped_before (optional) gets how many
+ * lines the previous minute held back (0 otherwise), so the log can say so once. */
+bool net_log_quota_take(net_log_quota_t *q, tb_ms_t now, int max, int *dropped_before);
+/* Text from the network (a Host header, a path) made safe for one log line: printable ASCII kept, every other byte
+ * shown as '?', cut to cap - 1 bytes ending in "..." when it's longer. NULL shows as "-". Returns out. */
+char *net_log_text(char *out, size_t cap, const char *in);
 
 /* ---------- why a Wi-Fi join failed (api.md 13.3) ---------- */
 typedef enum {

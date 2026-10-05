@@ -27,6 +27,9 @@ void net_wifi_setup_skip(void);
 void net_wifi_setup_done(void);
 /* The radio is on (esp_fill_random gives true random numbers then). */
 bool net_wifi_rf_on(void);
+/* TinyBar-Setup's access point is up (between WIFI_EVENT_AP_START and AP_STOP), for net_http.c's fallback when a
+ * socket's own address can't tell which network a request came in on. */
+bool net_wifi_setup_net_up(void);
 /* net_port.h's Wi-Fi functions are implemented there too. */
 void net_mdns_set_name(const char *name);
 
@@ -38,7 +41,9 @@ bool net_time_set_from_mac(tb_epoch_t t);
 bool net_time_valid(void);
 
 /* ---------- net_dns.c: the setup network's DNS catch-all ---------- */
-void net_dns_start(uint32_t ip);
+/* Answer queries from the subnet ip/mask (network byte order) with ip, until net_dns_stop(). net_wifi.c calls it on
+ * WIFI_EVENT_AP_START. */
+void net_dns_start(uint32_t ip, uint32_t mask);
 void net_dns_stop(void);
 
 /* ---------- net_http.c ---------- */

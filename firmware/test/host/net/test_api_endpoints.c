@@ -897,7 +897,7 @@ TB_TEST(forget_all_devices_on_the_bar)
 static nf_resp_t setup_req(const char *method, const char *path, const char *body)
 {
     net_req_t req = {.via = NET_VIA_SETUP, .method = method, .path = path, .body = body, .body_len = body ? strlen(body) : 0,
-                     .content_type_json = true, .host = "192.168.4.1", .peer_ip = 0x0204a8c0};
+                     .content_type_json = true, .host = NET_SETUP_IP, .peer_ip = 0x02020304};
     return nf_req(&req);
 }
 
@@ -1056,7 +1056,7 @@ TB_TEST(setup_endpoints_only_on_the_setup_network)
     TB_EQ_STR(nf_str(r.j, "state"), "connected");
     nf_free(&r);
     /* and over the office Wi-Fi the setup address isn't the bar's */
-    nf_host = "192.168.4.1";
+    nf_host = NET_SETUP_IP;
     r = nf_http("GET", "/api/v1/info", NULL, NULL);
     TB_EQ_INT(r.status, 421);
     nf_free(&r);

@@ -70,6 +70,8 @@ CONFIG_LWIP_LOCAL_HOSTNAME="tinybar"
 CONFIG_LWIP_MAX_SOCKETS=16
 CONFIG_LWIP_DHCPS=y
 # The setup network's DHCP names the bar as the DNS server, so the catch-all DNS (net_dns.c) answers every name.
+# net_wifi.c sets that explicitly (ESP_NETIF_DOMAIN_NAME_SERVER and the DNS address); this default-on option, which
+# offers the server's own address when none is set, stays as a second line until IDF v6 removes it.
 CONFIG_LWIP_DHCPS_ADD_DNS=y
 # Time: an office's own NTP server from DHCP first (offices often block public NTP), then pool.ntp.org and
 # time.google.com (net_wifi.c sntp_start puts DHCP's at index 0 and the two names at 1 and 2).

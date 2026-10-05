@@ -27,7 +27,13 @@ typedef struct {
     int8_t rssi;                    /* dBm; 0 when not joined */
 } net_wifi_info_t;
 
-#define NET_SETUP_IP "192.168.4.1"
+/* The setup network's address (the bar on TinyBar-Setup: its access point, DHCP server, DNS catch-all and setup page)
+ * and its subnet. Not a private address: Android's captive-portal check (NetworkMonitor's "a private IP DNS response
+ * means no internet", on when Google or the phone's maker turns it on) treats a check host that resolves into 10/8,
+ * 172.16/12, 192.168/16 or 169.254/16 as "Connected, no internet" and never shows the sign-in sheet. The setup network
+ * leads nowhere, so this address only stands in for those hosts while a phone is on it (decisions.md, Wi-Fi). */
+#define NET_SETUP_IP "4.3.2.1"
+#define NET_SETUP_NETMASK "255.255.255.0"
 
 /* One network the setup page can offer (api.md 13.1). */
 typedef enum { NET_SEC_OPEN = 0, NET_SEC_PASSWORD, NET_SEC_WORK_LOGIN } net_security_t;

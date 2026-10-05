@@ -21,7 +21,7 @@ TB_TEST(http_host_check)
         TB_EQ_INT(r.status, 200);
         nf_free(&r);
     }
-    const char *bad[] = {"evil.example", "tinybar.local:8080", "tinybar.locals", "10.0.4.4", "192.168.4.1", "", "tinybar"};
+    const char *bad[] = {"evil.example", "tinybar.local:8080", "tinybar.locals", "10.0.4.4", NET_SETUP_IP, "", "tinybar"};
     for (size_t i = 0; i < sizeof bad / sizeof bad[0]; i++) {
         nf_host = bad[i];
         nf_resp_t r = nf_http("GET", "/api/v1/info", NULL, NULL);
@@ -47,13 +47,13 @@ TB_TEST(http_host_check)
     TB_EQ_INT(r.status, 200);
     TB_EQ_STR(nf_str(r.j, "host"), "tinybar-2.local");
     nf_free(&r);
-    /* 192.168.4.1 only while the setup network is up */
+    /* the setup address only while the setup network is up */
     fake_wifi.state = NET_WIFI_SETUP;
-    nf_host = "192.168.4.1";
+    nf_host = NET_SETUP_IP;
     r = nf_http("GET", "/api/v1/info", NULL, NULL);
     TB_EQ_INT(r.status, 200);
     nf_free(&r);
-    TB_TRUE(net_api_host_ok("192.168.4.1:80"));
+    TB_TRUE(net_api_host_ok(NET_SETUP_IP ":80"));
     TB_FALSE(net_api_host_ok("captive.apple.com"));
 }
 

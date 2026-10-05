@@ -3,9 +3,21 @@
  *
  * The station joins the office Wi-Fi with the saved credentials (WPA2/WPA3 Personal, open, or WPA2-Enterprise
  * "work login" with PEAP/TTLS through esp_eap_client) and reconnects with a back-off when it drops. The setup
- * network is APSTA: the open "TinyBar-Setup" access point at 192.168.4.1 with a DNS catch-all (net_dns.c) and the
- * setup page (net_http.c); the station side scans and tries the chosen network while the access point stays up, so
- * the phone can read the result (api.md 13.3). Once the bar has an address: mDNS (api.md 3) and SNTP.
+ * network is APSTA: the open "TinyBar-Setup" access point at NET_SETUP_IP with a DNS catch-all (net_dns.c) and the
+ * setup page (net_http.c); the station side tries the chosen network while the access point stays up, so the phone
+ * can read the result (api.md 13.3). Once the bar has an address: mDNS (api.md 3) and SNTP.
+ *
+ * Opening the setup network (setup_open(), on the worker), in the order of ESP-IDF's captive_portal example:
+ *   1. one scan for the page's list, with the access point still closed (an APSTA scan hops channels for a second or
+ *      two, and a phone on the setup network loses packets, its captive-portal check among them);
+ *   2. the access point's DHCP server, changed while it's stopped: the setup address, the bar as the DNS server, and
+ *      no captive-portal option 114 (RFC 8908 wants an HTTPS API address there; an http one only invites oddities);
+ *   3. mode, then the access point's settings, then esp_wifi_start(), so it never comes up under the driver's
+ *      default name;
+ *   4. the DNS catch-all once the access point is up (WIFI_EVENT_AP_START).
+ * While a phone is on the setup network nothing scans, unless the page has no networks to show.
+ * The log says when the setup network opens (channel and address), and each phone that joins, gets an address and
+ * leaves (INFO, at most 40 lines a minute).
  *
  * Threads: the Wi-Fi and IP event handlers run in the default event loop's task; net_port.h's functions run on the
  * app task; timers run in the esp_timer task. Shared state is behind s_lock, and anything slow or that writes flash
@@ -25,9 +37,11 @@
 #include <time.h>
 
 #include "cal_sync.h"
+#include "dhcpserver/dhcpserver.h"
 #include "esp_eap_client.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include "esp_mac.h"
 #include "esp_netif.h"
 #include "esp_netif_sntp.h"
 #include "esp_timer.h"
@@ -53,7 +67,10 @@ static const char *TAG = "net.wifi";
 #define JOIN_TIMEOUT_US   (30 * 1000000LL)  /* a join that hasn't worked in 30 s has failed */
 #define NO_ADDRESS_US     (15 * 1000000LL)  /* joined but no address in 15 s: often a sign-in-page network */
 #define AP_LINGER_US      (15 * 1000000LL)  /* the setup network stays up a little after Connected, for the page */
-#define SCAN_STALE_US     (15 * 1000000LL)
+#define SCAN_STALE_US     (15 * 1000000LL)  /* with no phone on the setup network, an older list is scanned again */
+#define SCAN_EMPTY_US     (30 * 1000000LL)  /* with a phone on it, only an empty list, at most this often */
+#define SCAN_WAIT_MS      5000              /* the first scan takes 1 to 2 s */
+#define AP_LOG_PER_MIN    40
 #define JOIN_TRIES        3
 #define RSSI_EVERY_US     (5 * 1000000LL)
 
@@ -76,12 +93,18 @@ typedef struct {
     uint8_t sec;                /* net_security_t */
 } creds_t;
 
-typedef enum { J_SAVE_CREDS = 1, J_ONLINE, J_SCAN, J_STOP_AP, J_CONNECT, J_SAVE_SKIP, J_CLEAR_SKIP } job_t;
+typedef enum { J_SAVE_CREDS = 1, J_ONLINE, J_SCAN, J_STOP_AP, J_CONNECT, J_SAVE_SKIP, J_CLEAR_SKIP, J_SETUP_OPEN } job_t;
 
 static SemaphoreHandle_t s_lock;
+static SemaphoreHandle_t s_radio;       /* esp_wifi_start/stop/set_mode come one sequence at a time (worker, callers) */
+static SemaphoreHandle_t s_scan_done;   /* given by WIFI_EVENT_SCAN_DONE, for setup_open()'s first scan */
 static QueueHandle_t s_jobs;
 static esp_netif_t *s_sta, *s_ap;
-static bool s_inited, s_running, s_creds_loaded, s_have_creds, s_ap_up;
+static bool s_inited, s_running, s_creds_loaded, s_have_creds;
+static bool s_ap_want;          /* the setup network should be up (the setup screens, and the linger after Connected) */
+static bool s_ap_open;          /* its access point is up: WIFI_EVENT_AP_START, until AP_STOP */
+static int s_ap_clients;        /* phones on it */
+static net_log_quota_t s_ap_quota;      /* the event task's setup network lines */
 static bool s_skipped;          /* Skip was the last Wi-Fi choice (saved as "skipped") */
 static creds_t s_creds;
 static wmode_t s_mode;
@@ -113,6 +136,18 @@ static int64_t s_last_ntp_ms = -1;
 
 #define LOCK() xSemaphoreTake(s_lock, portMAX_DELAY)
 #define UNLOCK() xSemaphoreGive(s_lock)
+/* Taken before s_lock when both are, never the other way round. */
+#define RADIO_LOCK() xSemaphoreTake(s_radio, portMAX_DELAY)
+#define RADIO_UNLOCK() xSemaphoreGive(s_radio)
+
+/* One more line about the setup network's phones (the event task's): at most AP_LOG_PER_MIN a minute. */
+static bool ap_log_ok(void)
+{
+    int dropped;
+    bool ok = net_log_quota_take(&s_ap_quota, esp_timer_get_time() / 1000, AP_LOG_PER_MIN, &dropped);
+    if (dropped) ESP_LOGI(TAG, "(%d more setup network events in the last minute weren't logged)", dropped);
+    return ok;
+}
 
 /* The setup page's calendar address is a secret: zeroed before it's freed. The caller holds s_lock. */
 static void drop_pending_cal_locked(void)
@@ -123,9 +158,11 @@ static void drop_pending_cal_locked(void)
     s_pending_cal = NULL;
 }
 
-static void job(job_t j)
+static bool job(job_t j)
 {
-    if (s_jobs) xQueueSend(s_jobs, &j, 0);
+    if (s_jobs && xQueueSend(s_jobs, &j, 0) == pdTRUE) return true;
+    ESP_LOGE(TAG, "the Wi-Fi worker's queue is full: job %d dropped", (int)j);
+    return false;
 }
 
 static void post_wifi(tb_wifi_ev_t what, const char *ssid, const char *ip, const char *host, const char *error)
@@ -376,6 +413,54 @@ static void on_wifi(void *arg, esp_event_base_t base, int32_t id, void *data)
         s_scanning = false;
         UNLOCK();
         ESP_LOGI(TAG, "scan: %d networks", k);
+        xSemaphoreGive(s_scan_done);
+        break;
+    }
+    /* The setup network. This handler is registered for every Wi-Fi event, so it runs before esp_netif's own
+     * AP_START handler (esp_event runs a base's "any id" handlers before its id handlers): the DNS socket listens on
+     * every address, so it needn't wait for the interface. */
+    case WIFI_EVENT_AP_START: {
+        esp_netif_ip_info_t info = {0};
+        esp_netif_get_ip_info(s_ap, &info);
+        uint8_t ch = 0;
+        wifi_second_chan_t second;
+        if (esp_wifi_get_channel(&ch, &second) != ESP_OK) ch = 0;
+        LOCK();
+        s_ap_open = true;
+        s_ap_clients = 0;
+        bool want = s_ap_want;
+        UNLOCK();
+        char ip[16], mask[16];
+        ESP_LOGI(TAG, "setup network up: \"" SETUP_SSID "\", open, channel %u, address %s mask %s", ch,
+                 net_ip_str(info.ip.addr, ip), net_ip_str(info.netmask.addr, mask));
+        if (want) net_dns_start(info.ip.addr, info.netmask.addr);
+        break;
+    }
+    case WIFI_EVENT_AP_STOP:
+        LOCK();
+        s_ap_open = false;
+        s_ap_clients = 0;
+        UNLOCK();
+        net_dns_stop();
+        ESP_LOGI(TAG, "setup network down");
+        break;
+    case WIFI_EVENT_AP_STACONNECTED: {
+        const wifi_event_ap_staconnected_t *e = data;
+        LOCK();
+        int n = ++s_ap_clients;
+        UNLOCK();
+        if (ap_log_ok()) ESP_LOGI(TAG, "a phone joined the setup network: " MACSTR " (%d on it)", MAC2STR(e->mac), n);
+        break;
+    }
+    case WIFI_EVENT_AP_STADISCONNECTED: {
+        const wifi_event_ap_stadisconnected_t *e = data;
+        LOCK();
+        if (s_ap_clients > 0) s_ap_clients--;
+        int n = s_ap_clients;
+        UNLOCK();
+        if (ap_log_ok())
+            ESP_LOGI(TAG, "a phone left the setup network: " MACSTR ", reason %u (%d on it)", MAC2STR(e->mac),
+                     (unsigned)e->reason, n);
         break;
     }
     default:
@@ -436,6 +521,12 @@ static void on_ip(void *arg, esp_event_base_t base, int32_t id, void *data)
         wmode_t mode = s_mode;
         UNLOCK();
         if (was && mode != M_SETUP) post_wifi(TB_WIFI_EV_LINK_DOWN, NULL, NULL, NULL, NULL);
+    } else if (id == IP_EVENT_AP_STAIPASSIGNED) {
+        const ip_event_ap_staipassigned_t *e = data;
+        char ip[16];
+        if (ap_log_ok())
+            ESP_LOGI(TAG, "the setup network gave " MACSTR " the address %s", MAC2STR(e->mac),
+                     esp_ip4addr_ntoa(&e->ip, ip, sizeof ip));
     }
 }
 
@@ -552,21 +643,116 @@ static void sntp_start(void)
 /* The worker                                                                                               */
 /* ======================================================================================================== */
 
-static void scan_start(void)
+/* Start a scan in the background (WIFI_EVENT_SCAN_DONE fills the list). Returns false if none started. */
+static bool scan_start(void)
 {
     LOCK();
     bool busy = s_scanning || s_joining || !s_running;
     if (!busy) s_scanning = true;
     UNLOCK();
-    if (busy) return;
+    if (busy) return false;
     wifi_scan_config_t sc = {.show_hidden = false, .scan_type = WIFI_SCAN_TYPE_ACTIVE};
     sc.scan_time.active.min = 60;
     sc.scan_time.active.max = 120;
-    if (esp_wifi_scan_start(&sc, false) != ESP_OK) {
+    esp_err_t err = esp_wifi_scan_start(&sc, false);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "scan didn't start: %s", esp_err_to_name(err));
+        LOCK();
+        s_scanning = false;
+        UNLOCK();
+        return false;
+    }
+    return true;
+}
+
+static bool setup_wanted(void)
+{
+    LOCK();
+    bool want = s_ap_want && s_mode == M_SETUP;
+    UNLOCK();
+    return want;
+}
+
+/* Open TinyBar-Setup's access point. The caller holds the radio lock. */
+static void ap_open(void)
+{
+    /* The DHCP server, changed while it's stopped (as ESP-IDF's examples do): the setup address, and the bar as the
+     * DNS server, set explicitly rather than through CONFIG_LWIP_DHCPS_ADD_DNS (which IDF v6 removes). No
+     * captive-portal option 114. The server itself starts with the access point. */
+    esp_netif_ip_info_t info = {0};
+    info.ip.addr = info.gw.addr = esp_ip4addr_aton(NET_SETUP_IP);
+    info.netmask.addr = esp_ip4addr_aton(NET_SETUP_NETMASK);
+    esp_err_t err = esp_netif_dhcps_stop(s_ap);
+    if (err != ESP_OK && err != ESP_ERR_ESP_NETIF_DHCP_ALREADY_STOPPED)
+        ESP_LOGW(TAG, "setup network: stopping its DHCP server: %s", esp_err_to_name(err));
+    err = esp_netif_set_ip_info(s_ap, &info);
+    if (err != ESP_OK) ESP_LOGE(TAG, "setup network: its address: %s", esp_err_to_name(err));
+    dhcps_offer_t dns_on = OFFER_DNS;
+    err = esp_netif_dhcps_option(s_ap, ESP_NETIF_OP_SET, ESP_NETIF_DOMAIN_NAME_SERVER, &dns_on, sizeof dns_on);
+    if (err != ESP_OK) ESP_LOGE(TAG, "setup network: offering a DNS server: %s", esp_err_to_name(err));
+    esp_netif_dns_info_t dns = {0};
+    dns.ip.type = ESP_IPADDR_TYPE_V4;
+    dns.ip.u_addr.ip4 = info.ip;
+    err = esp_netif_set_dns_info(s_ap, ESP_NETIF_DNS_MAIN, &dns);
+    if (err != ESP_OK) ESP_LOGE(TAG, "setup network: the DNS server it offers: %s", esp_err_to_name(err));
+    err = esp_netif_dhcps_start(s_ap);
+    if (err != ESP_OK && err != ESP_ERR_ESP_NETIF_DHCP_ALREADY_STARTED)
+        ESP_LOGE(TAG, "setup network: its DHCP server: %s", esp_err_to_name(err));
+
+    /* The access point: mode, then its settings, then start. The radio restarts for it: the scan's station-only start
+     * goes, and so does a link to the office Wi-Fi during "Set up again" (on the setup screens the bar isn't on the
+     * office Wi-Fi; decisions.md, Pairing, criterion 19). */
+    wifi_config_t ap;
+    memset(&ap, 0, sizeof ap);
+    memcpy(ap.ap.ssid, SETUP_SSID, sizeof SETUP_SSID - 1);
+    ap.ap.ssid_len = sizeof SETUP_SSID - 1;
+    ap.ap.channel = 1;
+    ap.ap.authmode = WIFI_AUTH_OPEN;
+    ap.ap.max_connection = 4;
+    if (s_running) {
+        esp_wifi_stop();
+        s_running = false;
+    }
+    err = esp_wifi_set_mode(WIFI_MODE_APSTA);
+    if (err == ESP_OK) err = esp_wifi_set_config(WIFI_IF_AP, &ap);
+    if (err == ESP_OK) err = esp_wifi_start();
+    if (err == ESP_OK) {
+        s_running = true;
+        ESP_LOGI(TAG, "opening the setup network");
+        return;
+    }
+    ESP_LOGE(TAG, "the setup network didn't open: %s", esp_err_to_name(err));
+    LOCK();
+    s_ap_want = false;      /* Set up again (hold, Wi-Fi) tries again */
+    UNLOCK();
+}
+
+/* J_SETUP_OPEN: one scan with the access point still closed, then open it. */
+static void setup_open(void)
+{
+    if (!setup_wanted()) return;
+    RADIO_LOCK();
+    if (!s_running) {
+        esp_err_t err = esp_wifi_set_mode(WIFI_MODE_STA);
+        if (err == ESP_OK) err = esp_wifi_start();
+        if (err == ESP_OK) s_running = true;
+        else ESP_LOGE(TAG, "the radio didn't start for the scan: %s", esp_err_to_name(err));
+    }
+    RADIO_UNLOCK();
+    LOCK();
+    s_scanning = false;     /* a scan the radio stopped under never says it's done */
+    UNLOCK();
+    xSemaphoreTake(s_scan_done, 0);
+    if (scan_start() && xSemaphoreTake(s_scan_done, pdMS_TO_TICKS(SCAN_WAIT_MS)) != pdTRUE) {
+        ESP_LOGW(TAG, "the scan didn't finish in %d s; opening the setup network anyway", SCAN_WAIT_MS / 1000);
+        esp_wifi_scan_stop();
         LOCK();
         s_scanning = false;
         UNLOCK();
     }
+    RADIO_LOCK();
+    if (setup_wanted()) ap_open();
+    RADIO_UNLOCK();
 }
 
 static void worker(void *arg)
@@ -608,25 +794,33 @@ static void worker(void *arg)
             }
             break;
         }
-        case J_SCAN: scan_start(); break;
+        case J_SCAN:
+            if (scan_start()) ESP_LOGI(TAG, "scanning again (no phone on the setup network, or nothing to show)");
+            break;
+        case J_SETUP_OPEN: setup_open(); break;
         case J_SAVE_SKIP: skip_save(true); break;
         case J_CLEAR_SKIP: skip_save(false); break;
         case J_STOP_AP: {
+            RADIO_LOCK();
             LOCK();
-            bool stop = s_mode != M_SETUP && s_ap_up;
-            if (stop) s_ap_up = false;
+            bool stop = s_mode != M_SETUP && s_ap_want;
+            if (stop) s_ap_want = false;
+            wmode_t mode = s_mode;
             UNLOCK();
             if (stop) {
                 net_dns_stop();
-                esp_wifi_set_mode(s_mode == M_OFF ? WIFI_MODE_NULL : WIFI_MODE_STA);
+                if (s_running) esp_wifi_set_mode(mode == M_OFF ? WIFI_MODE_NULL : WIFI_MODE_STA);
                 ESP_LOGI(TAG, "setup network closed");
             }
+            RADIO_UNLOCK();
             break;
         }
         case J_CONNECT: {
             static creds_t c;
             LOCK();
-            bool joining = s_joining, go = s_mode != M_OFF && (s_joining || s_have_creds);
+            /* On the setup screens only the page's join connects: a reconnect to the saved network would move the
+             * setup network to that network's channel under the phone. */
+            bool joining = s_joining, go = s_mode != M_OFF && (s_joining || (s_mode == M_STA && s_have_creds));
             if (joining) c = s_join;
             UNLOCK();
             if (go) {
@@ -648,8 +842,10 @@ esp_err_t net_wifi_init(void)
 {
     if (s_inited) return ESP_OK;
     s_lock = xSemaphoreCreateMutex();
+    s_radio = xSemaphoreCreateMutex();
+    s_scan_done = xSemaphoreCreateBinary();
     s_jobs = xQueueCreate(8, sizeof(job_t));
-    if (!s_lock || !s_jobs) return ESP_ERR_NO_MEM;
+    if (!s_lock || !s_radio || !s_scan_done || !s_jobs) return ESP_ERR_NO_MEM;
     creds_load();
     /* The clock: the RTC set it at boot if it held a time TinyBar wrote (board_rtc_init runs before net_init). */
     if (time(NULL) > 1735689600) s_time_src = NET_TIME_RTC;     /* after 2025-01-01 */
@@ -664,6 +860,7 @@ esp_err_t net_wifi_init(void)
     esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, on_wifi, NULL);
     esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, on_ip, NULL);
     esp_event_handler_register(IP_EVENT, IP_EVENT_STA_LOST_IP, on_ip, NULL);
+    esp_event_handler_register(IP_EVENT, IP_EVENT_AP_STAIPASSIGNED, on_ip, NULL);
 
     const esp_timer_create_args_t t1 = {.callback = on_retry_timer, .name = "wifi_retry"};
     const esp_timer_create_args_t t2 = {.callback = on_join_timer, .name = "wifi_join"};
@@ -681,10 +878,14 @@ esp_err_t net_wifi_init(void)
 
 static void wifi_run(wifi_mode_t mode)
 {
+    RADIO_LOCK();
     esp_wifi_set_mode(mode);
     if (!s_running) {
-        if (esp_wifi_start() == ESP_OK) s_running = true;
+        esp_err_t err = esp_wifi_start();
+        if (err == ESP_OK) s_running = true;
+        else ESP_LOGE(TAG, "the radio didn't start: %s", esp_err_to_name(err));
     }
+    RADIO_UNLOCK();
 }
 
 void net_wifi_start(void)
@@ -709,46 +910,36 @@ void net_wifi_start(void)
     }
 }
 
-static const char CAPTIVE_URI[] = "http://" NET_SETUP_IP "/";
-
+/* Runs on whichever task shows the QR code (main at the first start, the app task for Set up): the slow part (the
+ * scan, the radio's restart) is the worker's J_SETUP_OPEN. */
 void net_wifi_setup_begin(void)
 {
     LOCK();
     bool was_skipped = s_skipped;
     s_skipped = false;
-    UNLOCK();
-    if (was_skipped) job(J_CLEAR_SKIP);
-    LOCK();
     s_mode = M_SETUP;
     s_joining = false;
     memset(&s_js, 0, sizeof s_js);
     drop_pending_cal_locked();
-    bool ap_up = s_ap_up;
-    s_ap_up = true;
+    bool already = s_ap_want;       /* up or opening (or lingering after Connected) */
+    s_ap_want = true;
+    bool idle = s_ap_open && s_ap_clients == 0;
     UNLOCK();
+    if (was_skipped) job(J_CLEAR_SKIP);
     esp_timer_stop(s_linger_timer);
     esp_timer_stop(s_join_timer);
-    if (!ap_up) {
-        wifi_config_t ap;
-        memset(&ap, 0, sizeof ap);
-        memcpy(ap.ap.ssid, SETUP_SSID, sizeof SETUP_SSID - 1);
-        ap.ap.ssid_len = sizeof SETUP_SSID - 1;
-        ap.ap.channel = 1;
-        ap.ap.authmode = WIFI_AUTH_OPEN;
-        ap.ap.max_connection = 4;
-        wifi_run(WIFI_MODE_APSTA);
-        esp_wifi_set_config(WIFI_IF_AP, &ap);
-        /* DHCP: the bar is the DNS server (LWIP_DHCPS_ADD_DNS), and RFC 8910's captive-portal address */
-        esp_netif_dhcps_stop(s_ap);
-        esp_netif_dhcps_option(s_ap, ESP_NETIF_OP_SET, ESP_NETIF_CAPTIVEPORTAL_URI, (void *)CAPTIVE_URI, sizeof CAPTIVE_URI - 1);
-        esp_netif_dhcps_start(s_ap);
-        esp_netif_ip_info_t info;
-        uint32_t ip = 0;
-        if (esp_netif_get_ip_info(s_ap, &info) == ESP_OK) ip = info.ip.addr;
-        net_dns_start(ip);
-        ESP_LOGI(TAG, "setup network up: " SETUP_SSID);
+    esp_timer_stop(s_retry_timer);      /* no reconnecting to the saved network under the setup network */
+    if (!already) {
+        ESP_LOGI(TAG, "setup begins: scanning, then opening " SETUP_SSID " at " NET_SETUP_IP);
+        if (!job(J_SETUP_OPEN)) {
+            LOCK();
+            s_ap_want = false;      /* Set up again tries again */
+            UNLOCK();
+        }
+    } else {
+        ESP_LOGI(TAG, "setup begins: " SETUP_SSID " is already up");
+        if (idle) job(J_SCAN);      /* no phone on it: a fresh list costs nobody anything */
     }
-    job(J_SCAN);
 }
 
 void net_wifi_setup_skip(void)
@@ -756,24 +947,25 @@ void net_wifi_setup_skip(void)
     LOCK();
     bool save = !s_skipped;
     s_skipped = true;
-    UNLOCK();
-    if (save) job(J_SAVE_SKIP);     /* the next start stays offline too */
-    LOCK();
     s_mode = M_OFF;
     s_joining = false;
     s_sta_up = false;
-    s_ap_up = false;
+    s_ap_want = false;
+    s_scanning = false;
     drop_pending_cal_locked();
     UNLOCK();
+    if (save) job(J_SAVE_SKIP);     /* the next start stays offline too */
     esp_timer_stop(s_linger_timer);
     esp_timer_stop(s_join_timer);
     esp_timer_stop(s_retry_timer);
     esp_timer_stop(s_addr_timer);
     net_dns_stop();
+    RADIO_LOCK();
     if (s_running) {
         esp_wifi_stop();    /* offline: the radio goes off */
         s_running = false;
     }
+    RADIO_UNLOCK();
     ESP_LOGI(TAG, "Wi-Fi skipped");
 }
 
@@ -789,6 +981,14 @@ void net_wifi_setup_done(void)
 bool net_wifi_rf_on(void)
 {
     return s_running;
+}
+
+bool net_wifi_setup_net_up(void)
+{
+    LOCK();
+    bool up = s_ap_open;
+    UNLOCK();
+    return up;
 }
 
 /* ======================================================================================================== */
@@ -829,9 +1029,13 @@ int net_port_setup_networks(net_scan_entry_t *out, int max)
     LOCK();
     int n = s_scan_n < max ? s_scan_n : max;
     memcpy(out, s_scan, (size_t)n * sizeof *out);
-    bool stale = !s_scanning && now - s_scan_at > SCAN_STALE_US;
+    /* The list comes from the scan before the setup network opened. A scan now would take the radio off the setup
+     * network's channel under the very phone asking, so with a phone on it only an empty list is looked for again,
+     * at most every 30 s; the page polls and shows what arrives. */
+    bool again = !s_scanning && !s_joining &&
+                 (s_ap_clients == 0 ? now - s_scan_at > SCAN_STALE_US : s_scan_n == 0 && now - s_scan_at > SCAN_EMPTY_US);
     UNLOCK();
-    if (stale) job(J_SCAN);     /* refreshed in the background; the page polls */
+    if (again) job(J_SCAN);
     return n;
 }
 

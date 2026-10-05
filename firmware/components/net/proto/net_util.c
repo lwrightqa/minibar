@@ -3,6 +3,7 @@
  */
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 
 #include "net_util.h"
 
@@ -134,23 +135,71 @@ bool net_time_mac_should_set(tb_epoch_t mac_time, const tb_clock_t *now, tb_ms_t
 /* DNS catch-all                                                                                            */
 /* ======================================================================================================== */
 
-size_t net_dns_answer(const uint8_t *q, size_t qlen, uint32_t ip, uint8_t *out, size_t cap)
+/* The first question of a standard query: where it ends (just after its class), its type and class. */
+static bool dns_question(const uint8_t *q, size_t qlen, size_t *qend, uint16_t *qtype, uint16_t *qclass)
 {
-    if (qlen < 12 || qlen > 512) return 0;
-    if (q[2] & 0x80) return 0;                  /* a response, not a query */
-    if ((q[2] >> 3) & 0x0F) return 0;           /* only standard queries */
-    if (((q[4] << 8) | q[5]) < 1) return 0;     /* no question */
-    /* the first question: a name made of labels (no compression pointers in a question), type and class */
+    if (qlen < 12 || qlen > 512) return false;
+    if (q[2] & 0x80) return false;              /* a response, not a query */
+    if ((q[2] >> 3) & 0x0F) return false;       /* only standard queries */
+    if (((q[4] << 8) | q[5]) < 1) return false; /* no question */
+    /* a name made of labels (no compression pointers in a question), then type and class */
     size_t p = 12;
     while (p < qlen && q[p]) {
-        if (q[p] & 0xC0) return 0;
+        if (q[p] & 0xC0) return false;
         p += 1 + q[p];
     }
-    if (p >= qlen) return 0;
+    if (p >= qlen) return false;
     p++;                                        /* the root label */
-    if (p + 4 > qlen) return 0;
-    uint16_t qtype = (uint16_t)(q[p] << 8 | q[p + 1]), qclass = (uint16_t)(q[p + 2] << 8 | q[p + 3]);
-    size_t qend = p + 4;
+    if (p + 4 > qlen) return false;
+    *qtype = (uint16_t)(q[p] << 8 | q[p + 1]);
+    *qclass = (uint16_t)(q[p + 2] << 8 | q[p + 3]);
+    *qend = p + 4;
+    return true;
+}
+
+/* Append c to s (cap bytes with its NUL); false when it's full. */
+static bool put_char(char *s, size_t cap, size_t *o, char c)
+{
+    if (*o + 1 >= cap) return false;
+    s[(*o)++] = c;
+    return true;
+}
+
+/* s is full and more was coming: its last three characters become "...". */
+static void mark_cut(char *s, size_t o)
+{
+    for (size_t k = 0; k < 3 && k < o; k++) s[o - 1 - k] = '.';
+}
+
+bool net_dns_question(const uint8_t *q, size_t qlen, char *name, size_t cap, uint16_t *qtype)
+{
+    if (!cap) return false;
+    name[0] = '\0';
+    size_t qend;
+    uint16_t type, cls;
+    if (!dns_question(q, qlen, &qend, &type, &cls)) return false;
+    *qtype = type;
+    /* dns_question() checked the labels, so every byte read here is inside q */
+    size_t o = 0;
+    bool full = false;
+    for (size_t p = 12; q[p] && !full; p += 1 + q[p]) {
+        if (p > 12) full = !put_char(name, cap, &o, '.');
+        for (size_t i = 1; i <= q[p] && !full; i++) {
+            uint8_t c = q[p + i];
+            full = !put_char(name, cap, &o, c < 0x20 || c > 0x7E || c == '.' ? '?' : (char)c);
+        }
+    }
+    if (full) mark_cut(name, o);
+    else if (o == 0) put_char(name, cap, &o, '.');     /* the root itself */
+    name[o] = '\0';
+    return true;
+}
+
+size_t net_dns_answer(const uint8_t *q, size_t qlen, uint32_t ip, uint8_t *out, size_t cap)
+{
+    size_t qend;
+    uint16_t qtype, qclass;
+    if (!dns_question(q, qlen, &qend, &qtype, &qclass)) return 0;
     bool answer = (qtype == 1 || qtype == 255) && (qclass & 0x7FFF) == 1;
     size_t need = qend + (answer ? 16 : 0);
     if (need > cap) return 0;
@@ -171,6 +220,65 @@ size_t net_dns_answer(const uint8_t *q, size_t qlen, uint32_t ip, uint8_t *out, 
         memcpy(a + 12, ipb, 4);
     }
     return need;
+}
+
+/* ======================================================================================================== */
+/* The setup network's captive portal                                                                       */
+/* ======================================================================================================== */
+
+bool net_setup_probe_path(const char *path)
+{
+    static const char *const probes[] = {
+        "/generate_204", "/gen_204",                        /* Android */
+        "/hotspot-detect.html", "/library/test/success.html", /* iOS, macOS */
+        "/connecttest.txt", "/ncsi.txt", "/redirect",       /* Windows */
+        "/canonical.html", "/success.txt",                  /* Firefox */
+    };
+    if (!path) return false;
+    size_t n = strcspn(path, "?#");
+    for (size_t i = 0; i < sizeof probes / sizeof probes[0]; i++)
+        if (strlen(probes[i]) == n && !strncasecmp(path, probes[i], n)) return true;
+    return false;
+}
+
+bool net_ip_same_subnet(uint32_t a, uint32_t b, uint32_t mask)
+{
+    return mask && b && !((a ^ b) & mask);
+}
+
+/* ======================================================================================================== */
+/* Rate-limited logging                                                                                     */
+/* ======================================================================================================== */
+
+bool net_log_quota_take(net_log_quota_t *q, tb_ms_t now, int max, int *dropped_before)
+{
+    if (dropped_before) *dropped_before = 0;
+    if (!q->started || now - q->start >= 60000 || now < q->start) {
+        if (dropped_before && q->started) *dropped_before = q->dropped;
+        q->started = true;
+        q->start = now;
+        q->n = 0;
+        q->dropped = 0;
+    }
+    if (q->n < max) {
+        q->n++;
+        return true;
+    }
+    q->dropped++;
+    return false;
+}
+
+char *net_log_text(char *out, size_t cap, const char *in)
+{
+    if (!cap) return out;
+    if (!in) in = "-";
+    size_t o = 0;
+    bool full = false;
+    for (const unsigned char *p = (const unsigned char *)in; *p && !full; p++)
+        full = !put_char(out, cap, &o, *p < 0x20 || *p > 0x7E ? '?' : (char)*p);
+    if (full) mark_cut(out, o);
+    out[o] = '\0';
+    return out;
 }
 
 /* ======================================================================================================== */

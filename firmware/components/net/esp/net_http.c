@@ -7,8 +7,12 @@
  *   api.md requires: Content-Type, Cache-Control: no-store, X-Content-Type-Options: nosniff, no CORS, plus ETag,
  *   Set-Cookie, Allow, WWW-Authenticate and Retry-After when the router asks for them.
  * - everything else (GET): the Remote page on the office Wi-Fi, the setup page on TinyBar-Setup, both gzipped in
- *   flash. On the setup network a request for any other host gets a 302 to http://192.168.4.1/, so a phone's
- *   captive-portal check opens the setup page (ARCHITECTURE.md 10).
+ *   flash. On the setup network a phone's captive-portal check (a well-known check path, or any other host) gets a
+ *   302 to http://NET_SETUP_IP/ with a short HTML body (iOS wants one), so the phone opens the setup page in its
+ *   sign-in sheet (ARCHITECTURE.md 10). Every request on the setup network is logged (INFO, the first 40 a minute):
+ *   method, Host, path, both addresses, and what answered it.
+ * Which network a request came in on is the socket's own address (setup_net()); if that ever can't be read as a plain
+ * IPv4 address, a peer in the setup subnet while TinyBar-Setup is up counts as the setup network.
  * esp_http_server runs every handler in one task, so handlers stay short; slow work answers 202 (the router's job).
  * Seven sockets at most, the least recently used one is closed for a new client (lru_purge_enable).
  *
@@ -71,14 +75,22 @@ static const char *status_line(int st)
     }
 }
 
-/* The IPv4 address of either end of the socket (lwIP's IPv6 sockets carry IPv4 as ::ffff:a.b.c.d). */
-static uint32_t sock_ip(int fd, bool local)
+/* The IPv4 address of either end of the socket, or 0. esp_http_server's listening socket is IPv6 dual-stack
+ * (CONFIG_LWIP_IPV6), and lwIP reports an IPv4 client's addresses on it as ::ffff:a.b.c.d (lwIP 2.1 sockets.c,
+ * lwip_getaddrname: "Dual-stack: Map IPv4 addresses to IPv4 mapped IPv6"), which this unmaps. text (optional, 48
+ * bytes) gets the address as lwIP gave it, for the log. */
+static uint32_t sock_ip(int fd, bool local, char *text)
 {
     struct sockaddr_storage ss;
     socklen_t len = sizeof ss;
+    if (text) strcpy(text, "?");
     int r = local ? getsockname(fd, (struct sockaddr *)&ss, &len) : getpeername(fd, (struct sockaddr *)&ss, &len);
     if (r) return 0;
-    if (ss.ss_family == AF_INET) return ((struct sockaddr_in *)&ss)->sin_addr.s_addr;
+    if (ss.ss_family == AF_INET) {
+        const struct sockaddr_in *s4 = (const struct sockaddr_in *)&ss;
+        if (text) inet_ntop(AF_INET, &s4->sin_addr, text, 48);
+        return s4->sin_addr.s_addr;
+    }
 #if CONFIG_LWIP_IPV6
     if (ss.ss_family == AF_INET6) {
         const struct sockaddr_in6 *s6 = (const struct sockaddr_in6 *)&ss;
@@ -87,8 +99,10 @@ static uint32_t sock_ip(int fd, bool local)
         if (!memcmp(b, mapped, 12)) {
             uint32_t ip;
             memcpy(&ip, b + 12, 4);
+            if (text) inet_ntop(AF_INET, &ip, text, 48);
             return ip;
         }
+        if (text) inet_ntop(AF_INET6, &s6->sin6_addr, text, 48);
     }
 #endif
     return 0;
@@ -99,6 +113,46 @@ static uint32_t setup_ip(void)
     static uint32_t ip;
     if (!ip) ip = inet_addr(NET_SETUP_IP);
     return ip;
+}
+
+static uint32_t setup_mask(void)
+{
+    static uint32_t mask;
+    if (!mask) mask = inet_addr(NET_SETUP_NETMASK);
+    return mask;
+}
+
+/* Which network a request came in on, and its two ends for the log. */
+typedef struct {
+    bool setup;         /* on TinyBar-Setup */
+    bool by_peer;       /* decided by the peer's address: the local one wasn't a plain IPv4 address */
+    uint32_t local, peer;
+    char local_text[48], peer_text[48];
+} net_side_t;
+
+static void setup_net(int fd, net_side_t *s)
+{
+    s->local = sock_ip(fd, true, s->local_text);
+    s->peer = sock_ip(fd, false, s->peer_text);
+    s->by_peer = !s->local;
+    if (!s->by_peer) s->setup = s->local == setup_ip();
+    else s->setup = net_wifi_setup_net_up() && net_ip_same_subnet(s->peer, setup_ip(), setup_mask());
+}
+
+/* ---------- the setup network's log ---------- */
+
+#define HTTP_LOG_PER_MIN 40
+static net_log_quota_t s_quota;     /* the server's task only */
+
+static void log_setup(httpd_req_t *r, const char *method, const char *host, const net_side_t *s, const char *answer)
+{
+    int dropped;
+    if (!net_log_quota_take(&s_quota, esp_timer_get_time() / 1000, HTTP_LOG_PER_MIN, &dropped)) return;
+    if (dropped) ESP_LOGI(TAG, "(%d more requests on the setup network in the last minute weren't logged)", dropped);
+    char h[48], p[72];
+    ESP_LOGI(TAG, "setup network: %s %s%s from %s to %s%s: %s", method, net_log_text(h, sizeof h, host),
+             net_log_text(p, sizeof p, r->uri), s->peer_text, s->local_text,
+             s->by_peer ? " (told by the peer's address)" : "", answer);
 }
 
 /* A request header as a heap string, or NULL. *unreadable (optional) tells "absent" (false) from "it came, but is
@@ -219,10 +273,12 @@ static const char *method_name(int m)
 static esp_err_t api_handler(httpd_req_t *r)
 {
     int fd = httpd_req_to_sockfd(r);
+    net_side_t side;
+    setup_net(fd, &side);
     net_req_t q;
     memset(&q, 0, sizeof q);
-    q.via = sock_ip(fd, true) == setup_ip() ? NET_VIA_SETUP : NET_VIA_HTTP;
-    q.peer_ip = sock_ip(fd, false);
+    q.via = side.setup ? NET_VIA_SETUP : NET_VIA_HTTP;
+    q.peer_ip = side.peer;
     q.method = method_name(r->method);
     q.path = r->uri;
     char *host = header(r, "Host", 255);
@@ -292,6 +348,11 @@ static esp_err_t api_handler(httpd_req_t *r)
     if (q.body_too_large) httpd_resp_set_hdr(r, "Connection", "close");
     bool no_body = resp.status == 304 || r->method == HTTP_HEAD;
     esp_err_t err = httpd_resp_send(r, no_body ? NULL : resp.body, no_body ? 0 : (ssize_t)resp.len);
+    if (side.setup) {
+        char what[24];
+        snprintf(what, sizeof what, "API %d", resp.status);
+        log_setup(r, q.method, host, &side, what);
+    }
     memset(cookie, 0, sizeof cookie);
     if (auth) memset(auth, 0, strlen(auth));
     free(resp.body);
@@ -324,13 +385,16 @@ static esp_err_t send_page(httpd_req_t *r, const uint8_t *start, const uint8_t *
     return httpd_resp_send(r, (const char *)start, end - start);
 }
 
-static esp_err_t redirect(httpd_req_t *r, const char *to)
+/* The captive portal's answer: a 302 to the setup page, with a small HTML body (iOS wants content to detect a portal,
+ * as ESP-IDF's captive_portal example notes). */
+static esp_err_t to_setup_page(httpd_req_t *r)
 {
     httpd_resp_set_status(r, "302 Found");
-    httpd_resp_set_hdr(r, "Location", to);
+    httpd_resp_set_hdr(r, "Location", "http://" NET_SETUP_IP "/");
     httpd_resp_set_hdr(r, "Cache-Control", "no-store");
     httpd_resp_set_type(r, "text/html; charset=utf-8");
-    return httpd_resp_sendstr(r, "<a href=\"http://" NET_SETUP_IP "/\">TinyBar setup</a>");
+    return httpd_resp_sendstr(r, "<!doctype html><title>TinyBar setup</title>"
+                                 "<a href=\"http://" NET_SETUP_IP "/\">Set up TinyBar's Wi-Fi</a>");
 }
 
 static esp_err_t not_found(httpd_req_t *r)
@@ -351,24 +415,42 @@ static esp_err_t wrong_host(httpd_req_t *r)
 static esp_err_t page_handler(httpd_req_t *r)
 {
     int fd = httpd_req_to_sockfd(r);
-    bool setup = sock_ip(fd, true) == setup_ip();
+    net_side_t side;
+    setup_net(fd, &side);
     char *host = header(r, "Host", 255);
     const char *uri = r->uri;
     size_t plen = strcspn(uri, "?#");
     bool root = (plen == 1 && uri[0] == '/') || (plen == 11 && !strncmp(uri, "/index.html", 11));
+    bool favicon = plen == 12 && !strncmp(uri, "/favicon.ico", 12);
     if (r->content_len) httpd_resp_set_hdr(r, "Connection", "close");     /* see the end */
     esp_err_t err;
-    if (setup) {
-        /* the captive portal: any other name is sent to the setup page */
-        if (!host_is(host, NET_SETUP_IP)) err = redirect(r, "http://" NET_SETUP_IP "/");
-        else if (root) err = send_page(r, setup_html_gz_start, setup_html_gz_end);
-        else err = redirect(r, "/");
+    if (side.setup) {
+        /* The captive portal: a check path (whatever its Host) or any other name goes to the setup page */
+        const char *answer;
+        if (net_setup_probe_path(uri)) {
+            err = to_setup_page(r);
+            answer = "302 to the setup page (a captive-portal check)";
+        } else if (!host_is(host, NET_SETUP_IP)) {
+            err = to_setup_page(r);
+            answer = "302 to the setup page (another host)";
+        } else if (root) {
+            err = send_page(r, setup_html_gz_start, setup_html_gz_end);
+            answer = "the setup page";
+        } else if (favicon) {
+            httpd_resp_set_status(r, "204 No Content");
+            err = httpd_resp_send(r, NULL, 0);
+            answer = "204 (no icon)";
+        } else {
+            err = to_setup_page(r);
+            answer = "302 to the setup page (another path)";
+        }
+        log_setup(r, "GET", host, &side, err == ESP_OK ? answer : "the reply didn't go out");
     } else if (!net_api_host_ok(host)) {
         /* api.md 2.2 for the page too: a DNS-rebinding page under another name gets nothing from the bar */
         err = wrong_host(r);
     } else if (root) {
         err = send_page(r, remote_html_gz_start, remote_html_gz_end);
-    } else if (plen == 12 && !strncmp(uri, "/favicon.ico", 12)) {
+    } else if (favicon) {
         httpd_resp_set_status(r, "204 No Content");
         err = httpd_resp_send(r, NULL, 0);
     } else {
@@ -404,13 +486,19 @@ esp_err_t net_http_start(void)
     c.send_wait_timeout = 3;
     c.open_fn = on_open;
     esp_err_t err = httpd_start(&s_server, &c);
-    if (err != ESP_OK) return err;
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "the HTTP server didn't start: %s", esp_err_to_name(err));
+        s_server = NULL;
+        return err;
+    }
     /* Every method under /api/ goes to the router (OPTIONS and HEAD get its JSON 405 with Allow) */
     httpd_uri_t api = {.uri = "/api/*", .method = HTTP_ANY, .handler = api_handler};
-    httpd_register_uri_handler(s_server, &api);
+    esp_err_t e1 = httpd_register_uri_handler(s_server, &api);
     httpd_uri_t page = {.uri = "/*", .method = HTTP_GET, .handler = page_handler};
-    httpd_register_uri_handler(s_server, &page);
-    ESP_LOGI(TAG, "listening on port 80 (Remote %u bytes, setup page %u bytes, gzipped)",
+    esp_err_t e2 = httpd_register_uri_handler(s_server, &page);
+    if (e1 != ESP_OK || e2 != ESP_OK)
+        ESP_LOGE(TAG, "registering the handlers failed: /api/* %s, /* %s", esp_err_to_name(e1), esp_err_to_name(e2));
+    ESP_LOGI(TAG, "listening on port 80, every address (Remote %u bytes, setup page %u bytes, gzipped)",
              (unsigned)(remote_html_gz_end - remote_html_gz_start), (unsigned)(setup_html_gz_end - setup_html_gz_start));
     return ESP_OK;
 }

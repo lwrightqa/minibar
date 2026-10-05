@@ -37,7 +37,7 @@ Appendices: [A, every endpoint](#appendix-a-every-endpoint) · [B, error codes](
 |---|---|---|---|
 | **Wi-Fi** (HTTP) | `http://tinybar.local/api/v1/…` (port 80) | The Mac app when the bar isn't plugged into the Mac, the Remote page, automations | Paired clients with a token (section 4) |
 | **USB serial** | The bar's USB Serial/JTAG port (VID `0x303A`, PID `0x1001`) | The Mac app when the bar is powered from the Mac | Whatever is plugged in. The cable is the proof, so no pairing |
-| **Setup network** | `http://192.168.4.1/api/v1/setup/…` on `TinyBar-Setup` | The Wi-Fi setup page, only while the bar shows its setup screens | Anyone on the setup network (section 13) |
+| **Setup network** | `http://4.3.2.1/api/v1/setup/…` on `TinyBar-Setup` | The Wi-Fi setup page, only while the bar shows its setup screens | Anyone on the setup network (section 13) |
 
 - **One set of messages.** USB carries the same JSON as HTTP, one object per line. The firmware runs one router for both (section 15).
 - **What leaves the Mac:** whether you're on a call, and optionally the name of the app using the mic or camera. To keep track of which Mac is which, the app also sends a random install ID (not a hardware ID or the computer's name) with a counter, and over USB the time, so a bar without Wi-Fi still has a clock (sections 5 and 6). **Proposed:** an optional `inputs` field saying whether the mic, the camera or both are in use; the Mac app doesn't send it until the user agrees (section 14).
@@ -86,7 +86,7 @@ bar → mac  @tb {"id": 2, "ok": true, "device_id": "f412fa3f2a1c", "showing": "
 - A body is one JSON object, UTF-8, with no byte-order mark. `GET` and `DELETE` have no body.
 - Every API response has `Content-Type: application/json; charset=utf-8`, `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`. The bar sends **no CORS headers**, so pages on other sites can't read its answers.
 - Everything outside `/api/` is the Remote web page (HTML, CSS, scripts). It's served without a token and holds no data of its own; it reads everything through the API.
-- **Host check.** The bar answers only when the `Host` header is its current mDNS name (`tinybar.local`, or the name it got after a conflict, section 3), its IPv4 address, or `192.168.4.1` while it's in setup mode, each with or without `:80`. Anything else gets `421 wrong_host`. This stops a web page from reaching the bar through a DNS-rebinding trick. *(2026-10-04, security review:)* the Remote page and everything else outside `/api/` get the same check, answered with a plain-text `421`. The one exception is the setup network, where any other name gets a `302` to `http://192.168.4.1/` so phones open the setup page (section 13).
+- **Host check.** The bar answers only when the `Host` header is its current mDNS name (`tinybar.local`, or the name it got after a conflict, section 3), its IPv4 address, or `4.3.2.1` (the setup network's address) while it's in setup mode, each with or without `:80`. Anything else gets `421 wrong_host`. This stops a web page from reaching the bar through a DNS-rebinding trick. *(2026-10-04, security review:)* the Remote page and everything else outside `/api/` get the same check, answered with a plain-text `421`. The one exception is the setup network, where any other name gets a `302` to `http://4.3.2.1/` so phones open the setup page (section 13).
 
 ### 2.3 JSON
 
@@ -1091,7 +1091,9 @@ Forgetting all devices is on the bar only (the Devices tile, 4.8), so no single 
 
 ## 13. The Wi-Fi setup network
 
-While the bar shows its Wi-Fi setup screens, it runs its own network, **`TinyBar-Setup`**, and the setup page at `http://192.168.4.1/`. These endpoints exist **only then**, need no token, and are gone once the bar joins the office Wi-Fi. On the setup network the bar serves only them and `info`.
+While the bar shows its Wi-Fi setup screens, it runs its own network, **`TinyBar-Setup`**, and the setup page at `http://4.3.2.1/`. These endpoints exist **only then**, need no token, and are gone once the bar joins the office Wi-Fi. On the setup network the bar serves only them and `info`.
+
+*(2026-10-05, firmware 1.0.1, lead developer, Proposed:)* the setup network's address is **4.3.2.1** (a /24), not 192.168.4.1. Some Android phones report "Connected, no internet" and never open the sign-in sheet when the captive-portal check's host resolves to a private address (Android's NetworkMonitor, "private IP DNS response means no internet"); see `decisions.md`, Wi-Fi. The setup network has no way out, so the address only stands in for the hosts phones check while they're on it. Phones' check paths (`/generate_204`, `/hotspot-detect.html`, `/connecttest.txt` and the like) get the `302` too, whatever their `Host`. The DHCP offer names the bar as gateway and DNS server and carries no captive-portal option (114), since RFC 8908 wants an HTTPS API address there.
 
 Over USB the whole API keeps working during setup: calls are recorded and show once setup closes, as `decisions.md` says. Picking a status, a message, a Pomodoro action and set aside or Show again (sections 8 and 9) answer `409 in_setup` meanwhile, as the bar's own controls do ("Finish setup, or hold to skip"); so do `pair/start` and `pair` (`pair/cancel` answers `409 not_pairing`, since starting setup ends any pairing). The USB `pair` command still works.
 

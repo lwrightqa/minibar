@@ -142,6 +142,170 @@ TB_TEST(dns_answers_every_name_with_the_setup_address)
     TB_EQ_INT(a[7], 0);
 }
 
+TB_TEST(dns_answers_with_a_public_setup_address_and_keeps_rd)
+{
+    /* The setup address isn't private (net_port.h): Android's portal check refuses a private answer */
+    uint8_t q[256], a[512];
+    size_t n = query(q, "connectivitycheck.gstatic.com", 1);
+    q[2] = 0x01;                                /* RD */
+    q[3] = 0x20;                                /* AD, as some resolvers send */
+    uint32_t ip;
+    memcpy(&ip, (uint8_t[]){4, 3, 2, 1}, 4);
+    size_t m = net_dns_answer(q, n, ip, a, sizeof a);
+    TB_EQ_INT(m, n + 16);
+    TB_EQ_INT(a[2], 0x85);                      /* QR, AA, RD kept */
+    TB_EQ_INT(a[3], 0x00);                      /* no error */
+    TB_EQ_INT(a[5], 1);                         /* one question */
+    TB_EQ_INT(a[7], 1);                         /* one answer */
+    TB_EQ_INT(a[9] | a[11], 0);                 /* nothing else */
+    TB_TRUE(!memcmp(a + 12, q + 12, n - 12));   /* the question as asked */
+    TB_EQ_INT(a[n], 0xC0);                      /* the answer names the question */
+    TB_EQ_INT(a[n + 1], 0x0C);
+    TB_EQ_INT(a[n + 3], 1);                     /* A */
+    TB_EQ_INT(a[n + 5], 1);                     /* IN */
+    TB_EQ_INT(a[n + 9], 10);                    /* TTL 10 s */
+    TB_EQ_INT(a[n + 11], 4);
+    TB_TRUE(!memcmp(a + n + 12, (uint8_t[]){4, 3, 2, 1}, 4));
+    /* ANY gets the address too; HTTPS (65) and other types get NODATA, and a class other than IN no address */
+    n = query(q, "captive.apple.com", 255);
+    TB_EQ_INT(net_dns_answer(q, n, ip, a, sizeof a), n + 16);
+    n = query(q, "www.google.com", 65);
+    TB_EQ_INT(net_dns_answer(q, n, ip, a, sizeof a), n);
+    TB_EQ_INT(a[7], 0);
+    TB_EQ_INT(a[3] & 0x0F, 0);                  /* NODATA is "no error, no answer", not NXDOMAIN */
+    n = query(q, "example.com", 1);
+    q[n - 1] = 3;                               /* class CH */
+    TB_EQ_INT(net_dns_answer(q, n, ip, a, sizeof a), n);
+    TB_EQ_INT(a[7], 0);
+    /* An EDNS query (an OPT record after the question) is answered without it */
+    n = query(q, "connectivitycheck.gstatic.com", 1);
+    q[11] = 1;
+    static const uint8_t opt[11] = {0, 0, 41, 0x04, 0xD0, 0, 0, 0, 0, 0, 0};
+    memcpy(q + n, opt, sizeof opt);
+    m = net_dns_answer(q, n + sizeof opt, ip, a, sizeof a);
+    TB_EQ_INT(m, n + 16);
+    TB_EQ_INT(a[11], 0);
+}
+
+TB_TEST(dns_question_names_the_query_for_the_log)
+{
+    uint8_t q[600];
+    char name[72];
+    uint16_t type = 0;
+    size_t n = query(q, "connectivitycheck.gstatic.com", 1);
+    TB_TRUE(net_dns_question(q, n, name, sizeof name, &type));
+    TB_EQ_STR(name, "connectivitycheck.gstatic.com");
+    TB_EQ_INT(type, 1);
+    n = query(q, "captive.apple.com", 28);
+    TB_TRUE(net_dns_question(q, n, name, sizeof name, &type));
+    TB_EQ_STR(name, "captive.apple.com");
+    TB_EQ_INT(type, 28);
+    /* control characters, bytes over 0x7E and a dot inside a label show as '?' */
+    n = query(q, "ab.cd", 1);
+    q[14] = 0x0A;
+    q[16] = 0xC3;
+    TB_TRUE(net_dns_question(q, n, name, sizeof name, &type));
+    TB_EQ_STR(name, "a?.?d");
+    n = query(q, "x.y", 1);
+    q[13] = '.';
+    TB_TRUE(net_dns_question(q, n, name, sizeof name, &type));
+    TB_EQ_STR(name, "?.y");
+    /* the root */
+    n = query(q, "", 2);
+    TB_TRUE(net_dns_question(q, n, name, sizeof name, &type));
+    TB_EQ_STR(name, ".");
+    TB_EQ_INT(type, 2);
+    /* a long name is cut with "..." */
+    n = query(q, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.bbbbbbbbbbbbbbbbbbbb.example", 1);
+    char small[16];
+    TB_TRUE(net_dns_question(q, n, small, sizeof small, &type));
+    TB_EQ_INT(strlen(small), 15);
+    TB_EQ_STR(small, "aaaaaaaaaaaa...");
+    /* exactly full isn't cut */
+    n = query(q, "abc", 1);
+    char four[4];
+    TB_TRUE(net_dns_question(q, n, four, sizeof four, &type));
+    TB_EQ_STR(four, "abc");
+    /* what net_dns_answer() won't answer, this won't name */
+    q[2] |= 0x80;
+    TB_FALSE(net_dns_question(q, n, name, sizeof name, &type));
+    TB_EQ_STR(name, "");
+    TB_FALSE(net_dns_question(q, 5, name, sizeof name, &type));
+    TB_FALSE(net_dns_question(q, n, name, 0, &type));
+    for (int seed = 0; seed < 2000; seed++) {   /* random bytes never crash it, and the name always ends */
+        uint8_t g[80];
+        srand((unsigned)seed + 7);
+        for (size_t i = 0; i < sizeof g; i++) g[i] = (uint8_t)rand();
+        g[2] &= 0x07;                           /* mostly queries, so the label walk runs */
+        g[4] = 0;
+        g[5] = 1;
+        size_t len = 12 + (size_t)(rand() % 68);
+        if (net_dns_question(g, len, small, sizeof small, &type)) TB_TRUE(strlen(small) < sizeof small);
+    }
+}
+
+TB_TEST(setup_probe_paths_are_the_captive_portal_checks)
+{
+    const char *yes[] = {"/generate_204", "/gen_204", "/hotspot-detect.html", "/library/test/success.html",
+                         "/connecttest.txt", "/ncsi.txt", "/redirect", "/canonical.html", "/success.txt",
+                         "/generate_204?x=1", "/Hotspot-Detect.html", "/success.txt#top"};
+    for (size_t i = 0; i < sizeof yes / sizeof yes[0]; i++) TB_TRUE(net_setup_probe_path(yes[i]));
+    const char *no[] = {"/", "/index.html", "/favicon.ico", "/generate_2044", "/generate", "generate_204",
+                        "/api/v1/setup/state", "/redirect/x", "", "/gen_204/"};
+    for (size_t i = 0; i < sizeof no / sizeof no[0]; i++) TB_FALSE(net_setup_probe_path(no[i]));
+    TB_FALSE(net_setup_probe_path(NULL));
+}
+
+TB_TEST(same_subnet_compares_network_order_addresses)
+{
+    uint32_t bar, phone, office, mask, near;
+    memcpy(&bar, (uint8_t[]){4, 3, 2, 1}, 4);
+    memcpy(&phone, (uint8_t[]){4, 3, 2, 2}, 4);
+    memcpy(&office, (uint8_t[]){10, 0, 4, 42}, 4);
+    memcpy(&near, (uint8_t[]){4, 3, 3, 2}, 4);
+    memcpy(&mask, (uint8_t[]){255, 255, 255, 0}, 4);
+    TB_TRUE(net_ip_same_subnet(phone, bar, mask));
+    TB_TRUE(net_ip_same_subnet(bar, bar, mask));
+    TB_FALSE(net_ip_same_subnet(office, bar, mask));
+    TB_FALSE(net_ip_same_subnet(near, bar, mask));
+    TB_FALSE(net_ip_same_subnet(phone, bar, 0));    /* no subnet known: nothing matches */
+    TB_FALSE(net_ip_same_subnet(0, 0, mask));
+}
+
+TB_TEST(log_quota_lets_40_lines_a_minute_through_and_counts_the_rest)
+{
+    net_log_quota_t q = {0};
+    int dropped = -1;
+    for (int i = 0; i < 40; i++) TB_TRUE(net_log_quota_take(&q, 1000 + i, 40, &dropped));
+    TB_EQ_INT(dropped, 0);
+    for (int i = 0; i < 5; i++) TB_FALSE(net_log_quota_take(&q, 2000, 40, &dropped));
+    TB_FALSE(net_log_quota_take(&q, 60999, 40, NULL));     /* still the same minute */
+    /* the next minute says how many were held back, once */
+    TB_TRUE(net_log_quota_take(&q, 61000, 40, &dropped));
+    TB_EQ_INT(dropped, 6);
+    TB_TRUE(net_log_quota_take(&q, 61001, 40, &dropped));
+    TB_EQ_INT(dropped, 0);
+    /* a quiet minute starts clean */
+    TB_TRUE(net_log_quota_take(&q, 500000, 40, &dropped));
+    TB_EQ_INT(dropped, 0);
+    /* a clock that goes back starts a new minute rather than going silent */
+    for (int i = 0; i < 40; i++) net_log_quota_take(&q, 500001, 40, NULL);
+    TB_TRUE(net_log_quota_take(&q, 1000, 40, &dropped));
+}
+
+TB_TEST(log_text_keeps_a_line_a_line)
+{
+    char out[16];
+    TB_EQ_STR(net_log_text(out, sizeof out, "4.3.2.1"), "4.3.2.1");
+    TB_EQ_STR(net_log_text(out, sizeof out, NULL), "-");
+    TB_EQ_STR(net_log_text(out, sizeof out, "a\r\nb\x1b[2J\x7f\xc3\xa9"), "a??b?[2J???");
+    TB_EQ_STR(net_log_text(out, sizeof out, "connectivitycheck.gstatic.com"), "connectivity...");
+    TB_EQ_INT(strlen(net_log_text(out, sizeof out, "0123456789abcde")), 15);   /* exactly full isn't cut */
+    TB_EQ_STR(out, "0123456789abcde");
+    char one[1] = {'x'};
+    TB_EQ_STR(net_log_text(one, sizeof one, "abc"), "");
+}
+
 TB_TEST(dns_ignores_garbage)
 {
     uint8_t q[256], a[512];

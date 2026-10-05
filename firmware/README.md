@@ -11,11 +11,12 @@ What it must do is decided elsewhere, and those documents win over anything here
 
 How the code is organized, and why, is in [ARCHITECTURE.md](ARCHITECTURE.md).
 
-> **Status: integrated and reviewed, not yet run on a board.** Every module is built and wired together, and the
-> 2026-10-04 review round's findings are fixed (or answered in decisions.md), as are the defensive security review's
-> (ARCHITECTURE.md sections 10 and 14). The firmware compiles with no warnings, 402 host tests pass, and every screen
-> the mock-up can show matches it line for line. Nothing has been flashed, so
-> everything that touches the hardware or the radio is unverified until the first runs on the bar. See "What's
+> **Status: integrated and reviewed; first run on the board under way.** Every module is built and wired together,
+> and the 2026-10-04 review round's findings are fixed (or answered in decisions.md), as are the defensive security
+> review's (ARCHITECTURE.md sections 10 and 14). The firmware compiles with no warnings, 408 host tests pass, and every
+> screen the mock-up can show matches it line for line. 1.0.0 was flashed once: it boots, holds power and draws the
+> QR screen, and an Android phone couldn't get to the setup page, which 1.0.1 addresses (see "What's verified").
+> Everything else that touches the hardware or the radio is unverified until it runs on the bar. See "What's
 > verified" at the end, and the bring-up checklists in `components/board/README.md`, `components/net/README.md` and
 > `components/calendar/README.md`.
 
@@ -105,7 +106,7 @@ Flash **one merged image at address 0x0, at 115200 baud**. A faster write once l
 
    ```sh
    cd build-<name> && mkdir -p ../dist
-   esptool.py --chip esp32s3 merge_bin -o ../dist/tinybar-1.0.0.bin @flash_args
+   esptool.py --chip esp32s3 merge_bin -o ../dist/tinybar-1.0.1.bin @flash_args
    ```
 
    The version is `PROJECT_VER` in `CMakeLists.txt` (also what `GET /api/v1/info` reports as `fw`). The image in
@@ -115,7 +116,7 @@ Flash **one merged image at address 0x0, at 115200 baud**. A faster write once l
 3. Open the Espressif web flasher in Chrome or Edge (<https://espressif.github.io/esptool-js/>), set the baud rate to
    **115200**, click Connect and pick the "USB JTAG/serial debug unit" port. The flasher puts the chip into download
    mode through the port itself; if it can't, see Troubleshooting.
-4. Add `dist/tinybar-1.0.0.bin` at flash address **0x0** and click Program.
+4. Add `dist/tinybar-1.0.1.bin` at flash address **0x0** and click Program.
 5. Unplug and plug the bar back in (or press its reset), and it starts.
 
 **Flashing the merged image starts the bar from scratch.** The file covers the whole start of the flash, and the gaps
@@ -132,8 +133,11 @@ With the command line instead: `idf.py -p <port> -b 115200 flash` (keeps NVS too
 1. The splash (a tomato and "TinyBar") shows for about 1.5 seconds. The bar holds its own power on from the first
    instructions, and draws the right way up whichever way it stands.
 2. With no Wi-Fi saved, it shows **Scan to set up** with a QR code. Scanning it joins the phone to the bar's own open
-   network, **TinyBar-Setup**, and the phone's sign-in sheet opens the setup page (the bar answers every name on that
-   network and redirects it to `http://192.168.4.1/`).
+   network, **TinyBar-Setup** (it appears about 2 seconds after the QR code, once the bar has looked for networks),
+   and the phone's sign-in sheet opens the setup page: the bar answers every name on that network with its own
+   address and redirects the phone's check to `http://4.3.2.1/`. If no sheet appears, open `http://4.3.2.1` in the
+   phone's browser with mobile data off. *(Since 1.0.1 the setup address is 4.3.2.1, not 192.168.4.1: some Android
+   phones treat a private address as "Connected, no internet" and never show the sheet; see decisions.md, Wi-Fi.)*
 3. On the page, pick the office Wi-Fi and enter its password, or a work username and password for a WPA2-Enterprise
    network. Guest networks with a sign-in page aren't supported, and the page says so. The calendar's secret iCal
    address can be pasted here too (optional).
@@ -189,6 +193,10 @@ refuses new codes for 30 seconds, doubling up to an hour.
   supported.
 - **"Another device is pairing with this TinyBar":** a code for another device is on the bar; wait for it to run out
   (2 minutes at most) or cancel it with a tap on the bar.
+- **The phone joins TinyBar-Setup but says "Connected, no internet" and no sign-in sheet opens:** open
+  `http://4.3.2.1` in its browser with mobile data turned off (with mobile data on, Android sends the browser over it
+  on a network it judged to have no internet). The log tells which step failed: `components/net/README.md`, bring-up
+  item 3.
 - **The log:** `idf.py -p <port> monitor` at any time; protocol lines start with `@tb `. A health line 15 s after start
   (and every minute) shows memory, every task's stack margin and the frame time.
 
@@ -224,3 +232,10 @@ As of 2026-10-04, after the review round and the security review (details in ARC
   From the security review: the HTTP server's 3 s request deadline and closing after a 413 (esp_http_server's receive
   override), the page's 421, the time a hostile calendar feed takes on the S3, and log escaping on the real port.
   The bring-up checklists say what to look for.
+- **First run on the board (1.0.0, 2026-10-04):** it boots, holds power and draws the "Scan to set up" QR screen. An
+  Android phone joined TinyBar-Setup but said "Connected, no internet", with no sign-in sheet. **1.0.1** (branch
+  `captive-fix`) answers that: the setup network moved to 4.3.2.1 (Android's portal check gives up on a private DNS
+  answer; ARCHITECTURE.md section 10), it opens after one scan and in the order of ESP-IDF's captive_portal example,
+  it answers the phones' check paths, it offers no DHCP option 114, and it logs every step (net README, bring-up
+  item 3). Built clean with no warnings (app 2.03 MB; static internal RAM unchanged at 141 KB); 408 host tests (net
+  127) and both page suites pass. Unverified until the user flashes it.
