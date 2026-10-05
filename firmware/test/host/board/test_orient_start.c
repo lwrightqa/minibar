@@ -234,7 +234,7 @@ TB_TEST(boot_read_late_first_sample_the_101_failure)
     brd_boot_read_t b;
     int32_t done = boot_read(&b, 60, BUTTONS_ON_TOP);
     TB_TRUE(done > 0 && done < BRD_BOOT_WAIT_MS);
-    TB_TRUE(b.implausible >= 1);                            /* the ramp's first sample is under 0.7 g */
+    TB_TRUE(b.implausible >= 1);                            /* the ramp's first sample is under 0.8 g */
     int32_t x, y, z;
     TB_TRUE(brd_boot_read_mean(&b, &x, &y, &z));
     int c = brd_orient_classify(NEW_UP, x, y, z, BRD_OR_BOOT_MG);
@@ -266,6 +266,45 @@ TB_TEST(boot_read_drops_zeros_early_and_implausible_samples)
     TB_EQ_INT(x, 0);
     TB_EQ_INT(y, -985);
     TB_EQ_INT(z, 105);
+}
+
+TB_TEST(boot_read_takes_the_classifiers_one_g)
+{
+    /* The start-up reading and the classifier agree on what 1 g is (0.8 to 1.2 g), so a finished run standing on its
+     * edge always classifies: one at 0.75 g used to be averaged (0.7 to 1.3 g) and then came out "can't tell". */
+    brd_boot_read_t b;
+    brd_boot_read_init(&b);
+    for (int i = 0; i < 3; i++) TB_FALSE(brd_boot_read_feed(&b, 0, -750, 0, 60 + 16 * i));     /* 0.75 g */
+    for (int i = 0; i < 3; i++) TB_FALSE(brd_boot_read_feed(&b, 0, -1210, 0, 108 + 16 * i));   /* 1.21 g */
+    TB_EQ_INT(b.implausible, 6);
+    TB_EQ_INT(b.good, 0);
+    /* Just inside both ends: the run finishes and its mean classifies. */
+    const int32_t ends[2] = {-805, -1195};
+    for (int e = 0; e < 2; e++) {
+        brd_boot_read_init(&b);
+        TB_FALSE(brd_boot_read_feed(&b, 0, ends[e], 0, 60));
+        TB_FALSE(brd_boot_read_feed(&b, 0, ends[e], 0, 76));
+        TB_TRUE(brd_boot_read_feed(&b, 0, ends[e], 0, 92));
+        int32_t x, y, z;
+        TB_TRUE(brd_boot_read_mean(&b, &x, &y, &z));
+        TB_EQ_INT(brd_orient_classify(NEW_UP, x, y, z, BRD_OR_BOOT_MG), 0);
+    }
+    /* Every finished run of one sample repeated, over a grid around 1 g: the mean classifies whenever it points
+     * along the up axis by at least the start-up threshold. */
+    long finished = 0;
+    for (int32_t ay = -1300; ay <= 1300; ay += 25) {
+        for (int32_t az = -1300; az <= 1300; az += 25) {
+            brd_boot_read_init(&b);
+            bool done = false;
+            for (int i = 0; i < BRD_BOOT_SAMPLES; i++) done = brd_boot_read_feed(&b, 30, ay, az, 60 + 16 * i);
+            if (!done) continue;
+            finished++;
+            int32_t x, y, z;
+            TB_TRUE(brd_boot_read_mean(&b, &x, &y, &z));
+            if (labs((long)y) >= BRD_OR_BOOT_MG) TB_TRUE(brd_orient_classify(NEW_UP, x, y, z, BRD_OR_BOOT_MG) >= 0);
+        }
+    }
+    TB_TRUE(finished > 100);
 }
 
 TB_TEST(boot_read_a_jump_starts_a_new_run)

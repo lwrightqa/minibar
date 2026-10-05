@@ -91,9 +91,11 @@ CONFIG_I2C_ISR_IRAM_SAFE=y
 
 # ---------- Board: which way up (components/board/Kconfig, README bring-up steps 3 and 5) ----------
 # Upright is the way the user stands the bar, side buttons on top (verified on the V2 board 2026-10-05). There the
-# QMI8658's Y axis reads about -1 g and the picture needs LVGL rotation 270. 1.0.1 had +Y and no turn, which drew the
-# same picture once the IMU had a reading (the two inversions cancel; test/host/board/test_orient_start.c proves it),
+# QMI8658's Y axis reads about -1 g and the picture needs LVGL rotation 270: inferred from 1.0.1, which had +Y and no
+# turn. That drew the same steady pictures (the two inversions cancel; test/host/board/test_orient_start.c proves it)
 # but called buttons-at-the-bottom "upright", so a start where the IMU couldn't tell came up upside down.
+# An existing sdkconfig keeps its own +Y (and may take only the turn: upside down both ways). Delete
+# build-<name>/sdkconfig; board_imu.c warns at build time unless the pair is -Y with the turn.
 CONFIG_TINYBAR_IMU_UP_Y_NEG=y
 CONFIG_TINYBAR_LCD_TURN_180=y
 

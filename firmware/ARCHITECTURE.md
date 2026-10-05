@@ -110,7 +110,7 @@ No cycles, and nothing depends on main. net doesn't call board: it posts `TB_EV_
 3. NVS (`nvs` and `nvs_sec`; a partition that can't be read is erased and started again), the device id (Wi-Fi MAC),
    settings, and the time zone (`setenv("TZ")`, and the calendar's copy).
 4. `board_imu_init()` and `board_imu_read_flipped()`, so the first frame is drawn the right way up: it waits for
-   three settled samples (STATUS0's data-ready bit, past turn-on and filter settling, 0.7 to 1.3 g; about 85 ms, at
+   three settled samples (STATUS0's data-ready bit, past turn-on and filter settling, 0.8 to 1.2 g; about 85 ms, at
    most 150 ms after the accelerometer is turned on). If they can't tell (lying flat) or there's no IMU, the pose
    remembered in NVS (`board`/`pose`), else upright: **side buttons on top**.
 5. `lv_init()`, `board_display_init(flipped)`, `board_touch_init()`, `ui_init()`.
@@ -476,7 +476,9 @@ ignored and the defaults apply. Away's back-at time and note aren't in the state
 shows plain Away (core's `tb_app_restore` would need two more arguments).
 
 Flash wear: the busiest key is `state` (a few writes an hour at most); `last_used` of tokens is written at most once
-an hour per token; `pose` once per turn of the bar that lasts 10 s (a few a day).
+an hour per token; `pose` (one byte) once per turn of the bar held 10 s: a few dozen a day at most, since a flip is how
+the Pomodoro starts. Even 30 a day fill one 4 KB NVS page (126 entries) only every four days or so, and NVS spreads
+the erases over the partition's six pages.
 
 ## 13. Open decisions and assumptions (for the lead and the product manager)
 

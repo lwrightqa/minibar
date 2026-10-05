@@ -74,8 +74,9 @@ brd_edge_t brd_debounce_feed(brd_debounce_t *d, bool raw_pressed);
  * The bar stands on a long edge, so gravity lies along the panel's short axis: one of the IMU's X or Y axes, with a
  * sign that depends on how the QMI8658 sits on the board (set in Kconfig, checked at bring-up). `up` names the axis
  * that reads +1 g when the bar stands upright: the way the user stands it, with the side buttons (BOOT, PWR) on top
- * (verified on the V2 board 2026-10-05: there the QMI8658's Y axis reads about -1 g, so `up` is -Y). "Flipped" is the
- * other way up, buttons at the bottom. Which LVGL rotation draws "upright" is brd_lcd_rotation()'s business.
+ * (verified on the V2 board 2026-10-05). There the QMI8658's Y axis reads about -1 g, so `up` is -Y: inferred from
+ * 1.0.1, whose steady pictures were right with +Y and no turn. "Flipped" is the other way up, buttons at the bottom.
+ * Which LVGL rotation draws "upright" is brd_lcd_rotation()'s business.
  *
  *   - A sample votes "upright" when that axis reads >= +600 mg, "flipped" when <= -600 mg, and nothing in between
  *     (lying flat, standing on a short edge, half-way through a turn). The 1.2 g gap between the two thresholds is
@@ -143,7 +144,8 @@ int brd_lcd_rotation(bool flipped, bool turn_180);
  *
  * Here, each new sample (STATUS0's data-ready bit) is fed with its time since the enable, and:
  *   - samples from the first BRD_BOOT_SETTLE_MS are dropped (turn-on and filter settling),
- *   - a sample whose total isn't 0.7 to 1.3 g is dropped and starts the run again (zeros, a ramp, a jolt),
+ *   - a sample whose total isn't 0.8 to 1.2 g (BRD_OR_MAG_*, the classifier's range) is dropped and starts the run
+ *     again (zeros, a ramp, a jolt),
  *   - a sample that differs from the run's last one by more than BRD_OR_JITTER_MG on any axis starts a new run,
  *   - BRD_BOOT_SAMPLES good samples in a row are averaged and classified with BRD_OR_BOOT_MG.
  * The device gives up BRD_BOOT_WAIT_MS after the enable (the first frame waits on this) and uses the run it has.
@@ -152,8 +154,6 @@ int brd_lcd_rotation(bool flipped, bool turn_180);
 #define BRD_BOOT_SETTLE_MS  51      /* 3 ms + 3/ODR at 62.5 Hz */
 #define BRD_BOOT_WAIT_MS    150
 #define BRD_BOOT_SAMPLES    3
-#define BRD_BOOT_MIN_MG     700
-#define BRD_BOOT_MAX_MG     1300
 
 typedef struct {
     int32_t sx, sy, sz;     /* sums over the current run of good samples */
@@ -161,7 +161,7 @@ typedef struct {
     uint8_t good;           /* good samples in the current run */
     uint8_t seen;           /* samples fed (saturates at 255), and why some were dropped: */
     uint8_t early;          /*   during turn-on and settling */
-    uint8_t implausible;    /*   total not 0.7 to 1.3 g */
+    uint8_t implausible;    /*   total not 0.8 to 1.2 g */
     uint8_t restarts;       /*   runs started again by a jump */
 } brd_boot_read_t;
 
@@ -184,7 +184,8 @@ bool brd_orient_boot_choice(int reading, int remembered, brd_boot_src_t *src);
  * What's stored is the pose: which IMU axis pointed up (a brd_up_axis_t), not "flipped", so a later build with another
  * CONFIG_TINYBAR_IMU_UP still reads it the right way (a pose along an axis it doesn't use is ignored). It's written
  * only when the bar has stood still in an orientation other than the stored one for BRD_OR_REMEMBER_MS (the vote
- * held, with no jolt), so a jiggle or a quick turn costs no flash: a few writes a day for a bar that's turned often.
+ * held, with no jolt), so a jiggle or a quick turn costs no flash: one write per turn held 10 s, a few dozen a day at
+ * most (a flip is how the Pomodoro starts).
  * It's used only when the start-up reading can't tell (the bar lying flat, the IMU not answering).
  * ------------------------------------------------------------------------------------------------------------- */
 

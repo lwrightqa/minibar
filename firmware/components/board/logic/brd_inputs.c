@@ -164,8 +164,7 @@ bool brd_boot_read_feed(brd_boot_read_t *b, int32_t ax, int32_t ay, int32_t az, 
         count(&b->early);
         return false;
     }
-    int64_t m2 = (int64_t)ax * ax + (int64_t)ay * ay + (int64_t)az * az;
-    if (m2 < (int64_t)BRD_BOOT_MIN_MG * BRD_BOOT_MIN_MG || m2 > (int64_t)BRD_BOOT_MAX_MG * BRD_BOOT_MAX_MG) {
+    if (!about_one_g(ax, ay, az)) {     /* the classifier's range, so a finished run can be classified */
         count(&b->implausible);
         b->good = 0;
         b->sx = b->sy = b->sz = 0;

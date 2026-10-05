@@ -20,7 +20,7 @@ extern "C" {
 esp_err_t board_imu_init(void);
 /* Which way up to draw the first frame, once at boot before the display: *flipped = true when the bar stands upside
  * down (side buttons at the bottom), false when upright (buttons on top). Blocks until three settled samples are in
- * (STATUS0's data-ready bit, past the turn-on and filter settling, 0.7 to 1.3 g; typically about 85 ms after the
+ * (STATUS0's data-ready bit, past the turn-on and filter settling, 0.8 to 1.2 g; typically about 85 ms after the
  * enable) or 150 ms after the enable at most. When that can't tell (lying flat, or no IMU), it uses the orientation
  * remembered in NVS from the last steady reading, and with nothing remembered, upright. Logs the averaged reading,
  * how long it took and where the answer came from. Returns false if there's no IMU. */

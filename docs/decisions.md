@@ -511,7 +511,7 @@ Where the mock-up has no answer, the firmware picked one. The ones marked **Prop
 
 ## Hardware notes for the firmware (V2)
 
-- **Which way is up:** the user stands the bar with the buttons on top; that's upright (verified 2026-10-05). Turned over, buttons at the bottom, the layout turns with it. On the V2 board that's the QMI8658's −Y axis pointing up and LVGL rotation 270 (firmware 1.0.2: `CONFIG_TINYBAR_IMU_UP_Y_NEG`, `CONFIG_TINYBAR_LCD_TURN_180`).
+- **Which way is up:** the user stands the bar with the buttons on top; that's upright (verified 2026-10-05). Turned over, buttons at the bottom, the layout turns with it. On the V2 board that's the QMI8658's −Y axis pointing up and LVGL rotation 270 (firmware 1.0.2: `CONFIG_TINYBAR_IMU_UP_Y_NEG`, `CONFIG_TINYBAR_LCD_TURN_180`), inferred from 1.0.1's steady pictures, which were right with +Y and no turn; 1.0.2's start-up log line will confirm it.
 
 - Display: AXS15231B over QSPI. Backlight on **GPIO 42** plus the expander's BL_EN (EXIO1). LCD reset on the expander (EXIO5); TE on GPIO 21.
 - Touch: AXS15231B over I²C (SDA GPIO 17, SCL GPIO 18).

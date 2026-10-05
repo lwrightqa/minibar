@@ -197,8 +197,10 @@ refuses new codes for 30 seconds, doubling up to an hour.
   top): the start-up reading couldn't tell which way up the bar stood. 1.0.2 waits for settled samples and calls
   buttons on top "upright"; its log line `IMU at start: ...` says what it read and how long it took
   (`components/board/README.md`, "Which way is up" and bring-up step 5).
-- **The picture is upside down both ways up**, even after the bar has stood still: change
-  `CONFIG_TINYBAR_LCD_TURN_180` (menuconfig → TinyBar board; on by default since 1.0.2) and rebuild. If it's right one
+- **The picture is upside down both ways up**, even after the bar has stood still: first check the build didn't warn
+  that the IMU axis and turn aren't 1.0.2's (an sdkconfig from before 1.0.2: delete `build-<name>/sdkconfig` and
+  rebuild). Otherwise change `CONFIG_TINYBAR_LCD_TURN_180` (menuconfig → TinyBar board; on by default since 1.0.2) and
+  rebuild. If it's right one
   way up but doesn't turn after a flip, the IMU axis is wrong (bring-up step 5). The axis's sign and the turn go
   together: inverting both changes nothing once the IMU has a reading, only which pose counts as upright.
 - **No Remote at `tinybar.local`:** the bar may have been set up offline (Skip is remembered): hold, Wi-Fi, Set up.
@@ -264,8 +266,12 @@ As of 2026-10-04, after the review round and the security review (details in ARC
   (`CONFIG_TINYBAR_IMU_UP_Y_NEG`, `CONFIG_TINYBAR_LCD_TURN_180`). The two inversions cancel once the IMU has a reading,
   so the steady pictures and flips are exactly as in 1.0.1; what changed is that a start where the IMU can't tell
   draws buttons on top. The start-up reading waits for real data (STATUS0's data-ready bit, past the datasheet's
-  turn-on and filter settling, three 0.7 to 1.3 g samples in a row, 150 ms at most) instead of a fixed 40 ms, and
+  turn-on and filter settling, three 0.8 to 1.2 g samples in a row, 150 ms at most) instead of a fixed 40 ms, and
   logs the averaged x, y, z and the time it took. The last steady orientation is remembered in NVS (`board`/`pose`,
-  written after 10 s standing still in a new one) for a start lying flat. Built clean with no warnings; 426 host tests
-  pass (board 52, 17 of them new). Unverified until the user flashes it: the start-up log line will say what the
-  first samples held, which the 1.0.1 report couldn't (no serial log).
+  written after 10 s standing still in a new one) for a start lying flat. Built clean with no warnings; 427 host tests
+  pass (board 53, 18 of them new). Unverified until the user flashes it: the start-up log line will say what the
+  first samples held, which the 1.0.1 report couldn't (no serial log). The −Y axis and rotation 270 are inferred
+  from 1.0.1's steady pictures; that log line confirms them.
+  **Delete your `build-<name>/sdkconfig` (and `firmware/sdkconfig`) before building 1.0.2.** An existing sdkconfig
+  keeps 1.0.1's +Y, and one older than `CONFIG_TINYBAR_LCD_TURN_180` also takes the turn on: +Y with the turn draws
+  every pose upside down. The build warns (`board_imu.c`) unless the pair is −Y with the turn.

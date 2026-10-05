@@ -71,17 +71,23 @@ What the schematic adds (none of it is in Waveshare's code):
 **Upright is the way the user stands the bar: side buttons (BOOT, PWR) on top** (verified on the bar, 2026-10-05).
 Flipped is the other way up, buttons at the bottom. On the V2 board, standing upright, the QMI8658's Y axis reads
 about −1000 mg and the picture needs LVGL rotation 270, hence the defaults `TINYBAR_IMU_UP_Y_NEG` and
-`TINYBAR_LCD_TURN_180`.
+`TINYBAR_LCD_TURN_180`. Those two are inferred from 1.0.1 (its steady pictures were right with +Y and no turn), not
+yet read in a log: step 5 confirms them.
 
 - **The two settings go together.** Once the IMU has a reading, inverting both draws every pose exactly as before
   (each inversion turns the picture 180 degrees, and they cancel; `test/host/board/test_orient_start.c` checks every
   sample and random sequences). What they change is which pose counts as upright, and so what the bar draws when it
   can't tell. 1.0.1 had +Y and no turn: the same steady pictures, but "upright" was buttons at the bottom, so a start
   where the first reading couldn't tell came up upside down until the IMU task righted it half a second later.
+- **An sdkconfig from before 1.0.2 keeps +Y** (an existing value always wins over `sdkconfig.defaults`), and one
+  from before `TINYBAR_LCD_TURN_180` existed takes the turn on beside it: +Y with the turn draws every pose upside
+  down. `board_imu.c` warns at build time unless the pair is −Y with the turn; delete `build-<name>/sdkconfig` and
+  rebuild. If step 5 shows another pair, change it in Kconfig, `sdkconfig.defaults` and that check together.
 - **The first frame** waits for the IMU (`board_imu_read_flipped`, at most 150 ms after the accelerometer is turned
   on): it polls STATUS0's data-ready bit, drops the samples from turn-on and filter settling (3 ms + 3/ODR, the
-  QMI8658A datasheet's accelerometer turn-on time) and any that aren't 0.7 to 1.3 g, and averages three good ones in a
-  row. 1.0.1 waited a fixed 40 ms and averaged four samples whatever they held.
+  QMI8658A datasheet's accelerometer turn-on time) and any that aren't 0.8 to 1.2 g (the same range the flip detection
+  uses), and averages three good ones in a row. 1.0.1 waited a fixed 40 ms and averaged four samples whatever they
+  held.
 - **When that can't tell** (lying flat, or no IMU), the bar uses the orientation it **remembers** from the last steady
   reading: NVS `nvs`, namespace `board`, key `pose`, the IMU axis that pointed up (so a later change of
   `TINYBAR_IMU_UP` can't invert its meaning; a pose on another axis is ignored). It's written once the bar has stood
@@ -123,7 +129,7 @@ put them in `sdkconfig.defaults`).
    `IMU at start: x=.. y=.. z=.. mg, mean of 3 samples, N ms after enabling it (.. read, 2 while settling) -> upright,
    buttons on top`, with N about 85 (150 at most) and one axis near ±1000 (Y near −1000 on the V2 board).
    - If the axis near ±1000 is X or Y with + sign, set `TINYBAR_IMU_UP_` to that axis; with − sign, the negative one.
-   - A `no settled sample of 0.7 to 1.3 g` warning, or `STATUS0 never showed data ready`, means the start-up reading
+   - A `no settled sample of 0.8 to 1.2 g` warning, or `STATUS0 never showed data ready`, means the start-up reading
      didn't work: note the counts it gives. The bar then starts as remembered (`starting ..., as remembered from the
      last steady reading`) or upright.
    - About 0.5 s later: `steady: upright, buttons on top, as drawn at start`. A warning `steady: ..., so the start

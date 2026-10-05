@@ -8,16 +8,17 @@
  * The address is 0x6B in Waveshare's code (SA0 is tied to ground on the V2 schematic); 0x6A is tried too.
  * The decisions (axis, thresholds, hysteresis, steadiness) are brd_orient_*() in logic/, tested on the host.
  *
- * Upright is the way the user stands the bar, side buttons on top (verified 2026-10-05); the QMI8658's Y axis reads
- * about -1 g there, so the default up axis is -Y (Kconfig), and the picture is turned to match (board_display.c).
+ * Upright is the way the user stands the bar, side buttons on top (verified 2026-10-05). The QMI8658's Y axis reading
+ * about -1 g there is inferred from 1.0.1, whose steady pictures were right with +Y and no turn; so the default up
+ * axis is -Y (Kconfig), and the picture is turned to match (board_display.c). The start-up log line confirms it.
  *
  * Before the first frame (board_imu_read_flipped), the reading waits for real data rather than a fixed time: it polls
  * STATUS0 (0x2E) bit 0, aDA, "accelerometer new data available; 0: no updates since last read" (QMI8658A datasheet
  * Rev A, table 22; SensorLib's getDataReady() reads the same bit when only the accelerometer runs), and feeds each
  * new sample to brd_boot_read_*() (logic/), which drops the turn-on and settling samples (3 ms + 3/ODR, datasheet
- * table 7) and anything that isn't 0.7 to 1.3 g, and averages three good ones. If the bit never shows by the end of
- * turn-on plus one period, it reads at the data rate instead and lets the 0.7 to 1.3 g check sort the samples. The
- * whole wait ends 150 ms after the enable at the latest; the first frame waits on it.
+ * table 7) and anything that isn't 0.8 to 1.2 g (the flip detection's own range), and averages three good ones. If
+ * the bit never shows by the end of turn-on plus one period, it reads at the data rate instead and lets the 1 g check
+ * sort the samples. The whole wait ends 150 ms after the enable at the latest; the first frame waits on it.
  *
  * The last steady orientation is remembered in NVS (nvs, namespace "board", key "pose": the axis that pointed up, a
  * brd_up_axis_t) once the bar has stood still in a new one for 10 s, and used when the start-up reading can't tell
@@ -75,6 +76,14 @@ static const char *TAG = "board.imu";
 #else
 #define IMU_UP BRD_UP_Y_POS
 #define IMU_UP_NAME "+Y"
+#endif
+
+/* The V2 board's pair since 1.0.2. An sdkconfig made before then keeps +Y (Kconfig never changes a value it already
+ * holds), and one made before TINYBAR_LCD_TURN_180 existed also takes the turn from sdkconfig.defaults: +Y with the
+ * turn draws every pose upside down. If bring-up (board README, step 5) shows another pair, change it in Kconfig,
+ * sdkconfig.defaults and here together. */
+#if !(CONFIG_TINYBAR_IMU_UP_Y_NEG && CONFIG_TINYBAR_LCD_TURN_180)
+#warning "IMU up axis and picture turn aren't 1.0.2's -Y with TINYBAR_LCD_TURN_180: an sdkconfig from before 1.0.2? Delete build-<name>/sdkconfig and rebuild"
 #endif
 
 static const char *const POSE_NAME[4] = {"+X", "-X", "+Y", "-Y"};   /* brd_up_axis_t order */
@@ -220,7 +229,7 @@ static int boot_reading(void)
     const char *how = by_time ? "; STATUS0 never showed data ready, so read at 62.5 Hz" : "";
     if (!brd_boot_read_mean(&b, &x, &y, &z)) {
         /* x, y, z still hold the last sample read, if any. */
-        ESP_LOGW(TAG, "IMU at start: no settled sample of 0.7 to 1.3 g in %ld ms (%u read: %u settling, %u not 1 g, "
+        ESP_LOGW(TAG, "IMU at start: no settled sample of 0.8 to 1.2 g in %ld ms (%u read: %u settling, %u not 1 g, "
                       "last x=%ld y=%ld z=%ld mg; %u I2C errors%s) -> can't tell",
                  took, b.seen, b.early, b.implausible, (long)x, (long)y, (long)z, errors, how);
         return -1;
