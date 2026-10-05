@@ -632,6 +632,17 @@ Where the mock-up has no answer, the firmware picked one. The ones marked **Prop
   This should be decided before the bar joins an office network with work-login credentials.
 - **Hardware (lead):** if the picture is upside down on the real panel, `CONFIG_TINYBAR_LCD_TURN_180` turns it (the "upright" rotation comes from a path in Waveshare's example that never ran as shipped). The boot no longer tests the whole PSRAM and the bootloader logs only warnings, so the power hold comes on sooner; on a battery, a PWR press still has to last until the power hold (to be timed on the board).
 
+## Mock-up fixes found by the controls guide (2026-10-05, open)
+
+QA checked every control on every screen of the mock-up while building `docs/controls-guide.html` (published at https://claude.ai/artifact/RB39woa2tw36BTYhLH3ZnW). These differ from the intended behavior and go into the next mock-up round:
+
+- **Swipe after a flip:** the mock-up reverses swipe direction on a flipped bar; it shouldn't (the firmware doesn't).
+- **Power screens:** while Keep holding or Powering off shows, ignore touches, BOOT and the hold timer, and close any menu when power-off completes.
+- **Flip during start-up:** keep the flip rather than dropping it.
+- **Message on a dark screen:** decide whether Show from the Remote wakes the screen (the mock-up does) or waits (the theme round's Proposed rule).
+- **The device frame:** the mock-up draws BOOT and PWR on the right edge; on the real bar they're on the top long edge.
+- **The guide's menu pictures** show the old Light tile; re-render them once the theme round's Display tile lands.
+
 ## Hardware notes for the firmware (V2)
 
 - Display: AXS15231B over QSPI. Backlight on **GPIO 42** plus the expander's BL_EN (EXIO1). LCD reset on the expander (EXIO5); TE on GPIO 21.
