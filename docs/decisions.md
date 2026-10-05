@@ -650,4 +650,5 @@ Where the mock-up has no answer, the firmware picked one. The ones marked **Prop
   - The Remote opens from a Windows PC on the office Wi-Fi once the bar is set up (2026-10-05).
   - Windows note: joining TinyBar-Setup from a PC that's also online another way (a cable or a dock) opens msn.com instead of the setup page, because Windows' sign-in check goes out the other connection. Typing `http://4.3.2.1` works, since that address always goes through the bar's Wi-Fi.
   - BOOT and PWR are on the edge the user keeps on top, slightly inset in the case: turned over, the bar rests on that edge without pressing them (checked by the user, 2026-10-05). So flipping can't press PWR or power the bar off by accident.
-  - Not yet reported: touch and BOOT, PWR off and on, the clock from the internet, pairing.
+  - Pairing works on the bar: the Remote paired with the 6-digit code shown on the bar (2026-10-05).
+  - Not yet reported: touch and BOOT, PWR off and on, the clock from the internet, the calendar.
