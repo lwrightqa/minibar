@@ -34,8 +34,8 @@ menu "TinyBar board (Waveshare ESP32-S3-Touch-LCD-3.49 V2)"
         range 0 100
         default 75
         help
-            The chime and the ticks are synthesized at the mock-up's digital levels (chime -13 dBFS, Soft tick -31,
-            Medium -23), so this one setting sets how loud the bar is. It's an open office: start low and tune it
+            The chime and the ticks are synthesized at the mock-up's digital levels (chime -13 dBFS, Soft tick -23,
+            Medium -18), so this one setting sets how loud the bar is. It's an open office: start low and tune it
             on the real bar.
 
     config TINYBAR_AUDIO_AMP_GATE

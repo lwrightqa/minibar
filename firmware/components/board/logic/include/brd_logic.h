@@ -128,8 +128,9 @@ int32_t brd_qmi_raw_to_mg(int16_t raw);
  *        Peaks at about -13.1 dBFS.
  * tick   25 ms of white noise shaped by (1 - t)^6, through Web Audio's band-pass biquad (Q 1.6) at 2000 Hz or
  *        1700 Hz (alternating), with 15 ms of filter tail. Rendered at the reference level BRD_TICK_REF_PEAK, the
- *        median peak of the mock-up's random noise at 48 kHz (-10.8 dBFS); the player then applies 0.10 (Soft) or
- *        0.25 (Medium), as the mock-up does, for peaks of -30.8 and -22.8 dBFS: 17.7 and 9.7 dB below the chime.
+ *        median peak of the mock-up's random noise at 48 kHz (-10.8 dBFS); the player then applies 0.25 (Soft) or
+ *        0.45 (Medium), as the mock-up does, for peaks of -22.8 and -17.7 dBFS: 9.7 and 4.6 dB below the chime.
+ *        (Raised 2026-10-05: on the real bar the old Soft, 0.10, was too quiet to hear from a reasonable distance.)
  * The noise comes from a fixed-seed generator, so every tick of a pitch is identical and the levels are exact.
  * ------------------------------------------------------------------------------------------------------------- */
 
@@ -137,8 +138,8 @@ int32_t brd_qmi_raw_to_mg(int16_t raw);
 #define BRD_CHIME_SECONDS     1.36f     /* last note starts at 0.36 s and stops at 1.36 s */
 #define BRD_TICK_MS           40        /* 25 ms burst + 15 ms tail */
 #define BRD_TICK_REF_PEAK     0.289f
-#define BRD_TICK_GAIN_SOFT    0.10f
-#define BRD_TICK_GAIN_MEDIUM  0.25f
+#define BRD_TICK_GAIN_SOFT    0.25f
+#define BRD_TICK_GAIN_MEDIUM  0.45f
 
 size_t brd_chime_samples(uint32_t rate);
 void brd_chime_render(int16_t *out, size_t n, bool to_break, uint32_t rate);

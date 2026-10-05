@@ -1969,8 +1969,8 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
   }
 
   // Optional ticking during focus: one short, quiet click a second, filtered so it's a soft "tk" rather than a beep,
-  // alternating slightly in pitch. Both levels sit well below the alarm chime (Soft peaks around -31 dBFS, Medium
-  // around -23, the chime around -13) because it's an open office. The device would play a tiny PCM click through
+  // alternating slightly in pitch. Both levels sit below the alarm chime (Soft peaks around -23 dBFS, Medium
+  // around -18, the chime around -13). Raised on 2026-10-05: on the real bar the old Soft (-31) was too quiet. The device would play a tiny PCM click through
   // the ES8311 at a similarly low level.
   let tickBuf = null, tickAlt = false;
   function tickSound() {
@@ -1986,7 +1986,7 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
       f.type = 'bandpass';
       f.frequency.value = (tickAlt = !tickAlt) ? 2000 : 1700;
       f.Q.value = 1.6;
-      g.gain.value = pomo.tickVol === 'medium' ? 0.25 : 0.1;
+      g.gain.value = pomo.tickVol === 'medium' ? 0.45 : 0.25;
       src.connect(f).connect(g).connect(ac.destination);
       src.start();
     } catch (e) {}
