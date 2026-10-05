@@ -1004,6 +1004,7 @@ static void h_tile(fnv_t *s, const tb_tile_t *t)
     h_str(s, t->label);
     h_str(s, t->value);
     h_str(s, t->foot);
+    for (int i = 0; i < t->n_foot_alt; i++) h_str(s, t->foot_alt[i]);
 }
 
 /* Everything the screen or GET /api/v1/status shows, except the countdowns (the timer, focused time) and the clock. */
