@@ -41,8 +41,8 @@ static void imu_log(int seconds)
     for (int i = 0; i < seconds * 4; i++) {
         int32_t x, y, z;
         if (board_imu_read_mg(&x, &y, &z) == ESP_OK) {
-            ESP_LOGW(TAG, "IMU x=%5ld y=%5ld z=%5ld mg (the axis near +1000 standing upright is the up axis)", (long)x,
-                     (long)y, (long)z);
+            ESP_LOGW(TAG, "IMU x=%5ld y=%5ld z=%5ld mg (standing upright, buttons on top: an axis near +1000 is the up "
+                          "axis; near -1000, its negative)", (long)x, (long)y, (long)z);
         } else {
             ESP_LOGW(TAG, "IMU not answering");
             return;

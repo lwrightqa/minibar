@@ -7,7 +7,8 @@
  *
  *   backlight   percent -> LCD_BL PWM duty, through the mock-up's brightness curve and the V2 board's dimming circuit
  *   buttons     5 ms debouncer with "held at boot" suppression
- *   orient      QMI8658 samples -> upright / flipped, with hysteresis and a 0.5 s steadiness rule
+ *   orient      QMI8658 samples -> upright / flipped, with hysteresis and a 0.5 s steadiness rule; the reading before
+ *               the first frame, the remembered pose, and the LVGL rotation for each orientation
  *   synth       the chime and the focus tick as 16-bit PCM, matching the mock-up's Web Audio graph
  *   player      two voices (chime, tick) mixed into chunks, one tick a second, amplifier gating
  *   rtc         PCF85063 time registers <-> UTC seconds
@@ -72,7 +73,9 @@ brd_edge_t brd_debounce_feed(brd_debounce_t *d, bool raw_pressed);
  *
  * The bar stands on a long edge, so gravity lies along the panel's short axis: one of the IMU's X or Y axes, with a
  * sign that depends on how the QMI8658 sits on the board (set in Kconfig, checked at bring-up). `up` names the axis
- * that reads +1 g when the bar stands the normal way up (display rotation 90).
+ * that reads +1 g when the bar stands upright: the way the user stands it, with the side buttons (BOOT, PWR) on top
+ * (verified on the V2 board 2026-10-05: there the QMI8658's Y axis reads about -1 g, so `up` is -Y). "Flipped" is the
+ * other way up, buttons at the bottom. Which LVGL rotation draws "upright" is brd_lcd_rotation()'s business.
  *
  *   - A sample votes "upright" when that axis reads >= +600 mg, "flipped" when <= -600 mg, and nothing in between
  *     (lying flat, standing on a short edge, half-way through a turn). The 1.2 g gap between the two thresholds is
@@ -119,6 +122,81 @@ brd_or_event_t brd_orient_feed(brd_orient_t *o, int32_t ax_mg, int32_t ay_mg, in
 
 /* QMI8658 accelerometer raw value at +-2 g full scale (16384 LSB/g) to mg. */
 int32_t brd_qmi_raw_to_mg(int16_t raw);
+
+/* For the log: "upright, buttons on top", "upside down, buttons at the bottom", or (any other value) "can't tell". */
+const char *brd_orient_name(int flipped);
+
+/* The LVGL rotation in degrees (90 or 270) that draws the layout the right way up. Upright is 90 and flipped 270 in
+ * Waveshare's 10_LVGL_V9_Test; turn_180 (CONFIG_TINYBAR_LCD_TURN_180) swaps them. On the V2 board, upright (buttons on
+ * top) is 270, so TinyBar ships with turn_180 on. Inverting `up` and turn_180 together changes nothing once the IMU
+ * has a reading (both invert, and cancel); it only changes which pose "upright", the default, means. */
+int brd_lcd_rotation(bool flipped, bool turn_180);
+
+/* ---------------------------------------------------------------------------------------------------------------
+ * The reading before the first frame (board_imu_read_flipped)
+ *
+ * The QMI8658A datasheet (Rev A, table 7 and section 7.3): after the accelerometer is enabled, its first sample comes
+ * after about 3 ms plus one sample period, and the output takes 3/ODR more to settle (48 ms at 62.5 Hz, with the
+ * low-pass filter on); "the new data will be stable in at least 3 samples ... discard the first several samples".
+ * Before its first sample the data registers read zero. So a reading taken too early averages zeros and a ramp, and
+ * can't tell which way up the bar is (what 1.0.1 did: it waited a fixed 40 ms and averaged four samples).
+ *
+ * Here, each new sample (STATUS0's data-ready bit) is fed with its time since the enable, and:
+ *   - samples from the first BRD_BOOT_SETTLE_MS are dropped (turn-on and filter settling),
+ *   - a sample whose total isn't 0.7 to 1.3 g is dropped and starts the run again (zeros, a ramp, a jolt),
+ *   - a sample that differs from the run's last one by more than BRD_OR_JITTER_MG on any axis starts a new run,
+ *   - BRD_BOOT_SAMPLES good samples in a row are averaged and classified with BRD_OR_BOOT_MG.
+ * The device gives up BRD_BOOT_WAIT_MS after the enable (the first frame waits on this) and uses the run it has.
+ * ------------------------------------------------------------------------------------------------------------- */
+
+#define BRD_BOOT_SETTLE_MS  51      /* 3 ms + 3/ODR at 62.5 Hz */
+#define BRD_BOOT_WAIT_MS    150
+#define BRD_BOOT_SAMPLES    3
+#define BRD_BOOT_MIN_MG     700
+#define BRD_BOOT_MAX_MG     1300
+
+typedef struct {
+    int32_t sx, sy, sz;     /* sums over the current run of good samples */
+    int32_t lx, ly, lz;     /* the run's last sample */
+    uint8_t good;           /* good samples in the current run */
+    uint8_t seen;           /* samples fed (saturates at 255), and why some were dropped: */
+    uint8_t early;          /*   during turn-on and settling */
+    uint8_t implausible;    /*   total not 0.7 to 1.3 g */
+    uint8_t restarts;       /*   runs started again by a jump */
+} brd_boot_read_t;
+
+void brd_boot_read_init(brd_boot_read_t *b);
+/* One new sample, t_ms after the accelerometer was enabled. True once BRD_BOOT_SAMPLES good samples in a row are in. */
+bool brd_boot_read_feed(brd_boot_read_t *b, int32_t ax_mg, int32_t ay_mg, int32_t az_mg, int32_t t_ms);
+/* The mean of the current run (rounded to nearest). False if it has no good sample yet. */
+bool brd_boot_read_mean(const brd_boot_read_t *b, int32_t *ax_mg, int32_t *ay_mg, int32_t *az_mg);
+
+/* Where the starting orientation came from. */
+typedef enum { BRD_BOOT_FROM_IMU = 0, BRD_BOOT_FROM_MEMORY, BRD_BOOT_DEFAULT } brd_boot_src_t;
+
+/* The starting orientation (true = flipped): the reading (brd_orient_classify: 0, 1 or -1) if it can tell, else the
+ * remembered one (0, 1 or -1 for none), else upright, which is buttons on top. */
+bool brd_orient_boot_choice(int reading, int remembered, brd_boot_src_t *src);
+
+/* ---------------------------------------------------------------------------------------------------------------
+ * Remembering the orientation (NVS, namespace "board", key "pose")
+ *
+ * What's stored is the pose: which IMU axis pointed up (a brd_up_axis_t), not "flipped", so a later build with another
+ * CONFIG_TINYBAR_IMU_UP still reads it the right way (a pose along an axis it doesn't use is ignored). It's written
+ * only when the bar has stood still in an orientation other than the stored one for BRD_OR_REMEMBER_MS (the vote
+ * held, with no jolt), so a jiggle or a quick turn costs no flash: a few writes a day for a bar that's turned often.
+ * It's used only when the start-up reading can't tell (the bar lying flat, the IMU not answering).
+ * ------------------------------------------------------------------------------------------------------------- */
+
+#define BRD_OR_REMEMBER_MS  10000
+
+/* The axis that points up in that orientation. */
+brd_up_axis_t brd_orient_pose(brd_up_axis_t up, bool flipped);
+/* A stored pose (any value) as an orientation under `up`: 0 upright, 1 flipped, -1 (another axis, or not a pose). */
+int brd_orient_from_pose(brd_up_axis_t up, int pose);
+/* Called on every sample after brd_orient_feed(). stored is the remembered orientation (0, 1, or -1 for none).
+ * Returns the orientation to write now (0 or 1), or -1 for nothing. */
+int brd_orient_to_remember(const brd_orient_t *o, int stored, int64_t now_ms);
 
 /* ---------------------------------------------------------------------------------------------------------------
  * Sound synthesis (mock-up chime() and tickSound(); docs/decisions.md "Ticking during focus")

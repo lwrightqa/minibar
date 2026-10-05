@@ -507,8 +507,11 @@ Where the mock-up has no answer, the firmware picked one. The ones marked **Prop
 
   This should be decided before the bar joins an office network with work-login credentials.
 - **Hardware (lead):** if the picture is upside down on the real panel, `CONFIG_TINYBAR_LCD_TURN_180` turns it (the "upright" rotation comes from a path in Waveshare's example that never ran as shipped). The boot no longer tests the whole PSRAM and the bootloader logs only warnings, so the power hold comes on sooner; on a battery, a PWR press still has to last until the power hold (to be timed on the board).
+  - *(2026-10-05, firmware 1.0.2, lead developer:)* settled on the bar. With 1.0.1 the user saw the picture upside down when the bar started, and then it righted itself without being turned over. The user stands the bar with its side buttons on top, so that's upright (see Hardware notes). 1.0.2 makes buttons on top "upright" in the firmware (the IMU's up axis −Y and `CONFIG_TINYBAR_LCD_TURN_180` on, which cancel once the IMU has a reading, so steady pictures and flips are unchanged), waits for settled IMU samples before the first frame instead of a fixed 40 ms, and remembers the last steady orientation for a start lying flat. Started lying flat with nothing remembered, the bar draws buttons on top. What the IMU's first samples held on 1.0.1 isn't known (no serial log); 1.0.2's start-up log line reports it.
 
 ## Hardware notes for the firmware (V2)
+
+- **Which way is up:** the user stands the bar with the buttons on top; that's upright (verified 2026-10-05). Turned over, buttons at the bottom, the layout turns with it. On the V2 board that's the QMI8658's −Y axis pointing up and LVGL rotation 270 (firmware 1.0.2: `CONFIG_TINYBAR_IMU_UP_Y_NEG`, `CONFIG_TINYBAR_LCD_TURN_180`).
 
 - Display: AXS15231B over QSPI. Backlight on **GPIO 42** plus the expander's BL_EN (EXIO1). LCD reset on the expander (EXIO5); TE on GPIO 21.
 - Touch: AXS15231B over I²C (SDA GPIO 17, SCL GPIO 18).

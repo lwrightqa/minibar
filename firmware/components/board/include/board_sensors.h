@@ -15,18 +15,23 @@ extern "C" {
 /* ---------- IMU: flip detection ---------- */
 
 /* Find the QMI8658 (0x6B, or 0x6A) on the system I2C bus and start its accelerometer only (+-2 g, 62.5 Hz,
- * low-pass on). ESP_ERR_NOT_FOUND if it doesn't answer: the bar then keeps the orientation it started with. */
+ * low-pass on). ESP_ERR_NOT_FOUND if it doesn't answer: the bar then keeps the orientation it started with. Call
+ * board_imu_read_flipped() right after it. */
 esp_err_t board_imu_init(void);
-/* One blocking reading (four samples, about 70 ms) of which way up the bar stands: *flipped = true when upside down
- * (layout must turn 180 degrees), false when upright or when it can't tell (lying flat). Used once at boot, before
- * the display, so the splash is drawn the right way up. Logs the raw reading for bring-up. Returns false if the IMU
- * didn't answer. */
+/* Which way up to draw the first frame, once at boot before the display: *flipped = true when the bar stands upside
+ * down (side buttons at the bottom), false when upright (buttons on top). Blocks until three settled samples are in
+ * (STATUS0's data-ready bit, past the turn-on and filter settling, 0.7 to 1.3 g; typically about 85 ms after the
+ * enable) or 150 ms after the enable at most. When that can't tell (lying flat, or no IMU), it uses the orientation
+ * remembered in NVS from the last steady reading, and with nothing remembered, upright. Logs the averaged reading,
+ * how long it took and where the answer came from. Returns false if there's no IMU. */
 bool board_imu_read_flipped(bool *flipped);
 /* Start watching (task "imu", core 0, about 25 Hz). Posts TB_EV_ORIENTATION {flipped, initial=true} once (after
  * 0.5 s of a steady reading, or after 2 s with the boot orientation if the bar lies flat), then
  * {flipped, initial=false} whenever the bar has stood the other way up, steadily, for 0.5 s. Gravity is read along
  * the axis set in menuconfig (TinyBar board → IMU axis), with hysteresis (votes need +-0.6 g along it) so a bar
- * lying flat, tipped a little, or being carried doesn't flip. ESP_ERR_INVALID_STATE if the IMU isn't there. */
+ * lying flat, tipped a little, or being carried doesn't flip. Once the bar has stood still for 10 s in an orientation
+ * other than the remembered one, it remembers it (NVS, namespace "board"). ESP_ERR_INVALID_STATE if the IMU isn't
+ * there. */
 esp_err_t board_imu_start(void);
 
 /* ---------- RTC ---------- */

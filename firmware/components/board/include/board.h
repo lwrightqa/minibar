@@ -16,7 +16,8 @@
  *   1. board_power_hold()        LCD_BL dark, I2C bus 0, TCA9554, SYS_EN high. FIRST, before anything slow: on
  *                                battery the bar switches itself off again if SYS_EN isn't held.
  *   2. board_backlight_early_off() keep the panel dark until the first frame is drawn (already is; harmless)
- *   3. board_imu_init()          so the first frame is drawn the right way up (board_imu_read_flipped)
+ *   3. board_imu_init()          so the first frame is drawn the right way up (board_imu_read_flipped: a settled
+ *                                reading, else the pose remembered in NVS, else upright: side buttons on top)
  *   4. board_display_init()      QSPI, panel reset and init, LVGL display, buffers, backlight PWM
  *   5. board_touch_init()
  *   6. board_rtc_init()          sets the system clock if the RTC holds a time TinyBar wrote
@@ -24,7 +25,7 @@
  *   8. board_audio_init()
  *   9. board_imu_start()         posts TB_EV_ORIENTATION
  *
- * Tasks board starts: "imu" (core 0, priority 3, 3 KB) and "audio" (core 1, priority 6, 4 KB), both subscribed to the
+ * Tasks board starts: "imu" (core 0, priority 3, 4 KB) and "audio" (core 1, priority 6, 4 KB), both subscribed to the
  * task watchdog; the button poll is an esp_timer callback (5 ms). Everything else runs in the caller's task.
  */
 #pragma once

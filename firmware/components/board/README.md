@@ -5,14 +5,17 @@ flip detection, the clock chip, and sound. The interface is `include/board.h`; t
 comment and in `main/app_main.c`.
 
 > **Status:** compiled (ESP-IDF v5.4.2, no warnings in this component) and its pure logic is tested on Linux.
-> **Nothing here has run on a board yet.** The checklist below is how to find out.
+> Firmware 1.0.1 runs on the user's V2 board (2026-10-05): the picture, the flip and Wi-Fi setup were seen working,
+> and the first frame came up upside down until the IMU task righted it, which 1.0.2 fixes (below, "Which way is
+> up"). No serial log has been taken yet, so the checklist below hasn't been run in full.
 
 ## Layout
 
 ```text
 include/      the public API (board.h and the headers it includes) and the pin map (board_pins.h)
-logic/        pure C, no ESP-IDF headers: backlight curve, button debouncer, flip detection, chime and tick
-              synthesis, the two-voice player, PCF85063 registers, touch decoding. Tested in test/host/board/.
+logic/        pure C, no ESP-IDF headers: backlight curve, button debouncer, flip detection (and the start-up
+              reading, the remembered pose, the LVGL rotation), chime and tick synthesis, the two-voice player,
+              PCF85063 registers, touch decoding. Tested in test/host/board/.
 src/          the drivers: board_exio (TCA9554), board_power, board_display (panel, LVGL, backlight),
               board_touch, board_buttons, board_imu, board_rtc, board_audio, board_bringup (self-test)
 Kconfig       menuconfig → "TinyBar board": IMU axis, backlight dark point, volume, amplifier gating, QSPI clock,
@@ -32,7 +35,7 @@ repository (`schematic/ESP32-S3-Touch-LCD-3.49 V2.pdf`):
 | Power | 07_BATT_PWR_Test, 11_FactoryProgram | SYS_EN high at start; drop it to power off | Power off works on USB too (deep sleep, PWR wakes it); the example's "battery flag" is really "PWR released since start", which is the debouncer's suppression here |
 | Buttons | 11_FactoryProgram `button_bsp` | 5 ms polling from an esp_timer, active low with pull-ups | Own debouncer (20 ms) and edge events; core does the timing |
 | Backlight | 10_LVGL_V9_Test `lcd_bl_pwm_bsp` | LEDC, 8-bit, 50 kHz, inverted | A curve from the mock-up's Light levels, and the dark point from the schematic (below) |
-| IMU | 03_I2C_QMI8658 (SensorLib) | Reset, CTRL1 0x40, registers | Accelerometer only, ±2 g, 62.5 Hz, low-pass on; 0x6A tried after 0x6B |
+| IMU | 03_I2C_QMI8658 (SensorLib) | Reset, CTRL1 0x40, registers, STATUS0 data-ready (bit 0) | Accelerometer only, ±2 g, 62.5 Hz, low-pass on; 0x6A tried after 0x6B; before the first frame, waits for settled samples (below) |
 | RTC | 02_I2C_PCF85063 (SensorLib) | Registers, BCD, 24-hour mode, OS flag | TinyBar's mark in the RAM byte, so the factory program's fixed local time isn't taken as UTC |
 | Audio | 08_Audio_Test `codec_board` S3_LCD_3_49 | ES8311 via esp_codec_dev, MCLK 7, BCLK 15, WS 46, DOUT 45, 24 kHz | Standard I2S output only (no TDM, the microphones are unused); amplifier gated |
 
@@ -55,13 +58,35 @@ What the schematic adds (none of it is in Waveshare's code):
 
 | Option | Default | Set it from |
 |---|---|---|
-| `TINYBAR_IMU_UP_*` | +Y | Checklist step 5 |
+| `TINYBAR_IMU_UP_*` | −Y (buttons on top) | Checklist step 5 |
 | `TINYBAR_BL_ZERO_DUTY` | 164 | Checklist step 3 |
 | `TINYBAR_AUDIO_VOLUME` | 75 (−12.5 dB) | Checklist step 8 |
 | `TINYBAR_AUDIO_AMP_GATE` | on | Checklist step 8 |
-| `TINYBAR_LCD_TURN_180` | off | Checklist step 3: on if the splash is upside down (swaps LVGL rotation 90 and 270) |
+| `TINYBAR_LCD_TURN_180` | on | Checklist step 3 (swaps LVGL rotation 90 and 270; upright, buttons on top, is 270) |
 | `TINYBAR_LCD_PCLK_MHZ` | 40 | Leave at 40 (Waveshare's value) unless the picture shows noise |
 | `TINYBAR_BOARD_BRINGUP` | off | On for the first runs only |
+
+## Which way is up
+
+**Upright is the way the user stands the bar: side buttons (BOOT, PWR) on top** (verified on the bar, 2026-10-05).
+Flipped is the other way up, buttons at the bottom. On the V2 board, standing upright, the QMI8658's Y axis reads
+about −1000 mg and the picture needs LVGL rotation 270, hence the defaults `TINYBAR_IMU_UP_Y_NEG` and
+`TINYBAR_LCD_TURN_180`.
+
+- **The two settings go together.** Once the IMU has a reading, inverting both draws every pose exactly as before
+  (each inversion turns the picture 180 degrees, and they cancel; `test/host/board/test_orient_start.c` checks every
+  sample and random sequences). What they change is which pose counts as upright, and so what the bar draws when it
+  can't tell. 1.0.1 had +Y and no turn: the same steady pictures, but "upright" was buttons at the bottom, so a start
+  where the first reading couldn't tell came up upside down until the IMU task righted it half a second later.
+- **The first frame** waits for the IMU (`board_imu_read_flipped`, at most 150 ms after the accelerometer is turned
+  on): it polls STATUS0's data-ready bit, drops the samples from turn-on and filter settling (3 ms + 3/ODR, the
+  QMI8658A datasheet's accelerometer turn-on time) and any that aren't 0.7 to 1.3 g, and averages three good ones in a
+  row. 1.0.1 waited a fixed 40 ms and averaged four samples whatever they held.
+- **When that can't tell** (lying flat, or no IMU), the bar uses the orientation it **remembers** from the last steady
+  reading: NVS `nvs`, namespace `board`, key `pose`, the IMU axis that pointed up (so a later change of
+  `TINYBAR_IMU_UP` can't invert its meaning; a pose on another axis is ignored). It's written once the bar has stood
+  still for 10 s in an orientation other than the stored one, so a jiggle or a quick turn costs no flash. With nothing
+  remembered, upright.
 
 ## Bring-up checklist
 
@@ -75,13 +100,15 @@ put them in `sdkconfig.defaults`).
 2. **I2C bus.** Log: `system I2C bus answers at: 0x18 0x20 0x40 0x51 0x6b` (ES8311, TCA9554, ES7210, PCF85063,
    QMI8658). A missing 0x20 means nothing else will work.
 3. **Panel and backlight.**
-   - No flash of garbage at power-up; the splash appears the right way up for how the bar stands, with true colors
-     (white text, the status color; red and blue not swapped, no noise). Log: `first frame shown (rotate + send N ms)`;
-     expect N around 20 to 30 ms.
-   - **If the splash is upside down:** the "upright" rotation (90) comes from a path in Waveshare's example that never
-     ran as shipped, so it's only known once seen. Without an IMU, or if it's upside down whichever way the bar
-     stands, turn `TINYBAR_LCD_TURN_180` on. With an IMU, if it's right one way up and wrong after a flip, pick the
-     opposite sign of `TINYBAR_IMU_UP_` instead (step 5). Both flip the layout and the touch together.
+   - No flash of garbage at power-up; the splash appears the right way up for how the bar stands (buttons on top or
+     at the bottom), from the very first frame, with true colors (white text, the status color; red and blue not
+     swapped, no noise). Log: `display 640x172, rotation 270 for upright, buttons on top
+     (CONFIG_TINYBAR_LCD_TURN_180)`, then `first frame shown (rotate + send N ms)`; expect N around 20 to 30 ms.
+   - **If the picture is upside down both ways up**, half a second after the bar has stood still: change
+     `TINYBAR_LCD_TURN_180`. Set `TINYBAR_IMU_UP_` from the log first (step 5): a wrong sign and a wrong turn look
+     the same once the IMU has a reading, but the sign also decides which pose is "upright" at a start where the IMU
+     can't tell. If the first frame is wrong and the picture rights itself after half a second, the start-up reading
+     failed: the `IMU at start:` line says why (step 5). Both settings turn the layout and the touch together.
    - Read the boot time: the timestamp of `power held (SYS_EN high)` (the PSRAM test and the bootloader's INFO log are
      off to keep it short; on a battery, a PWR press shorter than that wouldn't keep the bar on).
    - The sweep logs `LCD_BL duty N of 255`: note the first duty at which the screen is fully dark. Expected about 164.
@@ -92,10 +119,20 @@ put them in `sdkconfig.defaults`).
    native x runs 0 to 171 across the short side and native y 0 to 639 along the long side, and the hold, swipe
    direction and menu tiles land where the finger is. **Flip the bar** and repeat: tiles and swipes must still match
    (LVGL turns the point with the layout).
-5. **IMU axis.** Stand the bar the normal way up. The log `IMU x=.. y=.. z=.. mg` shows one axis near ±1000.
-   - If it's X or Y with + sign, set `TINYBAR_IMU_UP_` to that axis; with − sign, the negative one.
-   - Then: the splash after a restart must be the right way up both ways round; flipping the bar turns the layout
-     after about half a second; lying it flat or tipping it a little does nothing; carrying it around doesn't flip it.
+5. **IMU axis and the start-up reading.** Stand the bar upright, side buttons on top, and restart it. The log:
+   `IMU at start: x=.. y=.. z=.. mg, mean of 3 samples, N ms after enabling it (.. read, 2 while settling) -> upright,
+   buttons on top`, with N about 85 (150 at most) and one axis near ±1000 (Y near −1000 on the V2 board).
+   - If the axis near ±1000 is X or Y with + sign, set `TINYBAR_IMU_UP_` to that axis; with − sign, the negative one.
+   - A `no settled sample of 0.7 to 1.3 g` warning, or `STATUS0 never showed data ready`, means the start-up reading
+     didn't work: note the counts it gives. The bar then starts as remembered (`starting ..., as remembered from the
+     last steady reading`) or upright.
+   - About 0.5 s later: `steady: upright, buttons on top, as drawn at start`. A warning `steady: ..., so the start
+     was drawn the wrong way up` means the start-up reading was wrong.
+   - Then: the splash after a restart must be the right way up both ways round, from the first frame; flipping the
+     bar turns the layout after about half a second (`turned over: upside down, buttons at the bottom`), and 10 s
+     later `remembered for a start lying flat: upside down, buttons at the bottom`; lying it flat or tipping it a
+     little does nothing; carrying it around doesn't flip it. Restart it lying flat: it starts the way it last stood
+     (`starting ..., as remembered from the last steady reading`).
 6. **Buttons.** Log `button: BOOT click`, `PWR down`, `PWR up`. BOOT goes to the next status; a PWR press darkens the
    screen; holding PWR shows "Keep holding" at 0.4 s and powers off at 3 s.
 7. **Power off and wake (USB).** After "Powering off": log `still powered, so on USB: deep sleep until PWR is pressed`,
@@ -121,7 +158,10 @@ put them in `sdkconfig.defaults`).
 ## Open questions only the board can answer
 
 - The backlight's real dark point (step 3) and whether the Light levels look like the mock-up's.
-- The IMU's axis and sign (step 5).
+- The IMU's axis and sign (step 5): −Y with the buttons on top, inferred from 1.0.1 on the bar (its steady pictures
+  were right with +Y and no turn); the `IMU at start:` line confirms it.
+- What the QMI8658's first samples really hold after the enable, and how long its data-ready bit takes (the start-up
+  log line gives the time and counts): the cause of 1.0.1's upside-down first frame isn't confirmed.
 - Touch ranges at the edges (whether raw X reaches 640 and raw Y 172).
 - Whether gating the amplifier pops (step 8), and the volume for an open office.
 - Frame time: about 11 ms of QSPI plus the rotation and copy, for every redraw (LVGL redraws the whole screen in this

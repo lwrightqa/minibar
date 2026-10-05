@@ -13,10 +13,11 @@ How the code is organized, and why, is in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 > **Status: integrated and reviewed; first run on the board under way.** Every module is built and wired together,
 > and the 2026-10-04 review round's findings are fixed (or answered in decisions.md), as are the defensive security
-> review's (ARCHITECTURE.md sections 10 and 14). The firmware compiles with no warnings, 409 host tests pass, and every
+> review's (ARCHITECTURE.md sections 10 and 14). The firmware compiles with no warnings, 426 host tests pass, and every
 > screen the mock-up can show matches it line for line. 1.0.0 was flashed once: it boots, holds power and draws the
-> QR screen, and an Android phone couldn't get to the setup page, which 1.0.1 is meant to fix (the cause isn't
-> confirmed yet; see "What's verified").
+> QR screen, and an Android phone couldn't get to the setup page. With 1.0.1 the phone opens the setup page and the
+> bar joins Wi-Fi (which of its changes fixed it isn't confirmed; see "What's verified"), but its first frame comes up
+> upside down with the side buttons on top, which is how the bar stands, until it rights itself: 1.0.2 fixes that.
 > Everything else that touches the hardware or the radio is unverified until it runs on the bar. See "What's
 > verified" at the end, and the bring-up checklists in `components/board/README.md`, `components/net/README.md` and
 > `components/calendar/README.md`.
@@ -107,7 +108,7 @@ Flash **one merged image at address 0x0, at 115200 baud**. A faster write once l
 
    ```sh
    cd build-<name> && mkdir -p ../dist
-   esptool.py --chip esp32s3 merge_bin -o ../dist/tinybar-1.0.1.bin @flash_args
+   esptool.py --chip esp32s3 merge_bin -o ../dist/tinybar-1.0.2.bin @flash_args
    ```
 
    The version is `PROJECT_VER` in `CMakeLists.txt` (also what `GET /api/v1/info` reports as `fw`). The image in
@@ -117,7 +118,7 @@ Flash **one merged image at address 0x0, at 115200 baud**. A faster write once l
 3. Open the Espressif web flasher in Chrome or Edge (<https://espressif.github.io/esptool-js/>), set the baud rate to
    **115200**, click Connect and pick the "USB JTAG/serial debug unit" port. The flasher puts the chip into download
    mode through the port itself; if it can't, see Troubleshooting.
-4. Add `dist/tinybar-1.0.1.bin` at flash address **0x0** and click Program.
+4. Add `dist/tinybar-1.0.2.bin` at flash address **0x0** and click Program.
 5. Unplug and plug the bar back in (or press its reset), and it starts.
 
 **Flashing the merged image starts the bar from scratch.** The file covers the whole start of the flash, and the gaps
@@ -132,7 +133,9 @@ With the command line instead: `idf.py -p <port> -b 115200 flash` (keeps NVS too
 ## First boot
 
 1. The splash (a tomato and "TinyBar") shows for about 1.5 seconds. The bar holds its own power on from the first
-   instructions, and draws the right way up whichever way it stands.
+   instructions, and draws the right way up whichever way it stands. Upright is with the side buttons (BOOT, PWR) on
+   top; turned over, buttons at the bottom, the layout turns with it. Started lying flat, it draws the way it last
+   stood (with nothing remembered yet, buttons on top).
 2. With no Wi-Fi saved, it shows **Scan to set up** with a QR code. Scanning it joins the phone to the bar's own open
    network, **TinyBar-Setup** (it appears about 2 seconds after the QR code, once the bar has looked for networks),
    and the phone's sign-in sheet opens the setup page: the bar answers every name on that network with its own
@@ -190,9 +193,14 @@ refuses new codes for 30 seconds, doubling up to an hour.
 - **The screen shows noise after flashing:** flash again at **115200** baud.
 - **The bar came up on the Wi-Fi QR code and your settings are gone:** flashing the merged image at 0x0 wipes the
   settings, Wi-Fi, paired devices and the calendar address (see Flash). Flash only the app at 0x30000 to keep them.
-- **The picture is upside down whichever way the bar stands:** set `CONFIG_TINYBAR_LCD_TURN_180` (menuconfig →
-  TinyBar board) and rebuild. If it's right one way up but turns the wrong way after a flip, pick the opposite sign of
-  the IMU axis instead (`components/board/README.md`, bring-up step 5).
+- **The first frame is upside down, then the bar rights itself half a second later** (1.0.1 with the side buttons on
+  top): the start-up reading couldn't tell which way up the bar stood. 1.0.2 waits for settled samples and calls
+  buttons on top "upright"; its log line `IMU at start: ...` says what it read and how long it took
+  (`components/board/README.md`, "Which way is up" and bring-up step 5).
+- **The picture is upside down both ways up**, even after the bar has stood still: change
+  `CONFIG_TINYBAR_LCD_TURN_180` (menuconfig → TinyBar board; on by default since 1.0.2) and rebuild. If it's right one
+  way up but doesn't turn after a flip, the IMU axis is wrong (bring-up step 5). The axis's sign and the turn go
+  together: inverting both changes nothing once the IMU has a reading, only which pose counts as upright.
 - **No Remote at `tinybar.local`:** the bar may have been set up offline (Skip is remembered): hold, Wi-Fi, Set up.
   Some office networks block mDNS: use the address the Wi-Fi menu shows. Guest networks with a sign-in page aren't
   supported.
@@ -249,4 +257,15 @@ As of 2026-10-04, after the review round and the security review (details in ARC
   opening leaves the radio off, the setup endpoints need a peer on the setup network as well as its address, the
   HTTP server starts before Wi-Fi, and the log never delays a DNS answer or shows a query string. Built clean with no
   warnings (app 2.03 MB; static internal RAM unchanged at 141 KB); 409 host tests (net 128) and both page suites
-  pass. Unverified until the user flashes it.
+  pass. **Verified on the bar (2026-10-05):** the phone opens the setup page and the bar joins Wi-Fi.
+- **1.0.2 (2026-10-05, branch `orient-fix`): the first frame the right way up.** On 1.0.1 the user saw the picture
+  upside down at start-up, then right without turning the bar over. The user stands the bar with its side buttons on
+  top, and that's upright now: the IMU's up axis is −Y and the picture is turned 180 degrees
+  (`CONFIG_TINYBAR_IMU_UP_Y_NEG`, `CONFIG_TINYBAR_LCD_TURN_180`). The two inversions cancel once the IMU has a reading,
+  so the steady pictures and flips are exactly as in 1.0.1; what changed is that a start where the IMU can't tell
+  draws buttons on top. The start-up reading waits for real data (STATUS0's data-ready bit, past the datasheet's
+  turn-on and filter settling, three 0.7 to 1.3 g samples in a row, 150 ms at most) instead of a fixed 40 ms, and
+  logs the averaged x, y, z and the time it took. The last steady orientation is remembered in NVS (`board`/`pose`,
+  written after 10 s standing still in a new one) for a start lying flat. Built clean with no warnings; 426 host tests
+  pass (board 52, 17 of them new). Unverified until the user flashes it: the start-up log line will say what the
+  first samples held, which the 1.0.1 report couldn't (no serial log).

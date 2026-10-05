@@ -6,7 +6,8 @@
  *   - init commands 0x11 (sleep out) and 0x29 (display on), 100 ms each, after the LCD reset on EXIO5
  *     (high 30 ms, low 250 ms, high 30 ms);
  *   - LVGL display at the native 172 x 640 with a full-frame RGB565 buffer in PSRAM (LV_DISPLAY_RENDER_MODE_FULL) and
- *     software rotation: LV_DISPLAY_ROTATION_90, or 270 when the bar is flipped (swapped by CONFIG_TINYBAR_LCD_TURN_180),
+ *     software rotation: LV_DISPLAY_ROTATION_90, or 270 when the bar is flipped (swapped by CONFIG_TINYBAR_LCD_TURN_180,
+ *     which TinyBar ships on: upright, side buttons on top, is 270 on the V2 board; see brd_lcd_rotation()),
  *     turned by lv_draw_sw_rotate() into a second PSRAM frame. One draw buffer, not the example's two: the flush is
  *     synchronous (rotate, copy, send, then flush_ready), so a second buffer would never overlap any work;
  *   - the frame goes out in ten 64-line chunks through one internal DMA buffer, each chunk waiting for the previous
@@ -299,14 +300,16 @@ static void flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px)
     lv_display_flush_ready(disp);
 }
 
-/* Upright is LVGL rotation 90 and flipped 270, unless CONFIG_TINYBAR_LCD_TURN_180 swaps them. */
+/* Upright (buttons on top) is LVGL rotation 90 and flipped 270, unless CONFIG_TINYBAR_LCD_TURN_180 swaps them, as it
+ * does by default: brd_lcd_rotation() in logic/, where the host tests check that inverting the IMU's up axis and this
+ * together leaves every steady picture as it was. */
 #ifndef CONFIG_TINYBAR_LCD_TURN_180
 #define CONFIG_TINYBAR_LCD_TURN_180 0
 #endif
 static lv_display_rotation_t rotation_for(bool flipped)
 {
-    if (CONFIG_TINYBAR_LCD_TURN_180) flipped = !flipped;
-    return flipped ? LV_DISPLAY_ROTATION_270 : LV_DISPLAY_ROTATION_90;
+    return brd_lcd_rotation(flipped, CONFIG_TINYBAR_LCD_TURN_180) == 270 ? LV_DISPLAY_ROTATION_270
+                                                                        : LV_DISPLAY_ROTATION_90;
 }
 
 static uint32_t tick_cb(void)
@@ -347,8 +350,9 @@ lv_display_t *board_display_init(bool flipped)
     lv_display_set_buffers(s_disp, b1, NULL, LCD_FRAME_BYTES, LV_DISPLAY_RENDER_MODE_FULL);
     lv_display_set_flush_cb(s_disp, flush_cb);
     board_display_set_flipped(flipped);
-    ESP_LOGI(TAG, "display %dx%d, rotation %d%s", BOARD_SCREEN_W, BOARD_SCREEN_H, rotation_for(flipped) == LV_DISPLAY_ROTATION_270 ? 270 : 90,
-             CONFIG_TINYBAR_LCD_TURN_180 ? " (turned 180 by CONFIG_TINYBAR_LCD_TURN_180)" : "");
+    ESP_LOGI(TAG, "display %dx%d, rotation %d for %s%s", BOARD_SCREEN_W, BOARD_SCREEN_H,
+             brd_lcd_rotation(flipped, CONFIG_TINYBAR_LCD_TURN_180), brd_orient_name(flipped),
+             CONFIG_TINYBAR_LCD_TURN_180 ? " (CONFIG_TINYBAR_LCD_TURN_180)" : "");
     return s_disp;
 }
 
