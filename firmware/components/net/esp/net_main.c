@@ -3,8 +3,8 @@
  *
  * net_init()  (main task, after the app task started): netif and event loop, cJSON in PSRAM, the Wi-Fi driver and
  *             the saved credentials, the token table, and the router bound to the app model.
- * net_start() the station (or the setup network when nothing is saved), the HTTP server, the USB reader and its
- *             "ready" line. mDNS and SNTP start once the station has an address (net_wifi.c).
+ * net_start() the HTTP server, then the station (or the setup network when nothing is saved), then the USB reader
+ *             and its "ready" line. mDNS and SNTP start once the station has an address (net_wifi.c).
  */
 #include <stdlib.h>
 #include <string.h>
@@ -82,9 +82,11 @@ esp_err_t net_start(void)
 {
     if (s_started) return ESP_OK;
     s_started = true;
-    net_wifi_start();
+    /* The server first: it listens on every address before any network is up, so a phone that joins the setup
+     * network finds port 80 answering, and the log reads in the order things happen. */
     esp_err_t err = net_http_start();
     if (err != ESP_OK) ESP_LOGE(TAG, "HTTP server failed: %s", esp_err_to_name(err));
+    net_wifi_start();
     net_usb_start();
     return ESP_OK;
 }

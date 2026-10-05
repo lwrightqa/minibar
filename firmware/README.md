@@ -13,9 +13,10 @@ How the code is organized, and why, is in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 > **Status: integrated and reviewed; first run on the board under way.** Every module is built and wired together,
 > and the 2026-10-04 review round's findings are fixed (or answered in decisions.md), as are the defensive security
-> review's (ARCHITECTURE.md sections 10 and 14). The firmware compiles with no warnings, 408 host tests pass, and every
+> review's (ARCHITECTURE.md sections 10 and 14). The firmware compiles with no warnings, 409 host tests pass, and every
 > screen the mock-up can show matches it line for line. 1.0.0 was flashed once: it boots, holds power and draws the
-> QR screen, and an Android phone couldn't get to the setup page, which 1.0.1 addresses (see "What's verified").
+> QR screen, and an Android phone couldn't get to the setup page, which 1.0.1 is meant to fix (the cause isn't
+> confirmed yet; see "What's verified").
 > Everything else that touches the hardware or the radio is unverified until it runs on the bar. See "What's
 > verified" at the end, and the bring-up checklists in `components/board/README.md`, `components/net/README.md` and
 > `components/calendar/README.md`.
@@ -135,9 +136,13 @@ With the command line instead: `idf.py -p <port> -b 115200 flash` (keeps NVS too
 2. With no Wi-Fi saved, it shows **Scan to set up** with a QR code. Scanning it joins the phone to the bar's own open
    network, **TinyBar-Setup** (it appears about 2 seconds after the QR code, once the bar has looked for networks),
    and the phone's sign-in sheet opens the setup page: the bar answers every name on that network with its own
-   address and redirects the phone's check to `http://4.3.2.1/`. If no sheet appears, open `http://4.3.2.1` in the
-   phone's browser with mobile data off. *(Since 1.0.1 the setup address is 4.3.2.1, not 192.168.4.1: some Android
-   phones treat a private address as "Connected, no internet" and never show the sheet; see decisions.md, Wi-Fi.)*
+   address and redirects the phone's check to `http://4.3.2.1/`. On Android, if the sheet doesn't open by itself
+   (with mobile data on it often doesn't), pull down the notifications and tap "Sign in to Wi-Fi network". Otherwise
+   open `http://4.3.2.1` in the phone's browser **with mobile data off**. *(Since 1.0.1 the setup address is 4.3.2.1,
+   not 192.168.4.1: with a rule some Android phones have turned on, a private address means "Connected, no internet"
+   and no sheet. That's the most likely, but unconfirmed, cause of what the first test saw; see decisions.md, Wi-Fi.
+   4.3.2.1 is a real internet address, so with mobile data on, a typed `http://4.3.2.1` goes out over mobile data
+   instead of to the bar.)*
 3. On the page, pick the office Wi-Fi and enter its password, or a work username and password for a WPA2-Enterprise
    network. Guest networks with a sign-in page aren't supported, and the page says so. The calendar's secret iCal
    address can be pasted here too (optional).
@@ -193,10 +198,11 @@ refuses new codes for 30 seconds, doubling up to an hour.
   supported.
 - **"Another device is pairing with this TinyBar":** a code for another device is on the bar; wait for it to run out
   (2 minutes at most) or cancel it with a tap on the bar.
-- **The phone joins TinyBar-Setup but says "Connected, no internet" and no sign-in sheet opens:** open
-  `http://4.3.2.1` in its browser with mobile data turned off (with mobile data on, Android sends the browser over it
-  on a network it judged to have no internet). The log tells which step failed: `components/net/README.md`, bring-up
-  item 3.
+- **The phone joins TinyBar-Setup but says "Connected, no internet" and no sign-in sheet opens:** pull down the
+  notifications and tap "Sign in to Wi-Fi network" if it's there. If not, open `http://4.3.2.1` in its browser with
+  mobile data turned off (with mobile data on, Android sends the browser over it on a network it judged to have no
+  internet, and 4.3.2.1 is a real internet address). The log tells which step failed, and `adb shell dumpsys
+  network_stack` tells why the phone decided what it did: `components/net/README.md`, bring-up item 3.
 - **The log:** `idf.py -p <port> monitor` at any time; protocol lines start with `@tb `. A health line 15 s after start
   (and every minute) shows memory, every task's stack margin and the frame time.
 
@@ -233,9 +239,14 @@ As of 2026-10-04, after the review round and the security review (details in ARC
   override), the page's 421, the time a hostile calendar feed takes on the S3, and log escaping on the real port.
   The bring-up checklists say what to look for.
 - **First run on the board (1.0.0, 2026-10-04):** it boots, holds power and draws the "Scan to set up" QR screen. An
-  Android phone joined TinyBar-Setup but said "Connected, no internet", with no sign-in sheet. **1.0.1** (branch
-  `captive-fix`) answers that: the setup network moved to 4.3.2.1 (Android's portal check gives up on a private DNS
-  answer; ARCHITECTURE.md section 10), it opens after one scan and in the order of ESP-IDF's captive_portal example,
-  it answers the phones' check paths, it offers no DHCP option 114, and it logs every step (net README, bring-up
-  item 3). Built clean with no warnings (app 2.03 MB; static internal RAM unchanged at 141 KB); 408 host tests (net
-  127) and both page suites pass. Unverified until the user flashes it.
+  Android phone joined TinyBar-Setup but said "Connected, no internet", with no sign-in sheet. The cause isn't
+  confirmed. **1.0.1** (branch `captive-fix`) addresses the most likely one, Android's private-IP rule, by moving the
+  setup network to 4.3.2.1 (ARCHITECTURE.md section 10), and removes 1.0.0's other differences from ESP-IDF's
+  captive_portal example: it opens after one scan and in the example's order, answers the phones' check paths,
+  offers no DHCP option 114, and binds DNS to every address. It logs every step (net README, bring-up item 3, which
+  also has the two tests that settle the cause if it still fails). After the review of 1.0.1: "Set up again" tells
+  the calendar the office link is gone, a failed address change keeps the setup network closed, a Skip while it's
+  opening leaves the radio off, the setup endpoints need a peer on the setup network as well as its address, the
+  HTTP server starts before Wi-Fi, and the log never delays a DNS answer or shows a query string. Built clean with no
+  warnings (app 2.03 MB; static internal RAM unchanged at 141 KB); 409 host tests (net 128) and both page suites
+  pass. Unverified until the user flashes it.

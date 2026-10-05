@@ -9,10 +9,12 @@
  * - everything else (GET): the Remote page on the office Wi-Fi, the setup page on TinyBar-Setup, both gzipped in
  *   flash. On the setup network a phone's captive-portal check (a well-known check path, or any other host) gets a
  *   302 to http://NET_SETUP_IP/ with a short HTML body (iOS wants one), so the phone opens the setup page in its
- *   sign-in sheet (ARCHITECTURE.md 10). Every request on the setup network is logged (INFO, the first 40 a minute):
- *   method, Host, path, both addresses, and what answered it.
- * Which network a request came in on is the socket's own address (setup_net()); if that ever can't be read as a plain
- * IPv4 address, a peer in the setup subnet while TinyBar-Setup is up counts as the setup network.
+ *   sign-in sheet (ARCHITECTURE.md 10). Every request on the setup network is logged (INFO): method, Host, the path
+ *   without its query, both addresses, and what answered it; the checks and the setup page get the first 40 a minute,
+ *   and everything else another 40.
+ * A request is on the setup network when the socket's own address is NET_SETUP_IP and the peer is in its subnet
+ * (setup_net()); if the socket's address ever can't be read as a plain IPv4 address, a peer in the setup subnet while
+ * TinyBar-Setup is up counts.
  * esp_http_server runs every handler in one task, so handlers stay short; slow work answers 202 (the router's job).
  * Seven sockets at most, the least recently used one is closed for a new client (lru_purge_enable).
  *
@@ -130,28 +132,40 @@ typedef struct {
     char local_text[48], peer_text[48];
 } net_side_t;
 
+/* Both ends count: lwIP takes a packet for NET_SETUP_IP on any interface (ip4_input's weak host model), so while the
+ * access point is up next to the office link (the join, the Connected screen, the linger), an office host with a
+ * route to NET_SETUP_IP through the bar would otherwise reach the setup endpoints, which take no token. A forged
+ * source address in the setup subnet can't finish the TCP handshake: the bar's answer goes out on the setup network. */
 static void setup_net(int fd, net_side_t *s)
 {
     s->local = sock_ip(fd, true, s->local_text);
     s->peer = sock_ip(fd, false, s->peer_text);
     s->by_peer = !s->local;
-    if (!s->by_peer) s->setup = s->local == setup_ip();
-    else s->setup = net_wifi_setup_net_up() && net_ip_same_subnet(s->peer, setup_ip(), setup_mask());
+    bool from_setup = net_ip_same_subnet(s->peer, setup_ip(), setup_mask());
+    if (!s->by_peer) s->setup = s->local == setup_ip() && from_setup;
+    else s->setup = net_wifi_setup_net_up() && from_setup;
 }
 
 /* ---------- the setup network's log ---------- */
 
 #define HTTP_LOG_PER_MIN 40
-static net_log_quota_t s_quota;     /* the server's task only */
+/* Two quotas (the server's task only): the phones' captive-portal checks and the setup page have their own, so other
+ * apps' plain-HTTP traffic and the page's polling can't use up the minute before the lines that matter. */
+static net_log_quota_t s_quota_key, s_quota;
 
-static void log_setup(httpd_req_t *r, const char *method, const char *host, const net_side_t *s, const char *answer)
+static void log_setup(httpd_req_t *r, const char *method, const char *host, const net_side_t *s, const char *answer,
+                      bool key)
 {
     int dropped;
-    if (!net_log_quota_take(&s_quota, esp_timer_get_time() / 1000, HTTP_LOG_PER_MIN, &dropped)) return;
-    if (dropped) ESP_LOGI(TAG, "(%d more requests on the setup network in the last minute weren't logged)", dropped);
+    if (!net_log_quota_take(key ? &s_quota_key : &s_quota, esp_timer_get_time() / 1000, HTTP_LOG_PER_MIN, &dropped))
+        return;
+    if (dropped)
+        ESP_LOGI(TAG, "(%d more %s on the setup network in the last minute weren't logged)", dropped,
+                 key ? "checks and setup page requests" : "requests");
+    /* The path without its query: other apps' plain-HTTP requests can carry tokens there. */
     char h[48], p[72];
     ESP_LOGI(TAG, "setup network: %s %s%s from %s to %s%s: %s", method, net_log_text(h, sizeof h, host),
-             net_log_text(p, sizeof p, r->uri), s->peer_text, s->local_text,
+             net_log_path(p, sizeof p, r->uri), s->peer_text, s->local_text,
              s->by_peer ? " (told by the peer's address)" : "", answer);
 }
 
@@ -351,7 +365,7 @@ static esp_err_t api_handler(httpd_req_t *r)
     if (side.setup) {
         char what[24];
         snprintf(what, sizeof what, "API %d", resp.status);
-        log_setup(r, q.method, host, &side, what);
+        log_setup(r, q.method, host, &side, what, false);
     }
     memset(cookie, 0, sizeof cookie);
     if (auth) memset(auth, 0, strlen(auth));
@@ -427,15 +441,18 @@ static esp_err_t page_handler(httpd_req_t *r)
     if (side.setup) {
         /* The captive portal: a check path (whatever its Host) or any other name goes to the setup page */
         const char *answer;
+        bool key = false;   /* a check or the setup page: logged under its own quota */
         if (net_setup_probe_path(uri)) {
             err = to_setup_page(r);
             answer = "302 to the setup page (a captive-portal check)";
+            key = true;
         } else if (!host_is(host, NET_SETUP_IP)) {
             err = to_setup_page(r);
             answer = "302 to the setup page (another host)";
         } else if (root) {
             err = send_page(r, setup_html_gz_start, setup_html_gz_end);
             answer = "the setup page";
+            key = true;
         } else if (favicon) {
             httpd_resp_set_status(r, "204 No Content");
             err = httpd_resp_send(r, NULL, 0);
@@ -444,7 +461,7 @@ static esp_err_t page_handler(httpd_req_t *r)
             err = to_setup_page(r);
             answer = "302 to the setup page (another path)";
         }
-        log_setup(r, "GET", host, &side, err == ESP_OK ? answer : "the reply didn't go out");
+        log_setup(r, "GET", host, &side, err == ESP_OK ? answer : "the reply didn't go out", key);
     } else if (!net_api_host_ok(host)) {
         /* api.md 2.2 for the page too: a DNS-rebinding page under another name gets nothing from the bar */
         err = wrong_host(r);

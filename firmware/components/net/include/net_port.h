@@ -30,8 +30,10 @@ typedef struct {
 /* The setup network's address (the bar on TinyBar-Setup: its access point, DHCP server, DNS catch-all and setup page)
  * and its subnet. Not a private address: Android's captive-portal check (NetworkMonitor's "a private IP DNS response
  * means no internet", on when Google or the phone's maker turns it on) treats a check host that resolves into 10/8,
- * 172.16/12, 192.168/16 or 169.254/16 as "Connected, no internet" and never shows the sign-in sheet. The setup network
- * leads nowhere, so this address only stands in for those hosts while a phone is on it (decisions.md, Wi-Fi). */
+ * 172.16/12, 192.168/16 or 169.254/16 as "Connected, no internet" and never shows the sign-in sheet (the most likely
+ * cause of 1.0.0's failed first test, not confirmed). The setup network leads nowhere, so this address only stands in
+ * for those hosts while a phone is on it. It is a real, routed address, though: a request that leaves the phone over
+ * mobile data goes to its owner, not the bar (decisions.md, Wi-Fi, has the choices). */
 #define NET_SETUP_IP "4.3.2.1"
 #define NET_SETUP_NETMASK "255.255.255.0"
 

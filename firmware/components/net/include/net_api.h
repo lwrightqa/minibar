@@ -87,8 +87,8 @@ void net_api_tick(const tb_clock_t *now);
 /* core's effects that concern the protocol (main forwards them). */
 void net_api_pairing_canceled(const tb_clock_t *now);   /* TB_FX_PAIRING_CANCELED */
 void net_api_forget_devices(const tb_clock_t *now);     /* TB_FX_FORGET_DEVICES */
-/* The Host header names this bar (api.md 2.2): its mDNS name, its station address, or 192.168.4.1 while in setup;
- * with or without ":80". The HTTP layer uses it to send foreign hosts on the setup network to the setup page. */
+/* The Host header names this bar (api.md 2.2): its mDNS name, its station address, or NET_SETUP_IP (4.3.2.1) while in
+ * setup; with or without ":80". The HTTP layer uses it for the Remote page's Host check (421) too. */
 bool net_api_host_ok(const char *host);
 
 /*

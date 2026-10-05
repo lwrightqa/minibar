@@ -49,16 +49,34 @@ The running record of what has been decided, and why. The product manager keeps 
     you chose Set up again and then Skip, the bar stays offline too, rather than quietly rejoining the old network.
 - **Proposed (2026-10-05, firmware 1.0.1, lead developer): the setup network's address is 4.3.2.1, not 192.168.4.1.**
   On the first test on the real bar, an Android phone joined TinyBar-Setup but said "Connected, no internet" and no
-  "Sign in to network" sheet appeared. Android's captive-portal check (NetworkMonitor in AOSP) has a rule, "a private IP
-  DNS response means no internet", that Google turns on with its server-side flags and phone makers can force on: when
-  the check's host (`connectivitycheck.gstatic.com`) resolves to a private address (10/8, 172.16/12, 192.168/16 or
-  169.254/16), the phone sends no HTTP check at all and reports no internet, so the bar never gets the chance to send
-  it to the setup page. The bar answers every name with its own address, so that address must not be private.
-  TinyBar-Setup has no way out to the internet, so 4.3.2.1 only stands in for the hosts phones check while they're on
-  it; it's the address ESP32 captive portals use for the same reason. What changes for people: if the sign-in sheet
-  doesn't open, the address to type is `http://4.3.2.1` (with mobile data off). The setup page shows it, and so does
-  the mock-up's phone. The other choice is to keep 192.168.4.1 and accept that some Android phones need the address
-  typed by hand. *(The published mock-up Artifact still shows 192.168.4.1 until it's republished.)*
+  "Sign in to network" sheet appeared. **The cause isn't confirmed yet.** The most likely one: Android's captive-portal
+  check (NetworkMonitor in AOSP) has a rule, "a private IP DNS response means no internet". It's off in stock Android,
+  but Google can turn it on with its server-side flags and phone makers can force it on. With it on, when the check's
+  host (`connectivitycheck.gstatic.com`) resolves to a private address (10/8, 172.16/12, 192.168/16 or 169.254/16),
+  the phone sends no HTTP check at all and reports no internet, so the bar never gets the chance to send it to the
+  setup page. The bar answers every name with its own address, so that address must not be private. Against it:
+  ESP-IDF's own captive-portal example uses 192.168.4.1 and works on Android, so 1.0.1 also removes the other ways
+  1.0.0 differed from that example (see "Same round" below). If 1.0.1 still fails, two tests settle the cause: the
+  phone's own validation log (`adb shell dumpsys network_stack`) and ESP-IDF's example on the same bar and phone (the
+  firmware's `components/net/README.md`, bring-up item 3). TinyBar-Setup has no way out to the internet, so 4.3.2.1
+  only stands in for the hosts phones check while they're on it; many ESP32 captive portals use it for the same reason.
+  What changes for people: if the sign-in sheet doesn't open by itself, tap "Sign in to Wi-Fi network" in the
+  notifications; the address to type is `http://4.3.2.1` (with mobile data off). The setup page shows it, and so does
+  the mock-up's phone. *(The published mock-up Artifact still shows 192.168.4.1 until it's republished.)*
+  - **The catch, part of this decision (2026-10-05, from the firmware review): 4.3.2.1 is a real, routed internet
+    address** (it belongs to Lumen). A request that leaves the phone over mobile data instead of the setup network
+    goes there rather than nowhere: a typed `http://4.3.2.1` with mobile data on, or, in a browser (not the sign-in
+    sheet, which stays on the setup network), the setup page's next request after mobile data was turned on mid-setup,
+    which could carry the Wi-Fi password in plain text to whoever answers at that address. At 192.168.4.1 those
+    requests simply failed. The docs say to type the address with mobile data off.
+  - **The choices:**
+    - **4.3.2.1** (the lead's pick for the next test): widely used by ESP32 captive portals, so it's known to work on
+      phones.
+    - **192.0.2.1:** a documentation address (RFC 5737) that's never routed, so a stray request reaches nobody. It
+      also passes Android's rule, which only looks for 10/8, 172.16/12, 192.168/16, 169.254/16 and private IPv6
+      addresses. Untested on phones. Switching is one line in the firmware (`NET_SETUP_IP`) plus the setup page's
+      text and the docs, best tried on the same phone once 4.3.2.1 works.
+    - **192.168.4.1:** back to the old address, accepting that some Android phones need the address typed by hand.
   - Same round: the setup network now opens after one scan (so a phone on it never loses packets to a scan; the bar
     scans again while a phone is on it only if it found nothing), answers the phones' check paths (`/generate_204`,
     `/hotspot-detect.html`, `/connecttest.txt` and the like) with the redirect whatever their host, and offers no DHCP

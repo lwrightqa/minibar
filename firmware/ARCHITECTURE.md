@@ -116,9 +116,10 @@ No cycles, and nothing depends on main. net doesn't call board: it posts `TB_EV_
 8. `app_task_start()`. From here only the app task touches the model, LVGL and the ui. The backlight comes on after
    the first frame reaches the panel (the initial `TB_FX_BACKLIGHT`).
 9. `board_buttons_init()`, `board_audio_init()`, `board_imu_start()`.
-10. `net_init()`, `net_start()` (station or setup mode, HTTP, the USB reader and its `ready` line; mDNS and SNTP once
-    online), then `app_net_ready()`: Wi-Fi effects core queued before this (in practice none, since the 1.5 s splash
-    outlasts net's start) are carried out now. `cal_sync_init()` posts the saved meetings, then waits for Wi-Fi.
+10. `net_init()`, `net_start()` (HTTP, then station or setup mode, then the USB reader and its `ready` line; mDNS and
+    SNTP once online), then `app_net_ready()`: Wi-Fi effects core queued before this (in practice none, since the
+    1.5 s splash outlasts net's start) are carried out now. `cal_sync_init()` posts the saved meetings, then waits for
+    Wi-Fi.
 11. `esp_ota_mark_app_valid_cancel_rollback()`. There's no OTA in v1, so it guards nothing yet. **When OTA lands:**
     mark the image valid only after a self-test (the panel and net started), and restart right after switching the
     OTA partition, before any power off can happen: power off is a deep sleep, and with
@@ -301,19 +302,37 @@ rendered at 640 × 172 in headless Chromium per `docs/testing.md`):
   phone is on the AP the bar scans again only if that list is empty, because an APSTA scan takes the radio off the
   AP's channel for a second or two. The AP opens in the order of ESP-IDF's captive_portal example: the DHCP server
   changed while it's stopped (address, the bar as DNS server, no option 114), then mode, AP settings and
-  `esp_wifi_start()`; the DNS catch-all starts on `WIFI_EVENT_AP_START`.
-- **Why 4.3.2.1 (since 1.0.1):** Android's captive-portal check (NetworkMonitor) has a "private IP DNS response means
-  no internet" rule, turned on by Google's server-side flags or the phone maker: when the check's host
-  (`connectivitycheck.gstatic.com`) resolves to 10/8, 172.16/12, 192.168/16 or 169.254/16 it sends no HTTP check at
-  all and reports "Connected, no internet" with no sign-in sheet. That's what the first Android test saw at
-  192.168.4.1. The setup network leads nowhere, so a public address only stands in for those hosts while a phone is
-  on it; 4.3.2.1 is the one ESP32 captive portals use for the same reason. It's `NET_SETUP_IP` (net_port.h).
+  `esp_wifi_start()`; the DNS catch-all starts on `WIFI_EVENT_AP_START`. If the address can't be set, the AP stays
+  closed (every request would get 421) and Set up again tries again. During "Set up again" that restart drops the
+  office link: the calendar is told at once (`cal_sync_set_online(false)`); core, which shows setup, is told once the
+  Connected screen moves on if the link is still down then, and the station reconnects. A Skip that lands while the
+  AP is opening leaves the radio off (the worker checks again under the radio lock).
+- **Why 4.3.2.1 (since 1.0.1):** what made the first Android test say "Connected, no internet" at 192.168.4.1 is
+  **not confirmed**. The most likely cause: Android's captive-portal check (AOSP NetworkMonitor) has a rule, "a
+  private IP DNS response means no internet" (flag `dns_probe_private_ip_no_internet`), that's off in stock AOSP but
+  can be turned on by Google's server-side flags or forced on by the phone's maker
+  (`config_force_dns_probe_private_ip_no_internet`). With it on, a check host (`connectivitycheck.gstatic.com`) that
+  resolves into 10/8, 172.16/12, 192.168/16, 169.254/16 or an IPv6 ULA gets no HTTP check at all, and the phone
+  reports "Connected, no internet" with no sign-in sheet, whatever the bar would have answered. Against it: ESP-IDF's
+  own captive_portal example uses 192.168.4.1 and works on Android. 1.0.0 also differed from that example in ways
+  1.0.1 removes too: it scanned just after the access point opened, offered an `http://` DHCP option 114, and started
+  its DNS socket bound to the access point's address before the access point was up. Two tests tell the causes apart
+  (net README, bring-up item 3): `adb shell dumpsys network_stack` on the phone (its validation log says "DNS
+  response to the URL is private IP", or shows the HTTP probe's `ret=`), and ESP-IDF's stock example flashed on the
+  same bar with the same phone. The setup network leads nowhere, so a public address only stands in for the hosts
+  phones check while they're on it; 4.3.2.1 is the one many ESP32 captive portals use (WLED's, for one). It is a real,
+  routed internet address (Lumen's), so a request that leaves the phone over mobile data instead (a typed
+  `http://4.3.2.1` with mobile data on) reaches that network, not the bar; decisions.md (Wi-Fi) has the trade-off and
+  the never-routed alternative, 192.0.2.1. It's `NET_SETUP_IP` (net_port.h).
 - **Captive portal:** during setup, the phones' check paths (`/generate_204`, `/hotspot-detect.html`,
   `/connecttest.txt` and the others in `net_setup_probe_path()`) and any non-API request with a foreign `Host` get
   `302` to `http://4.3.2.1/` with a short HTML body, so phones open the sign-in sheet; API requests keep api.md's
-  `421 wrong_host`. Which network a request came in on is the socket's own address (lwIP reports an IPv4 client on
-  the dual-stack listener as `::ffff:a.b.c.d`, which is unmapped); if that can't be read as IPv4, a peer in the setup
-  subnet while the AP is up counts as the setup network.
+  `421 wrong_host`. A request is on the setup network when the socket's own address is 4.3.2.1 **and** the peer is
+  in 4.3.2.0/24 (lwIP reports an IPv4 client on the dual-stack listener as `::ffff:a.b.c.d`, which is unmapped). The
+  peer matters because lwIP accepts a packet for 4.3.2.1 on any interface: while the AP is up next to the office link
+  (the join, the Connected screen, the 15 s linger), an office host with a route to 4.3.2.1 through the bar would
+  otherwise reach the setup endpoints, which take no token; a forged source address can't finish the TCP handshake.
+  If the socket's address can't be read as IPv4, a peer in the setup subnet while the AP is up counts.
 - **mDNS:** host `tinybar` (or what it gets after a conflict), `_tinybar._tcp` and `_http._tcp` on port 80 with the
   TXT record of api.md section 3; instance name = `device.name`.
 - **HTTP:** `max_open_sockets` 7 with `lru_purge_enable`, header limit 2048 (sdkconfig), body limit 2048 (router),

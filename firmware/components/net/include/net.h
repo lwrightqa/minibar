@@ -10,8 +10,8 @@
  *                    through the protocol-safe writer (api.md 6.4: protocol lines are whole, start a line, and logging
  *                    never blocks when nobody reads the port).
  *   net_init()       netif, event loop, Wi-Fi driver, stored credentials, the token table, binds the router.
- *   net_start()      after the app task runs: station or setup mode, HTTP server, mDNS, SNTP, the USB reader task,
- *                    and the "ready" event line.
+ *   net_start()      after the app task runs: the HTTP server, then station or setup mode (mDNS and SNTP once
+ *                    online), then the USB reader task and the "ready" event line.
  * Events posted: TB_EV_WIFI (setup progress, link up/down), TB_EV_TIME_SET, TB_EV_USB_LINK.
  */
 #pragma once
@@ -35,8 +35,8 @@ esp_err_t net_start(void);
 tb_wifi_mode_t net_wifi_start_mode(void);
 
 /* core's Wi-Fi effects (main forwards them). */
-void net_setup_begin(void);     /* TB_FX_WIFI_SETUP: start TinyBar-Setup (open), 192.168.4.1, DNS catch-all, page;
-                                 * forgets a saved skip */
+void net_setup_begin(void);     /* TB_FX_WIFI_SETUP: start TinyBar-Setup (open) at NET_SETUP_IP (4.3.2.1), DNS
+                                 * catch-all, page; forgets a saved skip */
 void net_setup_skip(void);      /* TB_FX_WIFI_SKIP: stop it; stay offline (station off), and remember it */
 void net_setup_done(void);      /* TB_FX_WIFI_DONE: the Connected screen moved on; stop the setup network */
 

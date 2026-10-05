@@ -12,7 +12,8 @@
  * One small task, created the first time; between setup sessions it closes its socket and sleeps. net_wifi.c starts
  * it on WIFI_EVENT_AP_START and stops it when the setup network closes.
  *
- * The log (INFO) has every query, the first 40 a minute: who asked, the name and type, and what it got.
+ * The log (INFO) has every query, the first 40 a minute: who asked, the name and type, and what it got, written
+ * after the answer went out.
  */
 #include <errno.h>
 #include <stdlib.h>
@@ -54,7 +55,9 @@ static const char *type_name(uint16_t t, char buf[12])
     }
 }
 
-static void log_query(const uint8_t *q, int n, uint32_t from, const uint8_t *a, size_t m)
+/* After the answer went out (send_err: its errno, or 0), so the log never delays it: the logger can wait up to 20 ms
+ * for the port. */
+static void log_query(const uint8_t *q, int n, uint32_t from, const uint8_t *a, size_t m, int send_err)
 {
     int dropped;
     if (!net_log_quota_take(&s_quota, esp_timer_get_time() / 1000, DNS_LOG_PER_MIN, &dropped)) return;
@@ -67,6 +70,8 @@ static void log_query(const uint8_t *q, int n, uint32_t from, const uint8_t *a, 
         return;
     }
     if (!m) ESP_LOGI(TAG, "%s asks %s %s: no answer (didn't fit)", who, type_name(type, tb), name);
+    else if (send_err)
+        ESP_LOGW(TAG, "%s asks %s %s: the answer wasn't sent (errno %d)", who, type_name(type, tb), name, send_err);
     else if (a[7]) ESP_LOGI(TAG, "%s asks %s %s: answered %s", who, type_name(type, tb), name, net_ip_str(s_ip, ip));
     else ESP_LOGI(TAG, "%s asks %s %s: no address of that type (NODATA)", who, type_name(type, tb), name);
 }
@@ -117,9 +122,9 @@ static void serve(void)
         uint32_t me = s_ip, mask = s_mask;
         if (!net_ip_same_subnet(from.sin_addr.s_addr, me, mask)) continue;    /* not from TinyBar-Setup */
         size_t m = net_dns_answer(q, (size_t)n, me, a, 600);
-        log_query(q, n, from.sin_addr.s_addr, a, m);
-        if (m && sendto(sock, a, m, 0, (struct sockaddr *)&from, sizeof from) < 0)
-            ESP_LOGW(TAG, "answer to %s not sent (errno %d)", net_ip_str(from.sin_addr.s_addr, ip), errno);
+        int send_err = 0;
+        if (m && sendto(sock, a, m, 0, (struct sockaddr *)&from, sizeof from) < 0) send_err = errno ? errno : -1;
+        log_query(q, n, from.sin_addr.s_addr, a, m, send_err);
     }
     free(q);
     free(a);

@@ -71,6 +71,9 @@ bool net_log_quota_take(net_log_quota_t *q, tb_ms_t now, int max, int *dropped_b
 /* Text from the network (a Host header, a path) made safe for one log line: printable ASCII kept, every other byte
  * shown as '?', cut to cap - 1 bytes ending in "..." when it's longer. NULL shows as "-". Returns out. */
 char *net_log_text(char *out, size_t cap, const char *in);
+/* A request's path for the log, as net_log_text() but without its query or fragment: other apps' plain-HTTP requests
+ * can carry tokens there. A path that had one ends in "?..." ("/generate_204?x=1" logs as "/generate_204?..."). */
+char *net_log_path(char *out, size_t cap, const char *path);
 
 /* ---------- why a Wi-Fi join failed (api.md 13.3) ---------- */
 typedef enum {

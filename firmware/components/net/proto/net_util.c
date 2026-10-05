@@ -281,6 +281,22 @@ char *net_log_text(char *out, size_t cap, const char *in)
     return out;
 }
 
+char *net_log_path(char *out, size_t cap, const char *path)
+{
+    if (!cap) return out;
+    if (!path) path = "-";
+    size_t n = strcspn(path, "?#"), o = 0;
+    bool full = false;
+    for (size_t i = 0; i < n && !full; i++) {
+        unsigned char c = (unsigned char)path[i];
+        full = !put_char(out, cap, &o, c < 0x20 || c > 0x7E ? '?' : (char)c);
+    }
+    for (const char *t = path[n] ? "?..." : ""; *t && !full; t++) full = !put_char(out, cap, &o, *t);
+    if (full) mark_cut(out, o);
+    out[o] = '\0';
+    return out;
+}
+
 /* ======================================================================================================== */
 /* Wi-Fi join errors                                                                                        */
 /* ======================================================================================================== */

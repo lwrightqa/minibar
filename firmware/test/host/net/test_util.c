@@ -306,6 +306,24 @@ TB_TEST(log_text_keeps_a_line_a_line)
     TB_EQ_STR(net_log_text(one, sizeof one, "abc"), "");
 }
 
+TB_TEST(log_path_leaves_the_query_out)
+{
+    char out[16];
+    TB_EQ_STR(net_log_path(out, sizeof out, "/generate_204"), "/generate_204");
+    TB_EQ_STR(net_log_path(out, sizeof out, "/a?token=s3cr3t"), "/a?...");
+    TB_TRUE(strstr(out, "s3cr3t") == NULL);
+    TB_EQ_STR(net_log_path(out, sizeof out, "/a#frag"), "/a?...");
+    TB_EQ_STR(net_log_path(out, sizeof out, "?k=v"), "?...");
+    TB_EQ_STR(net_log_path(out, sizeof out, "/a\r\nb"), "/a??b");
+    TB_EQ_STR(net_log_path(out, sizeof out, NULL), "-");
+    /* long: cut with "...", and never a byte of the query */
+    TB_EQ_STR(net_log_path(out, sizeof out, "/0123456789abcdef?k=v"), "/0123456789a...");
+    TB_EQ_STR(net_log_path(out, sizeof out, "/0123456789a?kv"), "/0123456789a...");
+    TB_EQ_STR(net_log_path(out, sizeof out, "/0123456789?k"), "/0123456789?...");     /* exactly full */
+    char one[1] = {'x'};
+    TB_EQ_STR(net_log_path(one, sizeof one, "/a?b"), "");
+}
+
 TB_TEST(dns_ignores_garbage)
 {
     uint8_t q[256], a[512];

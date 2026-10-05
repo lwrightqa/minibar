@@ -13,9 +13,10 @@
  *   2. the access point's DHCP server, changed while it's stopped: the setup address, the bar as the DNS server, and
  *      no captive-portal option 114 (RFC 8908 wants an HTTPS API address there; an http one only invites oddities);
  *   3. mode, then the access point's settings, then esp_wifi_start(), so it never comes up under the driver's
- *      default name;
+ *      default name (during "Set up again" that restart drops the office link, and the calendar is told);
  *   4. the DNS catch-all once the access point is up (WIFI_EVENT_AP_START).
- * While a phone is on the setup network nothing scans, unless the page has no networks to show.
+ * If the setup address can't be set, the network stays closed (it would answer every request 421); Set up again
+ * tries again. While a phone is on the setup network nothing scans, unless the page has no networks to show.
  * The log says when the setup network opens (channel and address), and each phone that joins, gets an address and
  * leaves (INFO, at most 40 lines a minute).
  *
@@ -356,7 +357,10 @@ static void on_wifi(void *arg, esp_event_base_t base, int32_t id, void *data)
         }
         if (was_up) {
             ESP_LOGW(TAG, "link down (reason %d)", d->reason);
+            /* On the setup screens core isn't told (they show setup; net_wifi_setup_done() catches it up), but the
+             * calendar is, so it doesn't sync through a link that's gone. */
             if (mode != M_SETUP) post_wifi(TB_WIFI_EV_LINK_DOWN, NULL, NULL, NULL, NULL);
+            else cal_sync_set_online(false);
         }
         /* On the setup screens the station waits for the page's choice: reconnecting to the old network could move
          * the setup network to another channel under the phone. */
@@ -521,6 +525,7 @@ static void on_ip(void *arg, esp_event_base_t base, int32_t id, void *data)
         wmode_t mode = s_mode;
         UNLOCK();
         if (was && mode != M_SETUP) post_wifi(TB_WIFI_EV_LINK_DOWN, NULL, NULL, NULL, NULL);
+        else if (was) cal_sync_set_online(false);      /* setup screens: as in WIFI_EVENT_STA_DISCONNECTED */
     } else if (id == IP_EVENT_AP_STAIPASSIGNED) {
         const ip_event_ap_staipassigned_t *e = data;
         char ip[16];
@@ -673,6 +678,14 @@ static bool setup_wanted(void)
     return want;
 }
 
+/* Set up again (hold, Wi-Fi) tries again: the caller's setup_wanted() is false from here on. */
+static void ap_give_up(void)
+{
+    LOCK();
+    s_ap_want = false;
+    UNLOCK();
+}
+
 /* Open TinyBar-Setup's access point. The caller holds the radio lock. */
 static void ap_open(void)
 {
@@ -686,7 +699,13 @@ static void ap_open(void)
     if (err != ESP_OK && err != ESP_ERR_ESP_NETIF_DHCP_ALREADY_STOPPED)
         ESP_LOGW(TAG, "setup network: stopping its DHCP server: %s", esp_err_to_name(err));
     err = esp_netif_set_ip_info(s_ap, &info);
-    if (err != ESP_OK) ESP_LOGE(TAG, "setup network: its address: %s", esp_err_to_name(err));
+    if (err != ESP_OK) {
+        /* At any other address every request would get 421 (net_http.c knows the setup network by NET_SETUP_IP), so
+         * the network stays closed rather than opening as a dead end. */
+        ESP_LOGE(TAG, "setup network: its address " NET_SETUP_IP ": %s; not opening it", esp_err_to_name(err));
+        ap_give_up();
+        return;
+    }
     dhcps_offer_t dns_on = OFFER_DNS;
     err = esp_netif_dhcps_option(s_ap, ESP_NETIF_OP_SET, ESP_NETIF_DOMAIN_NAME_SERVER, &dns_on, sizeof dns_on);
     if (err != ESP_OK) ESP_LOGE(TAG, "setup network: offering a DNS server: %s", esp_err_to_name(err));
@@ -710,21 +729,29 @@ static void ap_open(void)
     ap.ap.authmode = WIFI_AUTH_OPEN;
     ap.ap.max_connection = 4;
     if (s_running) {
+        LOCK();
+        bool office = s_sta_up;
+        UNLOCK();
+        if (office) {
+            /* Set up again: the office link goes with the restart. Core isn't told on the setup screens, but the
+             * calendar is now, rather than syncing through a link that's gone for the whole of setup. */
+            ESP_LOGI(TAG, "leaving the office Wi-Fi for the setup network");
+            cal_sync_set_online(false);
+        }
         esp_wifi_stop();
         s_running = false;
     }
+    /* Logged before the start: WIFI_EVENT_AP_START ("setup network up") often runs before esp_wifi_start() returns. */
+    ESP_LOGI(TAG, "opening the setup network");
     err = esp_wifi_set_mode(WIFI_MODE_APSTA);
     if (err == ESP_OK) err = esp_wifi_set_config(WIFI_IF_AP, &ap);
     if (err == ESP_OK) err = esp_wifi_start();
     if (err == ESP_OK) {
         s_running = true;
-        ESP_LOGI(TAG, "opening the setup network");
         return;
     }
     ESP_LOGE(TAG, "the setup network didn't open: %s", esp_err_to_name(err));
-    LOCK();
-    s_ap_want = false;      /* Set up again (hold, Wi-Fi) tries again */
-    UNLOCK();
+    ap_give_up();
 }
 
 /* J_SETUP_OPEN: one scan with the access point still closed, then open it. */
@@ -732,6 +759,12 @@ static void setup_open(void)
 {
     if (!setup_wanted()) return;
     RADIO_LOCK();
+    /* Again under the radio lock: a Skip that came in between has already turned the radio off, and mustn't find it
+     * back on in station mode while the bar is offline. A Skip after this point stops what this starts. */
+    if (!setup_wanted()) {
+        RADIO_UNLOCK();
+        return;
+    }
     if (!s_running) {
         esp_err_t err = esp_wifi_set_mode(WIFI_MODE_STA);
         if (err == ESP_OK) err = esp_wifi_start();
@@ -923,7 +956,7 @@ void net_wifi_setup_begin(void)
     drop_pending_cal_locked();
     bool already = s_ap_want;       /* up or opening (or lingering after Connected) */
     s_ap_want = true;
-    bool idle = s_ap_open && s_ap_clients == 0;
+    bool open = s_ap_open, idle = s_ap_open && s_ap_clients == 0;
     UNLOCK();
     if (was_skipped) job(J_CLEAR_SKIP);
     esp_timer_stop(s_linger_timer);
@@ -936,10 +969,25 @@ void net_wifi_setup_begin(void)
             s_ap_want = false;      /* Set up again tries again */
             UNLOCK();
         }
-    } else {
+    } else if (open) {
         ESP_LOGI(TAG, "setup begins: " SETUP_SSID " is already up");
         if (idle) job(J_SCAN);      /* no phone on it: a fresh list costs nobody anything */
+    } else {
+        ESP_LOGI(TAG, "setup begins: " SETUP_SSID " is still opening");
     }
+}
+
+/* Once the Connected screen has moved on, core hears about a link that dropped while setup held it back (a drop
+ * during the Connected screen), and the station reconnects as it would anywhere else. */
+static void catch_up_after_setup(void)
+{
+    LOCK();
+    bool down = s_mode == M_STA && s_have_creds && !s_sta_up && !s_joining;
+    UNLOCK();
+    if (!down) return;
+    ESP_LOGW(TAG, "the office Wi-Fi dropped during setup: reconnecting");
+    post_wifi(TB_WIFI_EV_LINK_DOWN, NULL, NULL, NULL, NULL);
+    job(J_CONNECT);
 }
 
 void net_wifi_setup_skip(void)
@@ -972,10 +1020,12 @@ void net_wifi_setup_skip(void)
 void net_wifi_setup_done(void)
 {
     LOCK();
-    if (s_mode == M_SETUP) s_mode = M_STA;
+    bool was_setup = s_mode == M_SETUP;
+    if (was_setup) s_mode = M_STA;
     UNLOCK();
     esp_timer_stop(s_linger_timer);
     esp_timer_start_once(s_linger_timer, AP_LINGER_US);
+    if (was_setup) catch_up_after_setup();
 }
 
 bool net_wifi_rf_on(void)
