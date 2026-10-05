@@ -167,6 +167,7 @@ h1 .dot { color: var(--state); transition: color .3s; }
 }
 .device.flipped .lcd { transform: rotate(180deg); }
 .scr.off .lcd { opacity: 0; }
+.scr.switching :is(.lcd, .bar i) { transition: none; }
 
 /* Sizes, weights and font roles are variables so a design direction can change them; the fallbacks are the original
    Big Shoulders look. --fv-* carry font-variation-settings for each role (set only for variable pixel fonts that need
@@ -2699,6 +2700,9 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
         // layout a message fits by its ink, like any headline: its last dot's blank side bearing may hang over.
         const hang = () => root.dataset.layout === 'pixel' && pf && pf.rsb ? (el._rsb ?? pf.rsb) * parseFloat(getComputedStyle(el).fontSize) * k : 0;
         const wide = () => over(el, mq, hang()) > .01;
+        // In the pixel layout a scrolling message moves a whole pixel at a time, as LVGL scrolls a label, so it stays
+        // sharp: one step per pixel of the distance it travels (its own width, the column plus the text).
+        const steps = () => { if (root.dataset.layout === 'pixel' && mq.classList.contains('scroll')) el.style.animationTimingFunction = `steps(${Math.max(1, Math.round(el.getBoundingClientRect().width * k))}, end)`; };
         if (ladder) {
           const roll = root._ladder.marquee ? root._ladder.marquee[0] : ladder[ladder.length - 1];
           if (mq.classList.contains('scroll')) set(el, roll);
@@ -2708,10 +2712,12 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
             while (i < ladder.length - 1 && wide()) set(el, ladder[++i]);
             if (wide()) { set(el, roll); mq.classList.add('scroll'); }
           }
+          steps();
           return;
         }
         if (g) set(el, Math.max(g, Math.floor(px / g + 1e-6) * g));
         if (!mq.classList.contains('scroll') && wide()) mq.classList.add('scroll');
+        steps();
         return;
       }
       // Candidate sizes, largest first.
@@ -4933,6 +4939,9 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     s.theme = t;
     saveTheme();
     style = themeStyle(t);
+    // In one frame, as the bar redraws: the status-color fade between statuses doesn't run for a switch.
+    screen.classList.add('switching');
+    requestAnimationFrame(() => requestAnimationFrame(() => screen.classList.remove('switching')));
     $('styleOut').hidden = true;
     $('styleMsg').textContent = '';
     applyStyle();
