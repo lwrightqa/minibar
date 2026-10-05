@@ -123,6 +123,7 @@ The bar has a small speaker, driven by the ES8311 codec, and no vibration motor.
 
 - Setup by QR code: the bar shows a QR code that joins the phone to its own `MiniBar-Setup` network, where a page lets the user choose the office Wi-Fi.
 - Supports password and work-login (username plus password) networks. Guest networks with a sign-in web page are not supported; the setup page says so.
+- **Decided (2026-10-05): the bar remembers up to 5 Wi-Fi networks.** The user uses one bar at home and at work, and the bar kept only one network: setting up at work replaced home, and back home it retried the work network forever without offering setup. Now Set up **adds** a network (the same network name updates its password), the bar keeps up to 5, and when a sixth is added the one used longest ago goes. At power-on and whenever the link drops it scans and joins the strongest saved network in range. The Remote lists the saved networks with a Remove button on each. When none is in range the bar says so and points to hold, Wi-Fi, Set up to add this place. Mock-up first, then firmware (the design is in progress; the open questions are below). The single saved network of today migrates as the first entry, so nobody sets up again.
 - Skip uses the bar offline: statuses and the Pomodoro still work; the calendar and Remote don't.
   - *(2026-10-04, firmware, lead developer):* the skip is **remembered**: after Restart or power-on an offline bar
     starts offline, with its radio off and no open MiniBar-Setup network, as the mock-up's `powerOn()` keeps offline
