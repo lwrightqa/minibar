@@ -8,7 +8,7 @@
  *          silence at 0.9 s (mock-up chime()): 784, 988, 1175 Hz going to a break, 1175, 988, 784 Hz back to focus.
  *          Peaks at -13.1 dBFS.
  *   tick   25 ms of white noise shaped by (1 - t)^6, band-passed at 2000 Hz and 1700 Hz alternately (Q 1.6), at gain
- *          0.25 (Soft) or 0.45 (Medium): peaks at -22.8 and -17.7 dBFS, 9.7 and 4.6 dB below the chime (mock-up
+ *          0.55 (Soft) or 1.10 (Medium): peaks at -16.0 and -10.0 dBFS, near the chime's peak (a 25 ms tick sounds much quieter) (mock-up
  *          tickSound(), decisions.md "Ticking during focus"). One a second while ticking is on, the first a second
  *          after it's turned on.
  * A chime and a tick that overlap are mixed, as the mock-up's Web Audio does; a new chime restarts the chime.
