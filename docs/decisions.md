@@ -301,6 +301,16 @@ The menu-bar app that sets **On a call** (see Automatic status). The full spec, 
   - iPhone calls that don't go through the Mac.
   - Notifications, auto-update, analytics and the App Store.
 
+### Decided (2026-10-05): Download for Mac
+
+- **The bar hands out the Mac app.** The Remote gets a **Download for Mac** button that serves the app's zip from the bar's own flash, from a small read-only partition in the free space after the two app slots (`firmware/partitions.csv`: about 2.7 MB free after `ota_1`). The SD card is not used.
+- **What the bar can't do:** detecting a call still needs the app running on the Mac. The button only makes installing it easy.
+- **Accepted by the user:**
+  - The app is built on a Mac first (`mac/scripts/build-app.sh`); the firmware image then carries the zip. Nothing in this session can build macOS binaries.
+  - macOS refuses an unsigned, un-notarized app until the person opens System Settings › Privacy & Security and chooses **Open Anyway**. The Remote's instructions say so. Notarizing would need an Apple Developer account, which isn't assumed.
+  - Updating the shipped copy means flashing the bar again until the firmware has over-the-air updates. An app-only flash at 0x30000 leaves the partition alone.
+- **Plan:** mock-up first (the button, its helper line with version and size, the first-run steps, the no-app state, a Simulate switch), then the firmware (the partition and its header, the download endpoint, `paired`-style fields in `GET /api/v1/info` for the carried version and size, the build tool and the merged image). The UX spec, acceptance criteria and firmware note are being written (`scratchpad/team/macdl/`).
+
 ### Open (2026-10-04)
 
 - **More than one TinyBar on a network:** they can't all be `tinybar.local`, which affects the Remote's address as well as the Mac app. **Proposed:** a bar keeps `tinybar.local` when it's free, advertises its ID over Bonjour and shows its real address on the Wi-Fi screen. The Mac app finds its bar by ID. *(2026-10-04, pairing round: the mock-up now shows the bar's **name and real address**, for example "TinyBar 2A1C" and `tinybar.local` (or `tinybar-2.local` after a name clash). They appear on the Connected screen of Wi-Fi setup, the Wi-Fi menu's Network tile, and the Remote's pairing prompt. The pairing screen's foot shows the name too. The default name, "TinyBar" plus the last four characters of the bar's ID, is **Proposed** in `docs/api.md` section 3.)*
