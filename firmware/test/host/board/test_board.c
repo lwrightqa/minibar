@@ -427,8 +427,8 @@ TB_TEST(player_ticks_once_a_second_at_the_right_level)
     size_t n = 5 * BRD_AUDIO_RATE;
     int16_t *out = calloc(n, sizeof *out);
     run_player(&p, 0, out, n);
-    /* Soft: -30.8 dBFS, 17.7 dB below the chime. Ticks start at 1, 2, 3, 4 s and nothing in between. */
-    TB_NEAR(brd_peak_dbfs(out, n), -30.8, 0.2);
+    /* Soft: -16.0 dBFS. Ticks start at 1, 2, 3, 4 s and nothing in between. */
+    TB_NEAR(brd_peak_dbfs(out, n), -16.0, 0.2);
     int ticks = 0;
     for (size_t sec = 0; sec < 5; sec++) {
         float pk = brd_peak_dbfs(out + sec * BRD_AUDIO_RATE, 960);
@@ -438,10 +438,10 @@ TB_TEST(player_ticks_once_a_second_at_the_right_level)
     TB_EQ_INT(ticks, 4);
     TB_TRUE(brd_peak_dbfs(out, 960) < -100);    /* not at 0 s */
 
-    /* Medium: -22.8 dBFS. */
+    /* Medium: -10.0 dBFS. */
     brd_player_set_ticking(&p, 2, 5000);
     run_player(&p, 5000, out, n);
-    TB_NEAR(brd_peak_dbfs(out, n), -22.8, 0.2);
+    TB_NEAR(brd_peak_dbfs(out, n), -10.0, 0.2);
     free(out);
     sounds_free(&s);
 }
@@ -486,7 +486,7 @@ TB_TEST(player_chime_mixes_with_ticks_and_restarts)
     size_t at1s = BRD_AUDIO_RATE;
     int wrong = 0, differs = 0;
     for (size_t i = 0; i < 960; i++) {
-        int32_t want = s.chime_down[at1s + i] + (((int32_t)s.tick_a[i] * 8192) >> 15);
+        int32_t want = s.chime_down[at1s + i] + (((int32_t)s.tick_a[i] * (int32_t)lroundf(BRD_TICK_GAIN_MEDIUM * 32768.0f)) >> 15);
         wrong += out[at1s + i] != want;
         differs += out[at1s + i] != s.chime_down[at1s + i];
     }
