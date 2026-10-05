@@ -666,11 +666,11 @@ QA checked every control on every screen of the mock-up while building `docs/con
 - On USB the board is always powered; "power off" on USB means deep sleep woken by PWR.
 - Battery connector MX1.25, **pin 2 positive**. Charger ETA6098 at 1.2 A. The board has battery protection and reverse-polarity protection.
 - Flashing: merged images go at **0x0**; use **115200** baud (a faster write once left the screen showing noise).
-- **Verified on the user's bar (2026-10-05, firmware 1.0.0 and 1.0.1):**
+- **Verified on the user's bar (2026-10-05, firmware 1.0.0 to 1.0.2):**
   - It powers on, holds its own power, and draws the screen. The Wi-Fi setup QR code shows on first start.
   - Wi-Fi setup works from an Android phone with 1.0.1 (see Automatic status, the setup address).
   - Sound works: the focus ticking is audible through the ES8311 and the amplifier, and the chime at a phase's end sounds right at the current speaker volume (75), so the volume stays. Soft and Medium ticking were both too quiet; both were raised (see Pomodoro, Ticking).
-  - Orientation: the user stands the bar with the **buttons on top**. The motion sensor's steady reading is right (the picture rights itself), but the first frame at power-on came up upside down. Fixed in 1.0.2, not yet tested on the bar.
+  - Orientation: the user stands the bar with the **buttons on top**. The motion sensor's steady reading is right (the picture rights itself), but with 1.0.1 the first frame at power-on came up upside down. **Fixed in 1.0.2 and confirmed by the user (2026-10-05): the picture is the right way up straight away.** That also confirms the −Y up axis the firmware inferred. (The user flashed the app-only file at 0x30000, keeping Wi-Fi and pairings.)
   - The Remote opens from a Windows PC on the office Wi-Fi once the bar is set up (2026-10-05).
   - Windows note: joining TinyBar-Setup from a PC that's also online another way (a cable or a dock) opens msn.com instead of the setup page, because Windows' sign-in check goes out the other connection. Typing `http://4.3.2.1` works, since that address always goes through the bar's Wi-Fi.
   - BOOT and PWR are on the edge the user keeps on top, slightly inset in the case: turned over, the bar rests on that edge without pressing them (checked by the user, 2026-10-05). So flipping can't press PWR or power the bar off by accident.

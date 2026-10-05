@@ -165,7 +165,8 @@ put them in `sdkconfig.defaults`).
 
 - The backlight's real dark point (step 3) and whether the Light levels look like the mock-up's.
 - The IMU's axis and sign (step 5): −Y with the buttons on top, inferred from 1.0.1 on the bar (its steady pictures
-  were right with +Y and no turn); the `IMU at start:` line confirms it.
+  were right with +Y and no turn). Confirmed on the bar with 1.0.2 (2026-10-05): the first frame is the right way up
+  straight away. The `IMU at start:` line would show the actual reading; no serial log was taken.
 - What the QMI8658's first samples really hold after the enable, and how long its data-ready bit takes (the start-up
   log line gives the time and counts): the cause of 1.0.1's upside-down first frame isn't confirmed.
 - Touch ranges at the edges (whether raw X reaches 640 and raw Y 172).

@@ -19,8 +19,9 @@ How the code is organized, and why, is in [ARCHITECTURE.md](ARCHITECTURE.md).
 > and every screen the mock-up can show matches it line for line. 1.0.0 was flashed once: it boots, holds power and
 > draws the QR screen, and an Android phone couldn't get to the setup page. With 1.0.1 the phone sets up Wi-Fi and
 > the Remote pairs with the code on the bar (which of 1.0.1's changes fixed the phone isn't confirmed; see "What's
-> verified"), but its first frame comes up upside down with the side buttons on top, which is how the bar stands,
-> until it rights itself: 1.0.2 fixes that, and is merged here with the pairing alignment.
+> verified"), but its first frame came up upside down with the side buttons on top, which is how the bar stands,
+> until it righted itself. 1.0.2 fixes that, confirmed on the bar (the picture is right straight away), and is
+> merged here with the pairing alignment.
 > Everything else that touches the hardware or the radio is unverified until it runs on the bar. See "What's
 > verified" at the end, and the bring-up checklists in `components/board/README.md`, `components/net/README.md` and
 > `components/calendar/README.md`.
@@ -260,8 +261,10 @@ ARCHITECTURE.md section 14):
   the troubleshooting entries on an upside-down picture), and `brd_logic.h`'s tick gains (0.55 Soft, 1.10 Medium)
   were already the same on both sides. The ui host tools and the Playwright page suites weren't run again; the
   orientation fix doesn't touch ui or the pages.
-- **Unverified until it runs on the bar:** both rounds' lists below, and the 1.0.2 image itself; nothing from this
-  merge has been flashed yet.
+- **Verified on the bar (2026-10-05):** the user flashed the 1.0.2 app from `orient-fix` (commit 901c8c4, the
+  app alone at 0x30000) and the first frame is the right way up with the buttons on top. That is the orientation
+  side of this merge; the pairing alignment's list below is still unverified on the bar, and this merged image
+  itself hasn't been flashed.
 
 **2026-10-05, pairing aligned with the mock-up's pairing fix round** (details in ARCHITECTURE.md sections 10 and 14):
 
