@@ -54,19 +54,21 @@ python3 firmware/components/ui/tools/compare.py out/ref out/snaps out/cmp
 ctest --test-dir firmware/build-host-ui
 ```
 
-79 scenes: every status and its info-column variants, the Pomodoro (ready, running, paused, both breaks, both waiting
+89 scenes: every status and its info-column variants, the Pomodoro (ready, running, paused, both breaks, both waiting
 screens, the pill on other screens, a long day's foot and the longest paused kickers), On a call (with and without an
 app name, a long name, during a meeting), In a meeting from the calendar (titles off and on, private, a long title),
 the set-aside glyphs and the Mac icon, the four Wi-Fi setup screens, every menu (the Wi-Fi menu with 3 devices
-paired, none, and offline, and Forget all's confirmation), toasts over a status, the clock, the setup screen and a
-menu, a cut title, the hold and Powering off screens, the flash, the splash, the dark screen, flipped, the pairing
-screen (for a Mac, a phone, and a named Mac), and the firmware's own screens (plain Away, the clock before it's set,
-the quick menu with the Wi-Fi link down).
+paired, 10 ("Full"), none (the "pair at" foot with the host, the IP address after a name clash, and "pair at its IP
+address" when both are too long), and offline, and Forget all's confirmation with 3 and with 10 devices), toasts over
+a status, the clock, the setup screen and a menu, a cut title, the hold and Powering off screens, the flash, the
+splash, the dark screen, flipped, the pairing screen (for a Mac, a phone, a named Mac, a script, and with 0:05 left),
+how pairing ends ("Pairing canceled", "Paired · iPhone", "Pairing canceled · Focus started", "Forgot 3 devices"),
+and the firmware's own screens (plain Away, the clock before it's set, the quick menu with the Wi-Fi link down).
 
 The snapshot tool draws every scene in one process, one after another, as the device does; tools/compare.py misses
 a line drawn a few pixels off when it only counts pixels (a 4 px drop of the sub line was under 2%), so it also
-measures each text line's baseline in both. As of the 2026-10-04 review round (after the fixes below), 76 scenes are
-compared and every text line sits on the mock-up's baseline; the remaining differences are anti-aliasing at glyph
+measures each text line's baseline in both. As of the 2026-10-05 firmware alignment with the mock-up's pairing round,
+86 scenes are compared and every text line sits on the mock-up's baseline; the remaining differences are anti-aliasing at glyph
 edges, whole-pixel glyph advances (LVGL) against the browser's fractional ones, RGB565 color depth, and the QR code's
 pattern (below). Under 8% of pixels differ in any scene, nearly all at glyph edges.
 
@@ -80,6 +82,13 @@ pattern (below). Under 8% of pixels differ in any scene, nearly all at glyph edg
   two wide; Forget all is its own three tiles; the pairing screen's label, foot, sub line and progress bar; the
   Connected kicker names the bar; four palette colors that RGB565 rounding tinted; the Focus progress track; word
   values at 129.
+- **The pairing round (2026-10-05):** the Devices tile with nothing paired says where to pair. core gives the feet to
+  try in order (`tb_tile_t.foot` then `foot_alt`), and `put_menu()` draws the first whose every line fits the tile's
+  content width on one line, measured with `lv_text_get_size` (no wrapping) against 86.53 px with the mock-up's
+  half-pixel allowance: "tinybar.local" is 75 px, "10.0.4.42" 54 px, "tinybar-2.local" 90 px (too wide). Forget all's
+  device names stop at two lines the way Chrome's line clamp does (what the wrap puts on two lines, then "…"), not
+  with LVGL's DOTS mode, which ends in three periods. `tools/ref_scenes.js` resets the mock-up's held toast between
+  scenes (the page clock is fixed, so a pairing toast would otherwise hold back every later one).
 
 The host tests (`test/host/ui`, in the lead's ctest) check every screen's copy word for word through the same scenes,
 the overlays, the redraw key, the flash curve and the capitals, that the tomato frames match the mock-up's pixel for

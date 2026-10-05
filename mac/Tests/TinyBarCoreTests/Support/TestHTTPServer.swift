@@ -82,12 +82,19 @@ final class TestHTTPServer: @unchecked Sendable {
         handle { _ in .respond(status: status, body: body) }
     }
 
+    /// Closes the listening socket and any held connections, once. A second
+    /// call does nothing: `deinit` calls this again, on whichever thread lets
+    /// go of the server last (its accept thread), possibly after the next
+    /// test's server has been given the same descriptor number, and closing
+    /// that would refuse the next test's connections.
     func stop() {
-        let held: [Int32] = state.withLock { state in
+        let held: [Int32]? = state.withLock { state in
+            guard !state.stopped else { return nil }
             state.stopped = true
             defer { state.held.removeAll() }
             return state.held
         }
+        guard let held else { return }
         held.forEach { _ = shutdown($0, Int32(SHUT_RDWR)); _ = close($0) }
         _ = shutdown(listenFD, Int32(SHUT_RDWR))
         _ = close(listenFD)

@@ -82,8 +82,10 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   check(await text('#pairAskErr') === 'Another device is pairing with this TinyBar. Try again in 2 minutes.', 'busy: ' + await text('#pairAskErr'));
   check(await p.getAttribute('#pairAsk', 'aria-disabled') === 'true', 'Pair this phone is dimmed (aria-disabled) while busy');
   check(await active() === 'pairAsk', 'and keeps focus');
-  check(!(await p.isDisabled('#pairAsk')), 'it stays focusable (not disabled)');
-  await p.click('#pairAsk');                // pressing again only repeats the wait
+  // (Playwright's isDisabled() counts aria-disabled, so ask the element itself)
+  check(await p.evaluate(() => !document.getElementById('pairAsk').disabled && document.getElementById('pairAsk').tabIndex === 0), 'it stays focusable (not disabled)');
+  await p.focus('#pairAsk');                // pressing again (Enter: Playwright won't click an aria-disabled button)
+  await p.keyboard.press('Enter');          // only repeats the wait
   await sleep(300);
   check((await state()).who === 'Mac', 'pressing it again asks nothing of the bar');
   check((await p.textContent('#phoneSay')).startsWith('Another device is pairing'), 'it says the wait again');

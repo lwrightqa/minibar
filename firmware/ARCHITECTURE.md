@@ -162,7 +162,8 @@ Effects core asks for, and what main does with them (`run_effects`):
 | `TB_FX_CAL_SYNC` | `cal_sync_now()`; if the calendar refuses (it hasn't heard the link is up, or the address just went), core gets `TB_CALEV_SYNC_FAILED`, so the quick menu's "Sync…" ends in "Couldn't sync the calendar" |
 | `TB_FX_SAVE_SETTINGS` | NVS in 2 s; a changed time zone is applied (TZ and the calendar), a changed name goes to mDNS |
 | `TB_FX_SAVE_STATE` | NVS in 2 s |
-| `TB_FX_PAIRING_CANCELED`, `TB_FX_FORGET_DEVICES` | `net_api_pairing_canceled`, `net_api_forget_devices` (core has already shown the toast) |
+| `TB_FX_PAIRING_CANCELED`, `TB_FX_FORGET_DEVICES` | `net_api_pairing_canceled` (a failed pairing for the back-off), `net_api_forget_devices` (core has already shown the toast) |
+| `TB_FX_PAIRING_RESET` | `net_api_pairing_reset`: Power off, Restart or PWR held 3 s end any code without counting a failed pairing, and clear the back-off (api.md 4.9) |
 
 ## 6. Data flow
 
@@ -223,7 +224,9 @@ Firmware additions the mock-up doesn't have (each flagged in section 13):
 - the wall clock may be unknown (`tb_clock_t.valid`);
 - today's tomatoes and focused time reset at local midnight (`tb_pomo_roll_day`) and survive a restart (NVS);
 - Wi-Fi can drop after setup (`wifi_link_up`), apart from being skipped (`TB_WIFI_OFFLINE`);
-- the pairing screen and the Devices tile (api.md 4.8, proposed);
+- the pairing screen and the Devices tile (api.md 4.8; approved with pairing on 2026-10-04, and aligned with the
+  mock-up's pairing fix round on 2026-10-05: a code stops a flash under way, the Devices tile with nothing paired gives
+  ui the "pair at" feet to measure, Power off and Restart send `TB_FX_PAIRING_RESET`);
 - Away's back-at time and note (api.md 8.1, proposed).
 
 Where core departs from the mock-up's behavior (each marked "Firmware:" in `tb_app.c`; the product manager may want
@@ -275,8 +278,9 @@ Where core departs from the mock-up's behavior (each marked "Firmware:" in `tb_a
 
 `ui_view.h` lists the layouts (status, alarm, message, setup QR, setup text, splash) and everything they show. The
 snapshot tool (`components/ui/host/`) renders scenes with the real ui code and LVGL's software renderer into
-640 × 172 RGB565 frames, written as PNG. **Implemented:** the 70 scenes in `components/ui/host/ui_scenes.c` cover the
-list below (the pairing screen as the ui proposes it); `tools/ref_scenes.js` renders the same scenes from the mock-up
+640 × 172 RGB565 frames, written as PNG. **Implemented:** the 89 scenes in `components/ui/host/ui_scenes.c` cover the
+list below (with the pairing round's screens: the pairing screen for each kind and near its end, the Wi-Fi menu's
+three "pair at" feet and Full, Forget all with ten devices, and the toasts pairing ends with); `tools/ref_scenes.js` renders the same scenes from the mock-up
 and `tools/compare.py` diffs them (see `components/ui/README.md`). Scenes to cover (compare each with the mock-up
 rendered at 640 × 172 in headless Chromium per `docs/testing.md`):
 
@@ -291,7 +295,7 @@ rendered at 640 × 172 in headless Chromium per `docs/testing.md`):
 - Overlays: quick menu (each Calendar tile state, Show again), timer menu (with and without +5, Show again),
   timer settings, Wi-Fi menu, power menu, setup menu; a toast over each layout (and flipped), the hold screen
   (Keep holding, Powering off), the alarm flash, the splash, the set-aside glyphs, the Mac and Wi-Fi-off icons, the
-  pairing screen (once designed).
+  pairing screen and how pairing ends.
 
 ## 10. Network
 
@@ -357,8 +361,14 @@ rendered at 640 × 172 in headless Chromium per `docs/testing.md`):
   carry a line break. The setup page's `setup/wifi` refuses an SSID with control characters too. Release builds log
   at Warning (`CONFIG_TINYBAR_RELEASE`). Never log tokens, the calendar address, Wi-Fi passwords or raw protocol
   lines.
-- **Pairing** (api.md section 4, **Proposed**): built behind `CONFIG_TINYBAR_API_AUTH_BEARER` (default) so
-  `TINYBAR_API_AUTH_NONE` can ship it off if the user says no.
+- **Pairing** (api.md section 4, approved by the user on 2026-10-04): built behind `CONFIG_TINYBAR_API_AUTH_BEARER`
+  (default) so `TINYBAR_API_AUTH_NONE` can still ship it off. Since the mock-up's pairing fix round (2026-10-05):
+  a code on the screen for a device that isn't paired yet holds one of the 10 places (`has_room()` in `net_pair.c`),
+  so a USB pairing of another new device meanwhile gets `token_limit` and `pair` refuses an eleventh only as a
+  safeguard (the code ends, "Pairing canceled", not a failed pairing); `POST /api/v1/pair/cancel` ends the asking
+  device's own code as a failed pairing and shares `pair`'s one-a-second limit; only a code typed right, Power off
+  and Restart clear the back-off; `pair` no longer answers `in_setup` (setup ends any code, so it's `not_pairing`);
+  and `info` reports `paired`, the count the Remote's prompt needs to clear its 10-device refusal (api.md 7.1).
 - **Logging and secrets:** `cal_sync_init()` silences esp_http_client's own log tag (`HTTP_CLIENT`) for the whole
   firmware, because some of its messages print the URL, and the calendar address is a secret. A later feature that
   uses esp_http_client (OTA, say) won't see its log either.

@@ -8,7 +8,7 @@ It talks to the bar over the USB cable when the bar is plugged into the Mac, and
 - How it looks and what it says: [`docs/mac-app-ux.md`](../docs/mac-app-ux.md).
 - What goes over the wire: [`docs/api.md`](../docs/api.md), the contract with the bar's firmware. Where these disagree about the wire format, `api.md` wins.
 
-**Status (2026-10-04):** the core (`TinyBarCore`) is complete: detection, the API messages, both links, pairing, settings, the engine, and every string the menu, the icon and Settings › Connection show. 249 tests run on Linux (Swift 6.0.3), including QA's edge cases; one is skipped there because it needs a non-root user. The macOS app target (`TinyBarMac`: the adapters, the menu and the windows) is written and passes a scratch check against stand-ins for the Apple frameworks, but has never been compiled on a Mac. Nothing has been built or run on a Mac yet; see "Not verified until it runs on a Mac".
+**Status (2026-10-05):** the core (`TinyBarCore`) is complete: detection, the API messages, both links, pairing, settings, the engine, and every string the menu, the icon and Settings › Connection show. It follows the mock-up's pairing round: the Wi-Fi page takes a code it gave up off the bar (`pair/cancel`), every pairing reply has its message, and `403 wrong_client` is read like a `401`. 276 tests run on Linux (Swift 6.0.3), including QA's edge cases; one is skipped there because it needs a non-root user. The macOS app target (`TinyBarMac`: the adapters, the menu and the windows) is written and passes a scratch check against stand-ins for the Apple frameworks, but has never been compiled on a Mac. Nothing has been built or run on a Mac yet; see "Not verified until it runs on a Mac".
 
 ## Requirements
 
@@ -57,7 +57,7 @@ The tests use XCTest and a manual clock, so the start and end delays, heartbeats
 
 **On Linux** (Swift 6.0 toolchain): `TinyBarCore` builds and its tests run. The macOS target `TinyBarMac` builds too, but only as a stub that prints a message, because every file in it is wrapped in `#if os(macOS)`. Swift still checks the syntax of the macOS code on Linux, but not its types: only a build on a Mac does that.
 
-Tests named after an acceptance criterion in `docs/mac-app.md` carry its number (`test_C14_…`). `QA*Tests` are QA's edge cases (flapping, clock changes, a canceled logout, a port vanishing mid-call, log noise on the serial line, pairing failures), kept as regression tests. One test skips when run as root, since `TIOCEXCL` doesn't stop root from opening a port twice.
+Tests named after an acceptance criterion in `docs/mac-app.md` carry its number (`test_C14_…`). `QA*Tests` are QA's edge cases (flapping, clock changes, a canceled logout, a port vanishing mid-call, log noise on the serial line, pairing failures), kept as regression tests. `PairCancelTests`, `PairingWireTests` and `WrongClientTests` cover the pairing round (2026-10-05): taking a code off the bar, every pairing reply in the Mac app's words, the messages on the wire against the local HTTP server, and `wrong_client`. One test skips when run as root, since `TIOCEXCL` doesn't stop root from opening a port twice.
 
 ## How it's put together
 
@@ -112,7 +112,7 @@ Written, but **never compiled on a Mac** (see "Not verified until it runs on a M
 | `App/MenuBarIcon.swift` | SF Symbols, `NSBezierPath` | The five icon states; the custom glyphs of mac-app-ux.md 3.3 for the whole set if any symbol is missing |
 | `App/WindowCoordinator.swift` | `NSWindow`, `NSTabViewController`, `NSHostingController` | Settings (toolbar tabs, 500 pt wide, titled after the tab) and Connect (440 pt, close button acts as Not Now or Back) |
 | `App/SettingsView.swift` | SwiftUI grouped `Form`s | General, Apps (call-app table with editable names, ignored apps, apps seen this session, Add App…), Connection (status, test call, Forget, Wi-Fi switch, Advanced), Privacy |
-| `App/ConnectModel.swift`, `App/ConnectView.swift` | SwiftUI, `@Observable` | Welcome / Connect window: USB status, login checkbox, Pair Over Wi-Fi driven by `WiFiPairingFlow`, every message of mac-app-ux.md 5.5 |
+| `App/ConnectModel.swift`, `App/ConnectView.swift` | SwiftUI, `@Observable` | Welcome / Connect window: USB status, login checkbox, Pair Over Wi-Fi driven by `WiFiPairingFlow`, every message of mac-app-ux.md 5.5; Back and closing the window take a code off the bar (5.4) |
 | `Adapters/AdapterQueue.swift` | Dispatch | The private serial queue each adapter's state lives on |
 | `Adapters/CoreAudioMicMonitor.swift` | CoreAudio process objects, `proc_pidpath` | Per-process "running input" with listeners (on CoreAudio's own notification thread, not the main run loop) and a 1-second re-read; falls back to the device-level flag (no names) if the process list isn't there. Names apps in Desktop, Documents, Downloads, iCloud Drive and other volumes from LaunchServices, so reading them never brings up a Files & Folders prompt |
 | `Adapters/CoreMediaIOCameraMonitor.swift` | CoreMediaIO | "Running somewhere" on every camera, with listeners and a 1-second re-read |

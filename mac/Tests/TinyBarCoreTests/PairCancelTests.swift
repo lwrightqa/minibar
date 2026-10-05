@@ -376,7 +376,8 @@ final class PairCancelScenarios {
             await WiFiPairingFlow.cancelCode(pairingID: id, at: endpoint, transports: limited, clock: clock)
         }
         await waitFor(1, "pair/cancel ", in: limited)
-        await clock.waitForSleepers(2)
+        // Both sleepers must be waiting before the clock moves, or the retry would never wake.
+        guard await clock.waitForSleepers(2) else { return XCTFail("the time-out and the second's wait aren't both waiting") }
         clock.advance(by: 1)
         await retrying.value
         XCTAssertEqual(cancels(limited), [Self.cancelFirst, Self.cancelFirst])
@@ -393,7 +394,7 @@ final class PairCancelScenarios {
             await WiFiPairingFlow.cancelCode(pairingID: id, at: endpoint, transports: silent, clock: clock)
         }
         await reach(gate)
-        await clock.waitForSleepers(1)
+        guard await clock.waitForSleepers(1) else { return XCTFail("the time-out isn't waiting") }
         clock.advance(by: WiFiPairingFlow.cancelTimeout)
         await waiting.value
         XCTAssertEqual(cancels(silent).count, 1)

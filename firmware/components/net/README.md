@@ -8,7 +8,7 @@ Owner: net builder. The contract is `docs/api.md`; where this file and it disagr
 |---|---|---|
 | `proto/net_api.c` | yes | The one router for HTTP and USB: every endpoint of api.md Appendix A, the Host, rate-limit, token, scope, cookie, Origin, size, Content-Type, JSON nesting and JSON checks, which token may report which call (`403 wrong_client`), the status object and its `rev`/ETag, replies kept within 8 KB, and the USB lines (`hello`, `call`, `status`, `pair`, `request`, `ready`). |
 | `proto/net_macs.c` | yes | The Mac table (api.md 5.2): per-Mac state with the token of its latest message, stale messages, call ids, `elapsed_s`, `leaving`, the 90 s time-out, ending calls by token (revoke, Forget all), and the bar's call as their sum. |
-| `proto/net_pair.c` | yes | Pairing codes, tokens (SHA-256 hashes only), scopes, back-off, and the saved table. |
+| `proto/net_pair.c` | yes | Pairing codes, tokens (SHA-256 hashes only), scopes, back-off, and the saved table. A code on the screen for a device that isn't paired yet holds one of the 10 places (api.md 4.3); `pair/cancel` ends it as a failed pairing; a code typed right, Power off and Restart clear the back-off (a USB pairing doesn't). |
 | `proto/net_util.c` | yes | Rate limits, RFC 3339, the Mac's hello time rule, the DNS catch-all's answers and the question's name for the log, the captive-portal check paths, the setup subnet check, the log's per-minute quota, its text escaping and paths without their query, Wi-Fi join errors, the USB line reader, the JSON depth check, and the scan that keeps log output from starting a line with `@tb `. |
 | `esp/net_main.c` | no | Life cycle (`net.h`). |
 | `esp/net_wifi.c` | no | Station (WPA2/WPA3 Personal, open, WPA2-Enterprise PEAP/TTLS), the TinyBar-Setup access point (scan first, then DHCP, then mode, settings and start, as ESP-IDF's captive_portal example) and join flow, the scan, credentials in NVS `wifi`, a remembered Skip (`wifi/skipped`: the next start stays offline with the radio off; Set up and a working join clear it), mDNS, SNTP, the clock's source, and the setup network's log (up, phones joining, their addresses, leaving). |
@@ -37,7 +37,7 @@ NODE_PATH=$(npm root -g) node firmware/components/net/host/pages_remote.test.js
 NODE_PATH=$(npm root -g) node firmware/components/net/host/pages_setup.test.js
 ```
 
-Run the fake bar by hand with `build-host-net/net/tb_fakebar --port 8080` (add `--setup` for the setup page, `--auth-none` for no pairing) and open `http://127.0.0.1:8080/`. `POST /_sim/usb` with a `@tb` line plays a Mac; `GET /_sim/state` shows the bar's toast and pairing code.
+Run the fake bar by hand with `build-host-net/net/tb_fakebar --port 8080` (add `--setup` for the setup page, `--auth-none` for no pairing) and open `http://127.0.0.1:8080/`. `POST /_sim/usb` with a `@tb` line plays a Mac; `GET /_sim/state` shows the bar's toast, pairing code and its label, and how many devices are paired. `POST /_sim/tap` taps the bar's screen, `/_sim/forget` is Forget all on the bar, `/_sim/restart` is what a restart does to pairing (the code ends, the back-off clears), and `/_sim/connected` puts the bar on Wi-Fi setup's Connected screen (a tap ends it).
 
 ## Bring-up checklist (nothing here has run on the board yet)
 
