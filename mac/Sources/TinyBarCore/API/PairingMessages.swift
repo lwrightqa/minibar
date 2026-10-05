@@ -69,6 +69,31 @@ public struct PairRequest: Codable, Hashable, Sendable {
     }
 }
 
+/// `POST /api/v1/pair/cancel` (api.md 4.7): takes the code this app asked for
+/// off the bar, when you go Back, close the window, quit, or the Mac sleeps.
+/// No token needed; only the `pairing_id` from `pair/start` works.
+public struct PairCancelRequest: Codable, Hashable, Sendable {
+    public var pairingID: String
+
+    public init(pairingID: String) {
+        self.pairingID = pairingID
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case pairingID = "pairing_id"
+    }
+}
+
+/// The `200` reply to `pair/cancel`: `{"ok": true}`. A code that had already
+/// ended answers `409 not_pairing` instead.
+public struct PairCancelReply: Codable, Hashable, Sendable {
+    public var ok: Bool
+
+    public init() {
+        self.ok = true
+    }
+}
+
 /// The USB `pair` command (api.md 6.6, **Proposed**): a `call`-scope token
 /// without a code, because the cable proves someone is at the desk.
 public struct USBPairRequest: Codable, Hashable, Sendable {

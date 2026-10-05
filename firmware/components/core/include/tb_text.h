@@ -29,7 +29,11 @@ bool tb_text_drawable(uint32_t cp);
  * characters and mapping typographic punctuation to what the fonts have (’ ‘ to ', “ ” to ", – — to -, … to ...).
  * Trims leading and trailing spaces. Invalid UTF-8 bytes are dropped. Tab, line feed and carriage return become a
  * space (so "two\nlines" doesn't run the words together); every other control character (U+0000..U+001F, U+007F,
- * U+0080..U+009F) is removed. Returns the length in characters ("..." counts as three).
+ * U+0080..U+009F) is removed. Characters nobody sees (api.md 2.3, pairing fix round): the spaces U+2000..U+200A,
+ * U+2028, U+2029, U+202F, U+205F and U+3000 become a space; U+200B..U+200F, U+202A..U+202E, U+2060..U+2064,
+ * U+2066..U+206F, U+FEFF, U+FE0E and U+FE0F are dropped; and a letter followed by a combining accent (U+0300, 0301,
+ * 0302, 0303, 0308, 030A or 0327, and 0340 and 0341, which are the grave and acute) becomes the precomposed Latin-1
+ * letter ("e" + U+0301 to "é"). Returns the length in characters ("..." counts as three).
  * (Note: the mapping turns – and — into "-" for typed text, as the API says; the bar's own copy may still use the
  * en dash, which the fonts carry.)
  */

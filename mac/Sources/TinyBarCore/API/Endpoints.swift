@@ -29,6 +29,8 @@ public enum Endpoints {
     public static let pairStart = Endpoint(.post, "\(TinyBarAPI.basePath)/pair/start", sendsToken: false)
     /// No token needed.
     public static let pair = Endpoint(.post, "\(TinyBarAPI.basePath)/pair", sendsToken: false)
+    /// Takes the code this app asked for off the bar (api.md 4.7). No token needed.
+    public static let pairCancel = Endpoint(.post, "\(TinyBarAPI.basePath)/pair/cancel", sendsToken: false)
     /// Unpair this Mac (Forget This TinyBar).
     public static let clientsSelf = Endpoint(.delete, "\(TinyBarAPI.basePath)/clients/self", sendsToken: true)
 }

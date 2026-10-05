@@ -123,10 +123,24 @@ static void timer_settings(tb_app_t *a)
     add(m, TB_ACT_TIMER_MENU, TB_TILE_DONE, "Settings", "Back", "to the timer menu");
 }
 
+/* With nothing paired, the Devices tile says where to pair: this bar's real address, where the Remote is. "pair at"
+ * over the host ("tinybar.local" is 75 px of the tile's 86.5 in Barlow 500 14 px), or, when the host doesn't fit on
+ * one line (a renamed host after a name clash, "tinybar-2.local", is 90 px), the IP address the bar also answers on,
+ * or, when that's too long too ("192.168.100.200"), "pair at its" over "IP address", pointing at the Network tile
+ * beside it. ui measures and picks (tb_tile_t.foot_alt), as the mock-up's showWifiMenu() measures in the browser. */
+static void devices_none_tile(tb_app_t *a)
+{
+    tb_tile_t *t = add(&a->menu, TB_ACT_NONE, TB_TILE_INFO, "Devices", "None", "");
+    snprintf(t->foot, sizeof t->foot, "pair at\n%s", a->wifi_host[0] ? a->wifi_host : "tinybar.local");
+    if (a->wifi_ip[0]) snprintf(t->foot_alt[t->n_foot_alt++], sizeof t->foot_alt[0], "pair at\n%s", a->wifi_ip);
+    snprintf(t->foot_alt[t->n_foot_alt++], sizeof t->foot_alt[0], "pair at its\nIP address");
+}
+
 /* showWifiMenu(): on the quick menu's five columns. Network is read-only and two columns wide: the office network as
  * its value, and under it this bar's name and its real address (two lines, each cut with "…"), so bars in one office
- * can be told apart. Devices (proposed) counts the paired devices and opens Forget all; with none it's read-only and
- * says how to pair. Then Set up (Change) and Back. */
+ * can be told apart. Devices counts the paired devices and opens Forget all; with none it's read-only and says where
+ * to pair (offline: "set up Wi-Fi / to pair"), so a tap there closes the menu like a tap on Network. Then Set up
+ * (Change) and Back. */
 static void wifi_menu(tb_app_t *a)
 {
     tb_menu_t *m = &a->menu;
@@ -144,8 +158,10 @@ static void wifi_menu(tb_app_t *a)
         if (a->paired_count >= TB_PAIRED_MAX) snprintf(v, sizeof v, "Full");
         else snprintf(v, sizeof v, "%u paired", (unsigned)a->paired_count);
         add(m, TB_ACT_DEVICES, TB_TILE_NORMAL, "Devices", v, "tap to\nforget all");
+    } else if (off) {
+        add(m, TB_ACT_NONE, TB_TILE_INFO, "Devices", "None", "set up Wi-Fi\nto pair");
     } else {
-        add(m, TB_ACT_NONE, TB_TILE_INFO, "Devices", "None", off ? "set up Wi-Fi\nto pair" : "pair a phone\nor a Mac");
+        devices_none_tile(a);
     }
     add(m, TB_ACT_WIFI_SETUP, TB_TILE_NORMAL, off ? "Set up" : "Change", "Set up", "show the\nQR code");
     add(m, TB_ACT_CLOSE, TB_TILE_DONE, "Close", "Back", "or wait 8 s");

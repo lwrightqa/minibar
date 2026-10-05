@@ -22,6 +22,10 @@ public struct APIErrorCode: OpenEnum {
     public static let badOrigin = APIErrorCode(rawValue: "bad_origin")
     /// Comes with `attempts_left`.
     public static let wrongCode = APIErrorCode(rawValue: "wrong_code")
+    /// A call's `client` isn't one this token may report for (api.md 5.2). For
+    /// the Mac app, whose token is tied to its install ID, it means the token
+    /// isn't this Mac's: pair again.
+    public static let wrongClient = APIErrorCode(rawValue: "wrong_client")
     // 404, 405
     public static let notFound = APIErrorCode(rawValue: "not_found")
     public static let methodNotAllowed = APIErrorCode(rawValue: "method_not_allowed")
@@ -137,6 +141,14 @@ public enum BarError: Error, Hashable, Sendable {
             return body.error == .unauthorized || status == 401
         }
         return false
+    }
+
+    /// The bar won't take this Mac's token: `401 unauthorized` (unknown or
+    /// revoked), or `403 wrong_client` on a call (the token is tied to another
+    /// `client`, api.md 5.2, for example after the install ID was made again).
+    /// Either way the answer is to pair again (api.md 4.5, 16).
+    public var refusesToken: Bool {
+        isUnauthorized || apiCode == .wrongClient
     }
 
     /// Network-level problems worth retrying at the next heartbeat (api.md 16),

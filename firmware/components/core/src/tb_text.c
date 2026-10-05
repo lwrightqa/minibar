@@ -77,6 +77,47 @@ static bool is_control(uint32_t cp)
     return cp < 0x20 || cp == 0x7F || (cp >= 0x80 && cp <= 0x9F);
 }
 
+/* api.md 2.3, characters nobody sees: spaces of other widths (the narrow no-break space Apple's and ICU's times put
+ * before AM and PM, thin spaces, line and paragraph separators) become a space... */
+static bool odd_space(uint32_t cp)
+{
+    return cp == '\t' || cp == '\n' || cp == '\r' || (cp >= 0x2000 && cp <= 0x200A) || cp == 0x2028 || cp == 0x2029 ||
+           cp == 0x202F || cp == 0x205F || cp == 0x3000;
+}
+
+/* ...and zero-width characters, direction marks, the byte-order mark and the text and emoji variation selectors are
+ * dropped. */
+static bool zero_width(uint32_t cp)
+{
+    return (cp >= 0x200B && cp <= 0x200F) || (cp >= 0x202A && cp <= 0x202E) || (cp >= 0x2060 && cp <= 0x2064) ||
+           (cp >= 0x2066 && cp <= 0x206F) || cp == 0xFEFF || cp == 0xFE0E || cp == 0xFE0F;
+}
+
+/* A letter followed by a combining accent becomes the precomposed Latin-1 letter (decomposed text, as macOS file
+ * names and some pastes have it): NFC limited to Latin-1. U+0340 and U+0341 are canonically the grave and acute
+ * accents, so the browser's NFC (the Remote's check) composes them too. Returns 0 when there's no such letter. */
+static uint32_t compose_latin1(uint32_t base, uint32_t mark)
+{
+    static const struct { uint16_t mark; const char *bases; const uint8_t *res; } T[] = {
+        {0x300, "AEIOUaeiou", (const uint8_t *)"\xC0\xC8\xCC\xD2\xD9\xE0\xE8\xEC\xF2\xF9"},
+        {0x301, "AEIOUYaeiouy", (const uint8_t *)"\xC1\xC9\xCD\xD3\xDA\xDD\xE1\xE9\xED\xF3\xFA\xFD"},
+        {0x302, "AEIOUaeiou", (const uint8_t *)"\xC2\xCA\xCE\xD4\xDB\xE2\xEA\xEE\xF4\xFB"},
+        {0x303, "ANOano", (const uint8_t *)"\xC3\xD1\xD5\xE3\xF1\xF5"},
+        {0x308, "AEIOUaeiouy", (const uint8_t *)"\xC4\xCB\xCF\xD6\xDC\xE4\xEB\xEF\xF6\xFC\xFF"},
+        {0x30A, "Aa", (const uint8_t *)"\xC5\xE5"},
+        {0x327, "Cc", (const uint8_t *)"\xC7\xE7"},
+    };
+    if (mark == 0x340) mark = 0x300;
+    if (mark == 0x341) mark = 0x301;
+    if (base < 'A' || base > 'z') return 0;
+    for (size_t i = 0; i < sizeof T / sizeof T[0]; i++) {
+        if (T[i].mark != mark) continue;
+        const char *hit = strchr(T[i].bases, (int)base);
+        return hit ? T[i].res[hit - T[i].bases] : 0;
+    }
+    return 0;
+}
+
 size_t tb_text_clean(char *dst, size_t cap, const char *src)
 {
     if (!cap) return 0;
@@ -86,6 +127,8 @@ size_t tb_text_clean(char *dst, size_t cap, const char *src)
     size_t keep = 0;        /* bytes up to the last character that isn't a space (for the trailing trim) */
     size_t chars = 0, keep_chars = 0;
     bool started = false;   /* leading spaces are dropped */
+    size_t last_off = 0;    /* where the last character written starts, and what it was (0: a mapping, or none yet) */
+    uint32_t last_cp = 0;
     const unsigned char *s = (const unsigned char *)src;
     while (*s) {
         int32_t cp;
@@ -94,8 +137,15 @@ size_t tb_text_clean(char *dst, size_t cap, const char *src)
         const char *rep = NULL;
         char buf[4];
         int n;
-        if (cp == '\t' || cp == '\n' || cp == '\r') cp = ' ';   /* whitespace controls keep the words apart */
-        if (is_control((uint32_t)cp)) continue;     /* other control characters: removed */
+        if (odd_space((uint32_t)cp)) cp = ' ';      /* tab, line breaks and odd spaces keep the words apart */
+        if (is_control((uint32_t)cp) || zero_width((uint32_t)cp)) continue;    /* removed */
+        uint32_t c = last_cp ? compose_latin1(last_cp, (uint32_t)cp) : 0;
+        if (c && last_off + 2 + 1 <= cap) {         /* "e" + U+0301: the "e" becomes "é" (2 bytes), still 1 character */
+            len = last_off + (size_t)utf8_encode(c, dst + last_off);
+            keep = len;
+            last_cp = 0;                            /* "é" + another accent isn't Latin-1 */
+            continue;
+        }
         switch (cp) {
         case 0x2018: case 0x2019: rep = "'"; break;
         case 0x201C: case 0x201D: rep = "\""; break;
@@ -112,6 +162,8 @@ size_t tb_text_clean(char *dst, size_t cap, const char *src)
             n = utf8_encode((uint32_t)cp, buf);
         }
         if (len + (size_t)n + 1 > cap) break;      /* cut on a character boundary */
+        last_off = len;
+        last_cp = rep ? 0 : (uint32_t)cp;
         memcpy(dst + len, buf, (size_t)n);
         len += (size_t)n;
         chars += rep ? (size_t)n : 1;               /* "..." is three characters */

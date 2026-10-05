@@ -66,8 +66,8 @@ public struct ConnectionState: Hashable, Sendable {
         /// While on USB the bar reported Wi-Fi, but its address didn't answer
         /// from this Mac (client isolation, a VPN); now not plugged in.
         case wifiCantReachHere
-        /// The paired bar refuses this Mac's token (`401`), and USB isn't
-        /// connected. Needs you: Pair Again.
+        /// The paired bar refuses this Mac's token (`401`, or `403
+        /// wrong_client` on a call), and USB isn't connected. Needs you: Pair Again.
         case unrecognized
         /// The bar's API major version is older than the app's. Needs you.
         case barNeedsUpdate
@@ -154,7 +154,8 @@ public struct ConnectionState: Hashable, Sendable {
 ///   row missed → close the port, use Wi-Fi, reopen after 10 seconds or when
 ///   IOKit reports the device again. On a `ready` event: `hello`, then the state.
 /// - **Checks.** Every reply's `device_id` against the paired bar's. On `401`
-///   over Wi-Fi: `GET info` first; another bar at that address → find the
+///   over Wi-Fi, or `403 wrong_client` (a token tied to another install ID,
+///   api.md 5.2): `GET info` first; another bar at that address → find the
 ///   right one again and keep the token; the paired bar itself → delete the
 ///   token and report `.unrecognized` (api.md 16). `unsupported_api` or an
 ///   `info` with another major version → `.barNeedsUpdate`/`.appNeedsUpdate`.
@@ -811,7 +812,10 @@ public actor BarConnection {
     private func wifiFailed(_ error: BarError, endpoint: BarEndpoint) async {
         recordFailure()
         switch error {
-        case _ where error.isUnauthorized:
+        case _ where error.refusesToken:
+            // `401`, or `403 wrong_client` (the token is tied to another
+            // install ID, api.md 5.2): either way this Mac's token doesn't
+            // match, so drop it and offer Pair Again.
             await handleUnauthorized(at: endpoint)
         case .wrongDevice, .notATinyBar:
             markWrong(endpoint)
@@ -824,8 +828,9 @@ public actor BarConnection {
         }
     }
 
-    /// api.md 16: on `401`, check `info` first. Only when the paired bar
-    /// itself answers `info` is the token deleted (and Pair Again asked for).
+    /// api.md 16: on `401` (or `403 wrong_client`), check `info` first. Only
+    /// when the paired bar itself answers `info` is the token deleted (and
+    /// Pair Again asked for).
     /// Another bar, or something that isn't a TinyBar (another device took
     /// the address and wants a login): find the right one again and keep the
     /// token. No answer: keep the token and try again later.

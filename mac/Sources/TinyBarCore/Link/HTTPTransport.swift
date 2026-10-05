@@ -19,8 +19,8 @@ import FoundationNetworking
 ///   `.waiting` state and `NWError.dns`/`.posix(.ENETUNREACH)` — see
 ///   Apple TN3179).
 /// - When a request fails because the bar closed an idle connection, retry it
-///   once on a new connection (api.md 2.6). Only `GET`, `DELETE` and
-///   `POST /api/v1/call` may be repeated otherwise.
+///   once on a new connection (api.md 2.6). Only `GET`, `DELETE`,
+///   `POST /api/v1/call` and `POST /api/v1/pair/cancel` may be repeated otherwise.
 /// - Builds and runs on Linux (FoundationNetworking), where it's tested
 ///   against a small HTTP server in the tests.
 public final class HTTPTransport: WiFiLinkTransport, @unchecked Sendable {
@@ -120,6 +120,10 @@ public final class HTTPTransport: WiFiLinkTransport, @unchecked Sendable {
         try await send(Endpoints.pair, body: request, as: PairReply.self)
     }
 
+    public func pairCancel(_ request: PairCancelRequest) async throws -> PairCancelReply {
+        try await send(Endpoints.pairCancel, body: request, as: PairCancelReply.self)
+    }
+
     public func unpairSelf() async throws -> RevokeReply {
         try await send(Endpoints.clientsSelf, as: RevokeReply.self)
     }
@@ -132,9 +136,10 @@ public final class HTTPTransport: WiFiLinkTransport, @unchecked Sendable {
     // MARK: - Sending
 
     /// `GET`, `DELETE` and `POST /api/v1/call` carry the whole state they set,
-    /// so they may be sent again (api.md 2.6).
+    /// so they may be sent again (api.md 2.6), and so may `pair/cancel` ("Safe
+    /// to repeat", api.md 4.7).
     static func isRepeatable(_ endpoint: Endpoint) -> Bool {
-        endpoint.method == .get || endpoint.method == .delete || endpoint == Endpoints.call
+        endpoint.method == .get || endpoint.method == .delete || endpoint == Endpoints.call || endpoint == Endpoints.pairCancel
     }
 
     private func send<Reply: Decodable>(_ endpoint: Endpoint, as type: Reply.Type) async throws(BarError) -> Reply {

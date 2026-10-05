@@ -167,6 +167,9 @@ public protocol WiFiLinkTransport: Transport {
     /// `POST /api/v1/pair`.
     func pair(_ request: PairRequest) async throws -> PairReply
 
+    /// `POST /api/v1/pair/cancel`: takes this app's code off the bar.
+    func pairCancel(_ request: PairCancelRequest) async throws -> PairCancelReply
+
     /// `DELETE /api/v1/clients/self` (Forget This TinyBar).
     func unpairSelf() async throws -> RevokeReply
 }
