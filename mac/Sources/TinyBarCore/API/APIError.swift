@@ -120,7 +120,7 @@ public enum BarError: Error, Hashable, Sendable {
     case unreachable(String)
     /// macOS refused local network access (macOS 15 and later, api.md 16).
     case localNetworkDenied
-    /// USB: nothing answered `hello` as a TinyBar within 10 s (api.md 6.2).
+    /// USB: nothing answered `hello` as a MiniBar within 10 s (api.md 6.2).
     case notATinyBar
     /// The reply came from another bar than the one the app paired with (api.md 5.3, 16).
     case wrongDevice(expected: String, got: String)

@@ -82,7 +82,7 @@ public struct MacObservation: Hashable, Sendable {
     public static let idle = MacObservation()
 }
 
-/// An app seen using the mic since TinyBar opened (Settings › Apps). Kept in
+/// An app seen using the mic since MiniBar opened (Settings › Apps). Kept in
 /// memory only (criterion 28).
 public struct SeenApp: Hashable, Sendable {
     public var identity: AppIdentity

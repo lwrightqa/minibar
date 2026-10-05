@@ -2,7 +2,7 @@
  * board_display.h: the AXS15231B panel and touch as an LVGL 9 display and pointer, and the backlight.
  * Owner: board builder.
  *
- * The panel is 172 x 640 portrait; TinyBar uses it as 640 x 172. The LVGL display is created at the native size with
+ * The panel is 172 x 640 portrait; MiniBar uses it as 640 x 172. The LVGL display is created at the native size with
  * LV_DISPLAY_ROTATION_90 (or 270 when flipped); the flush callback turns each full frame with lv_draw_sw_rotate(), as
  * 10_LVGL_V9_Test does under USER_DISP_ROT_90. LVGL 9 turns pointer input by the display's rotation itself
  * (lv_display_rotate_point), so the touch read callback reports native panel coordinates and stays right after a

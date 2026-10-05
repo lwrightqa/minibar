@@ -16,7 +16,7 @@ final class QAHTTPTests: XCTestCase {
             case ("GET", "/api/v1/info"): return .respond(status: 200, body: FakeBarPTY.infoJSON)
             case ("POST", "/api/v1/call"): return .respond(status: 200, body: HTTPTransportTests.callReply)
             case ("POST", "/api/v1/pair/start"): return .respond(status: 202, body: #"{"ok": true, "pairing_id": "d407580a9215e992", "expires_in_s": 120, "code_length": 6, "attempts": 3}"#)
-            case ("POST", "/api/v1/pair"): return .respond(status: 200, body: #"{"ok": true, "token": "tb1_w1rV1lN4jm2ohruSAozMZxVlcceAL7yS8r45__-ref4", "token_id": "74d8a526", "scope": "call", "device_id": "f412fa3f2a1c", "name": "TinyBar 2A1C", "host": "tinybar.local"}"#)
+            case ("POST", "/api/v1/pair"): return .respond(status: 200, body: #"{"ok": true, "token": "tb1_w1rV1lN4jm2ohruSAozMZxVlcceAL7yS8r45__-ref4", "token_id": "74d8a526", "scope": "call", "device_id": "f412fa3f2a1c", "name": "MiniBar 2A1C", "host": "minibar.local"}"#)
             case ("DELETE", "/api/v1/clients/self"): return .respond(status: 200, body: #"{"ok": true, "revoked": "74d8a526"}"#)
             default: return .respond(status: 404, body: #"{"ok": false, "error": "not_found", "message": "No.", "field": null}"#)
             }
@@ -43,7 +43,7 @@ final class QAHTTPTests: XCTestCase {
         for request in requests {
             let hasBody = !request.body.isEmpty
             XCTAssertEqual(request.headers["content-type"], hasBody ? "application/json" : nil, request.path)
-            XCTAssertEqual(request.headers["user-agent"], "TinyBarMac/1.0 (12) (api 1.0)")
+            XCTAssertEqual(request.headers["user-agent"], "MiniBarMac/1.0 (12) (api 1.0)")
             XCTAssertEqual(request.headers["accept-language"], "en", "fixed, never the user's language list")
             XCTAssertNil(request.headers["cookie"])
             let headerBytes = request.headers.reduce(0) { $0 + $1.key.utf8.count + $1.value.utf8.count + 4 }

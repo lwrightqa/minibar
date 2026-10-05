@@ -35,7 +35,7 @@ typedef struct {
         bool meeting_titles;    /* Show meeting titles: default false; needs a saved address */
     } automatic;
     struct {
-        char name[TB_DEVICE_NAME_BYTES];    /* default "TinyBar " + last 4 of device_id, upper case ("TinyBar 2A1C") */
+        char name[TB_DEVICE_NAME_BYTES];    /* default "MiniBar " + last 4 of device_id, upper case ("MiniBar 2A1C") */
         char time_zone[TB_TZ_NAME_BYTES];   /* IANA name, "" until the setup page or the Mac's hello sends one */
     } device;
 } tb_settings_t;
@@ -50,8 +50,17 @@ typedef struct {
     tb_settings_t v;    /* the new values, read only where has_* is set */
 } tb_settings_patch_t;
 
-/* Defaults. device_id is the 12-hex-digit id (board_device_id()); it names the bar "TinyBar 2A1C". */
+/* Defaults. device_id is the 12-hex-digit id (board_device_id()); it names the bar "MiniBar 2A1C". */
 void tb_settings_defaults(tb_settings_t *s, const char *device_id);
+
+/*
+ * The rename from TinyBar to MiniBar (1.0.3). A bar set up before it saved the old default name, "TinyBar 2A1C". If
+ * the loaded name is exactly that (the old default for this device id, which no person typed), it becomes
+ * "MiniBar 2A1C" and true comes back so the caller saves it; any other name, the new default included, is left
+ * alone. Run once, when the settings load (main/settings_store.c). No TB_SETTINGS_VERSION bump: that would throw
+ * every setting away.
+ */
+bool tb_settings_migrate_name(tb_settings_t *s, const char *device_id);
 
 /*
  * Check a patch against the ranges in api.md 10.1 without changing anything. Returns TB_OK, TB_E_BAD_VALUE or

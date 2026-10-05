@@ -53,11 +53,11 @@ public struct ConnectionState: Hashable, Sendable {
         /// No bar set up: never connected and no address (menu: "Not set up yet").
         case notSetUp
         /// Within the 15-second grace after launch, wake or a link switch,
-        /// before a reply ("Looking for TinyBar…").
+        /// before a reply ("Looking for MiniBar…").
         case looking
         /// The latest message got through.
         case connected
-        /// No successful reply for 15 seconds ("Can't reach TinyBar 2A1C since 2:04 PM").
+        /// No successful reply for 15 seconds ("Can't reach MiniBar 2A1C since 2:04 PM").
         case unreachable
         /// Wi-Fi is off in Settings and the bar isn't plugged in.
         case notPluggedIn
@@ -88,7 +88,7 @@ public struct ConnectionState: Hashable, Sendable {
     public var lastSuccess: Date?
     /// Pause USB is on.
     public var usbPaused: Bool
-    /// A TinyBar is or was on USB this session (shows Pause USB in the Option-click menu).
+    /// A MiniBar is or was on USB this session (shows Pause USB in the Option-click menu).
     public var usbSeen: Bool
     /// For the Option-click details: the port or the address.
     public var endpointDescription: String?
@@ -132,14 +132,14 @@ public struct ConnectionState: Hashable, Sendable {
 /// as the app runs (api.md 5, 6.8 and 16; docs/mac-app.md "Talking to the bar").
 ///
 /// What it does:
-/// - **Links.** Opens each TinyBar-looking serial device (`openUSB`, then
-///   `handshake`); uses USB whenever a TinyBar answers there, else Wi-Fi to
+/// - **Links.** Opens each MiniBar-looking serial device (`openUSB`, then
+///   `handshake`); uses USB whenever a MiniBar answers there, else Wi-Fi to
 ///   the paired bar (Bonjour match by `device_id`, the manual address, or the
 ///   last address that worked), one link at a time (`LinkChooser`). Switches
 ///   within 5 seconds and sends the full state at once after every switch.
-///   Ignores a device that didn't answer as a TinyBar, and a forgotten bar's
+///   Ignores a device that didn't answer as a MiniBar, and a forgotten bar's
 ///   port, until it's unplugged and plugged in again.
-/// - **Pairing over USB.** When a TinyBar answers on USB and there's no token
+/// - **Pairing over USB.** When a MiniBar answers on USB and there's no token
 ///   for it (or Wi-Fi answered `401`), sends `pair` at once and stores the
 ///   token (api.md 6.6); if that fails (`busy`, no reply, `token_limit`), tries
 ///   again every `usbPairRetryInterval` while the bar stays plugged in. A
@@ -179,7 +179,7 @@ public actor BarConnection {
         public var appVersion: String
         /// Name for this Mac, sent as `name` in `hello` and `pair/start`.
         public var macName: String?
-        /// Use Wi-Fi when TinyBar isn't plugged in.
+        /// Use Wi-Fi when MiniBar isn't plugged in.
         public var useWiFi: Bool
         /// Settings › Advanced › Address, parsed.
         public var manualEndpoint: BarEndpoint?
@@ -237,7 +237,7 @@ public actor BarConnection {
     /// After `leaving` for a power-off: if the app is still running then, the
     /// power-off was canceled (another app refused to quit), so carry on.
     private var resumeAt: Date?
-    /// Forget This TinyBar: no messages until a bar is adopted or plugged in.
+    /// Forget This MiniBar: no messages until a bar is adopted or plugged in.
     private var messagesStopped = false
     private var started = false
     private var stopped = false
@@ -271,7 +271,7 @@ public actor BarConnection {
 
     /// Espressif USB Serial/JTAG devices present now, by registry ID.
     private var devices: [UInt64: SerialDevice] = [:]
-    /// Left alone until unplugged: not a TinyBar, a version the app can't
+    /// Left alone until unplugged: not a MiniBar, a version the app can't
     /// speak, or the bar that was just forgotten.
     private var ignoredDevices: Set<UInt64> = []
     /// Devices to try again later (missed replies, port busy), and when.
@@ -508,7 +508,7 @@ public actor BarConnection {
         wake()
     }
 
-    /// Forget This TinyBar: tells the bar (best effort, 2 seconds at most),
+    /// Forget This MiniBar: tells the bar (best effort, 2 seconds at most),
     /// deletes the token, and leaves a plugged-in bar's port alone until it's
     /// replugged (mac-app-ux.md 5.7).
     ///
@@ -844,7 +844,7 @@ public actor BarConnection {
     /// api.md 16: on `401` (or `403 wrong_client`), check `info` first. Only
     /// when the paired bar itself answers `info` is the token deleted (and
     /// Pair Again asked for).
-    /// Another bar, or something that isn't a TinyBar (another device took
+    /// Another bar, or something that isn't a MiniBar (another device took
     /// the address and wants a login): find the right one again and keep the
     /// token. No answer: keep the token and try again later.
     ///
@@ -864,7 +864,7 @@ public actor BarConnection {
         }
         await probe.close()
         switch result {
-        case .success(let info) where info.isTinyBar && info.deviceID == bar.deviceID:
+        case .success(let info) where info.isKnownBar && info.deviceID == bar.deviceID:
             break
         case .success:
             markWrong(endpoint)
@@ -875,7 +875,7 @@ public actor BarConnection {
                 // Can't tell who refused: keep everything, and retry later.
                 closeWiFi()
             default:
-                // A 401 to `info` too, or not a TinyBar's reply: not the paired bar.
+                // A 401 to `info` too, or not a MiniBar's reply: not the paired bar.
                 markWrong(endpoint)
             }
             return
@@ -924,7 +924,7 @@ public actor BarConnection {
     }
 
     private func check(_ info: InfoReply) throws(BarError) {
-        guard info.isTinyBar else { throw .notATinyBar }
+        guard info.isKnownBar else { throw .notATinyBar }
         if let bar = state.bar, info.deviceID != bar.deviceID {
             throw .wrongDevice(expected: bar.deviceID, got: info.deviceID)
         }
@@ -940,7 +940,7 @@ public actor BarConnection {
         return version.major > APIVersion.current.major ? .appNeedsUpdate : .barNeedsUpdate
     }
 
-    private static let noToken = APIErrorBody(error: .unauthorized, message: "No token for this TinyBar.")
+    private static let noToken = APIErrorBody(error: .unauthorized, message: "No token for this MiniBar.")
 
     private static func barError(_ error: any Error) -> BarError {
         if let error = error as? BarError { return error }
@@ -1042,7 +1042,7 @@ public actor BarConnection {
         )
     }
 
-    /// Opens and greets every TinyBar-looking device that isn't ignored,
+    /// Opens and greets every MiniBar-looking device that isn't ignored,
     /// waiting or already open.
     private func startUSBHandshakes() {
         guard !state.usbPaused, usb == nil, !stopped else { return }
@@ -1099,11 +1099,11 @@ public actor BarConnection {
                 versionProblem = .appNeedsUpdate
                 ignoredDevices.insert(id)
             } else if case .api? = error as? BarError, devices[id] != nil {
-                // Error replies only: a TinyBar that wasn't ready (garbled
+                // Error replies only: a MiniBar that wasn't ready (garbled
                 // input at boot, out of memory). Greet it again later.
                 reopenAt[id] = clock.now().addingTimeInterval(TinyBarAPI.Timeouts.usbReopenAfter)
             } else if devices[id] != nil {
-                // Not a TinyBar (or it went away): leave it alone until replugged (api.md 6.2).
+                // Not a MiniBar (or it went away): leave it alone until replugged (api.md 6.2).
                 ignoredDevices.insert(id)
             }
             return
@@ -1122,7 +1122,7 @@ public actor BarConnection {
             return
         }
 
-        // This is your TinyBar now (mac-app-ux.md 5.3).
+        // This is your MiniBar now (mac-app-ux.md 5.3).
         if let old = state.bar, old.deviceID != info.deviceID {
             forgetPreviousBar(old)
             state.bar = nil
@@ -1168,7 +1168,7 @@ public actor BarConnection {
                 do {
                     try tokens.setToken(token, for: reply.deviceID)
                 } catch {
-                    Log.error("pairing", "Couldn't keep TinyBar's token: \(error)")
+                    Log.error("pairing", "Couldn't keep MiniBar's token: \(error)")
                 }
                 cachedToken = (reply.deviceID, token)
             }
@@ -1186,7 +1186,7 @@ public actor BarConnection {
         }
     }
 
-    /// A different TinyBar was plugged in: delete the old one's token, and
+    /// A different MiniBar was plugged in: delete the old one's token, and
     /// tell it to forget this Mac if it can be reached.
     private func forgetPreviousBar(_ old: KnownBar) {
         let oldToken = token(for: old)

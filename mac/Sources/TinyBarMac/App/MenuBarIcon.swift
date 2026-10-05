@@ -11,7 +11,7 @@ import TinyBarCore
 /// symbol is missing on this Mac, every state uses its glyph, so the five
 /// never mix weights and sizes (criterion 25). They can also be tried
 /// instead on a real Mac with
-/// `defaults write com.tinybar.TinyBarMac IconStyle glyphs` (then relaunch),
+/// `defaults write com.minibar.MiniBarMac IconStyle glyphs` (then relaunch),
 /// to compare them in the menu bar without rebuilding.
 ///
 /// Not tied to the main actor: an image's drawing handler may run wherever

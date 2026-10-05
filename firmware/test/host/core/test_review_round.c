@@ -58,7 +58,7 @@ TB_TEST(setup_menu_closes_when_setup_is_over)
     tb_app_wifi_connecting(&b->a, "Office-WiFi", &b->now);
     hold(b);
     TB_EQ_INT(b->a.menu.kind, TB_MENU_SETUP);
-    tb_app_wifi_connected(&b->a, "Office-WiFi", "10.0.4.42", "tinybar.local", &b->now);
+    tb_app_wifi_connected(&b->a, "Office-WiFi", "10.0.4.42", "minibar.local", &b->now);
     TB_EQ_INT(b->a.menu.kind, TB_MENU_SETUP);            /* still on a setup screen (Connected) */
     bench_run(b, TB_CONNECTED_MS + 200);
     TB_EQ_INT(b->a.wifi_mode, TB_WIFI_OK);
@@ -86,7 +86,7 @@ TB_TEST(calendar_tile_when_the_link_dropped)
     TB_EQ_STR(b->a.toast, "No Wi-Fi, can't sync");
     TB_EQ_INT(fx_count(b, TB_FX_CAL_SYNC), 0);
     /* back up: Sync again */
-    tb_app_wifi_link(&b->a, true, "10.0.4.42", "tinybar.local", &b->now);
+    tb_app_wifi_link(&b->a, true, "10.0.4.42", "minibar.local", &b->now);
     hold(b);
     TB_EQ_STR(tile_with(b, TB_ACT_SYNC)->value, "Sync");
     TB_EQ_STR(tile_with(b, TB_ACT_WIFI)->foot, "Office-WiFi");
@@ -419,7 +419,7 @@ static bench_t *reach(sw_state_t st)
     case ST_CONNECTED:
         b = bench_new_opts(false, true);
         tb_app_wifi_connecting(&b->a, "Office-WiFi", &b->now);
-        tb_app_wifi_connected(&b->a, "Office-WiFi", "10.0.4.42", "tinybar.local", &b->now);
+        tb_app_wifi_connected(&b->a, "Office-WiFi", "10.0.4.42", "minibar.local", &b->now);
         break;
     case ST_FAILED:
         b = bench_new_opts(false, true);

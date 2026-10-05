@@ -2,7 +2,7 @@ import Foundation
 import XCTest
 @testable import TinyBarCore
 
-/// A TinyBar as the fake transports see it: who it is, what it accepts, and
+/// A MiniBar as the fake transports see it: who it is, what it accepts, and
 /// every message it got.
 final class FakeBar: @unchecked Sendable {
     struct Message: Sendable {
@@ -45,7 +45,7 @@ final class FakeBar: @unchecked Sendable {
     let clock: ManualClock
     let state: Locked<State>
 
-    init(clock: ManualClock, deviceID: String = "f412fa3f2a1c", name: String = "TinyBar 2A1C") {
+    init(clock: ManualClock, deviceID: String = "f412fa3f2a1c", name: String = "MiniBar 2A1C") {
         self.clock = clock
         state = Locked(State(deviceID: deviceID, name: name))
     }
@@ -60,7 +60,7 @@ final class FakeBar: @unchecked Sendable {
 
     var info: InfoReply {
         state.withLock { s in
-            InfoReply(deviceID: s.deviceID, name: s.name, fw: "1.0.0", api: s.api, host: "tinybar.local", auth: s.auth,
+            InfoReply(deviceID: s.deviceID, name: s.name, fw: "1.0.0", api: s.api, host: "minibar.local", auth: s.auth,
                       heartbeatS: s.heartbeatS, wifi: s.wifi)
         }
     }
@@ -86,7 +86,7 @@ final class FakeBar: @unchecked Sendable {
             }
             if kind == .wifi, s.auth == .bearer, !(token.map(s.tokens.contains) ?? false) {
                 s.log.append("wifi call refused")
-                return .failure(.api(APIErrorBody(error: .unauthorized, message: "Pair with this TinyBar first."), httpStatus: 401))
+                return .failure(.api(APIErrorBody(error: .unauthorized, message: "Pair with this MiniBar first."), httpStatus: 401))
             }
             s.messages.append(Message(via: kind, request: request, at: clock.now(), token: token))
             s.log.append("\(kind.rawValue) call")
@@ -108,7 +108,7 @@ final class FakeBar: @unchecked Sendable {
         let result: Result<PairReply, BarError> = state.withLock { s in
             s.log.append("usb pair")
             if s.tokenLimit {
-                return .failure(.api(APIErrorBody(error: .tokenLimit, message: "TinyBar already has 10 paired devices."), httpStatus: nil))
+                return .failure(.api(APIErrorBody(error: .tokenLimit, message: "MiniBar already has 10 paired devices."), httpStatus: nil))
             }
             s.issued += 1
             let token = "tb1_" + String(format: "%043d", s.issued)
@@ -116,7 +116,7 @@ final class FakeBar: @unchecked Sendable {
             s.tokens.insert(token)
             s.tokenIDs[tokenID] = token
             return .success(PairReply(token: token, tokenID: tokenID, deviceID: s.deviceID,
-                                      name: s.name, host: "tinybar.local"))
+                                      name: s.name, host: "minibar.local"))
         }
         return try result.get()
     }
@@ -157,7 +157,7 @@ final class FakeBar: @unchecked Sendable {
 }
 
 /// `USBLinkTransport` without a port: answers at once from a `FakeBar`, or
-/// isn't a TinyBar when `bar` is `nil`.
+/// isn't a MiniBar when `bar` is `nil`.
 final class FakeUSBTransport: USBLinkTransport, @unchecked Sendable {
     let kind = LinkKind.usb
     let device: SerialDevice
@@ -401,7 +401,7 @@ final class ConnectionRig: @unchecked Sendable {
     /// A bar this Mac paired with before, with its token in the store and the bar.
     static func paired(_ configure: ((inout BarConnection.Configuration) -> Void)? = nil) -> ConnectionRig {
         let token = "tb1_" + String(repeating: "A", count: 43)
-        let known = KnownBar(deviceID: "f412fa3f2a1c", name: "TinyBar 2A1C", host: "tinybar.local",
+        let known = KnownBar(deviceID: "f412fa3f2a1c", name: "MiniBar 2A1C", host: "minibar.local",
                              lastEndpoint: barAddress, auth: .bearer, tokenID: "74d8a526")
         let rig = ConnectionRig(known: known, tokens: ["f412fa3f2a1c": token], configuration: configure)
         rig.bar.set {

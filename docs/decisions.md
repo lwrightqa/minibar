@@ -1,11 +1,12 @@
-# TinyBar decisions
+# MiniBar decisions
 
 The running record of what has been decided, and why. The product manager keeps it current; everyone on the team reads it before starting work. When a decision changes, edit the entry and note the date. Don't delete history.
 
 ## Product
 
 - **What it is:** a status bar for a desk in an **open office** that tells the people nearby whether it's a good time to interrupt.
-- **Name: MiniBar (decided 2026-10-04).** The user renamed the project from TinyBar to **MiniBar**, written "MiniBar" wherever people read it (the splash screen, the Remote, the Mac app, the default bar name "MiniBar 2A1C", the setup network "MiniBar-Setup") and lowercase "minibar" in code, file names and network names (`minibar.local`, `_minibar._tcp`). The rename is applied across the firmware, the Mac app, the docs and the published pages once the current alignment round finishes, so the two don't edit the same files at once. Until then the code and older entries below still say TinyBar. The GitHub repository's own name is changed by the user in GitHub's settings.
+- **Name: MiniBar (decided 2026-10-04, applied 2026-10-05).** The user renamed the project from TinyBar to **MiniBar**, written "MiniBar" wherever people read it (the splash screen, the Remote, the Mac app, the default bar name "MiniBar 2A1C", the setup network "MiniBar-Setup") and lowercase "minibar" in code, file names and network names (`minibar.local`, `_minibar._tcp`). The GitHub repository is `lwrightqa/minibar` (renamed by the user in GitHub's settings).
+  - *(Applied 2026-10-05, once the pairing alignment round had finished, so the two didn't edit the same files at once.)* **What changed:** every screen, page, toast, log line and document; the host name `minibar.local` (`minibar-2.local` after a clash), the setup network `MiniBar-Setup`, the Bonjour service `_minibar._tcp`, the `device` value "MiniBar" in `info` and `hello`, the 401 realm, the Mac app's User-Agent `MiniBarMac/<version> (api 1.0)`, its Keychain service, settings key and bundle id (`com.minibar.MiniBarMac`; the app had never shipped); the firmware builds `minibar.bin` (`dist/minibar-<version>.bin`, from 1.0.3 on) and the Mac app builds `MiniBar.app` and `MiniBar.zip`; the mock-up moves a saved look and theme to its new browser keys once (`minibar-style-3`, `minibar-theme`). **What keeps the old name, and why:** identifiers that reach nobody but developers, or that stored data depends on: the `tb_` and `TB_` C names, the `@tb ` USB line marker, the `tb1_` token prefix and the `tb_token` cookie (every issued token stays valid), the NVS namespace "tinybar" (changing it would wipe every bar's settings), the `CONFIG_TINYBAR_*` build symbols (only the menu titles people see change), the Swift module, target and directory names (`TinyBarCore`, `TinyBarMac`, `TinyBarCoreTests`) and the internal type names, the frozen fonts' file names, the images already built as `dist/tinybar-1.0.0.bin` and `tinybar-1.0.2.bin`, and the checkout path. Dated entries in this file that quote the old name are history and stay as written. **For the user's bar:** firmware 1.0.3 changes a stored name that is still the old default ("TinyBar" plus the last four characters of the ID) to "MiniBar" plus the same four, once at start-up; a name a person typed is left alone, and no other setting is touched. The new host name signs paired phones out of the Remote (its cookie is per host): the phone pairs again once, and the old row can be removed on Paired devices. For one release the Mac app accepts both `device` values and browses both service types, because a bar on 1.0.2 still says TinyBar (`docs/api.md` 14.6).
 - **Hardware:** Waveshare ESP32-S3-Touch-LCD-3.49, **V2** board (V2 sticker on the case, "Rev1.1" silkscreen). The 3.49" 172 × 640 screen is used in landscape as 640 × 172.
 - **Power:** runs on **USB**. No battery for now (the 1,000 mAh cell the user tried is rated below the board's 1.2 A charge current).
 - **Firmware:** **ESP-IDF with LVGL 9**, started once the mock-up is final.
@@ -30,7 +31,7 @@ The running record of what has been decided, and why. The product manager keeps 
 ## Help and the controls tour (Proposed 2026-10-05)
 
 - **The request (2026-10-05):** the user wrote: "We may want a screen that tells the user about the controls and how to use it." The bar has seven controls (tap, swipe, hold, flip, BOOT, a PWR press and a 3-second PWR hold), and some of them do different things on different screens. The hint line that explains them is on the mock-up page, not on the bar. The help is for the person who has just set up a MiniBar and for anyone in the office who walks up to one.
-- **Mock-up first.** It's built in `docs/mockup.html` and checked against the round's acceptance criteria before the firmware follows. New copy says **MiniBar** (see Product). Until the rename pass, the rest of the mock-up still says TinyBar.
+- **Mock-up first.** It's built in `docs/mockup.html` and checked against the round's acceptance criteria before the firmware follows. New copy says **MiniBar** (see Product); since the rename pass of 2026-10-05 the rest of the mock-up does too.
 - **Proposed (2026-10-05, waiting for the user's OK): the coordinator's plan, refined by the product manager.**
   1. **A short tour on the bar.** It has one card for each control: Tap, Swipe, BOOT, Hold, Flip and PWR, in that order, followed by a More help card. Each card has a small drawing of the gesture (the drawings follow the ones in `docs/controls-guide.html`) and one line saying what the control does.
      - **Learn by doing, where it's safe.** On the Tap, Swipe and BOOT cards, the first time you use that control the card shows what it would have done (for example "Busy → In a meeting"). It changes nothing real: not the status, the timer, a call or meeting you've set aside, or the alarm.
@@ -116,11 +117,11 @@ The bar has a small speaker, driven by the ES8311 codec, and no vibration motor.
 
 ## Wi-Fi
 
-- Setup by QR code: the bar shows a QR code that joins the phone to its own `TinyBar-Setup` network, where a page lets the user choose the office Wi-Fi.
+- Setup by QR code: the bar shows a QR code that joins the phone to its own `MiniBar-Setup` network, where a page lets the user choose the office Wi-Fi.
 - Supports password and work-login (username plus password) networks. Guest networks with a sign-in web page are not supported; the setup page says so.
 - Skip uses the bar offline: statuses and the Pomodoro still work; the calendar and Remote don't.
   - *(2026-10-04, firmware, lead developer):* the skip is **remembered**: after Restart or power-on an offline bar
-    starts offline, with its radio off and no open TinyBar-Setup network, as the mock-up's `powerOn()` keeps offline
+    starts offline, with its radio off and no open MiniBar-Setup network, as the mock-up's `powerOn()` keeps offline
     mode. Before this fix it came back on the QR code with the open setup network up, where anyone nearby could set its
     Wi-Fi and calendar address. Set up (hold, Wi-Fi, Set up) and a join that works end it. If a network was saved and
     you chose Set up again and then Skip, the bar stays offline too, rather than quietly rejoining the old network.
@@ -135,7 +136,7 @@ The bar has a small speaker, driven by the ES8311 codec, and no vibration motor.
   ESP-IDF's own captive-portal example uses 192.168.4.1 and works on Android, so 1.0.1 also removes the other ways
   1.0.0 differed from that example (see "Same round" below). If 1.0.1 still fails, two tests settle the cause: the
   phone's own validation log (`adb shell dumpsys network_stack`) and ESP-IDF's example on the same bar and phone (the
-  firmware's `components/net/README.md`, bring-up item 3). TinyBar-Setup has no way out to the internet, so 4.3.2.1
+  firmware's `components/net/README.md`, bring-up item 3). MiniBar-Setup has no way out to the internet, so 4.3.2.1
   only stands in for the hosts phones check while they're on it; many ESP32 captive portals use it for the same reason.
   What changes for people: if the sign-in sheet doesn't open by itself, tap "Sign in to Wi-Fi network" in the
   notifications; the address to type is `http://4.3.2.1` (with mobile data off). The setup page shows it, and so does
@@ -164,11 +165,11 @@ The bar has a small speaker, driven by the ES8311 codec, and no vibration motor.
 
 ## Remote
 
-- A web page served by the bar at `tinybar.local` on the office Wi-Fi.
+- A web page served by the bar at `minibar.local` on the office Wi-Fi.
 - Setting the status from outside the office network (an online relay) is **deferred**.
 - **Decided (2026-10-04):** the Remote works only on a phone that has been **paired** with a code shown on the bar. It also lists the paired devices, each with Remove. See Pairing.
-- **Proposed (2026-10-04): characters a message can't show.** The Remote checks the custom message as you type. Before anything is sent, it names any characters the bar can't draw, right under the field: "TinyBar can't show X. Remove it to show this message.", where X is the character itself, for example an emoji. Show stays disabled until they're gone. The check uses exactly the bar's own character set (printable ASCII, Latin-1, the en and em dashes, and the ellipsis, after the curly-quote mapping in `docs/api.md` 2.3), which is the firmware's `tb_text_drawable()`. This is the Remote's side of the `unsupported_chars` error in api.md 8.2.
-  - *(2026-10-04, pairing fix round, lead developer, Proposed: characters nobody can see no longer block a message. QA found that a pasted "3:00 PM" with the narrow no-break space Apple puts before PM, a zero-width space, a byte-order mark or a thin space was refused with an invisible X ("TinyBar can't show  ."), and a decomposed "é" was refused although the bar has é. The mapping in api.md 2.3 now also turns odd-width spaces into a space, drops zero-width characters, direction marks and the variation selectors, and joins a letter and a combining accent into the Latin-1 letter. Anything invisible still left is named by where it is: "TinyBar can't show a hidden character after "Busy". Remove it to show this message." The firmware's mapping and `tb_text_drawable()` follow api.md 2.3.)*
+- **Proposed (2026-10-04): characters a message can't show.** The Remote checks the custom message as you type. Before anything is sent, it names any characters the bar can't draw, right under the field: "MiniBar can't show X. Remove it to show this message.", where X is the character itself, for example an emoji. Show stays disabled until they're gone. The check uses exactly the bar's own character set (printable ASCII, Latin-1, the en and em dashes, and the ellipsis, after the curly-quote mapping in `docs/api.md` 2.3), which is the firmware's `tb_text_drawable()`. This is the Remote's side of the `unsupported_chars` error in api.md 8.2.
+  - *(2026-10-04, pairing fix round, lead developer, Proposed: characters nobody can see no longer block a message. QA found that a pasted "3:00 PM" with the narrow no-break space Apple puts before PM, a zero-width space, a byte-order mark or a thin space was refused with an invisible X ("MiniBar can't show  ."), and a decomposed "é" was refused although the bar has é. The mapping in api.md 2.3 now also turns odd-width spaces into a space, drops zero-width characters, direction marks and the variation selectors, and joins a letter and a combining accent into the Latin-1 letter. Anything invisible still left is named by where it is: "MiniBar can't show a hidden character after "Busy". Remove it to show this message." The firmware's mapping and `tb_text_drawable()` follow api.md 2.3.)*
 
 ## Automatic status (decided 2026-10-04)
 
@@ -259,7 +260,7 @@ The menu-bar app that sets **On a call** (see Automatic status). The full spec, 
   - The menu has a one-click "Don't count <app>".
 - **Proposed: the app name.**
   - **Only listed call apps send a name.** Calls from other apps, or from the camera alone, send none, so the name of an arbitrary app never appears on the bar or in the bar's API.
-  - **"Send the app's name to TinyBar"** is a setting, on by default.
+  - **"Send the app's name to MiniBar"** is a setting, on by default.
   - **Browsers send the browser's name** ("Chrome"), never the website: the app doesn't read tabs. So "Google Meet" never comes from the Mac.
 - **Proposed: the camera counts by default,** with no name. It can be turned off; Photo Booth or a webcam utility would otherwise count.
 - **Proposed: Pause** for 1 hour, for the rest of today, or until resumed. There's still **no manual On a call** from the Mac, in line with "On a call is automatic only".
@@ -332,7 +333,7 @@ The defaults the mock-up is built to. Change any of them and the team will follo
 
 ### Open (2026-10-04)
 
-- **More than one TinyBar on a network:** they can't all be `tinybar.local`, which affects the Remote's address as well as the Mac app. **Proposed:** a bar keeps `tinybar.local` when it's free, advertises its ID over Bonjour and shows its real address on the Wi-Fi screen. The Mac app finds its bar by ID. *(2026-10-04, pairing round: the mock-up now shows the bar's **name and real address**, for example "TinyBar 2A1C" and `tinybar.local` (or `tinybar-2.local` after a name clash). They appear on the Connected screen of Wi-Fi setup, the Wi-Fi menu's Network tile, and the Remote's pairing prompt. The pairing screen's foot shows the name too. The default name, "TinyBar" plus the last four characters of the bar's ID, is **Proposed** in `docs/api.md` section 3.)*
+- **More than one MiniBar on a network:** they can't all be `minibar.local`, which affects the Remote's address as well as the Mac app. **Proposed:** a bar keeps `minibar.local` when it's free, advertises its ID over Bonjour and shows its real address on the Wi-Fi screen. The Mac app finds its bar by ID. *(2026-10-04, pairing round: the mock-up now shows the bar's **name and real address**, for example "MiniBar 2A1C" and `minibar.local` (or `minibar-2.local` after a name clash). They appear on the Connected screen of Wi-Fi setup, the Wi-Fi menu's Network tile, and the Remote's pairing prompt. The pairing screen's foot shows the name too. The default name, "MiniBar" plus the last four characters of the bar's ID, is **Proposed** in `docs/api.md` section 3.)*
 - **Two Macs, one bar:** with "latest message wins", an idle second Mac's `active: false` heartbeat would end the first Mac's call. **Proposed for later:** the bar keeps each paired Mac's state by its token. v1 is one Mac per bar.
 - **Muted calls:** some apps may let go of the mic when you mute, so with the camera off, On a call would end. This is to be measured per app on a real Mac (the spec's criterion 34) before deciding whether v1 needs more.
 
@@ -363,7 +364,7 @@ The defaults the mock-up is built to. Change any of them and the team will follo
   - **USB needs no pairing:** the cable is the proof, and the Mac app pairs over it without a code.
   - The Mac app's token can only report calls, while the Remote and scripts get full control.
   - Tokens don't expire. A bar keeps at most 10.
-    - *(2026-10-04, pairing fix round, lead developer, Proposed:)* a code on the screen for a device that isn't paired yet **holds one of the 10 places** until it ends, so the code it shows can always work. QA found that pairing the Mac over USB while a phone's code was up could take the last place, and the phone then made 11. Now a USB pairing like that is refused with `token_limit` instead (the cable keeps working; only the Wi-Fi token waits), and `pair` refuses an eleventh as a safeguard. See api.md 4.3. If that safeguard ever answers, the code ends ("Pairing canceled", not counted as a failed pairing) and the Remote's prompt says "TinyBar 2A1C already has 10 paired devices. Remove one on a paired phone, or forget them all on TinyBar: hold its screen, then Wi-Fi, then Devices.", with Show a new code and Cancel.
+    - *(2026-10-04, pairing fix round, lead developer, Proposed:)* a code on the screen for a device that isn't paired yet **holds one of the 10 places** until it ends, so the code it shows can always work. QA found that pairing the Mac over USB while a phone's code was up could take the last place, and the phone then made 11. Now a USB pairing like that is refused with `token_limit` instead (the cable keeps working; only the Wi-Fi token waits), and `pair` refuses an eleventh as a safeguard. See api.md 4.3. If that safeguard ever answers, the code ends ("Pairing canceled", not counted as a failed pairing) and the Remote's prompt says "MiniBar 2A1C already has 10 paired devices. Remove one on a paired phone, or forget them all on MiniBar: hold its screen, then Wi-Fi, then Devices.", with Show a new code and Cancel.
   - The Remote removes one device at a time. Forgetting them all is done on the bar, from the Wi-Fi menu's Devices tile.
 - **The mock-up shows the flow (pairing round, 2026-10-04)**, approved with the rest:
   - the bar's pairing screen
@@ -381,7 +382,7 @@ These fill in what `docs/api.md` 4.8 and 14.3 left open. They're built into the 
 - **Decided: flip during pairing.** A flip cancels the pairing ("Pairing canceled"), like a tap, swipe, hold or BOOT. It then does what a flip always does: turns the layout, silences any alarm, and starts whatever the Pomodoro is waiting for. The toast adds that part, for example "Pairing canceled · Focus started". A flip is never swallowed anywhere else (on a menu, on a dark screen, during an alarm), and the decided rule says it always does those three things.
 - **Decided: the pairing screen's details.**
   - The surfaces are the Clock screen's.
-  - The info column's label is **"CODE EXPIRES IN"**, above an m:ss countdown, with the bar's name ("TinyBar 2A1C") as the foot. api.md says "Code expires" and the UX design says "Expires in"; "Code expires 1:52" could read as a time of day.
+  - The info column's label is **"CODE EXPIRES IN"**, above an m:ss countdown, with the bar's name ("MiniBar 2A1C") as the foot. api.md says "Code expires" and the UX design says "Expires in"; "Code expires 1:52" could read as a time of day.
   - The sub line names the device: "Type it on your Mac · tap to cancel", "Type it on your phone · tap to cancel", and otherwise "Type this code on that device · tap to cancel". All of them fit.
   - The 2 minutes count from when the code appears on the screen.
   - Once pairing ends, the screen stays on, even if the code woke it.
@@ -400,25 +401,25 @@ These fill in what `docs/api.md` 4.8 and 14.3 left open. They're built into the 
 - **Decided: the Devices tile.**
   - The Wi-Fi menu's tiles are Network, Devices, Set up again and Back.
   - The confirmation ("Forget all · 3 devices") has its own tile to go back without forgetting. The 8-second close also forgets nothing.
-  - After Forget all, the toast says "Forgot 3 devices". The Remote returns to its pairing prompt ("TinyBar forgot this phone. Pair it again to use the Remote."), a call the Mac reported over Wi-Fi ends, and USB keeps working.
+  - After Forget all, the toast says "Forgot 3 devices". The Remote returns to its pairing prompt ("MiniBar forgot this phone. Pair it again to use the Remote."), a call the Mac reported over Wi-Fi ends, and USB keeps working.
   - **With nothing paired, the tile stays** and reads "None", with how to pair. It's read-only like Network, so a tap on it closes the menu, as a tap on Network does.
-    - *(2026-10-04, pairing fix round, lead developer, approved with pairing, from the UX review:)* the foot says **where** to pair: "pair at" over the bar's real address, each line within the tile's 86.5 px in Barlow 500 14 px. "tinybar.local" is 75 px; a renamed host after a name clash ("tinybar-2.local", 90 px) doesn't fit, so the foot then gives the IP address ("10.0.4.42"), and if that's too long too (14 characters or more, such as "192.168.100.200"), "pair at its" over "IP address", which the Network tile beside it shows. Offline it still says "set up Wi-Fi" over "to pair". It used to say "pair a phone or a Mac", which doesn't say where.
+    - *(2026-10-04, pairing fix round, lead developer, approved with pairing, from the UX review:)* the foot says **where** to pair: "pair at" over the bar's real address, each line within the tile's 86.5 px in Barlow 500 14 px. "minibar.local" is 79 px (measured again for the new name on 2026-10-05; as "tinybar.local" it was 75); a renamed host after a name clash ("minibar-2.local", 94 px) doesn't fit, so the foot then gives the IP address ("10.0.4.42"), and if that's too long too (14 characters or more, such as "192.168.100.200"), "pair at its" over "IP address", which the Network tile beside it shows. Offline it still says "set up Wi-Fi" over "to pair". It used to say "pair a phone or a Mac", which doesn't say where.
 - **Decided: the Remote's pairing prompt.**
   - Until the phone is paired, the prompt replaces the Remote's controls (the bar answers nothing else without a token). It names the bar.
-  - The prompt says **"Type the code shown on your TinyBar"**. "Type the code on your TinyBar" could read as typing on the bar.
+  - The prompt says **"Type the code shown on your MiniBar"**. "Type the code on your MiniBar" could read as typing on the bar.
   - The code field brings up a number pad, ignores spaces and dashes, and pairs as soon as the sixth digit is in, as the Mac app does.
   - Cancel goes back to the start. Pressing Pair this phone again while its own code is still on the bar returns to the field, rather than showing a "busy" message for your own code.
     - *(2026-10-04, pairing fix round, lead developer, approved with pairing, from the UX review:)* **Cancel also takes the code off the bar** with a new call, `POST /api/v1/pair/cancel` (api.md 4.7). The bar shows "Pairing canceled", as after a tap. Before, the code stayed up for up to 2 minutes, blocked every other device ("Another device is pairing"), and its time-out then counted against the person who canceled. Canceling counts as a failed pairing, like a tap on the bar, so it can't be used to get more guesses. The Mac app's Back or Cancel on its Wi-Fi page should call it too (see Follow-ups).
-    - *(Same round, from QA:)* every message on the prompt follows the bar. A refusal goes as soon as its cause is over (the busy or back-off wait, setup finished, a place free, the bar back on Wi-Fi), and once the code is gone from the bar, "That code has expired or was canceled on TinyBar." replaces a wrong-code or "didn't answer" message within about 2 seconds. While the bar is busy or waiting, Pair this phone is dimmed but stays focusable, and pressing it repeats the wait.
+    - *(Same round, from QA:)* every message on the prompt follows the bar. A refusal goes as soon as its cause is over (the busy or back-off wait, setup finished, a place free, the bar back on Wi-Fi), and once the code is gone from the bar, "That code has expired or was canceled on MiniBar." replaces a wrong-code or "didn't answer" message within about 2 seconds. While the bar is busy or waiting, Pair this phone is dimmed but stays focusable, and pressing it repeats the wait.
   - The prompt notices within about 2 seconds when the code runs out or is canceled on the bar.
-  - The error messages follow the Mac app's (`docs/mac-app-ux.md` 5.5), except busy: "Another device is pairing with this TinyBar. Try again in 74 seconds." "Someone else" is wrong when the other device is your own Mac.
+  - The error messages follow the Mac app's (`docs/mac-app-ux.md` 5.5), except busy: "Another device is pairing with this MiniBar. Try again in 74 seconds." "Someone else" is wrong when the other device is your own Mac.
 - **Decided: the Remote's name.** The Remote sends a name for the kind of phone when the browser says what it is ("iPhone", "iPad", "Android phone"). Otherwise it sends none, and the bar says "Phone". The mock-up's phone pairs as "iPhone" ("PAIRING · IPHONE", "Paired · iPhone").
 - **Decided: the Paired devices list.**
   - Each device shows its name, kind (Mac app, Remote, Automation), scope (Calls only, Full control), when it was paired (and "over USB"), when it was last used, and a Remove button.
   - Remove asks first, in place, as the calendar's Remove does. Removing This phone signs the Remote out, back to the pairing prompt.
   - *(2026-10-04, pairing fix round, lead developer, approved with pairing, from the UX review:)* the Connect your Mac card's status line agrees with the list: with a paired Mac that isn't connected now, it says "Not connected right now · paired over USB" (or "over Wi-Fi"). "Not connected yet" is only for a bar no Mac has ever paired with or connected to.
   - Removing a Mac ends a call it reported over Wi-Fi. Over USB, the call carries on.
-- **Decided: Connect your Mac.** The instructions use the Mac app's real menu names from `docs/mac-app-ux.md` 5.4: "To pair your Mac, plug this TinyBar into it once. Or, in the TinyBar menu on your Mac, choose Connect…, then Pair Over Wi-Fi. This TinyBar shows the code." api.md 14.3 suggested "choose Pair with a code", but the app has no item by that name.
+- **Decided: Connect your Mac.** The instructions use the Mac app's real menu names from `docs/mac-app-ux.md` 5.4: "To pair your Mac, plug this MiniBar into it once. Or, in the MiniBar menu on your Mac, choose Connect…, then Pair Over Wi-Fi. This MiniBar shows the code." api.md 14.3 suggested "choose Pair with a code", but the app has no item by that name.
 - **Decided: the mock-up starts paired.** This phone is already paired, along with two sample devices (a Mac paired over USB, and a script), so the Devices tile reads "3 paired" and everything that worked before works without pairing first. Removing This phone, or Forget all on the bar, shows the pairing prompt. An unpaired simulated Mac over Wi-Fi is refused, while over USB it always works.
 
 ### Follow-ups for pairing (open)
@@ -447,7 +448,7 @@ These fill in what `docs/api.md` 4.8 and 14.3 left open. They're built into the 
 - **From the pairing fix round (2026-10-04, lead developer), approved with pairing:**
   - **Firmware:** add `POST /api/v1/pair/cancel` (api.md 4.7), the held place for a code on the screen (4.3, refusing USB `pair` with `token_limit` and `pair` as a safeguard), the extra text mapping (2.3: odd spaces, zero-width characters, Latin-1 composition) in the bar's mapping and in `web/remote.html`'s check, the Devices tile's "pair at" foot, and the Remote's hidden-character wording and Connect your Mac status line.
   - **Mac app:** the Wi-Fi page's Back or Cancel calls `pair/cancel` for the code it asked for (`docs/mac-app-ux.md` 5.4).
-  - **Criterion 19 (product manager):** on the QR code, Connecting and Couldn't connect screens the bar isn't on the office Wi-Fi, so a device there gets no answer ("TinyBar 2A1C didn't answer. Make sure it's on, then try again."), not "TinyBar is setting up Wi-Fi…". That message comes over USB (`409 in_setup`, api.md 4.6 and 13) and on the Connected screen, where the bar is on the office Wi-Fi again. The mock-up does this; the criterion should say so.
+  - **Criterion 19 (product manager):** on the QR code, Connecting and Couldn't connect screens the bar isn't on the office Wi-Fi, so a device there gets no answer ("MiniBar 2A1C didn't answer. Make sure it's on, then try again."), not "MiniBar is setting up Wi-Fi…". That message comes over USB (`409 in_setup`, api.md 4.6 and 13) and on the Connected screen, where the bar is on the office Wi-Fi again. The mock-up does this; the criterion should say so.
 - **Done (2026-10-04):** the user approved pairing as a whole, and the items above with it.
 
 ## Look
@@ -500,7 +501,7 @@ The product manager's defaults for what the user hasn't said yet. The mock-up is
   - All text meets 4.5:1 against what's behind it, as in Bold Signal.
 - **Proposed: the mock-up page.**
   - The Bold Signal and Low Glare Pixel design cards are the bar's two themes. Each says so, the one on the bar is marked, and Apply on either switches the bar's theme, as the Remote does.
-    - *(2026-10-05, fix round, lead developer, from QA:)* all the way: while the bar is off or offline the Remote can't reach it, so the card is refused too and says why ("TinyBar is off · press PWR to turn it on, then Apply"; offline it points to the bar's own Display menu, which works offline). Before, the card switched the theme in both cases, and a bar turned on afterwards showed only "Ready".
+    - *(2026-10-05, fix round, lead developer, from QA:)* all the way: while the bar is off or offline the Remote can't reach it, so the card is refused too and says why ("MiniBar is off · press PWR to turn it on, then Apply"; offline it points to the bar's own Display menu, which works offline). Before, the card switched the theme in both cases, and a bar turned on afterwards showed only "Ready".
   - The other directions (Low Glare, Soft Light, Pixel Arcade) and any change in the Style panel stay mock-up-only previews, and the page says so. Switching the theme on the bar or the Remote puts that theme back, unedited.
   - Reset to defaults drops edits and previews and shows the bar's theme, without changing it.
   - The mock-up remembers the theme in the browser, standing in for the bar's flash.
@@ -658,7 +659,7 @@ Where the mock-up has no answer, the firmware picked one. The ones marked **Prop
   - A swipe on an open menu is ignored (the mock-up's own rule: "Only taps act on a menu", so a swipe can't run the tile the finger lifts on). **Proposed:** keep it and record it here as the one exception. The other choice is a swipe that closes the menu.
   - Skip (the timer menu's tile, and the Remote's) shows no toast, unlike Stop ("Pomodoro stopped") and +5 ("+5 min"). **Proposed:** add "Skipped to Short break" (or "to Focus", "to Long break") to the mock-up's `skip()`; the firmware will follow.
 - **Open, waiting for the user: encrypting stored secrets.** The office Wi-Fi password, a work login's username and password (often the person's company sign-in) and the secret calendar address sit in the bar's flash as plain text. **Anyone in the open office with a laptop and a USB-C cable can read them in about a minute:** the flashing tool resets the chip into download mode through the same USB-C port, with no button press and without opening the case. The choices, all of them **irreversible** on that board:
-  - **NVS encryption** (an HMAC key burned into the chip): stops a plain read of the flash, but not someone who flashes their own firmware to read the secrets with the chip's own key, then flashes TinyBar back.
+  - **NVS encryption** (an HMAC key burned into the chip): stops a plain read of the flash, but not someone who flashes their own firmware to read the secrets with the chip's own key, then flashes MiniBar back.
   - **Flash encryption with secure boot**, or **turning off USB download mode and JTAG**: full protection, but the bar then only takes signed updates, and the web flasher at 0x0 no longer works as it does now.
   - **Neither**, and don't use a work login on the bar (use a password network).
 

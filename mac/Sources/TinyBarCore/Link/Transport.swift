@@ -9,8 +9,8 @@ public enum LinkKind: String, Hashable, Sendable, Codable {
     public var via: LinkVia { self == .usb ? .usb : .wifi }
 }
 
-/// Where a bar answers over Wi-Fi: a host name (`tinybar.local`,
-/// `tinybar-2.local`) or an IPv4 address, and a port.
+/// Where a bar answers over Wi-Fi: a host name (`minibar.local`,
+/// `minibar-2.local`) or an IPv4 address, and a port.
 public struct BarEndpoint: Hashable, Sendable, Codable, CustomStringConvertible {
     public var host: String
     public var port: Int
@@ -28,13 +28,13 @@ public struct BarEndpoint: Hashable, Sendable, Codable, CustomStringConvertible 
         URL(string: port == 80 ? "http://\(host)" : "http://\(host):\(port)")
     }
 
-    /// The Remote page (mac-app-ux.md 4.4, Open TinyBar Remote…).
+    /// The Remote page (mac-app-ux.md 4.4, Open MiniBar Remote…).
     public var remotePageURL: URL? {
         baseURL.flatMap { URL(string: "/", relativeTo: $0)?.absoluteURL }
     }
 
     /// Parses what the user types in Settings › Advanced › Address:
-    /// `tinybar.local`, `10.0.4.42`, `10.0.4.42:8080`, optionally with
+    /// `minibar.local`, `10.0.4.42`, `10.0.4.42:8080`, optionally with
     /// `http://` and a trailing `/`. Returns `nil` for anything else.
     public init?(userInput: String) {
         var text = userInput.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -74,7 +74,7 @@ public struct BarEndpoint: Hashable, Sendable, Codable, CustomStringConvertible 
     /// app's Info.plist allows only local networking under App Transport
     /// Security (`NSAllowsLocalNetworking`): `.local` names, single-label
     /// names and IP addresses. A dotted DNS name like
-    /// `tinybar.office.example.com` or `tinybar.lan` is refused by URLSession
+    /// `minibar.office.example.com` or `minibar.lan` is refused by URLSession
     /// (NSURLErrorAppTransportSecurityRequiresSecureConnection), so the
     /// address fields refuse it first.
     public var isAllowedOverPlainHTTP: Bool {
@@ -109,7 +109,7 @@ public protocol Transport: AnyObject, Sendable {
     var kind: LinkKind { get }
 
     /// For the menu's Option-click details: `cu.usbmodem1101`, or
-    /// `tinybar.local (10.0.4.42)`.
+    /// `minibar.local (10.0.4.42)`.
     var endpointDescription: String { get }
 
     /// Who the bar is. USB: one `hello` with these fields (3-second time-out);
@@ -142,11 +142,12 @@ public protocol USBLinkTransport: Transport {
     var device: SerialDevice { get }
 
     /// api.md 6.2, steps 2 and 3: sends `hello` every 2 seconds until a reply
-    /// says `"device": "TinyBar"`, for up to 10 seconds. Log lines and other
+    /// says `"device": "MiniBar"` (or `"TinyBar"`, from firmware 1.0.2 and
+    /// earlier; api.md 14.6), for up to 10 seconds. Log lines and other
     /// output in between are ignored, and so are error replies (`busy`,
     /// `bad_json`…) except `unsupported_api`, which throws `BarError.api` at
     /// once. On time-out: `BarError.api` with the last error reply if there
-    /// was one (a TinyBar that wasn't ready), else `BarError.notATinyBar`.
+    /// was one (a MiniBar that wasn't ready), else `BarError.notATinyBar`.
     func handshake(_ request: HelloRequest) async throws -> InfoReply
 
     /// The USB `pair` command (api.md 6.6): a Wi-Fi token without a code.
@@ -154,7 +155,7 @@ public protocol USBLinkTransport: Transport {
 
     /// The USB `request` command (api.md 6.6): any endpoint over the cable,
     /// answered with its `http_status`. The app uses it for Forget This
-    /// TinyBar while the bar is plugged in (`DELETE /api/v1/clients/{token_id}`,
+    /// MiniBar while the bar is plugged in (`DELETE /api/v1/clients/{token_id}`,
     /// api.md 12.2), since USB carries no token for `clients/self`.
     func request(_ command: USBRequestCommand) async throws -> JSONValue
 
@@ -176,7 +177,7 @@ public protocol WiFiLinkTransport: Transport {
     /// `POST /api/v1/pair/cancel`: takes this app's code off the bar.
     func pairCancel(_ request: PairCancelRequest) async throws -> PairCancelReply
 
-    /// `DELETE /api/v1/clients/self` (Forget This TinyBar).
+    /// `DELETE /api/v1/clients/self` (Forget This MiniBar).
     func unpairSelf() async throws -> RevokeReply
 }
 

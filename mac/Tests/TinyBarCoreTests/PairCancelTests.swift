@@ -279,7 +279,7 @@ final class PairCancelScenarios {
         clock.advance(by: 1)
         await sending2.value
         XCTAssertEqual(flow2.step, .failed(.busyForASecond, bar: Self.bar, retryAt: clock.now().addingTimeInterval(1)))
-        XCTAssertEqual(PairingProblem.busyForASecond.message(barName: "TinyBar 2A1C"), "TinyBar is busy for a second. Try again.")
+        XCTAssertEqual(PairingProblem.busyForASecond.message(barName: "MiniBar 2A1C"), "MiniBar is busy for a second. Try again.")
         XCTAssertTrue(flow2.acceptsCode, "the code is still on the bar")
         XCTAssertFalse(flow2.canRetryNow())
         clock.advance(by: 1)
@@ -389,7 +389,7 @@ final class PairCancelScenarios {
         XCTAssertEqual(cancels(usedUpFactory), [])
     }
 
-    /// "Didn't see a code? Choose another TinyBar." and Enter Address… give
+    /// "Didn't see a code? Choose another MiniBar." and Enter Address… give
     /// up the code on the bar chosen before.
     func anotherBarOrAnAddressGivesUpTheCode() async throws {
         let factory = ScriptedWiFiFactory()
@@ -401,7 +401,7 @@ final class PairCancelScenarios {
         await flow.requestCode()
         guard case .enterCode = flow.step else { return XCTFail("\(flow.step)") }
 
-        flow.startLooking()   // Choose another TinyBar
+        flow.startLooking()   // Choose another MiniBar
         await waitFor(1, "pair/cancel ", in: factory)
         XCTAssertEqual(flow.step, .looking)
         XCTAssertTrue(discovery.isRunning, "browsing again")
@@ -427,7 +427,7 @@ final class PairCancelScenarios {
         let request = flow.macWillSleep()
         XCTAssertNotNil(request)
         XCTAssertEqual(flow.step, .failed(.expired, bar: Self.bar, retryAt: nil),
-                       "after the wake: That code has expired or was canceled on TinyBar. Show a new code to try again.")
+                       "after the wake: That code has expired or was canceled on MiniBar. Show a new code to try again.")
         XCTAssertFalse(flow.acceptsCode)
         await request?.value
         XCTAssertEqual(cancels(factory), [Self.cancelFirst])
@@ -538,8 +538,8 @@ final class PairCancelScenarios {
         XCTAssertEqual(flow2.step, .failed(.expired, bar: Self.bar, retryAt: nil))
         await flow2.requestCode()   // Show a New Code
         XCTAssertEqual(flow2.step, .failed(.busy(retryAfter: 74), bar: Self.bar, retryAt: clock.now().addingTimeInterval(74)))
-        XCTAssertEqual(PairingProblem.busy(retryAfter: 74).message(barName: "TinyBar 2A1C"),
-                       "Someone else is pairing with this TinyBar. Try again in 2 minutes.")
+        XCTAssertEqual(PairingProblem.busy(retryAfter: 74).message(barName: "MiniBar 2A1C"),
+                       "Someone else is pairing with this MiniBar. Try again in 2 minutes.")
     }
 
     /// Each reply's problem and message. The words are the mock-up's
@@ -547,31 +547,31 @@ final class PairCancelScenarios {
     func everyPairingReplyInTheMacAppsWords() async throws {
         let cases: [(BarError, PairingProblem, String)] = [
             (Self.api(.pairingBusy, 409, retryAfter: 45), .busy(retryAfter: 45),
-             "Someone else is pairing with this TinyBar. Try again in 45 seconds."),
+             "Someone else is pairing with this MiniBar. Try again in 45 seconds."),
             (Self.api(.pairingBusy, 409, retryAfter: 74), .busy(retryAfter: 74),
-             "Someone else is pairing with this TinyBar. Try again in 2 minutes."),
+             "Someone else is pairing with this MiniBar. Try again in 2 minutes."),
             (Self.api(.rateLimited, 429, retryAfter: 1), .rateLimited(retryAfter: 1),
              "Too many tries. You can try again in 1 second."),
             (Self.api(.rateLimited, 429, retryAfter: 240), .rateLimited(retryAfter: 240),
              "Too many tries. You can try again in 4 minutes."),
             (Self.api(.tokenLimit, 409), .tokenLimit,
-             "TinyBar 2A1C already has 10 paired devices. Remove one on its Remote, then try again."),
+             "MiniBar 2A1C already has 10 paired devices. Remove one on its Remote, then try again."),
             (Self.api(.inSetup, 409), .inSetup,
-             "TinyBar 2A1C is setting up Wi-Fi. Finish setup on the bar, then try again."),
+             "MiniBar 2A1C is setting up Wi-Fi. Finish setup on the bar, then try again."),
             (Self.api(.wrongCode, 403, attemptsLeft: 2), .wrongCode(attemptsLeft: 2),
              "That code didn't match. 2 tries left."),
             (Self.api(.wrongCode, 403, attemptsLeft: 1), .wrongCode(attemptsLeft: 1),
              "That code didn't match. 1 try left."),
             (Self.api(.wrongCode, 403, attemptsLeft: 0), .codeUsedUp,
-             "That code didn't match, so TinyBar canceled pairing. Show a new code to try again."),
+             "That code didn't match, so MiniBar canceled pairing. Show a new code to try again."),
             (Self.api(.notPairing, 409), .expired,
-             "That code has expired or was canceled on TinyBar. Show a new code to try again."),
+             "That code has expired or was canceled on MiniBar. Show a new code to try again."),
             (.timedOut, .noAnswer,
-             "TinyBar 2A1C didn't answer. Make sure it's on, then try again."),
+             "MiniBar 2A1C didn't answer. Make sure it's on, then try again."),
         ]
         for (error, problem, words) in cases {
             XCTAssertEqual(WiFiPairingFlow.problem(for: error), problem, "\(error)")
-            let shown = problem.message(barName: "TinyBar 2A1C")
+            let shown = problem.message(barName: "MiniBar 2A1C")
             XCTAssertEqual(shown.replacingOccurrences(of: "\u{2019}", with: "'"), words)
             XCTAssertFalse(shown.contains("'"), "curly apostrophes in the app (mac-app-ux.md 2): \(shown)")
         }
@@ -583,7 +583,7 @@ final class PairCancelScenarios {
     }
 
     /// `token_limit` from `pair` (the safeguard, api.md 4.7): the code has
-    /// ended. Once a device is removed on the Remote, Show Code on TinyBar
+    /// ended. Once a device is removed on the Remote, Show Code on MiniBar
     /// asks again.
     func tokenLimitFromPairOffersShowCodeAgain() async throws {
         let factory = ScriptedWiFiFactory(.init(pair: [.failure(Self.api(.tokenLimit, 409)), .success(ScriptedWiFiFactory.paired)]))
@@ -600,7 +600,7 @@ final class PairCancelScenarios {
     }
 
     /// `pairing_busy` and `rate_limited` carry `retry_after_s`: Show Code on
-    /// TinyBar comes back when that wait is over, on the flow's clock.
+    /// MiniBar comes back when that wait is over, on the flow's clock.
     func waitsAfterBusyAndRateLimited() async throws {
         let waits: [(BarError, TimeInterval)] = [(Self.api(.pairingBusy, 409, retryAfter: 45), 45),
                                                  (Self.api(.rateLimited, 429, retryAfter: 240), 240)]
@@ -622,7 +622,7 @@ final class PairCancelScenarios {
 
     // MARK: - Through the engine
 
-    private static let found = DiscoveredBar(name: "TinyBar 2A1C", deviceID: "f412fa3f2a1c", auth: .bearer,
+    private static let found = DiscoveredBar(name: "MiniBar 2A1C", deviceID: "f412fa3f2a1c", auth: .bearer,
                                              endpoint: ConnectionRig.barAddress)
 
     private func cancelLines(_ rig: EngineRig) -> [String] {

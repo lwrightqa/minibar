@@ -45,7 +45,7 @@ public final class USBTransport: USBLinkTransport, @unchecked Sendable {
         let router = USBReplyRouter(events: continuation)
         self.router = router
         let thread = Thread { USBTransport.readLoop(port: port, router: router) }
-        thread.name = "TinyBar USB reader"
+        thread.name = "MiniBar USB reader"
         thread.start()
     }
 
@@ -84,7 +84,7 @@ public final class USBTransport: USBLinkTransport, @unchecked Sendable {
                 case .reply(let data):
                     do {
                         let info = try WireJSON.decodeReply(InfoReply.self, from: data, httpStatus: nil)
-                        guard info.isTinyBar else { throw BarError.notATinyBar }
+                        guard info.isKnownBar else { throw BarError.notATinyBar }
                         return info
                     } catch BarError.api(let body, let status) {
                         // A version the app can't speak: no point asking again.
@@ -92,7 +92,7 @@ public final class USBTransport: USBLinkTransport, @unchecked Sendable {
                         // Any other error reply (`busy` while starting up,
                         // `bad_json` for a line garbled at boot or left by a
                         // killed app, `internal`, `too_large`) still proves
-                        // it's a TinyBar: wait for a reply to a later hello,
+                        // it's a MiniBar: wait for a reply to a later hello,
                         // and ask again at the next interval.
                         lastError = body
                         slot.reset()
@@ -102,7 +102,7 @@ public final class USBTransport: USBLinkTransport, @unchecked Sendable {
                 }
             }
             if clock.now() >= giveUp {
-                // Error replies only: a TinyBar that wasn't ready. The caller
+                // Error replies only: a MiniBar that wasn't ready. The caller
                 // tries the port again later instead of leaving it alone.
                 if let lastError { throw BarError.api(lastError, httpStatus: nil) }
                 throw BarError.notATinyBar
@@ -127,7 +127,7 @@ public final class USBTransport: USBLinkTransport, @unchecked Sendable {
     }
 
     /// Any endpoint over USB (api.md 6.6). The app uses it for Forget This
-    /// TinyBar while the bar is plugged in (`DELETE /api/v1/clients/{token_id}`).
+    /// MiniBar while the bar is plugged in (`DELETE /api/v1/clients/{token_id}`).
     /// The reply's `http_status` is passed to `WireJSON.decodeReply`.
     public func request(_ command: USBRequestCommand) async throws -> JSONValue {
         try await perform(.request, body: command, as: JSONValue.self, usesHTTPStatus: true)

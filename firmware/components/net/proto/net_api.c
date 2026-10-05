@@ -310,7 +310,7 @@ static bool refuse_unsupported(rt_t *r, const char *text, const char *field)
     uint32_t cps[8];
     int n = tb_text_unsupported(text, cps, 8);
     if (!n) return false;
-    fail(r, 400, "unsupported_chars", "TinyBar can't show some of these characters.", field);
+    fail(r, 400, "unsupported_chars", "MiniBar can't show some of these characters.", field);
     cJSON *a = cJSON_AddArrayToObject(r->o, "chars");
     for (int i = 0; i < n && i < 8; i++) {
         char u[5];
@@ -405,7 +405,7 @@ static const char *wifi_word(net_wifi_state_t s)
 
 static const char *bar_host(const net_wifi_info_t *w)
 {
-    return w->host[0] ? w->host : "tinybar.local";
+    return w->host[0] ? w->host : "minibar.local";
 }
 
 /* GET /api/v1/info and the USB hello reply (api.md 7.1). */
@@ -418,9 +418,9 @@ static void add_info(rt_t *r)
     static const char *const src[] = {"none", "ntp", "rtc", "mac"};
     net_time_source_t ts = net_port_time_source();
     ok(r, 200);
-    cJSON_AddStringToObject(r->o, "device", "TinyBar");
+    cJSON_AddStringToObject(r->o, "device", "MiniBar");
     cJSON_AddStringToObject(r->o, "device_id", id);
-    cJSON_AddStringToObject(r->o, "name", s_app ? s_app->set.device.name : "TinyBar");
+    cJSON_AddStringToObject(r->o, "name", s_app ? s_app->set.device.name : "MiniBar");
     cJSON_AddStringToObject(r->o, "fw", net_port_fw_version());
     cJSON_AddStringToObject(r->o, "api", NET_API_VERSION);
     cJSON_AddStringToObject(r->o, "host", bar_host(&w));
@@ -762,7 +762,7 @@ static void add_calendar(rt_t *r, int status, int max_today)
 /* A core error as api.md Appendix B. Returns true if it was one. */
 static bool core_failed(rt_t *r, tb_err_t e, const char *field)
 {
-    static const char setup_msg[] = "TinyBar is on its Wi-Fi setup screens. Finish setup or skip it on the bar first.";
+    static const char setup_msg[] = "MiniBar is on its Wi-Fi setup screens. Finish setup or skip it on the bar first.";
     switch (e) {
     case TB_OK: return false;
     case TB_E_BAD_VALUE: bad_value(r, field, "That value isn't allowed."); break;
@@ -778,7 +778,7 @@ static bool core_failed(rt_t *r, tb_err_t e, const char *field)
         break;
     case TB_E_NO_CALENDAR: fail(r, 409, "no_calendar", "Add a calendar address first.", field); break;
     case TB_E_POWERED_OFF:
-        fail_retry(r, 503, "busy", "TinyBar is starting up or powering off. Try again in a second.", NULL, 1);
+        fail_retry(r, 503, "busy", "MiniBar is starting up or powering off. Try again in a second.", NULL, 1);
         break;
     default: fail(r, 500, "internal", "Unexpected result from the status engine.", NULL); break;
     }
@@ -788,7 +788,7 @@ static bool core_failed(rt_t *r, tb_err_t e, const char *field)
 static bool in_setup(rt_t *r)
 {
     if (!tb_app_on_wifi_screen(s_app)) return false;
-    fail(r, 409, "in_setup", "TinyBar is on its Wi-Fi setup screens. Finish setup or skip it on the bar first.", NULL);
+    fail(r, 409, "in_setup", "MiniBar is on its Wi-Fi setup screens. Finish setup or skip it on the bar first.", NULL);
     return true;
 }
 
@@ -1110,7 +1110,7 @@ static void h_settings_patch(rt_t *r, cJSON *b)
         if (!cJSON_IsString(tz) || !tz->valuestring[0] || strlen(tz->valuestring) >= TB_TZ_NAME_BYTES ||
             !net_port_time_zone_known(tz->valuestring))
             {
-               bad_value(r, "device.time_zone", "device.time_zone must be a time zone TinyBar knows, like \"America/Los_Angeles\".");
+               bad_value(r, "device.time_zone", "device.time_zone must be a time zone MiniBar knows, like \"America/Los_Angeles\".");
                return;
            }
         tb_strlcpy(p.v.device.time_zone, tz->valuestring, sizeof p.v.device.time_zone);
@@ -1163,7 +1163,7 @@ static void h_cal_sync(rt_t *r, cJSON *b)
     (void)b;
     int e = net_port_cal_sync_now();
     if (e == -1) { fail(r, 409, "no_calendar", "No calendar address is saved.", NULL); return; }
-    if (e == -2) { fail(r, 503, "offline", "TinyBar has no Wi-Fi, so it can't sync.", NULL); return; }
+    if (e == -2) { fail(r, 503, "offline", "MiniBar has no Wi-Fi, so it can't sync.", NULL); return; }
     add_calendar(r, 202, TB_MEETINGS_MAX);
 }
 
@@ -1197,7 +1197,7 @@ static void add_pair_reply(rt_t *r, const char *token, const net_token_t *t)
 
 static void token_limit(rt_t *r)
 {
-    fail(r, 409, "token_limit", "TinyBar already has 10 paired devices. Remove one on the Remote.", NULL);
+    fail(r, 409, "token_limit", "MiniBar already has 10 paired devices. Remove one on the Remote.", NULL);
 }
 
 static void h_pair_start(rt_t *r, cJSON *b)
@@ -1451,7 +1451,7 @@ static void h_setup_wifi(rt_t *r, cJSON *b)
     net_wifi_info_t w;
     net_port_wifi(&w);
     if (w.state != NET_WIFI_SETUP || !tb_app_on_wifi_screen(s_app))
-        { fail(r, 404, "not_found", "TinyBar isn't in Wi-Fi setup anymore.", NULL); return; }
+        { fail(r, 404, "not_found", "MiniBar isn't in Wi-Fi setup anymore.", NULL); return; }
     const char *ssid, *pass = NULL, *user = NULL, *cal = NULL, *tz = NULL;
     if (get_str(b, "ssid", &ssid) != F_OK) {
         bad_request(r, "ssid", "\"ssid\" is required: the network's name.");
@@ -1461,7 +1461,7 @@ static void h_setup_wifi(rt_t *r, cJSON *b)
     /* The bar logs and shows the network's name: a line break or other control character could fake a protocol
      * line on the USB port or garble the screen. */
     if (has_control_chars(ssid)) {
-        bad_value(r, "ssid", "TinyBar can't join a network whose name has control characters, such as a line break.");
+        bad_value(r, "ssid", "MiniBar can't join a network whose name has control characters, such as a line break.");
         return;
     }
     if (get_str(b, "password", &pass) == F_TYPE) {
@@ -1498,7 +1498,7 @@ static void h_setup_wifi(rt_t *r, cJSON *b)
         { bad_value(r, "password", "Wi-Fi passwords are 8 to 63 characters, or 64 hex digits."); return; }
     if (sec == NET_SEC_WORK_LOGIN && (strlen(pass) > 128 || strlen(user) > 128))
         {
-           bad_value(r, user && strlen(user) > 128 ? "username" : "password", "That's longer than TinyBar can send.");
+           bad_value(r, user && strlen(user) > 128 ? "username" : "password", "That's longer than MiniBar can send.");
            return;
        }
     if (sec == NET_SEC_OPEN) pass = user = NULL;
@@ -1508,7 +1508,7 @@ static void h_setup_wifi(rt_t *r, cJSON *b)
         if (cal_format_failed(r, net_port_cal_check(cal), "calendar_url")) return;
     }
     if (!net_port_setup_join(ssid, sec == NET_SEC_WORK_LOGIN ? user : NULL, pass, cal))
-        { fail_retry(r, 503, "busy", "TinyBar couldn't start joining. Try again in a second.", NULL, 1); return; }
+        { fail_retry(r, 503, "busy", "MiniBar couldn't start joining. Try again in a second.", NULL, 1); return; }
     if (tz && tz[0] && strlen(tz) < TB_TZ_NAME_BYTES && net_port_time_zone_known(tz)) {
         /* Lead decision: the setup page's zone (the phone of the person standing at the bar) always applies, so
          * setting the bar up again after a move fixes its clock. Only the Mac's hello is limited to "if none is set
@@ -1647,20 +1647,20 @@ static const route_t *find_route(rt_t *r, const char *method, const char *raw_pa
     bool setup_ok = r->via == NET_VIA_SETUP || (r->via == NET_VIA_USB && w.state == NET_WIFI_SETUP);
     if ((hit->need == NEED_SETUP && !setup_ok) || (r->via == NET_VIA_SETUP && hit->need != NEED_SETUP && hit->fn != h_info)) {
         fail(r, 404, "not_found",
-             hit->need == NEED_SETUP ? "The setup endpoints exist only on the TinyBar-Setup network."
-                                     : "On the setup network, TinyBar serves only Wi-Fi setup.", NULL);
+             hit->need == NEED_SETUP ? "The setup endpoints exist only on the MiniBar-Setup network."
+                                     : "On the setup network, MiniBar serves only Wi-Fi setup.", NULL);
         return NULL;
     }
     /* Tokens (api.md 4.4, 4.5). USB needs none: the cable is the proof. */
     if (r->via != NET_VIA_USB && s_bearer && (hit->need == NEED_CALL || hit->need == NEED_FULL)) {
         if (!r->tok) {
-            fail(r, 401, "unauthorized", "Pair with this TinyBar first.", NULL);
+            fail(r, 401, "unauthorized", "Pair with this MiniBar first.", NULL);
             r->resp->www_authenticate = true;
             return NULL;
         }
         /* An Origin that came but couldn't be read is another origin, never "none" (it would fail open). */
         if (r->from_cookie && (r->req->origin_unreadable || (r->req->origin && !origin_ok(r->req->origin)))) {
-            fail(r, 403, "bad_origin", "That page isn't allowed to use this TinyBar.", NULL);
+            fail(r, 403, "bad_origin", "That page isn't allowed to use this MiniBar.", NULL);
             return NULL;
         }
         if (hit->need == NEED_FULL && r->tok->scope != NET_SCOPE_FULL) {
@@ -1718,13 +1718,13 @@ void net_api_handle(const net_req_t *req, net_resp_t *resp)
     }
     pair_tick(&r.now);
     if (!s_app) {
-        fail_retry(&r, 503, "busy", "TinyBar is starting up. Try again in a second.", NULL, 1);
+        fail_retry(&r, 503, "busy", "MiniBar is starting up. Try again in a second.", NULL, 1);
         return finish(&r);
     }
     /* On the setup network the only name is its address (it stays up a little after setup, for the page). */
     bool host_ok = req->via == NET_VIA_SETUP ? req->host && host_eq(req->host, NET_SETUP_IP) : net_api_host_ok(req->host);
     if (req->via != NET_VIA_USB && !host_ok) {
-        fail(&r, 421, "wrong_host", "Use this TinyBar's own address, such as tinybar.local.", NULL);
+        fail(&r, 421, "wrong_host", "Use this MiniBar's own address, such as minibar.local.", NULL);
         return finish(&r);
     }
     /* The token, if one came: the header wins over the cookie. */
@@ -1789,7 +1789,7 @@ static void usb_hello(rt_t *r, cJSON *b)
         return;
     }
     if (strncmp(api, "1.", 2) && strcmp(api, "1")) {
-        fail(r, 400, "unsupported_api", "This TinyBar speaks API " NET_API_VERSION ".", "api");
+        fail(r, 400, "unsupported_api", "This MiniBar speaks API " NET_API_VERSION ".", "api");
         return;
     }
     if (!get_client(r, b, &client)) return;
@@ -1905,7 +1905,7 @@ bool net_api_usb_line(const char *line, size_t len, bool too_long, char *out, si
         const char *cmd;
         if (f == F_OK) cJSON_ReplaceItemInObjectCaseSensitive(r.o, "id", cJSON_CreateNumber((double)v));
         if (f == F_TYPE || f == F_RANGE) bad_value(&r, "id", "\"id\" must be a whole number from 1 to 2147483647.");
-        else if (!s_app) fail_retry(&r, 503, "busy", "TinyBar is starting up. Try again in a second.", NULL, 1);
+        else if (!s_app) fail_retry(&r, 503, "busy", "MiniBar is starting up. Try again in a second.", NULL, 1);
         else if (get_str(j, "cmd", &cmd) != F_OK) bad_request(&r, "cmd", "\"cmd\" is required.");
         else if (!strcmp(cmd, "hello")) usb_hello(&r, j);
         else if (!strcmp(cmd, "call")) h_call(&r, j);

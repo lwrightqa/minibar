@@ -194,7 +194,7 @@ int main(void)
      * when it fits on one line, else the IP address, else "pair at its" over "IP address". Each line whole, on one
      * line (the label is as wide as its widest line), inside the tile. */
     static const struct { const char *scene, *foot; } WHERE[] = {
-        {"menu_wifi_none", "pair at\ntinybar.local"},
+        {"menu_wifi_none", "pair at\nminibar.local"},
         {"menu_wifi_none_renamed", "pair at\n10.0.4.42"},
         {"menu_wifi_none_longip", "pair at its\nIP address"},
     };

@@ -45,7 +45,7 @@ final class FakeBarDiscovery: BarDiscovery, @unchecked Sendable {
 /// A Wi-Fi transport whose pairing answers the test scripts.
 final class ScriptedWiFiFactory: TransportFactory, @unchecked Sendable {
     struct Script: Sendable {
-        var info: Result<InfoReply, BarError> = .success(InfoReply(deviceID: "f412fa3f2a1c", name: "TinyBar 2A1C", fw: "1.0.0"))
+        var info: Result<InfoReply, BarError> = .success(InfoReply(deviceID: "f412fa3f2a1c", name: "MiniBar 2A1C", fw: "1.0.0"))
         var pairStart: Result<PairStartReply, BarError> = .success(PairStartReply(pairingID: "d407580a9215e992"))
         /// Answers for each `pair`, in turn; the last repeats.
         var pair: [Result<PairReply, BarError>] = [.success(ScriptedWiFiFactory.paired)]
@@ -58,7 +58,7 @@ final class ScriptedWiFiFactory: TransportFactory, @unchecked Sendable {
     }
 
     static let token = "tb1_w1rV1lN4jm2ohruSAozMZxVlcceAL7yS8r45__-ref4"
-    static let paired = PairReply(token: token, tokenID: "74d8a526", deviceID: "f412fa3f2a1c", name: "TinyBar 2A1C", host: "tinybar.local")
+    static let paired = PairReply(token: token, tokenID: "74d8a526", deviceID: "f412fa3f2a1c", name: "MiniBar 2A1C", host: "minibar.local")
 
     let script: Locked<Script>
     let log = Locked<[String]>([])
@@ -188,10 +188,10 @@ final class PairingTests: XCTestCase {
 /// The pairing scenarios, run on the main actor like the Connect window.
 @MainActor
 final class PairingScenarios {
-    static let bar = DiscoveredBar(name: "TinyBar 2A1C", deviceID: "f412fa3f2a1c", api: "1.0", fw: "1.0.0", path: "/api/v1",
-                                   auth: .bearer, endpoint: BarEndpoint(host: "tinybar.local"))
-    static let otherBar = DiscoveredBar(name: "TinyBar E4F5", deviceID: "a0b1c2d3e4f5", auth: .bearer,
-                                        endpoint: BarEndpoint(host: "tinybar-2.local"))
+    static let bar = DiscoveredBar(name: "MiniBar 2A1C", deviceID: "f412fa3f2a1c", api: "1.0", fw: "1.0.0", path: "/api/v1",
+                                   auth: .bearer, endpoint: BarEndpoint(host: "minibar.local"))
+    static let otherBar = DiscoveredBar(name: "MiniBar E4F5", deviceID: "a0b1c2d3e4f5", auth: .bearer,
+                                        endpoint: BarEndpoint(host: "minibar-2.local"))
 
     let clock = ManualClock()
     let discovery = FakeBarDiscovery()
@@ -239,8 +239,8 @@ final class PairingScenarios {
         await flow.submit(code: "482 91")   // not six digits yet: nothing happens
         XCTAssertEqual(factory.log.get().count, 1)
         await flow.submit(code: "482 913")
-        let known = KnownBar(deviceID: "f412fa3f2a1c", name: "TinyBar 2A1C", host: "tinybar.local",
-                             lastEndpoint: BarEndpoint(host: "tinybar.local"), auth: .bearer, tokenID: "74d8a526")
+        let known = KnownBar(deviceID: "f412fa3f2a1c", name: "MiniBar 2A1C", host: "minibar.local",
+                             lastEndpoint: BarEndpoint(host: "minibar.local"), auth: .bearer, tokenID: "74d8a526")
         XCTAssertEqual(flow.step, .paired(known))
         XCTAssertEqual(factory.log.get().last, #"pair {"code":"482913","pairing_id":"d407580a9215e992"}"#)
         XCTAssertEqual(try tokens.token(for: "f412fa3f2a1c"), ScriptedWiFiFactory.token, "the token goes to the token store")
@@ -316,7 +316,7 @@ final class PairingScenarios {
     /// The 2 minutes ran out on the Mac's clock. The bar's 2 minutes start
     /// when the code appears on its screen, which can be later (api.md 4.8),
     /// so the code is still sent, and the bar's `not_pairing` is what says it
-    /// has expired ("That code has expired or was canceled on TinyBar").
+    /// has expired ("That code has expired or was canceled on MiniBar").
     func test_C22_aCodePastItsTimeOnTheMacsClockIsStillSent() async throws {
         let factory = ScriptedWiFiFactory(.init(pair: [.failure(.api(APIErrorBody(error: .notPairing), httpStatus: 409)),
                                                       .success(ScriptedWiFiFactory.paired)]))
@@ -345,14 +345,14 @@ final class PairingScenarios {
         XCTAssertEqual(flow.step, .looking)
         clock.advance(by: 0.1)
         await flush()
-        XCTAssertEqual(flow.step, .failed(.noneFound, bar: nil, retryAt: nil), "no TinyBar found after 10 seconds")
+        XCTAssertEqual(flow.step, .failed(.noneFound, bar: nil, retryAt: nil), "no MiniBar found after 10 seconds")
 
         // Try Again, and two bars show up.
         flow.startLooking()
         let unnamed = DiscoveredBar(name: "Something", deviceID: nil, endpoint: BarEndpoint(host: "x.local"))
         discovery.emit([Self.bar, Self.otherBar, unnamed])
         await flush()
-        XCTAssertEqual(flow.step, .choose([Self.bar, Self.otherBar], chosen: nil), "several: you choose (only real TinyBars)")
+        XCTAssertEqual(flow.step, .choose([Self.bar, Self.otherBar], chosen: nil), "several: you choose (only real MiniBars)")
         flow.choose(Self.otherBar)
         XCTAssertEqual(flow.step, .choose([Self.bar, Self.otherBar], chosen: Self.otherBar))
         discovery.emit([Self.otherBar, Self.bar])
@@ -376,7 +376,7 @@ final class PairingScenarios {
         let factory = ScriptedWiFiFactory()
         let flow = flow(factory)
         await flow.useAddress(" 10.0.4.42 ")
-        let bar = DiscoveredBar(name: "TinyBar 2A1C", deviceID: "f412fa3f2a1c", api: "1.0", fw: "1.0.0", path: "/api/v1",
+        let bar = DiscoveredBar(name: "MiniBar 2A1C", deviceID: "f412fa3f2a1c", api: "1.0", fw: "1.0.0", path: "/api/v1",
                                 auth: .bearer, endpoint: BarEndpoint(host: "10.0.4.42"))
         XCTAssertEqual(flow.step, .choose([bar], chosen: bar), "checked with info, then on to step 3")
         XCTAssertEqual(factory.log.get(), ["info 10.0.4.42"])
@@ -398,15 +398,15 @@ final class PairingScenarios {
     }
 
     func test_C24_aBarWithoutPairing() async throws {
-        let factory = ScriptedWiFiFactory(.init(info: .success(InfoReply(deviceID: "f412fa3f2a1c", name: "TinyBar 2A1C", fw: "1.0.0",
+        let factory = ScriptedWiFiFactory(.init(info: .success(InfoReply(deviceID: "f412fa3f2a1c", name: "MiniBar 2A1C", fw: "1.0.0",
                                                                          auth: .notRequired))))
         let flow = flow(factory)
-        let unknownAuth = DiscoveredBar(name: "TinyBar 2A1C", deviceID: "f412fa3f2a1c", endpoint: BarEndpoint(host: "tinybar.local"))
+        let unknownAuth = DiscoveredBar(name: "MiniBar 2A1C", deviceID: "f412fa3f2a1c", endpoint: BarEndpoint(host: "minibar.local"))
         flow.choose(unknownAuth)
         await flow.requestCode()
-        let known = KnownBar(deviceID: "f412fa3f2a1c", name: "TinyBar 2A1C", host: "tinybar.local",
-                             lastEndpoint: BarEndpoint(host: "tinybar.local"), auth: .notRequired)
-        XCTAssertEqual(flow.step, .notNeeded(known), "TinyBar 2A1C doesn't need pairing, so you're all set")
+        let known = KnownBar(deviceID: "f412fa3f2a1c", name: "MiniBar 2A1C", host: "minibar.local",
+                             lastEndpoint: BarEndpoint(host: "minibar.local"), auth: .notRequired)
+        XCTAssertEqual(flow.step, .notNeeded(known), "MiniBar 2A1C doesn't need pairing, so you're all set")
         XCTAssertEqual(paired, [known])
         XCTAssertEqual(tokens.deviceIDs, [])
         XCTAssertFalse(factory.log.get().contains { $0.hasPrefix("pair") })

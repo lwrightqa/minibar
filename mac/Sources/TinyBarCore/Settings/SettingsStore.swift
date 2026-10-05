@@ -29,7 +29,7 @@ public final class InMemorySettingsStore: SettingsStore, @unchecked Sendable {
 /// version can add fields with defaults. Builds on Linux too, so it's tested
 /// there (against a `UserDefaults(suiteName:)`).
 public final class UserDefaultsSettingsStore: SettingsStore, @unchecked Sendable {
-    public static let defaultKey = "TinyBarSettings.v1"
+    public static let defaultKey = "MiniBarSettings.v1"
 
     private let defaults: UserDefaults
     private let key: String

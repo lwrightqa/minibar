@@ -1,4 +1,4 @@
-menu "TinyBar"
+menu "MiniBar"
 
     choice TINYBAR_API_AUTH
         prompt "API authorization (docs/api.md section 4)"

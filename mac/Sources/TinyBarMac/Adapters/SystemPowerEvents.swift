@@ -36,7 +36,7 @@ final class SystemPowerEvents: PowerEventSource, @unchecked Sendable {
     /// How long sleep waits for the handler.
     static let sleepDelay: TimeInterval = 1.0
 
-    private let work = AdapterQueue(label: "TinyBar.power")
+    private let work = AdapterQueue(label: "MiniBar.power")
 
     // Everything below is touched only on `work.queue`.
     private var handler: (@Sendable (PowerEvent) async -> Void)?

@@ -40,7 +40,7 @@ final class EngineRig {
     /// A Mac paired with the fake bar earlier.
     static func paired(_ change: ((inout AppSettings) -> Void)? = nil) -> EngineRig {
         var settings = AppSettings(installID: installID)
-        settings.bar = KnownBar(deviceID: "f412fa3f2a1c", name: "TinyBar 2A1C", host: "tinybar.local",
+        settings.bar = KnownBar(deviceID: "f412fa3f2a1c", name: "MiniBar 2A1C", host: "minibar.local",
                                 lastEndpoint: ConnectionRig.barAddress, auth: .bearer, tokenID: "74d8a526")
         settings.didShowWelcome = true
         change?(&settings)
@@ -352,7 +352,7 @@ final class EngineScenarios {
         await rig.begin()
         await rig.micUse(Proc.garageBand, Proc.voiceMemos)
         await rig.plugIn()
-        XCTAssertEqual(rig.engine.state.settings.bar?.name, "TinyBar 2A1C", "paired over the cable")
+        XCTAssertEqual(rig.engine.state.settings.bar?.name, "MiniBar 2A1C", "paired over the cable")
         XCTAssertEqual(rig.store.load()?.bar?.deviceID, "f412fa3f2a1c", "and the bar is saved")
         XCTAssertEqual(rig.tokens.deviceIDs, ["f412fa3f2a1c"], "the token is in the token store")
         XCTAssertEqual(rig.discovery.starts, 1, "now Bonjour looks for it, for Wi-Fi")
@@ -390,7 +390,7 @@ final class EngineScenarios {
         XCTAssertEqual(flow.step, .explainLocalNetwork)
         rig.engine.markLocalNetworkExplained()
         flow.startLooking()
-        let found = DiscoveredBar(name: "TinyBar 2A1C", deviceID: "f412fa3f2a1c", auth: .bearer, endpoint: address)
+        let found = DiscoveredBar(name: "MiniBar 2A1C", deviceID: "f412fa3f2a1c", auth: .bearer, endpoint: address)
         rig.discovery.emit([found])
         await rig.settle()
         await flow.requestCode()
@@ -429,7 +429,7 @@ final class EngineScenarios {
         await rig.settle()
         XCTAssertTrue(rig.engine.state.localNetworkBlocked)
         XCTAssertEqual(rig.engine.state.connection.phase, .localNetworkBlocked)
-        rig.discovery.emit([DiscoveredBar(name: "TinyBar 2A1C", deviceID: "f412fa3f2a1c", endpoint: ConnectionRig.barAddress)])
+        rig.discovery.emit([DiscoveredBar(name: "MiniBar 2A1C", deviceID: "f412fa3f2a1c", endpoint: ConnectionRig.barAddress)])
         await rig.settle()
         XCTAssertFalse(rig.engine.state.localNetworkBlocked)
         await rig.engine.shutdown()

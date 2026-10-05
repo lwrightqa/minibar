@@ -328,9 +328,9 @@ TB_TEST(view_wifi_setup_screens)
     TB_EQ_STR(V.kicker, "Wi-Fi setup");
     TB_EQ_STR(V.head, "Scan to set up");
     TB_FALSE(V.head_caps);
-    TB_EQ_STR(V.qr_payload, "WIFI:T:nopass;S:TinyBar-Setup;;");
+    TB_EQ_STR(V.qr_payload, "WIFI:T:nopass;S:MiniBar-Setup;;");
     TB_EQ_STR(V.step1_pre, "Join ");
-    TB_EQ_STR(V.step1_bold, "TinyBar-Setup");
+    TB_EQ_STR(V.step1_bold, "MiniBar-Setup");
     TB_EQ_STR(V.step1_post, " with your phone");
     TB_EQ_STR(V.step2, "Pick your office Wi-Fi on the page that opens");
     TB_EQ_STR(V.sub, "Hold to skip and use without Wi-Fi");
@@ -339,7 +339,7 @@ TB_TEST(view_wifi_setup_screens)
     MAIN("Wi-Fi setup", "Connecting", "to Office-WiFi");
     TB_TRUE(V.head_dots);
     scene("setup_connected");
-    MAIN("TinyBar 2A1C \xC2\xB7 Connected to Office-WiFi", "tinybar.local", "or 10.0.4.42 \xC2\xB7 open it on your phone for the Remote");
+    MAIN("MiniBar 2A1C \xC2\xB7 Connected to Office-WiFi", "minibar.local", "or 10.0.4.42 \xC2\xB7 open it on your phone for the Remote");
     scene("setup_failed");
     MAIN("Couldn't connect to Office-WiFi", "Wrong password", "Tap to try again \xC2\xB7 Hold to skip");
 }
@@ -349,12 +349,12 @@ TB_TEST(view_splash_and_pairing)
     scene("splash");
     TB_EQ_INT(V.layout, UI_LAYOUT_SPLASH);
     TB_EQ_INT(V.key, TB_KEY_CLOCK);
-    TB_EQ_STR(V.head, "TinyBar");
+    TB_EQ_STR(V.head, "MiniBar");
     scene("pairing");
     TB_EQ_INT(V.key, TB_KEY_CLOCK);
     MAIN("Pairing \xC2\xB7 Mac", "482 913", "Type it on your Mac \xC2\xB7 tap to cancel");
     TB_EQ_INT(V.fit, UI_FIT_TIME);
-    SIDE("Code expires in", "1:42", "", "TinyBar 2A1C");
+    SIDE("Code expires in", "1:42", "", "MiniBar 2A1C");
     TB_EQ_INT(V.bar_permille, 150);             /* 18 s of 120 gone */
     scene("pairing_phone");
     MAIN("Pairing \xC2\xB7 Phone", "482 913", "Type it on your phone \xC2\xB7 tap to cancel");
@@ -369,11 +369,11 @@ TB_TEST(view_pairing_round)
     scene("pairing_script");
     TB_EQ_INT(V.key, TB_KEY_CLOCK);
     MAIN("Pairing \xC2\xB7 Script", "482 913", "Type this code on that device \xC2\xB7 tap to cancel");
-    SIDE("Code expires in", "1:42", "", "TinyBar 2A1C");
+    SIDE("Code expires in", "1:42", "", "MiniBar 2A1C");
     TB_FALSE(O.toast);
     TB_FALSE(O.menu);
     scene("pairing_late");
-    SIDE("Code expires in", "0:05", "", "TinyBar 2A1C");
+    SIDE("Code expires in", "0:05", "", "MiniBar 2A1C");
     TB_EQ_INT(V.bar_permille, 958);             /* 115 s of 120 gone */
     /* Math.max(1, Math.ceil(left / 1000)): the last moment still reads 0:01, the bar full */
     NOW.mono = A.pairing.expires - 1;
@@ -400,11 +400,11 @@ TB_TEST(view_pairing_round)
     const tb_tile_t *t = &A.menu.tiles[1];
     TB_EQ_STR(t->value, "None");
     TB_EQ_INT(t->style, TB_TILE_INFO);
-    TB_EQ_STR(t->foot, "pair at\ntinybar-2.local");
+    TB_EQ_STR(t->foot, "pair at\nminibar-2.local");
     TB_EQ_INT(t->n_foot_alt, 2);
     TB_EQ_STR(t->foot_alt[0], "pair at\n10.0.4.42");
     TB_EQ_STR(t->foot_alt[1], "pair at its\nIP address");
-    TB_EQ_STR(A.menu.tiles[0].foot, "TinyBar 2A1C\ntinybar-2.local \xC2\xB7 10.0.4.42");
+    TB_EQ_STR(A.menu.tiles[0].foot, "MiniBar 2A1C\nminibar-2.local \xC2\xB7 10.0.4.42");
     scene("menu_wifi_full");
     TB_EQ_STR(A.menu.tiles[1].value, "Full");
     TB_EQ_STR(A.menu.tiles[1].foot, "tap to\nforget all");

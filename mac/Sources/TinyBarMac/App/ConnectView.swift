@@ -10,7 +10,7 @@ import TinyBarCore
 ///   the login checkbox on first launch; the menu-bar hint once connected;
 ///   Not Now (Esc) and Done (Return, enabled once a bar is connected).
 /// - Wi-Fi page, driven by `WiFiPairingFlow.step`: the Local Network
-///   explanation, looking, choosing a bar, Show Code on TinyBar, the code
+///   explanation, looking, choosing a bar, Show Code on MiniBar, the code
 ///   field, pairing, paired; Back (Esc) at the bottom left.
 /// - The code field: 6 digits, monospaced digits at title 2 size, placeholder
 ///   "000 000", shown grouped by `PairingCode.display`, pairs on the sixth
@@ -49,12 +49,12 @@ private struct USBPage: View {
                     .frame(width: 64, height: 64)
                     .accessibilityHidden(true)
             }
-            Text(model.welcome ? "Welcome to TinyBar" : "Connect your TinyBar")
+            Text(model.welcome ? "Welcome to MiniBar" : "Connect your MiniBar")
                 .font(.title2)
                 .fontWeight(.semibold)
                 .multilineTextAlignment(.center)
             if model.welcome {
-                Text("TinyBar shows On a call on your bar whenever this Mac’s mic or camera is in use, in Slack, Zoom, Google Meet or any other app. It never listens or records.")
+                Text("MiniBar shows On a call on your bar whenever this Mac’s mic or camera is in use, in Slack, Zoom, Google Meet or any other app. It never listens or records.")
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
@@ -67,7 +67,7 @@ private struct USBPage: View {
                         .foregroundStyle(.secondary)
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Plug TinyBar into this Mac with a USB cable.")
+                        Text("Plug MiniBar into this Mac with a USB cable.")
                             .fixedSize(horizontal: false, vertical: true)
                         USBStatusLine(model: model)
                     }
@@ -88,7 +88,7 @@ private struct USBPage: View {
 
             if model.welcome {
                 VStack(alignment: .leading, spacing: 4) {
-                    Toggle("Start TinyBar when you log in", isOn: $model.startAtLogin)
+                    Toggle("Start MiniBar when you log in", isOn: $model.startAtLogin)
                         .toggleStyle(.checkbox)
                     Group {
                         if let problem = model.loginProblem, let help = LoginItemHelp(status: problem) {
@@ -106,7 +106,7 @@ private struct USBPage: View {
 
             if model.isConnected {
                 HStack(spacing: 6) {
-                    Text("TinyBar is in your menu bar:")
+                    Text("MiniBar is in your menu bar:")
                     Image(systemName: IconState.connected.symbolName)
                         .accessibilityLabel(IconState.connected.accessibilityLabel)
                 }
@@ -158,7 +158,7 @@ private struct USBStatusLine: View {
                 HStack(spacing: 6) {
                     ProgressView()
                         .controlSize(.small)
-                    Text("Looking for TinyBar…")
+                    Text("Looking for MiniBar…")
                 }
                 if model.stillLooking {
                     Text("Still looking? Some USB cables only charge. Try another cable, or pair over Wi-Fi.")
@@ -225,11 +225,11 @@ private struct WiFiPage: View {
     @ViewBuilder private var content: some View {
         switch flow.step {
         case .explainLocalNetwork:
-            Text("Your Mac will ask whether TinyBar can find devices on your local network. Choose Allow, so this Mac can reach your bar over Wi-Fi.")
+            Text("Your Mac will ask whether MiniBar can find devices on your local network. Choose Allow, so this Mac can reach your bar over Wi-Fi.")
                 .fixedSize(horizontal: false, vertical: true)
 
         case .looking:
-            busyLine("Looking for TinyBar on this network…")
+            busyLine("Looking for MiniBar on this network…")
 
         case .choose(let bars, let chosen):
             barChooser(bars: bars, chosen: chosen)
@@ -262,7 +262,7 @@ private struct WiFiPage: View {
 
     @ViewBuilder
     private func failure(_ problem: PairingProblem, bar: DiscoveredBar?) -> some View {
-        let message = problem.message(barName: bar?.name ?? "TinyBar")
+        let message = problem.message(barName: bar?.name ?? "MiniBar")
         switch problem {
         case .wrongCode:
             if let bar {
@@ -297,12 +297,12 @@ private struct WiFiPage: View {
         case .tokenLimit:
             // From asking for a code, or from sending it (a safeguard that
             // ends the pairing, api.md 4.7). Once a device is removed on the
-            // Remote, Show Code on TinyBar tries again.
+            // Remote, Show Code on MiniBar tries again.
             if let bar { barName(bar) }
             ErrorLine(message: message)
             HStack {
                 if let url = bar?.endpoint.remotePageURL {
-                    Button("Open TinyBar Remote…") { _ = NSWorkspace.shared.open(url) }
+                    Button("Open MiniBar Remote…") { _ = NSWorkspace.shared.open(url) }
                 }
                 if bar != nil {
                     showCodeButton(enabled: true, isDefault: false)
@@ -330,7 +330,7 @@ private struct WiFiPage: View {
 
     // MARK: Pieces
 
-    /// Show Code on TinyBar, enabled again when the wait after `pairing_busy`
+    /// Show Code on MiniBar, enabled again when the wait after `pairing_busy`
     /// or `rate_limited` is over (checked each second on the flow's clock).
     private var retryableShowCodeButton: some View {
         TimelineView(.periodic(from: .now, by: 1)) { _ in
@@ -338,14 +338,14 @@ private struct WiFiPage: View {
         }
     }
 
-    /// One bar: "Found TinyBar 2A1C." Several: a pop-up and the help line.
+    /// One bar: "Found MiniBar 2A1C." Several: a pop-up and the help line.
     @ViewBuilder
     private func barChooser(bars: [DiscoveredBar], chosen: DiscoveredBar?) -> some View {
         if bars.count == 1, let bar = bars.first {
             Text(verbatim: "Found \(bar.name).")
         } else {
             VStack(alignment: .leading, spacing: 4) {
-                Picker("TinyBar:", selection: mainActorBinding(
+                Picker("MiniBar:", selection: mainActorBinding(
                     get: { chosen?.name },
                     set: { (name: String?) in
                         if let bar = bars.first(where: { $0.name == name }) {
@@ -358,7 +358,7 @@ private struct WiFiPage: View {
                     }
                 }
                 .fixedSize()
-                Text("Hold a TinyBar’s screen and tap Wi-Fi to see its name.")
+                Text("Hold a MiniBar’s screen and tap Wi-Fi to see its name.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
@@ -366,14 +366,14 @@ private struct WiFiPage: View {
     }
 
     private func barName(_ bar: DiscoveredBar) -> some View {
-        LabeledContent("TinyBar:") {
+        LabeledContent("MiniBar:") {
             Text(verbatim: bar.name)
         }
         .fixedSize()
     }
 
     private func showCodeButton(enabled: Bool, isDefault: Bool) -> some View {
-        Button("Show Code on TinyBar") {
+        Button("Show Code on MiniBar") {
             model.requestCode()
         }
         .disabled(!enabled)
@@ -406,7 +406,7 @@ private struct WiFiPage: View {
                 Button("Show a New Code") { model.requestCode() }
                     .buttonStyle(.link)
                 if model.foundSeveralBars {
-                    Button("Didn’t see a code? Choose another TinyBar.") { model.chooseAnotherBar() }
+                    Button("Didn’t see a code? Choose another MiniBar.") { model.chooseAnotherBar() }
                         .buttonStyle(.link)
                 }
             }
@@ -426,7 +426,7 @@ private struct WiFiPage: View {
 
     private var addressField: some View {
         HStack {
-            TextField("Address", text: $model.addressText, prompt: Text("tinybar.local or 10.0.4.42"))
+            TextField("Address", text: $model.addressText, prompt: Text("minibar.local or 10.0.4.42"))
                 .focused($addressFocused)
                 .onSubmit { model.connectToAddress() }
             Button("Connect") { model.connectToAddress() }
@@ -501,10 +501,10 @@ struct LoginItemHelp: View {
     init?(status: LoginItemStatus) {
         switch status {
         case .requiresApproval:
-            message = "Allow TinyBar in Login Items to start it when you log in."
+            message = "Allow MiniBar in Login Items to start it when you log in."
             showsOpenSettings = true
         case .notFound:
-            message = "Move TinyBar to your Applications folder, then turn this on again."
+            message = "Move MiniBar to your Applications folder, then turn this on again."
             showsOpenSettings = false
         case .failed:
             message = "macOS didn’t allow it. Your organization may manage login items."

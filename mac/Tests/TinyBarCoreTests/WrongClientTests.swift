@@ -39,7 +39,7 @@ final class WrongClientTests: XCTestCase {
         await rig.connection.report(slack)
         await rig.settle()
         var state = await rig.state
-        XCTAssertEqual(state.phase, .unrecognized, "TinyBar 2A1C doesn't recognize this Mac · Pair Again…")
+        XCTAssertEqual(state.phase, .unrecognized, "MiniBar 2A1C doesn't recognize this Mac · Pair Again…")
         XCTAssertNil(try rig.tokens.token(for: "f412fa3f2a1c"), "the token is dropped")
         XCTAssertNil(state.bar?.tokenID)
 

@@ -102,8 +102,8 @@ final class WindowCoordinator: NSObject, NSWindowDelegate {
         }
     }
 
-    /// The Connect window: "Welcome to TinyBar" on first launch, "Connect
-    /// TinyBar" otherwise; `wifiPage` opens it on Pair Over Wi-Fi (Pair Again…).
+    /// The Connect window: "Welcome to MiniBar" on first launch, "Connect
+    /// MiniBar" otherwise; `wifiPage` opens it on Pair Over Wi-Fi (Pair Again…).
     /// 440 pt wide, fixed size, centered.
     func showConnect(welcome: Bool, wifiPage: Bool = false) {
         if let connectWindow, let connectModel {
@@ -125,7 +125,7 @@ final class WindowCoordinator: NSObject, NSWindowDelegate {
         let hosting = NSHostingController(rootView: ConnectView(model: model).frame(width: Self.connectWidth))
         let window = NSWindow(contentViewController: hosting)
         window.styleMask = [.titled, .closable]
-        window.title = welcome ? "Welcome to TinyBar" : "Connect TinyBar"
+        window.title = welcome ? "Welcome to MiniBar" : "Connect MiniBar"
         window.isReleasedWhenClosed = false
         window.delegate = self
         connectModel = model

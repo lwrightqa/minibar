@@ -138,7 +138,7 @@ final class USBLinkTests: XCTestCase {
         try bar.reply(to: .int(1), FakeBarPTY.infoJSON)
         let info = try await handshake.value
         XCTAssertEqual(info.deviceID, "f412fa3f2a1c")
-        XCTAssertEqual(info.name, "TinyBar 2A1C")
+        XCTAssertEqual(info.name, "MiniBar 2A1C")
         let rest = try await offPool { try bar.drain() }
         XCTAssertEqual(rest, "", "nothing else was sent")
         await usb.close()
@@ -155,7 +155,7 @@ final class USBLinkTests: XCTestCase {
             let command = try await offPool { try bar.nextCommand() }
             XCTAssertEqual(command?["cmd"], .string("hello"))
             sentAt.append(clock.now().timeIntervalSince(start))
-            try bar.log("not a TinyBar, just chatter")
+            try bar.log("not a MiniBar, just chatter")
             await clock.waitForSleepers()
             clock.advance(by: 2)
         }
@@ -181,14 +181,27 @@ final class USBLinkTests: XCTestCase {
     }
 
     func test_C14_handshakeAnswers() async throws {
-        // Another device that speaks the protocol isn't a TinyBar.
+        // Another device that speaks the protocol isn't a MiniBar.
         do {
             let bar = try FakeBarPTY()
             let usb = try open(bar)
             let handshake = Task { try await usb.handshake(USBLinkTests.helloRequest) }
             let command = try await offPool { try bar.nextCommand() }
-            try bar.reply(to: command?["id"], FakeBarPTY.infoJSON.replacingOccurrences(of: #""device": "TinyBar""#, with: #""device": "OtherThing""#))
+            try bar.reply(to: command?["id"], FakeBarPTY.infoJSON.replacingOccurrences(of: #""device": "MiniBar""#, with: #""device": "OtherThing""#))
             await XCTAssertThrowsBarError(try await handshake.value, .notATinyBar)
+            await usb.close()
+        }
+        // A bar still on firmware 1.0.2 says "TinyBar", the product's old
+        // name; accepted for one release (api.md 14.6).
+        do {
+            let bar = try FakeBarPTY()
+            let usb = try open(bar)
+            let handshake = Task { try await usb.handshake(USBLinkTests.helloRequest) }
+            let command = try await offPool { try bar.nextCommand() }
+            try bar.reply(to: command?["id"], FakeBarPTY.infoJSON.replacingOccurrences(of: #""device": "MiniBar""#, with: #""device": "TinyBar""#))
+            let info = try await handshake.value
+            XCTAssertTrue(info.isKnownBar)
+            XCTAssertEqual(info.device, TinyBarAPI.legacyDeviceName)
             await usb.close()
         }
         // A bar that speaks another major version refuses (api.md 6.6).
@@ -197,7 +210,7 @@ final class USBLinkTests: XCTestCase {
             let usb = try open(bar)
             let handshake = Task { try await usb.handshake(USBLinkTests.helloRequest) }
             let command = try await offPool { try bar.nextCommand() }
-            try bar.reply(to: command?["id"], #"{"ok": false, "error": "unsupported_api", "message": "This TinyBar speaks API 2.0.", "field": "api"}"#)
+            try bar.reply(to: command?["id"], #"{"ok": false, "error": "unsupported_api", "message": "This MiniBar speaks API 2.0.", "field": "api"}"#)
             do {
                 _ = try await handshake.value
                 XCTFail("expected unsupported_api")
@@ -219,7 +232,7 @@ final class USBLinkTests: XCTestCase {
             let second = try await offPool { try bar.nextCommand() }
             try bar.reply(to: second?["id"], FakeBarPTY.infoJSON)
             let info = try await handshake.value
-            XCTAssertTrue(info.isTinyBar)
+            XCTAssertTrue(info.isKnownBar)
             await usb.close()
         }
     }
@@ -293,14 +306,14 @@ final class USBLinkTests: XCTestCase {
         let pair = Task { try await usb.pair(USBPairRequest(client: FakeBarPTY.client)) }
         let pairLine = try await offPool { try bar.nextLine() }
         XCTAssertEqual(pairLine, "@tb " + #"{"cmd":"pair","id":1,"client":"6F1C2A9E-5B7D-4E0A-9C3B-2D8F1A7E4B60"}"#)
-        try bar.send(#"{"id": 1, "ok": true, "token": "tb1_w1rV1lN4jm2ohruSAozMZxVlcceAL7yS8r45__-ref4", "token_id": "74d8a526", "scope": "call", "device_id": "f412fa3f2a1c", "name": "TinyBar 2A1C", "host": "tinybar.local"}"#)
+        try bar.send(#"{"id": 1, "ok": true, "token": "tb1_w1rV1lN4jm2ohruSAozMZxVlcceAL7yS8r45__-ref4", "token_id": "74d8a526", "scope": "call", "device_id": "f412fa3f2a1c", "name": "MiniBar 2A1C", "host": "minibar.local"}"#)
         let paired = try await pair.value
         XCTAssertEqual(paired.token, "tb1_w1rV1lN4jm2ohruSAozMZxVlcceAL7yS8r45__-ref4")
         XCTAssertEqual(paired.tokenID, "74d8a526")
 
         let refused = Task { try await usb.pair(USBPairRequest(client: FakeBarPTY.client)) }
         let second = try await offPool { try bar.nextCommand() }
-        try bar.reply(to: second?["id"], #"{"ok": false, "error": "token_limit", "message": "TinyBar already has 10 paired devices. Remove one on the Remote.", "field": null}"#)
+        try bar.reply(to: second?["id"], #"{"ok": false, "error": "token_limit", "message": "MiniBar already has 10 paired devices. Remove one on the Remote.", "field": null}"#)
         do {
             _ = try await refused.value
             XCTFail("expected token_limit")
@@ -330,12 +343,12 @@ final class USBLinkTests: XCTestCase {
         let bar = try FakeBarPTY()
         let usb = try open(bar)
         var events = usb.events.makeAsyncIterator()
-        try bar.log("I (312) main: TinyBar 1.0.0")
+        try bar.log("I (312) main: MiniBar 1.0.0")
         try bar.send(#"{"event": "ready", "device_id": "f412fa3f2a1c", "api": "1.0", "fw": "1.0.0"}"#)
         try bar.send(#"{"event": "later_event", "x": 1}"#)  // unknown events are ignored
         let first = await events.next()
         guard case .log(let text) = first else { return XCTFail("expected a log line, got \(String(describing: first))") }
-        XCTAssertTrue(text.hasPrefix("I (312) main: TinyBar 1.0.0"))
+        XCTAssertTrue(text.hasPrefix("I (312) main: MiniBar 1.0.0"))
         let second = await events.next()
         XCTAssertEqual(second, .ready(ReadyEvent(deviceID: "f412fa3f2a1c", fw: "1.0.0")))
 
@@ -360,7 +373,7 @@ final class USBLinkTests: XCTestCase {
         XCTAssertEqual(usb.endpointDescription, bar.devicePath.split(separator: "/").last.map(String.init))
     }
 
-    static let statusJSON = #"{"ok": true, "device_id": "f412fa3f2a1c", "rev": 1843, "time": "2026-10-04T14:24:05-07:00", "time_source": "ntp", "showing": "own", "screen": "on", "own": {"status": "busy", "since": "2026-10-04T14:01:00-07:00", "previous": "busy"}, "message": {"text": null, "set_at": null}, "away": {"back_at": null, "note": null}, "call": {"active": false, "app": null, "inputs": null, "via": null, "since": null, "aside": false}, "meeting": {"active": false, "aside": false, "current": null, "next": null, "left_today": null}, "pomodoro": {"state": "ready", "phase": "focus", "round": 1, "rounds": 4, "length_s": 1500, "remaining_s": 1500, "ends_at": null, "paused_by": null, "ringing": false, "done_today": 0, "focused_today_s": 0}, "sources": {"calendar": false, "mac": true}, "macs": [{"client": "6F1C2A9E-5B7D-4E0A-9C3B-2D8F1A7E4B60", "name": "Mac", "via": "usb", "connected": true, "active": false, "last_heard": "2026-10-04T14:24:01-07:00"}], "calendar": {"saved": false, "last_sync": null, "syncing": false, "error": null}, "wifi": {"state": "connected", "ssid": "Office-WiFi", "ip": "10.0.4.42", "host": "tinybar.local", "rssi": -61}}"#
+    static let statusJSON = #"{"ok": true, "device_id": "f412fa3f2a1c", "rev": 1843, "time": "2026-10-04T14:24:05-07:00", "time_source": "ntp", "showing": "own", "screen": "on", "own": {"status": "busy", "since": "2026-10-04T14:01:00-07:00", "previous": "busy"}, "message": {"text": null, "set_at": null}, "away": {"back_at": null, "note": null}, "call": {"active": false, "app": null, "inputs": null, "via": null, "since": null, "aside": false}, "meeting": {"active": false, "aside": false, "current": null, "next": null, "left_today": null}, "pomodoro": {"state": "ready", "phase": "focus", "round": 1, "rounds": 4, "length_s": 1500, "remaining_s": 1500, "ends_at": null, "paused_by": null, "ringing": false, "done_today": 0, "focused_today_s": 0}, "sources": {"calendar": false, "mac": true}, "macs": [{"client": "6F1C2A9E-5B7D-4E0A-9C3B-2D8F1A7E4B60", "name": "Mac", "via": "usb", "connected": true, "active": false, "last_heard": "2026-10-04T14:24:01-07:00"}], "calendar": {"saved": false, "last_sync": null, "syncing": false, "error": null}, "wifi": {"state": "connected", "ssid": "Office-WiFi", "ip": "10.0.4.42", "host": "minibar.local", "rssi": -61}}"#
 }
 
 /// Asserts that an async expression throws exactly `expected`.

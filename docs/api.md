@@ -1,10 +1,10 @@
-# TinyBar API, version 1
+# MiniBar API, version 1
 
 **Status:** draft for review, 2026-10-04. Written by the lead developer for the Mac app job.
 
-This is the **contract** between the bar's firmware and every program that talks to it: the Mac app, the Remote web page the bar serves at `tinybar.local`, and automations (scripts, Shortcuts, home automation). The firmware team and the Mac app team both build to this file. When either side needs something different, change this file first, then the code.
+This is the **contract** between the bar's firmware and every program that talks to it: the Mac app, the Remote web page the bar serves at `minibar.local`, and automations (scripts, Shortcuts, home automation). The firmware team and the Mac app team both build to this file. When either side needs something different, change this file first, then the code.
 
-- It starts from the mock-up's section "How the Mac app talks to TinyBar" (`docs/mockup.html`, id `apiTitle`), the Remote's "Connect your Mac" card, and the entry "Proposed: the Mac app's API" in `docs/decisions.md`. Where this file differs from them, section 14 lists the change and why, so the mock-up and decisions can be brought in line.
+- It starts from the mock-up's section "How the Mac app talks to MiniBar" (`docs/mockup.html`, id `apiTitle`), the Remote's "Connect your Mac" card, and the entry "Proposed: the Mac app's API" in `docs/decisions.md`. Where this file differs from them, section 14 lists the change and why, so the mock-up and decisions can be brought in line.
 - Items marked **Proposed** need the user's OK, as in `decisions.md`. Everything else is technical design that the team can change through this file.
 - The product rules (which source wins, set aside and Show again, the Pomodoro pausing during calls and meetings, no sound during calls and meetings, the 90-second timeout) are decided in `decisions.md` and the mock-up. This file says how the API carries them; it doesn't restate every rule.
 
@@ -35,9 +35,9 @@ Appendices: [A, every endpoint](#appendix-a-every-endpoint) · [B, error codes](
 
 | Link | Address | Used by | Who may use it |
 |---|---|---|---|
-| **Wi-Fi** (HTTP) | `http://tinybar.local/api/v1/…` (port 80) | The Mac app when the bar isn't plugged into the Mac, the Remote page, automations | Paired clients with a token (section 4) |
+| **Wi-Fi** (HTTP) | `http://minibar.local/api/v1/…` (port 80) | The Mac app when the bar isn't plugged into the Mac, the Remote page, automations | Paired clients with a token (section 4) |
 | **USB serial** | The bar's USB Serial/JTAG port (VID `0x303A`, PID `0x1001`) | The Mac app when the bar is powered from the Mac | Whatever is plugged in. The cable is the proof, so no pairing |
-| **Setup network** | `http://4.3.2.1/api/v1/setup/…` on `TinyBar-Setup` | The Wi-Fi setup page, only while the bar shows its setup screens | Anyone on the setup network (section 13) |
+| **Setup network** | `http://4.3.2.1/api/v1/setup/…` on `MiniBar-Setup` | The Wi-Fi setup page, only while the bar shows its setup screens | Anyone on the setup network (section 13) |
 
 - **One set of messages.** USB carries the same JSON as HTTP, one object per line. The firmware runs one router for both (section 15).
 - **What leaves the Mac:** whether you're on a call, and optionally the name of the app using the mic or camera. To keep track of which Mac is which, the app also sends a random install ID (not a hardware ID or the computer's name) with a counter, and over USB the time, so a bar without Wi-Fi still has a clock (sections 5 and 6). **Proposed:** an optional `inputs` field saying whether the mic, the camera or both are in use; the Mac app doesn't send it until the user agrees (section 14).
@@ -47,7 +47,7 @@ A minimal Wi-Fi session for the Mac app:
 
 ```http
 POST /api/v1/call HTTP/1.1
-Host: tinybar.local
+Host: minibar.local
 Authorization: Bearer tb1_w1rV1lN4jm2ohruSAozMZxVlcceAL7yS8r45__-ref4
 Content-Type: application/json
 
@@ -78,7 +78,7 @@ bar → mac  @tb {"id": 2, "ok": true, "device_id": "f412fa3f2a1c", "showing": "
 - The full API version is a string, **`"api": "1.0"`**, in `GET /api/v1/info`, in the USB `hello` reply and `ready` event, and in the mDNS TXT record. The firmware version is separate (`"fw": "1.0.0"`).
 - **Minor versions (1.1, 1.2…) only add things:** new endpoints, new optional request fields, new response fields, new error codes, new USB events, and new values in the fields this file marks as *open* (for example `showing`). The bar ignores request fields it doesn't know; clients ignore response fields they don't know, and handle unknown values of open fields as described next to each one.
 - **Anything else is a major version:** removing or renaming a field, changing its type or meaning, or making an optional field required. That goes under `/api/v2/`, and the firmware keeps serving `/api/v1/` at least until a Mac app release that uses v2 has shipped.
-- Clients say which version they speak in the USB `hello` (`"api": "1.0"`). Over HTTP, clients should send a `User-Agent` such as `TinyBarMac/1.0 (api 1.0)`; it's for the bar's logs only.
+- Clients say which version they speak in the USB `hello` (`"api": "1.0"`). Over HTTP, clients should send a `User-Agent` such as `MiniBarMac/1.0 (api 1.0)`; it's for the bar's logs only.
 
 ### 2.2 Content types and headers
 
@@ -86,7 +86,7 @@ bar → mac  @tb {"id": 2, "ok": true, "device_id": "f412fa3f2a1c", "showing": "
 - A body is one JSON object, UTF-8, with no byte-order mark. `GET` and `DELETE` have no body.
 - Every API response has `Content-Type: application/json; charset=utf-8`, `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`. The bar sends **no CORS headers**, so pages on other sites can't read its answers.
 - Everything outside `/api/` is the Remote web page (HTML, CSS, scripts). It's served without a token and holds no data of its own; it reads everything through the API.
-- **Host check.** The bar answers only when the `Host` header is its current mDNS name (`tinybar.local`, or the name it got after a conflict, section 3), its IPv4 address, or `4.3.2.1` (the setup network's address) while it's in setup mode, each with or without `:80`. Anything else gets `421 wrong_host`. This stops a web page from reaching the bar through a DNS-rebinding trick. *(2026-10-04, security review:)* the Remote page and everything else outside `/api/` get the same check, answered with a plain-text `421`. The one exception is the setup network, where any other name gets a `302` to `http://4.3.2.1/` so phones open the setup page (section 13).
+- **Host check.** The bar answers only when the `Host` header is its current mDNS name (`minibar.local`, or the name it got after a conflict, section 3), its IPv4 address, or `4.3.2.1` (the setup network's address) while it's in setup mode, each with or without `:80`. Anything else gets `421 wrong_host`. This stops a web page from reaching the bar through a DNS-rebinding trick. *(2026-10-04, security review:)* the Remote page and everything else outside `/api/` get the same check, answered with a plain-text `421`. The one exception is the setup network, where any other name gets a `302` to `http://4.3.2.1/` so phones open the setup page (section 13).
 
 ### 2.3 JSON
 
@@ -152,8 +152,8 @@ Some errors add a field: `retry_after_s` (with `429 rate_limited` and `409 pairi
 
 The bar announces itself with mDNS (Bonjour) on the office Wi-Fi.
 
-- **Host name:** `tinybar.local`, with an IPv4 address record. If another device already has that name (two TinyBars in one office), the bar takes the next free name, `tinybar-2.local` and so on (ESP-IDF's mDNS component renames on a conflict; check the exact form on the device). The bar reports the name it actually has as `host` in `info`, `hello` and `status`, and shows it wherever the mock-up shows `tinybar.local` (the Connected screen and the Wi-Fi menu).
-- **Service:** `_tinybar._tcp`, port 80. The instance name is the bar's name (`device.name` in settings). **Proposed:** the default name is "TinyBar" plus the last four characters of its ID, for example **"TinyBar 2A1C"**, so bars in one office can be told apart.
+- **Host name:** `minibar.local`, with an IPv4 address record. If another device already has that name (two MiniBars in one office), the bar takes the next free name, `minibar-2.local` and so on (ESP-IDF's mDNS component renames on a conflict; check the exact form on the device). The bar reports the name it actually has as `host` in `info`, `hello` and `status`, and shows it wherever the mock-up shows `minibar.local` (the Connected screen and the Wi-Fi menu).
+- **Service:** `_minibar._tcp`, port 80. The instance name is the bar's name (`device.name` in settings). **Proposed:** the default name is "MiniBar" plus the last four characters of its ID, for example **"MiniBar 2A1C"**, so bars in one office can be told apart.
 - **TXT record:**
 
   | Key | Example | Meaning |
@@ -164,15 +164,15 @@ The bar announces itself with mDNS (Bonjour) on the office Wi-Fi.
   | `path` | `/api/v1` | Where the API is |
   | `auth` | `bearer` | `bearer` when pairing is required, `none` when it isn't (section 4) |
 
-  As `dns-sd -L "TinyBar 2A1C" _tinybar._tcp` on a Mac would show it:
+  As `dns-sd -L "MiniBar 2A1C" _minibar._tcp` on a Mac would show it:
 
   ```text
-  TinyBar\0322A1C._tinybar._tcp.local. can be reached at tinybar.local.:80
+  MiniBar\0322A1C._minibar._tcp.local. can be reached at minibar.local.:80
    api=1.0 id=f412fa3f2a1c fw=1.0.0 path=/api/v1 auth=bearer
   ```
 
 - The bar also announces `_http._tcp`, port 80, TXT `path=/`, so general tools can find the Remote page.
-- **How clients find their bar:** browse `_tinybar._tcp`, pick the instance whose `id` matches the paired `device_id`, and resolve it. Use `tinybar.local` only to find a bar the first time. Keep the last address that worked, as a fallback for networks where multicast is unreliable.
+- **How clients find their bar:** browse `_minibar._tcp`, pick the instance whose `id` matches the paired `device_id`, and resolve it. Use `minibar.local` only to find a bar the first time. Keep the last address that worked, as a fallback for networks where multicast is unreliable.
 - **Some office networks block multicast or traffic between devices** ("client isolation"). Then the bar can't be reached over Wi-Fi at all; USB still works. The Mac app says so plainly rather than retrying forever.
 - IPv4 only in version 1.
 
@@ -184,7 +184,7 @@ The bar announces itself with mDNS (Bonjour) on the office Wi-Fi.
 
 ### 4.1 Why
 
-TinyBar lives on an **open office network**. Everyone in the office is on the same Wi-Fi, and so are their laptops, phones and scripts. Without pairing, anyone on it could open `tinybar.local` or send one `curl` command to set your bar to Available during a focus session, show a fake On a call, stop your Pomodoro, read your meeting times, or replace your calendar address. Usually by accident or as a prank, but it would make the bar untrustworthy, and the people around you would stop believing it.
+MiniBar lives on an **open office network**. Everyone in the office is on the same Wi-Fi, and so are their laptops, phones and scripts. Without pairing, anyone on it could open `minibar.local` or send one `curl` command to set your bar to Available during a focus session, show a fake On a call, stop your Pomodoro, read your meeting times, or replace your calendar address. Usually by accident or as a prank, but it would make the bar untrustworthy, and the people around you would stop believing it.
 
 Pairing ties control of the bar to someone who can **see its screen** at that moment, which in practice means you at your desk. **USB needs no pairing:** plugging in a cable takes the same physical presence.
 
@@ -222,10 +222,10 @@ The Mac app pairs with the `call` scope. If its token ever leaked, the most anyo
 
 - **Apps and scripts:** the header `Authorization: Bearer tb1_…`.
 - **The Remote page:** a cookie the bar sets when the page pairs with `"cookie": true`: `tb_token=<token>; HttpOnly; SameSite=Strict; Path=/api/; Max-Age=31536000` (no `Secure` flag, since the bar serves plain HTTP). Scripts on the page can't read it, and Safari keeps a cookie the server sets much longer than storage a page sets for itself, so a phone doesn't have to pair again every week. When a request authenticated by the cookie has an `Origin` header, it must be `http://` plus one of the accepted hosts (2.2); otherwise `403 bad_origin`. An `Origin` header the bar can't read (over 255 bytes) or that's empty counts as another origin, never as none.
-- A missing, unknown or revoked token gets `401 unauthorized` with `WWW-Authenticate: Bearer realm="TinyBar"`. The client's answer is to pair again.
+- A missing, unknown or revoked token gets `401 unauthorized` with `WWW-Authenticate: Bearer realm="MiniBar"`. The client's answer is to pair again.
 
 ```json
-{"ok": false, "error": "unauthorized", "message": "Pair with this TinyBar first.", "field": null}
+{"ok": false, "error": "unauthorized", "message": "Pair with this MiniBar first.", "field": null}
 ```
 
 ### 4.6 `POST /api/v1/pair/start`
@@ -241,7 +241,7 @@ No token needed.
 
 ```http
 POST /api/v1/pair/start HTTP/1.1
-Host: tinybar.local
+Host: minibar.local
 Content-Type: application/json
 
 {"kind": "mac", "scope": "call", "client": "6F1C2A9E-5B7D-4E0A-9C3B-2D8F1A7E4B60"}
@@ -285,7 +285,7 @@ No token needed.
 
 ```http
 POST /api/v1/pair HTTP/1.1
-Host: tinybar.local
+Host: minibar.local
 Content-Type: application/json
 
 {"pairing_id": "d407580a9215e992", "code": "482913"}
@@ -294,13 +294,13 @@ Content-Type: application/json
 ```http
 HTTP/1.1 200 OK
 
-{"ok": true, "token": "tb1_w1rV1lN4jm2ohruSAozMZxVlcceAL7yS8r45__-ref4", "token_id": "74d8a526", "scope": "call", "device_id": "f412fa3f2a1c", "name": "TinyBar 2A1C", "host": "tinybar.local"}
+{"ok": true, "token": "tb1_w1rV1lN4jm2ohruSAozMZxVlcceAL7yS8r45__-ref4", "token_id": "74d8a526", "scope": "call", "device_id": "f412fa3f2a1c", "name": "MiniBar 2A1C", "host": "minibar.local"}
 ```
 
 With `"cookie": true` the body has `"token": null` and the response carries `Set-Cookie: tb_token=…`:
 
 ```json
-{"ok": true, "token": null, "token_id": "27110499", "scope": "full", "device_id": "f412fa3f2a1c", "name": "TinyBar 2A1C", "host": "tinybar.local"}
+{"ok": true, "token": null, "token_id": "27110499", "scope": "full", "device_id": "f412fa3f2a1c", "name": "MiniBar 2A1C", "host": "minibar.local"}
 ```
 
 | Error | When |
@@ -333,12 +333,12 @@ With `"cookie": true` the body has `"token": null` and the response carries `Set
 
 These screens are drawn in the mock-up's pairing round and built into the firmware (decisions.md "Pairing", approved by the user on 2026-10-04):
 
-- **Pairing screen:** on a dark surface (#0E1013, like the menus), since it isn't a status. Kicker "PAIRING · MAC" (the client's name, or its kind's word when none was sent or it can't be drawn: "Mac", "Phone" for `remote`, "Script" for `automation`), the code as the headline in tabular digits ("482 913"), and a sub line that names the device: "Type it on your Mac · tap to cancel", "Type it on your phone · tap to cancel", otherwise "Type this code on that device · tap to cancel". In the info column, "Code expires in" over an m:ss countdown, with the bar's name ("TinyBar 2A1C") as the foot; the progress bar fills as the 2 minutes run out.
+- **Pairing screen:** on a dark surface (#0E1013, like the menus), since it isn't a status. Kicker "PAIRING · MAC" (the client's name, or its kind's word when none was sent or it can't be drawn: "Mac", "Phone" for `remote`, "Script" for `automation`), the code as the headline in tabular digits ("482 913"), and a sub line that names the device: "Type it on your Mac · tap to cancel", "Type it on your phone · tap to cancel", otherwise "Type this code on that device · tap to cancel". In the info column, "Code expires in" over an m:ss countdown, with the bar's name ("MiniBar 2A1C") as the foot; the progress bar fills as the 2 minutes run out.
 - **The 2 minutes count from when the code appears on the screen.** It waits for the power screens to finish (the splash, Keep holding), and the countdown and `retry_after_s` wait with it. It never appears on the Wi-Fi setup screens, Connected included (`409 in_setup`).
 - It **wakes a dark screen** (someone is pairing right now), **replaces an open menu** and the toast, and **holds a ringing alarm**: the Pomodoro keeps waiting, and when pairing ends the waiting screen chimes and flashes once. A phase that ends while the code shows waits the same way. A change made underneath (a call, a meeting, the Remote) shows after the pairing's own confirmation.
 - **No dead ends:** a tap, swipe, hold or BOOT cancels it ("Pairing canceled"); a PWR press cancels it and turns the screen off as usual; a flip cancels it and does what a flip always does ("Pairing canceled · Focus started"). A touch that began before the code appeared is ignored. It also ends on success ("Paired · Mac"), after 2 minutes ("Pairing timed out"), after 3 wrong codes ("Pairing canceled · wrong code"), when the device that asked cancels (`pair/cancel`, "Pairing canceled"), when Wi-Fi setup starts, and at Power off or Restart.
 - **USB pairing** (section 6.6) has no code screen. If another device's code is on the bar, that code stays up and valid, `info.pairing` stays `"showing"`, and "Paired · Mac · over USB" shows once that pairing ends.
-- **Forgetting devices on the bar:** the Wi-Fi menu is Network, **Devices**, Set up again, Back. Devices reads "3 paired" ("Full" at 10) and opens a confirmation: the paired devices' names, **Forget all** (a second, deliberate tap: one in its first 600 ms is ignored), and Keep, which goes back. With nothing paired the tile stays, reads "None" with where to pair as its foot ("pair at" over the bar's `host`, for example `tinybar.local`; if the host doesn't fit the tile on one line, as `tinybar-2.local` doesn't, the IP address; if that doesn't fit either, "pair at its" over "IP address"; and "set up Wi-Fi" over "to pair" when it's offline), and is read-only. The Remote lists each device with a Remove button (section 12). Neither affects USB.
+- **Forgetting devices on the bar:** the Wi-Fi menu is Network, **Devices**, Set up again, Back. Devices reads "3 paired" ("Full" at 10) and opens a confirmation: the paired devices' names, **Forget all** (a second, deliberate tap: one in its first 600 ms is ignored), and Keep, which goes back. With nothing paired the tile stays, reads "None" with where to pair as its foot ("pair at" over the bar's `host`, for example `minibar.local`; if the host doesn't fit the tile on one line, as `minibar-2.local` doesn't, the IP address; if that doesn't fit either, "pair at its" over "IP address"; and "set up Wi-Fi" over "to pair" when it's offline), and is read-only. The Remote lists each device with a Remove button (section 12). Neither affects USB.
 
 ### 4.9 Rate limits
 
@@ -411,7 +411,7 @@ These screens are drawn in the mock-up's pairing round and built into the firmwa
 | `heartbeat_s`, `timeout_s` | The intervals the bar wants now (30 and 90). The app uses the values from the latest reply, so the bar can tune them. `timeout_s` is always at least 3 times `heartbeat_s`. |
 | `time` | The bar's clock. |
 
-The Mac app can label its menu from this: `showing` is `"call"` → "Showing on TinyBar"; `call.aside` → "Set aside on TinyBar"; `sources.mac` is `false` → "Calls from your Mac is off on TinyBar".
+The Mac app can label its menu from this: `showing` is `"call"` → "Showing on MiniBar"; `call.aside` → "Set aside on MiniBar"; `sources.mac` is `false` → "Calls from your Mac is off on MiniBar".
 
 ### 5.4 Examples
 
@@ -510,15 +510,15 @@ When the bar is powered from the Mac, the Mac app talks to it over the same USB 
 ### 6.1 The port
 
 - The board's USB-C goes to the ESP32-S3's built-in **USB Serial/JTAG controller**: **VID `0x303A`** (Espressif), **PID `0x1001`**, product string "USB JTAG/serial debug unit". It's a standard CDC-ACM serial port, so macOS needs no driver and names it `/dev/cu.usbmodem…`. Use the `cu.` device, not `tty.` (opening `tty.` can wait for a carrier signal that never comes).
-- Every ESP32-S3 board in this mode, and the chip's own ROM download mode, has the **same VID and PID**. Only the `hello` reply (`"device": "TinyBar"`) says it's a TinyBar.
+- Every ESP32-S3 board in this mode, and the chip's own ROM download mode, has the **same VID and PID**. Only the `hello` reply (`"device": "MiniBar"`) says it's a MiniBar.
 - **Unverified, check on the board:** the USB serial number appears to be the chip's MAC address (for example `F4:12:FA:3F:2A:1C`), which would match `device_id`. Clients may use it to recognize a known bar before `hello`, but `hello` is what counts.
 - When the bar is powered off on USB (a deep sleep, per `decisions.md`), the port disappears. A restart (from the Power menu, after flashing, or by the watchdog) makes it disappear and come back about a second later.
 
 ### 6.2 Finding it on the Mac
 
 1. Watch for serial ports with IOKit: match `IOSerialBSDClient` services (`kIOSerialBSDServiceValue`), and for each one search its parents (`IORegistryEntrySearchCFProperty` with `kIORegistryIterateRecursively | kIORegistryIterateParents`) for `idVendor` = `0x303A` and `idProduct` = `0x1001`. Take the path from `kIOCalloutDeviceKey`. Register for arrival and removal notifications (`IOServiceAddMatchingNotification` with `kIOFirstMatchNotification` and `kIOTerminatedNotification`) rather than polling.
-2. Open the port and send `hello` (6.6). If a `hello` reply with `"device": "TinyBar"` comes back, use the port.
-3. If nothing answers within 10 seconds (one `hello` every 2 seconds), close the port and leave that device alone until it's unplugged and plugged in again. It's another ESP32-S3 board, or a TinyBar in download mode being flashed.
+2. Open the port and send `hello` (6.6). If a `hello` reply with `"device": "MiniBar"` comes back, use the port.
+3. If nothing answers within 10 seconds (one `hello` every 2 seconds), close the port and leave that device alone until it's unplugged and plugged in again. It's another ESP32-S3 board, or a MiniBar in download mode being flashed.
 
 ### 6.3 Port settings and the reset lines
 
@@ -547,7 +547,7 @@ A stretch of the port's output, as the Mac app sees it (the arrows aren't part o
 bar → mac  I (24312) wifi: connected to Office-WiFi, ip 10.0.4.42
 mac → bar  @tb {"cmd": "status", "id": 3}
 bar → mac  W (24890) cal: sync took 4.2 s
-bar → mac  @tb {"id": 3, "ok": true, "device_id": "f412fa3f2a1c", "rev": 1843, "time": "2026-10-04T14:24:05-07:00", "time_source": "ntp", "showing": "own", "screen": "on", "own": {"status": "busy", "since": "2026-10-04T14:01:00-07:00", "previous": "busy"}, "message": {"text": null, "set_at": null}, "away": {"back_at": null, "note": null}, "call": {"active": false, "app": null, "inputs": null, "via": null, "since": null, "aside": false}, "meeting": {"active": false, "aside": false, "current": null, "next": null, "left_today": null}, "pomodoro": {"state": "ready", "phase": "focus", "round": 1, "rounds": 4, "length_s": 1500, "remaining_s": 1500, "ends_at": null, "paused_by": null, "ringing": false, "done_today": 0, "focused_today_s": 0}, "sources": {"calendar": false, "mac": true}, "macs": [{"client": "6F1C2A9E-5B7D-4E0A-9C3B-2D8F1A7E4B60", "name": "Mac", "via": "usb", "connected": true, "active": false, "last_heard": "2026-10-04T14:24:01-07:00"}], "calendar": {"saved": false, "last_sync": null, "syncing": false, "error": null}, "wifi": {"state": "connected", "ssid": "Office-WiFi", "ip": "10.0.4.42", "host": "tinybar.local", "rssi": -61}}
+bar → mac  @tb {"id": 3, "ok": true, "device_id": "f412fa3f2a1c", "rev": 1843, "time": "2026-10-04T14:24:05-07:00", "time_source": "ntp", "showing": "own", "screen": "on", "own": {"status": "busy", "since": "2026-10-04T14:01:00-07:00", "previous": "busy"}, "message": {"text": null, "set_at": null}, "away": {"back_at": null, "note": null}, "call": {"active": false, "app": null, "inputs": null, "via": null, "since": null, "aside": false}, "meeting": {"active": false, "aside": false, "current": null, "next": null, "left_today": null}, "pomodoro": {"state": "ready", "phase": "focus", "round": 1, "rounds": 4, "length_s": 1500, "remaining_s": 1500, "ends_at": null, "paused_by": null, "ringing": false, "done_today": 0, "focused_today_s": 0}, "sources": {"calendar": false, "mac": true}, "macs": [{"client": "6F1C2A9E-5B7D-4E0A-9C3B-2D8F1A7E4B60", "name": "Mac", "via": "usb", "connected": true, "active": false, "last_heard": "2026-10-04T14:24:01-07:00"}], "calendar": {"saved": false, "last_sync": null, "syncing": false, "error": null}, "wifi": {"state": "connected", "ssid": "Office-WiFi", "ip": "10.0.4.42", "host": "minibar.local", "rssi": -61}}
 ```
 
 ### 6.5 Commands
@@ -578,7 +578,7 @@ bar → mac  @tb {"id": 3, "ok": true, "device_id": "f412fa3f2a1c", "rev": 1843,
 
 ```text
 mac → bar  @tb {"cmd": "hello", "id": 1, "client": "6F1C2A9E-5B7D-4E0A-9C3B-2D8F1A7E4B60", "app_version": "1.0 (12)", "api": "1.0", "time": "2026-10-04T14:11:58-07:00", "time_zone": "America/Los_Angeles"}
-bar → mac  @tb {"id": 1, "ok": true, "device": "TinyBar", "device_id": "f412fa3f2a1c", "name": "TinyBar 2A1C", "fw": "1.0.0", "api": "1.0", "host": "tinybar.local", "auth": "bearer", "pairing": "idle", "pairing_seq": null, "paired": 3, "heartbeat_s": 30, "timeout_s": 90, "time": "2026-10-04T14:11:58-07:00", "time_source": "ntp", "wifi": "connected"}
+bar → mac  @tb {"id": 1, "ok": true, "device": "MiniBar", "device_id": "f412fa3f2a1c", "name": "MiniBar 2A1C", "fw": "1.0.0", "api": "1.0", "host": "minibar.local", "auth": "bearer", "pairing": "idle", "pairing_seq": null, "paired": 3, "heartbeat_s": 30, "timeout_s": 90, "time": "2026-10-04T14:11:58-07:00", "time_source": "ntp", "wifi": "connected"}
 ```
 
 The reply is the `info` object (7.1) plus `id`. A `hello` counts as a heartbeat and marks the Mac connected over USB, but doesn't change its call state; the app sends a `call` right after it.
@@ -600,13 +600,13 @@ mac → bar  @tb {"cmd": "status", "id": 3}
 
 ```text
 mac → bar  @tb {"cmd": "pair", "id": 4, "client": "6F1C2A9E-5B7D-4E0A-9C3B-2D8F1A7E4B60"}
-bar → mac  @tb {"id": 4, "ok": true, "token": "tb1_w1rV1lN4jm2ohruSAozMZxVlcceAL7yS8r45__-ref4", "token_id": "74d8a526", "scope": "call", "device_id": "f412fa3f2a1c", "name": "TinyBar 2A1C", "host": "tinybar.local"}
+bar → mac  @tb {"id": 4, "ok": true, "token": "tb1_w1rV1lN4jm2ohruSAozMZxVlcceAL7yS8r45__-ref4", "token_id": "74d8a526", "scope": "call", "device_id": "f412fa3f2a1c", "name": "MiniBar 2A1C", "host": "minibar.local"}
 ```
 
 It can fail with `token_limit` (10 tokens already, or 9 while another new device's code on the screen holds the tenth place, 4.3). USB keeps working without the token:
 
 ```text
-bar → mac  @tb {"id": 4, "ok": false, "error": "token_limit", "message": "TinyBar already has 10 paired devices. Remove one on the Remote.", "field": null}
+bar → mac  @tb {"id": 4, "ok": false, "error": "token_limit", "message": "MiniBar already has 10 paired devices. Remove one on the Remote.", "field": null}
 ```
 
 **`request`.** Any endpoint over USB. The reply is the endpoint's response body plus `id` and `http_status`.
@@ -619,7 +619,7 @@ bar → mac  @tb {"id": 4, "ok": false, "error": "token_limit", "message": "Tiny
 
 ```text
 mac → bar  @tb {"cmd": "request", "id": 5, "method": "PATCH", "path": "/api/v1/settings", "body": {"display": {"brightness": 40}}}
-bar → mac  @tb {"id": 5, "http_status": 200, "ok": true, "settings": {"pomodoro": {"focus_min": 25, "short_min": 5, "long_min": 15, "long_every": 4, "auto_start": false, "chime": true, "ticking": false, "tick_volume": "soft"}, "display": {"brightness": 40}, "automatic": {"calendar": true, "mac": true, "meeting_titles": false}, "device": {"name": "TinyBar 2A1C", "time_zone": "America/Los_Angeles"}}}
+bar → mac  @tb {"id": 5, "http_status": 200, "ok": true, "settings": {"pomodoro": {"focus_min": 25, "short_min": 5, "long_min": 15, "long_every": 4, "auto_start": false, "chime": true, "ticking": false, "tick_volume": "soft"}, "display": {"brightness": 40}, "automatic": {"calendar": true, "mac": true, "meeting_titles": false}, "device": {"name": "MiniBar 2A1C", "time_zone": "America/Los_Angeles"}}}
 ```
 
 Errors over USB:
@@ -630,7 +630,7 @@ bar → mac  @tb {"id": null, "ok": false, "error": "bad_json", "message": "That
 mac → bar  @tb {"cmd": "dance", "id": 7}
 bar → mac  @tb {"id": 7, "ok": false, "error": "unknown_cmd", "message": "Unknown cmd \"dance\".", "field": "cmd"}
 mac → bar  @tb {"cmd": "hello", "id": 8, "client": "6F1C2A9E-5B7D-4E0A-9C3B-2D8F1A7E4B60", "api": "2.0"}
-bar → mac  @tb {"id": 8, "ok": false, "error": "unsupported_api", "message": "This TinyBar speaks API 1.0.", "field": "api"}
+bar → mac  @tb {"id": 8, "ok": false, "error": "unsupported_api", "message": "This MiniBar speaks API 1.0.", "field": "api"}
 mac → bar  (a line of 3,000 bytes)
 bar → mac  @tb {"id": null, "ok": false, "error": "too_large", "message": "Lines can be up to 2048 bytes.", "field": null}
 ```
@@ -660,12 +660,12 @@ When the app sees it, it sends `hello` and then its current call state at once, 
 No token needed. Who this bar is, before pairing. The USB `hello` reply is the same object.
 
 ```json
-{"ok": true, "device": "TinyBar", "device_id": "f412fa3f2a1c", "name": "TinyBar 2A1C", "fw": "1.0.0", "api": "1.0", "host": "tinybar.local", "auth": "bearer", "pairing": "idle", "pairing_seq": null, "paired": 3, "heartbeat_s": 30, "timeout_s": 90, "time": "2026-10-04T14:11:58-07:00", "time_source": "ntp", "wifi": "connected"}
+{"ok": true, "device": "MiniBar", "device_id": "f412fa3f2a1c", "name": "MiniBar 2A1C", "fw": "1.0.0", "api": "1.0", "host": "minibar.local", "auth": "bearer", "pairing": "idle", "pairing_seq": null, "paired": 3, "heartbeat_s": 30, "timeout_s": 90, "time": "2026-10-04T14:11:58-07:00", "time_source": "ntp", "wifi": "connected"}
 ```
 
 | Field | Meaning |
 |---|---|
-| `device` | Always `"TinyBar"`. |
+| `device` | Always `"MiniBar"`. Firmware 1.0.2 and earlier answered `"TinyBar"`, the product's old name; a client that may meet one accepts both (14.6). |
 | `device_id` | 12 lowercase hex digits, the bar's Wi-Fi MAC address. The key clients store tokens under. |
 | `name` | The bar's name (`device.name`), also its mDNS instance name. |
 | `fw`, `api` | Firmware and API versions. |
@@ -673,7 +673,7 @@ No token needed. Who this bar is, before pairing. The USB `hello` reply is the s
 | `auth` | `"bearer"` (pairing required) or `"none"` (4.1). |
 | `pairing` | `"idle"`, `"showing"` (a code is on screen) or `"locked"` (back-off, 4.9). |
 | `pairing_seq` | While `pairing` is `"showing"`, the number of the code on the screen, the same `pairing_seq` its `pair/start` reply carried (4.6); otherwise `null`. A device waiting on its code compares the two, so it notices its code is gone even when the next device's code took its place within the same poll. *(Added 2026-10-05, from the review of the firmware's alignment; the Remote's prompt uses it, and clients that don't need it ignore it.)* |
-| `paired` | How many devices are paired, 0 to 10 (4.3). *(Added 2026-10-05 in the firmware's alignment with the mock-up's pairing round, which left this open: a phone that isn't paired can't read the list (12.1), so the Remote's pairing prompt reads this to clear "already has 10 paired devices" as soon as a place is free (counting a code on the screen, which holds one), and after a `401` to say "TinyBar forgot this phone" when it's 0 (Forget all) rather than "This phone isn't paired … anymore". Together with `pairing` and `wifi` (`"setup"` until the Connected screen is over), it lets every refusal on the prompt clear once its cause is over. Clients that don't need it ignore it.)* |
+| `paired` | How many devices are paired, 0 to 10 (4.3). *(Added 2026-10-05 in the firmware's alignment with the mock-up's pairing round, which left this open: a phone that isn't paired can't read the list (12.1), so the Remote's pairing prompt reads this to clear "already has 10 paired devices" as soon as a place is free (counting a code on the screen, which holds one), and after a `401` to say "MiniBar forgot this phone" when it's 0 (Forget all) rather than "This phone isn't paired … anymore". Together with `pairing` and `wifi` (`"setup"` until the Connected screen is over), it lets every refusal on the prompt clear once its cause is over. Clients that don't need it ignore it.)* |
 | `heartbeat_s`, `timeout_s` | 5.3. |
 | `time`, `time_source` | The bar's clock, and where it came from: `"ntp"`, `"rtc"` (the clock chip, kept since the last sync), `"mac"` (set over USB) or `"none"`. |
 | `wifi` | `"connected"`, `"offline"` (skipped or dropped) or `"setup"`. Over USB, this tells the Mac app whether Wi-Fi is worth trying. |
@@ -714,7 +714,7 @@ Scope `call` or `full`. Over USB: `"cmd": "status"`. Everything the Remote shows
     {"client": "6F1C2A9E-5B7D-4E0A-9C3B-2D8F1A7E4B60", "name": "Mac", "via": "usb", "connected": true, "active": true, "last_heard": "2026-10-04T14:24:01-07:00"}
   ],
   "calendar": {"saved": true, "last_sync": "2026-10-04T14:20:00-07:00", "syncing": false, "error": null},
-  "wifi": {"state": "connected", "ssid": "Office-WiFi", "ip": "10.0.4.42", "host": "tinybar.local", "rssi": -61}
+  "wifi": {"state": "connected", "ssid": "Office-WiFi", "ip": "10.0.4.42", "host": "minibar.local", "rssi": -61}
 }
 ```
 
@@ -768,7 +768,7 @@ The mock-up's Away screen shows "Back at 12:30" and "Grabbing lunch" as sample d
 The reply is the full status object (7.3), for example after the first request above during a call:
 
 ```json
-{"ok": true, "device_id": "f412fa3f2a1c", "rev": 1850, "time": "2026-10-04T12:58:00-07:00", "time_source": "ntp", "showing": "own", "screen": "on", "own": {"status": "away", "since": "2026-10-04T12:58:00-07:00", "previous": "away"}, "message": {"text": "On a deadline until 3 PM, message me instead", "set_at": "2026-10-04T11:02:00-07:00"}, "away": {"back_at": "13:30", "note": "Grabbing lunch"}, "call": {"active": true, "app": "Slack", "inputs": null, "via": "wifi", "since": "2026-10-04T12:50:00-07:00", "aside": true}, "meeting": {"active": false, "aside": false, "current": null, "next": null, "left_today": 0}, "pomodoro": {"state": "ready", "phase": "focus", "round": 1, "rounds": 4, "length_s": 1500, "remaining_s": 1500, "ends_at": null, "paused_by": null, "ringing": false, "done_today": 2, "focused_today_s": 3000}, "sources": {"calendar": true, "mac": true}, "macs": [{"client": "6F1C2A9E-5B7D-4E0A-9C3B-2D8F1A7E4B60", "name": "Mac", "via": "wifi", "connected": true, "active": true, "last_heard": "2026-10-04T12:57:41-07:00"}], "calendar": {"saved": true, "last_sync": "2026-10-04T12:50:00-07:00", "syncing": false, "error": null}, "wifi": {"state": "connected", "ssid": "Office-WiFi", "ip": "10.0.4.42", "host": "tinybar.local", "rssi": -58}}
+{"ok": true, "device_id": "f412fa3f2a1c", "rev": 1850, "time": "2026-10-04T12:58:00-07:00", "time_source": "ntp", "showing": "own", "screen": "on", "own": {"status": "away", "since": "2026-10-04T12:58:00-07:00", "previous": "away"}, "message": {"text": "On a deadline until 3 PM, message me instead", "set_at": "2026-10-04T11:02:00-07:00"}, "away": {"back_at": "13:30", "note": "Grabbing lunch"}, "call": {"active": true, "app": "Slack", "inputs": null, "via": "wifi", "since": "2026-10-04T12:50:00-07:00", "aside": true}, "meeting": {"active": false, "aside": false, "current": null, "next": null, "left_today": 0}, "pomodoro": {"state": "ready", "phase": "focus", "round": 1, "rounds": 4, "length_s": 1500, "remaining_s": 1500, "ends_at": null, "paused_by": null, "ringing": false, "done_today": 2, "focused_today_s": 3000}, "sources": {"calendar": true, "mac": true}, "macs": [{"client": "6F1C2A9E-5B7D-4E0A-9C3B-2D8F1A7E4B60", "name": "Mac", "via": "wifi", "connected": true, "active": true, "last_heard": "2026-10-04T12:57:41-07:00"}], "calendar": {"saved": true, "last_sync": "2026-10-04T12:50:00-07:00", "syncing": false, "error": null}, "wifi": {"state": "connected", "ssid": "Office-WiFi", "ip": "10.0.4.42", "host": "minibar.local", "rssi": -58}}
 ```
 
 | Error | When |
@@ -795,10 +795,10 @@ The reply is the full status object (7.3), for example after the first request a
 The reply is the full status object (7.3) with `"own": {"status": "message", …}` and the new `message`. If the text has characters the bar's fonts can't draw (after the mapping in 2.3), it's refused, so the Remote can say which:
 
 ```json
-{"ok": false, "error": "unsupported_chars", "message": "TinyBar can't show some of these characters.", "field": "text", "chars": ["🍕"]}
+{"ok": false, "error": "unsupported_chars", "message": "MiniBar can't show some of these characters.", "field": "text", "chars": ["🍕"]}
 ```
 
-The Remote runs the same check as you type (decisions.md, Remote) and names the characters before anything is sent: "TinyBar can't show 🍕. Remove it to show this message." A character with no ink of its own that the mapping in 2.3 doesn't cover can't be quoted, so the Remote names it by where it is: "a hidden character after "Busy"" (**Proposed**, 2026-10-04).
+The Remote runs the same check as you type (decisions.md, Remote) and names the characters before anything is sent: "MiniBar can't show 🍕. Remove it to show this message." A character with no ink of its own that the mapping in 2.3 doesn't cover can't be quoted, so the Remote names it by where it is: "a hidden character after "Busy"" (**Proposed**, 2026-10-04).
 
 ### 8.3 `POST /api/v1/aside`: set aside, or Show again
 
@@ -887,7 +887,7 @@ Scope `full`.
     "pomodoro": {"focus_min": 25, "short_min": 5, "long_min": 15, "long_every": 4, "auto_start": false, "chime": true, "ticking": false, "tick_volume": "soft"},
     "display": {"brightness": 70},
     "automatic": {"calendar": true, "mac": true, "meeting_titles": false},
-    "device": {"name": "TinyBar 2A1C", "time_zone": "America/Los_Angeles"}
+    "device": {"name": "MiniBar 2A1C", "time_zone": "America/Los_Angeles"}
   }
 }
 ```
@@ -908,7 +908,7 @@ Scope `full`.
 | `automatic.calendar` | boolean | `true` once an address is saved, `false` before | Calendar meetings. Can't be `true` with no address saved. |
 | `automatic.mac` | boolean | `true` | Calls from your Mac. |
 | `automatic.meeting_titles` | boolean | `false` | Show meeting titles. Needs a saved address. |
-| `device.name` | 1 to 24 characters | "TinyBar" plus the last 4 of `device_id` (**Proposed**, section 3) | Also the mDNS instance name. |
+| `device.name` | 1 to 24 characters | "MiniBar" plus the last 4 of `device_id` (**Proposed**, section 3) | Also the mDNS instance name. |
 | `device.time_zone` | IANA name | From the setup page or the Mac's `hello`, else `null` | The bar turns it into a POSIX time-zone rule with a built-in table. |
 
 ### 10.2 `PATCH /api/v1/settings`
@@ -963,7 +963,7 @@ What changes on the bar, as in the mock-up:
 
 ```text
 mac → bar  @tb {"cmd": "request", "id": 9, "method": "PATCH", "path": "/api/v1/settings", "body": {"display": {"theme": "low_glare_pixel"}}}
-bar → mac  @tb {"id": 9, "http_status": 200, "ok": true, "settings": {"pomodoro": {"focus_min": 25, "short_min": 5, "long_min": 15, "long_every": 4, "auto_start": false, "chime": true, "ticking": false, "tick_volume": "soft"}, "display": {"brightness": 70, "theme": "low_glare_pixel"}, "automatic": {"calendar": true, "mac": true, "meeting_titles": false}, "device": {"name": "TinyBar 2A1C", "time_zone": "America/Los_Angeles"}}}
+bar → mac  @tb {"id": 9, "http_status": 200, "ok": true, "settings": {"pomodoro": {"focus_min": 25, "short_min": 5, "long_min": 15, "long_every": 4, "auto_start": false, "chime": true, "ticking": false, "tick_volume": "soft"}, "display": {"brightness": 70, "theme": "low_glare_pixel"}, "automatic": {"calendar": true, "mac": true, "meeting_titles": false}, "device": {"name": "MiniBar 2A1C", "time_zone": "America/Los_Angeles"}}}
 ```
 
 - **Checks:** a string that is exactly one of the values. Anything else (an unknown name, other capitals such as `"Low_Glare_Pixel"`, a number, `null`) is `400 bad_value` with `"field": "display.theme"`, and nothing else in the request applies (10.2). No new error codes.
@@ -1169,13 +1169,13 @@ Forgetting all devices is on the bar only (the Devices tile, 4.8), so no single 
 
 ## 13. The Wi-Fi setup network
 
-While the bar shows its Wi-Fi setup screens, it runs its own network, **`TinyBar-Setup`**, and the setup page at `http://4.3.2.1/`. These endpoints exist **only then**, need no token, and are gone once the bar joins the office Wi-Fi. On the setup network the bar serves only them and `info`.
+While the bar shows its Wi-Fi setup screens, it runs its own network, **`MiniBar-Setup`**, and the setup page at `http://4.3.2.1/`. These endpoints exist **only then**, need no token, and are gone once the bar joins the office Wi-Fi. On the setup network the bar serves only them and `info`.
 
 *(2026-10-05, firmware 1.0.1, lead developer, Proposed:)* the setup network's address is **4.3.2.1** (a /24), not 192.168.4.1. Some Android phones report "Connected, no internet" and never open the sign-in sheet when the captive-portal check's host resolves to a private address (Android's NetworkMonitor, "private IP DNS response means no internet"); see `decisions.md`, Wi-Fi. The setup network has no way out, so the address only stands in for the hosts phones check while they're on it. Phones' check paths (`/generate_204`, `/hotspot-detect.html`, `/connecttest.txt` and the like) get the `302` too, whatever their `Host`. The DHCP offer names the bar as gateway and DNS server and carries no captive-portal option (114), since RFC 8908 wants an HTTPS API address there.
 
 Over USB the whole API keeps working during setup: calls are recorded and show once setup closes, as `decisions.md` says. Picking a status, a message, a Pomodoro action and set aside or Show again (sections 8 and 9) answer `409 in_setup` meanwhile, as the bar's own controls do ("Finish setup, or hold to skip"); so do `pair/start` and `pair` (`pair/cancel` answers `409 not_pairing`, since starting setup ends any pairing). The USB `pair` command still works.
 
-*Open, not proposed here:* whether `TinyBar-Setup` has a password. The QR code can carry one (`WIFI:T:WPA;S:TinyBar-Setup;P:…;;`), which would keep passers-by off the setup page.
+*Open, not proposed here:* whether `MiniBar-Setup` has a password. The QR code can carry one (`WIFI:T:WPA;S:MiniBar-Setup;P:…;;`), which would keep passers-by off the setup page.
 
 ### 13.1 `GET /api/v1/setup/networks`
 
@@ -1193,7 +1193,7 @@ The networks the bar can see, strongest first.
 }
 ```
 
-`security` is `"password"` (WPA2 or WPA3 Personal), `"work_login"` (WPA2 Enterprise, username and password) or `"open"`. The page warns that an open network may need a sign-in page, which TinyBar can't fill in.
+`security` is `"password"` (WPA2 or WPA3 Personal), `"work_login"` (WPA2 Enterprise, username and password) or `"open"`. The page warns that an open network may need a sign-in page, which MiniBar can't fill in.
 
 ### 13.2 `POST /api/v1/setup/wifi`
 
@@ -1226,7 +1226,7 @@ The page polls this. The phone may lose the setup network while the bar connects
 ```
 
 ```json
-{"ok": true, "state": "connected", "error": null, "message": null, "host": "tinybar.local", "ip": "10.0.4.42"}
+{"ok": true, "state": "connected", "error": null, "message": null, "host": "minibar.local", "ip": "10.0.4.42"}
 ```
 
 `state` is `"idle"`, `"connecting"`, `"connected"` or `"failed"`. `error` is `null`, `"wrong_password"`, `"login_failed"` (work login refused), `"not_found"` (the network is gone), `"no_signal"` or `"no_address"` (joined but got no IP address, often a sign-in-page network).
@@ -1255,7 +1255,7 @@ The mock-up's "How the Mac app talks to TinyBar" and `decisions.md` need these b
 - **`inputs`** (mic, camera, or both). It goes beyond the decided "only on a call yes or no, and optionally the app name, leaves the Mac". The field is in the contract so the bar can accept it, but the Mac app doesn't send it until the user agrees, and the bar doesn't show it (no screen uses it yet). Useful later, for example "On camera" in the kicker, so people know not to walk behind you.
 - **What else the Mac app sends:** a random install ID with a per-launch session ID and a counter (`client`, `session`, `seq`), and over USB the Mac's time and time zone, so a bar used without Wi-Fi still has a clock for the Clock screen and "since 2:04 PM". None of it says anything about calls, and none of it is a hardware ID or the computer's or user's name, but it isn't on the Mac app spec's list of what leaves the Mac yet (14.5).
 - **Away's back-at time and note** (8.1).
-- **The default bar name "TinyBar 2A1C"** (section 3).
+- **The default bar name "MiniBar 2A1C"** (section 3).
 - **The theme setting `display.theme`** (10.3), for the alternate theme the user decided on 2026-10-05.
 - **The touch click setting `sound.tap_sound`** (10.4), for the click the user asked for on 2026-10-05, and its default (`true`, Proposed).
 
@@ -1272,9 +1272,9 @@ The mock-up's "How the Mac app talks to TinyBar" and `decisions.md` need these b
 ### 14.4 Open
 
 - **HTTPS.** Version 1 is plain HTTP on the office network (4.10). A later version could serve HTTPS with a self-signed certificate whose fingerprint the client pins at pairing: easy for the Mac app, but browsers warn about self-signed certificates, so the Remote page would need more thought.
-- **A password on `TinyBar-Setup`** (section 13).
+- **A password on `MiniBar-Setup`** (section 13).
 - **Pushed updates** (WebSocket) instead of polling (7.2).
-- **Bars in the same office:** each picks its own `.local` name, but the Remote's address is no longer simply `tinybar.local` when a second bar is around. The bar shows its real address; the mock-up could say so.
+- **Bars in the same office:** each picks its own `.local` name, but the Remote's address is no longer simply `minibar.local` when a second bar is around. The bar shows its real address; the mock-up could say so.
 - **Unverified on the hardware** (6.1, 6.3): whether opening or closing the port from macOS resets the bar, and whether the USB serial number is the MAC address.
 - **Two Macs, one bar** (open in `decisions.md`): settled at the protocol level. The bar keeps each Mac's state by `client` (5.2), so an idle second Mac can't end the first Mac's call. The Mac app itself needs nothing extra.
 
@@ -1292,6 +1292,10 @@ The mock-up's "How the Mac app talks to TinyBar" and `decisions.md` need these b
 8. **Sleep and quit** send `"leaving": true` with `"active": false`, which also marks the Mac not connected at once.
 9. **Time in `hello`** (**Proposed**, 14.2): the spec doesn't send it yet.
 
+### 14.6 The rename to MiniBar (2026-10-05)
+
+The product was renamed from TinyBar to MiniBar on 2026-10-05 (`decisions.md`, Product), and this file with it. What changed on the wire, all in firmware 1.0.3: `device` is `"MiniBar"` (7.1), the 401 realm is `MiniBar` (4.5), the host name is `minibar.local` (`minibar-2.local` after a clash) and the service `_minibar._tcp` (section 3), the setup network is `MiniBar-Setup` (13), the default bar name is "MiniBar" plus the last four of the ID ("MiniBar 2A1C"), the User-Agent the Mac app sends is `MiniBarMac/<version> (api 1.0)` (2.1), and its Keychain service is `MiniBar` (16). What didn't: the paths, the `@tb ` line marker, the `tb1_` token prefix, the `tb_token` cookie and every token already issued, so a paired Mac keeps working over USB. For one release the Mac app **accepts both `device` values** ("MiniBar" and "TinyBar") and **browses both service types** (`_minibar._tcp` first, then `_tinybar._tcp`), because a bar on firmware 1.0.2 or earlier still answers with the old name; the firmware advertises only the new type. A bar whose stored name is still the old default ("TinyBar" plus its four characters) takes the new default once at start-up; a name a person typed is left alone. The host-name change signs paired phones out of the Remote (the cookie is per host): the phone pairs again once, and its old row can be removed on Paired devices. The entries above that quote the old name record what the mock-up and the Mac app spec said at the time and are kept as written.
+
 ---
 
 ## 15. Notes for the firmware
@@ -1302,22 +1306,22 @@ The mock-up's "How the Mac app talks to TinyBar" and `decisions.md` need these b
 - **Tokens:** generate them with `esp_fill_random` only while the RF is on (Wi-Fi started), or after `bootloader_random_enable()` (needed for USB pairing with Wi-Fi skipped; it borrows the SAR ADC, so disable it again right after). Store only SHA-256 hashes, in an NVS namespace of their own, encrypted along with the calendar address (NVS encryption with the HMAC-based scheme the ESP32-S3 supports). Compare hashes in constant time. Rate-limit and back-off state stays in RAM.
 - **USB:** install the `usb_serial_jtag` driver and read lines in a task of its own. Route ESP-IDF logging through the same writer as protocol replies (`esp_log_set_vprintf`), behind one mutex that also tracks whether the last byte written was a line break (6.4). **Never block on USB writes:** when no program is reading, the TX buffer fills; use a short time-out and drop log output rather than stall the UI or the router. Release builds log at Warning level, so the port stays mostly quiet. Never log tokens, the calendar address, Wi-Fi passwords or raw protocol lines.
 - **Macs:** keep each Mac's state (up to 4) in RAM, keyed by `client`, with its link, last heard, session and seq, call state, app, `call_id` and start time. Run the 90-second time-out from a timer, not from incoming messages.
-- **mDNS:** use the `espressif/mdns` component: host name `tinybar`, instance name `device.name`, `_tinybar._tcp` and `_http._tcp` on port 80 with the TXT record in section 3. Update the TXT record if the name changes, and report the host name mDNS ended up with after a conflict.
+- **mDNS:** use the `espressif/mdns` component: host name `minibar`, instance name `device.name`, `_minibar._tcp` and `_http._tcp` on port 80 with the TXT record in section 3. Update the TXT record if the name changes, and report the host name mDNS ended up with after a conflict.
 - **Calendar:** Google's secret iCal feed holds every past event too and can run to megabytes. Fetch it with `esp_http_client` over TLS (with the certificate bundle) and **parse it as a stream**, keeping only today's and tomorrow's events that count; don't buffer the file. TLS needs roughly 40 KB of RAM while it runs; use PSRAM for buffers.
 - **Time:** SNTP when on Wi-Fi, the PCF85063 clock chip otherwise, set from the Mac's `hello` only under the rule in 6.6. Turn the IANA time zone into a POSIX TZ string with a built-in table (the posix_tz_db list is tens of KB, so keep only the zones people are likely to use if flash gets tight).
 - **Text:** apply the mapping in 2.3, and measure strings in the font that will draw them, to decide when to cut the app name at 24 characters and which characters count as unsupported.
 
 ## 16. Notes for the Mac app
 
-- **Which link:** USB when a TinyBar answers `hello` on it, else Wi-Fi if paired, one at a time (6.8). Send the full state right after every switch.
+- **Which link:** USB when a MiniBar answers `hello` on it, else Wi-Fi if paired, one at a time (6.8). Send the full state right after every switch.
 - **Heartbeat:** send on every change and every `heartbeat_s` (30) seconds, idle or not; keep `seq` going up within a `session`; send `"leaving": true` on quit and on `NSWorkspace.willSleepNotification` and `willPowerOffNotification`, and a fresh state on `didWakeNotification`. Only one request in flight at a time.
-- **Pairing:** when the bar is on USB and the app has no token, pair over USB at once (6.6). Over Wi-Fi only, pair with the code (4.2), showing "Look at your TinyBar and type the code it shows".
-- **Keychain:** one generic-password item per bar: service `TinyBar`, account = `device_id`, accessible after first unlock on this device only (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`). *(Note 2026-10-04, Mac app only, no change to the wire format: an ad-hoc-signed app can't use the data-protection keychain, and the file-based login keychain it uses ignores this attribute (Apple TN3137), so "this device only" isn't enforced there. The item stays in the user's login keychain.)*
+- **Pairing:** when the bar is on USB and the app has no token, pair over USB at once (6.6). Over Wi-Fi only, pair with the code (4.2), showing "Look at your MiniBar and type the code it shows".
+- **Keychain:** one generic-password item per bar: service `MiniBar`, account = `device_id`, accessible after first unlock on this device only (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`). *(Note 2026-10-04, Mac app only, no change to the wire format: an ad-hoc-signed app can't use the data-protection keychain, and the file-based login keychain it uses ignores this attribute (Apple TN3137), so "this device only" isn't enforced there. The item stays in the user's login keychain.)*
 - **On `401`,** first check `GET /api/v1/info`: if its `device_id` isn't the paired bar's, the address now belongs to another bar (an office network can hand the same address to a different device), so find the right bar again and keep the token. Only when the paired bar itself refuses the token, delete it and ask to pair again. Check `device_id` in every `call` reply for the same reason.
 - **On `403 wrong_client` from a call** (5.2), do the same as on `401`: the token was paired for another install ID (the app's settings were reset while the Keychain kept the token), so check `info`, drop the token and offer to pair again. The app may also send `DELETE /api/v1/clients/self` with the refused token first, best effort, so the stale token doesn't keep one of the bar's 10 places or show twice in the Remote's Paired devices; the bar accepts it and toasts "Removed Mac", as for any self-unpairing. *(2026-10-05: this is what the Mac app does; recorded here so the contract names it.)*
-- **Discovery:** browse `_tinybar._tcp` (for example with `NWBrowser`) and match `id` to the paired `device_id` (section 3). macOS 15 asks the user for **Local Network** access: add `NSLocalNetworkUsageDescription` and list `_tinybar._tcp` under `NSBonjourServices` in Info.plist. Without that permission, Wi-Fi fails silently, so the app explains it.
+- **Discovery:** browse `_minibar._tcp` (for example with `NWBrowser`) and match `id` to the paired `device_id` (section 3). macOS 15 asks the user for **Local Network** access: add `NSLocalNetworkUsageDescription` and list `_minibar._tcp` under `NSBonjourServices` in Info.plist. Without that permission, Wi-Fi fails silently, so the app explains it.
 - **USB:** find and open the port as in 6.1 to 6.3. Never touch DTR or RTS, and offer Pause USB for flashing.
-- **Retries:** on a network error, retry at the next heartbeat; back off to at most every 30 seconds while the bar can't be reached, and say so in the menu ("Can't reach TinyBar · last sent 2:04 PM").
+- **Retries:** on a network error, retry at the next heartbeat; back off to at most every 30 seconds while the bar can't be reached, and say so in the menu ("Can't reach MiniBar · last sent 2:04 PM").
 - **What the menu shows** comes from the latest reply (5.3), and the Mac's connection line from `status.macs` if the app reads it.
 
 ---

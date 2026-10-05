@@ -14,14 +14,14 @@
 TB_TEST(http_host_check)
 {
     nf_setup();
-    const char *good[] = {"tinybar.local", "tinybar.local:80", "TinyBar.Local", "tinybar.local.", "10.0.4.42", "10.0.4.42:80"};
+    const char *good[] = {"minibar.local", "minibar.local:80", "MiniBar.Local", "minibar.local.", "10.0.4.42", "10.0.4.42:80"};
     for (size_t i = 0; i < sizeof good / sizeof good[0]; i++) {
         nf_host = good[i];
         nf_resp_t r = nf_http("GET", "/api/v1/info", NULL, NULL);
         TB_EQ_INT(r.status, 200);
         nf_free(&r);
     }
-    const char *bad[] = {"evil.example", "tinybar.local:8080", "tinybar.locals", "10.0.4.4", NET_SETUP_IP, "", "tinybar"};
+    const char *bad[] = {"evil.example", "minibar.local:8080", "minibar.locals", "10.0.4.4", NET_SETUP_IP, "", "minibar"};
     for (size_t i = 0; i < sizeof bad / sizeof bad[0]; i++) {
         nf_host = bad[i];
         nf_resp_t r = nf_http("GET", "/api/v1/info", NULL, NULL);
@@ -37,15 +37,15 @@ TB_TEST(http_host_check)
     TB_EQ_INT(r.status, 421);
     nf_free(&r);
     /* after an mDNS conflict the bar answers to its new name only */
-    snprintf(fake_wifi.host, sizeof fake_wifi.host, "tinybar-2.local");
-    nf_host = "tinybar.local";
+    snprintf(fake_wifi.host, sizeof fake_wifi.host, "minibar-2.local");
+    nf_host = "minibar.local";
     r = nf_http("GET", "/api/v1/info", NULL, NULL);
     TB_EQ_INT(r.status, 421);
     nf_free(&r);
-    nf_host = "tinybar-2.local";
+    nf_host = "minibar-2.local";
     r = nf_http("GET", "/api/v1/info", NULL, NULL);
     TB_EQ_INT(r.status, 200);
-    TB_EQ_STR(nf_str(r.j, "host"), "tinybar-2.local");
+    TB_EQ_STR(nf_str(r.j, "host"), "minibar-2.local");
     nf_free(&r);
     /* the setup address only while the setup network is up */
     fake_wifi.state = NET_WIFI_SETUP;
@@ -103,12 +103,12 @@ TB_TEST(http_info_is_open_and_complete)
     nf_resp_t r = nf_http("GET", "/api/v1/info", NULL, NULL);
     TB_EQ_INT(r.status, 200);
     TB_TRUE(nf_true(r.j, "ok"));
-    TB_EQ_STR(nf_str(r.j, "device"), "TinyBar");
+    TB_EQ_STR(nf_str(r.j, "device"), "MiniBar");
     TB_EQ_STR(nf_str(r.j, "device_id"), "f412fa3f2a1c");
-    TB_EQ_STR(nf_str(r.j, "name"), "TinyBar 2A1C");
+    TB_EQ_STR(nf_str(r.j, "name"), "MiniBar 2A1C");
     TB_EQ_STR(nf_str(r.j, "fw"), "1.0.0");
     TB_EQ_STR(nf_str(r.j, "api"), "1.0");
-    TB_EQ_STR(nf_str(r.j, "host"), "tinybar.local");
+    TB_EQ_STR(nf_str(r.j, "host"), "minibar.local");
     TB_EQ_STR(nf_str(r.j, "auth"), "bearer");
     TB_EQ_STR(nf_str(r.j, "pairing"), "idle");
     TB_EQ_INT(nf_num(r.j, "heartbeat_s"), 30);
@@ -152,7 +152,7 @@ TB_TEST(http_endpoints_need_a_token)
         nf_resp_t r = nf_http(eps[i].m, eps[i].p, eps[i].b, NULL);
         TB_EQ_INT(r.status, 401);
         TB_EQ_STR(nf_err(&r), "unauthorized");
-        TB_EQ_STR(nf_str(r.j, "message"), "Pair with this TinyBar first.");
+        TB_EQ_STR(nf_str(r.j, "message"), "Pair with this MiniBar first.");
         TB_TRUE(r.r.www_authenticate);
         nf_free(&r);
         nf_advance(300);
@@ -218,12 +218,12 @@ TB_TEST(http_cookie_and_origin)
     snprintf(token, sizeof token, "%.47s", sc + 9);
     nf_free(&r);
 
-    net_req_t req = {.via = NET_VIA_HTTP, .method = "GET", .path = "/api/v1/status", .host = "tinybar.local",
+    net_req_t req = {.via = NET_VIA_HTTP, .method = "GET", .path = "/api/v1/status", .host = "minibar.local",
                      .cookie_token = token, .peer_ip = nf_ip};
     r = nf_req(&req);
     TB_EQ_INT(r.status, 200);
     nf_free(&r);
-    req.origin = "http://tinybar.local";
+    req.origin = "http://minibar.local";
     r = nf_req(&req);
     TB_EQ_INT(r.status, 200);
     nf_free(&r);
@@ -249,7 +249,7 @@ TB_TEST(http_cookie_and_origin)
     /* forgetting this phone clears the cookie */
     req.bearer = NULL;
     req.cookie_token = token;
-    req.origin = "http://tinybar.local";
+    req.origin = "http://minibar.local";
     req.method = "DELETE";
     req.path = "/api/v1/clients/self";
     r = nf_req(&req);
@@ -277,7 +277,7 @@ TB_TEST(http_auth_none_mode)
     TB_TRUE(nf_pair("mac", "call", NULL) != NULL);
     /* the unauthenticated rate limit doesn't apply: 15 quick requests from one address */
     for (int i = 0; i < 15; i++) {
-        net_req_t req = {.via = NET_VIA_HTTP, .method = "GET", .path = "/api/v1/status", .host = "tinybar.local", .peer_ip = 77};
+        net_req_t req = {.via = NET_VIA_HTTP, .method = "GET", .path = "/api/v1/status", .host = "minibar.local", .peer_ip = 77};
         nf_resp_t x;
         memset(&x, 0, sizeof x);
         net_api_handle(&req, &x.r);
@@ -297,7 +297,7 @@ TB_TEST(http_rate_limits)
     /* 20 at once with a token, then 429 */
     int ok = 0, limited = 0, retry = 0;
     for (int i = 0; i < 25; i++) {
-        net_req_t req = {.via = NET_VIA_HTTP, .method = "GET", .path = "/api/v1/status", .host = "tinybar.local", .bearer = t, .peer_ip = 55};
+        net_req_t req = {.via = NET_VIA_HTTP, .method = "GET", .path = "/api/v1/status", .host = "minibar.local", .bearer = t, .peer_ip = 55};
         net_resp_t resp;
         net_api_handle(&req, &resp);
         if (resp.status == 200) ok++;
@@ -314,7 +314,7 @@ TB_TEST(http_rate_limits)
     /* without a token: 5 */
     ok = 0;
     for (int i = 0; i < 8; i++) {
-        net_req_t req = {.via = NET_VIA_HTTP, .method = "GET", .path = "/api/v1/info", .host = "tinybar.local", .peer_ip = 56};
+        net_req_t req = {.via = NET_VIA_HTTP, .method = "GET", .path = "/api/v1/info", .host = "minibar.local", .peer_ip = 56};
         net_resp_t resp;
         net_api_handle(&req, &resp);
         ok += resp.status == 200;
@@ -337,7 +337,7 @@ TB_TEST(http_body_checks)
     const char *tok = nf_pair("remote", "full", NULL);
     char t[NET_TOKEN_LEN + 1];
     snprintf(t, sizeof t, "%s", tok);
-    net_req_t req = {.via = NET_VIA_HTTP, .method = "POST", .path = "/api/v1/status", .host = "tinybar.local", .bearer = t,
+    net_req_t req = {.via = NET_VIA_HTTP, .method = "POST", .path = "/api/v1/status", .host = "minibar.local", .bearer = t,
                      .peer_ip = nf_ip, .body = "status=busy", .body_len = 11, .content_type_json = false};
     nf_resp_t r = nf_req(&req);
     TB_EQ_INT(r.status, 415);
@@ -447,7 +447,7 @@ TB_TEST(http_status_etag_and_304)
     nf_free(&r);
     /* nothing changed: 304 and no body, even as time passes */
     nf_advance(5000);
-    net_req_t req = {.via = NET_VIA_HTTP, .method = "GET", .path = "/api/v1/status", .host = "tinybar.local", .bearer = t,
+    net_req_t req = {.via = NET_VIA_HTTP, .method = "GET", .path = "/api/v1/status", .host = "minibar.local", .bearer = t,
                      .peer_ip = nf_ip, .if_none_match = etag};
     r = nf_req(&req);
     TB_EQ_INT(r.status, 304);
@@ -517,7 +517,7 @@ TB_TEST(http_busy_while_starting_up)
     /* a fresh boot: the splash is still up */
     tb_settings_t s = nf_app.set;
     tb_app_init(&nf_app, &s, TB_WIFI_OK, &fake_now);
-    net_req_t req = {.via = NET_VIA_HTTP, .method = "POST", .path = "/api/v1/status", .host = "tinybar.local", .peer_ip = 1,
+    net_req_t req = {.via = NET_VIA_HTTP, .method = "POST", .path = "/api/v1/status", .host = "minibar.local", .peer_ip = 1,
                      .body = "{\"status\": \"busy\"}", .body_len = 18, .content_type_json = true};
     net_resp_t resp;
     net_api_handle(&req, &resp);

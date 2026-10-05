@@ -1,5 +1,5 @@
 /*
- * fakebar.c: a TinyBar on Linux for testing the Remote and setup pages. Owner: net builder.
+ * fakebar.c: a MiniBar on Linux for testing the Remote and setup pages. Owner: net builder.
  *
  * The real router (proto/net_api.c) and the real status engine (core) behind a tiny single-threaded HTTP server, with
  * a simulated device around them: a Wi-Fi scan, joins that take 2.5 s (see below), a calendar check that passes unless the address ends in
@@ -7,7 +7,7 @@
  *
  *   tb_fakebar [--port 8080] [--setup] [--auth-none]
  * Joins work unless the password is "wrong-password" or the network is "Printer-Direct".
- *   GET  /               the Remote (or, with --setup, the setup page: the browser is a phone on TinyBar-Setup)
+ *   GET  /               the Remote (or, with --setup, the setup page: the browser is a phone on MiniBar-Setup)
  *   ANY  /api/...        the router, exactly as on the bar (the Host must be 127.0.0.1:<port>)
  *   POST /_sim/usb       body: one "@tb ..." line; answers the reply line (a Mac on USB)
  *   GET  /_sim/state     the bar's screen state as JSON (toast, own status, pairing code...) for test checks
@@ -45,7 +45,7 @@
 
 static tb_app_t s_app;
 static int s_port = 8080;
-static bool s_setup_net;     /* --setup: the browser stands for a phone on TinyBar-Setup */
+static bool s_setup_net;     /* --setup: the browser stands for a phone on MiniBar-Setup */
 static net_wifi_info_t s_wifi;
 static net_time_source_t s_tsrc = NET_TIME_NTP;
 static cal_status_t s_cal;
@@ -223,11 +223,11 @@ static void sim_tick(const tb_clock_t *now)
             tb_app_wifi_failed(&s_app, s_join_ssid, "Wrong password", now);
         } else {
             s_join.state = NET_JOIN_CONNECTED;
-            snprintf(s_join.host, sizeof s_join.host, "tinybar.local");
+            snprintf(s_join.host, sizeof s_join.host, "minibar.local");
             snprintf(s_join.ip, sizeof s_join.ip, "127.0.0.1");
             s_wifi.sta_up = true;
             tb_strlcpy(s_wifi.ssid, s_join_ssid, sizeof s_wifi.ssid);
-            tb_app_wifi_connected(&s_app, s_join_ssid, "127.0.0.1", "tinybar.local", now);
+            tb_app_wifi_connected(&s_app, s_join_ssid, "127.0.0.1", "minibar.local", now);
             if (s_cal_url[0]) net_port_cal_put(s_cal_url, true);
         }
     }
@@ -432,7 +432,7 @@ static void handle(int fd, bool *quit)
         if (resp.etag[0]) e += (size_t)snprintf(extra + e, sizeof extra - e, "ETag: %s\r\n", resp.etag);
         if (resp.set_cookie[0]) e += (size_t)snprintf(extra + e, sizeof extra - e, "Set-Cookie: %s\r\n", resp.set_cookie);
         if (resp.allow[0]) e += (size_t)snprintf(extra + e, sizeof extra - e, "Allow: %s\r\n", resp.allow);
-        if (resp.www_authenticate) e += (size_t)snprintf(extra + e, sizeof extra - e, "WWW-Authenticate: Bearer realm=\"TinyBar\"\r\n");
+        if (resp.www_authenticate) e += (size_t)snprintf(extra + e, sizeof extra - e, "WWW-Authenticate: Bearer realm=\"MiniBar\"\r\n");
         if (resp.retry_after_s > 0) snprintf(extra + e, sizeof extra - e, "Retry-After: %d\r\n", resp.retry_after_s);
         respond(fd, resp.status, "application/json; charset=utf-8", extra, resp.status == 304 ? NULL : resp.body,
                 resp.status == 304 ? 0 : resp.len);

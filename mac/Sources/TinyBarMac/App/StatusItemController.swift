@@ -7,7 +7,7 @@ import TinyBarCore
 /// `engine.menuContent(showDetails:)`; works out nothing itself.
 ///
 /// - The icon: `MenuBarIcon` (SF Symbol template images), the tooltip, and
-///   VoiceOver's label and value ("TinyBar, on a call", "On a call · Slack ·
+///   VoiceOver's label and value ("MiniBar, on a call", "On a call · Slack ·
 ///   12m"). It follows `engine.state` through `withObservationTracking`,
 ///   re-armed after each change, and is refreshed every 20 seconds so the
 ///   call's minutes in the tooltip tick over.
@@ -22,11 +22,11 @@ import TinyBarCore
 /// - Groups exactly as mac-app-ux.md 4.1 and 4.7: status lines; fix item and
 ///   counting items (with their separator only when there are any); Pause
 ///   Detection ▸ (For 1 Hour, For the Rest of Today, Until I Resume) or Resume
-///   Detection, and Pause USB / Resume USB with Option; About TinyBar and
-///   Settings… (⌘,); Quit TinyBar (⌘Q).
+///   Detection, and Pause USB / Resume USB with Option; About MiniBar and
+///   Settings… (⌘,); Quit MiniBar (⌘Q).
 /// - The status lines look like text (4.1): disabled items with attributed
 ///   titles in the label and secondary label colors, at the menu font. Or, with
-///   `defaults write com.tinybar.TinyBarMac StatusLineStyle view`, custom views
+///   `defaults write com.minibar.MiniBarMac StatusLineStyle view`, custom views
 ///   holding a label. *Unverified* which looks right: whether disabled items
 ///   keep attributed colors, and the custom view's left inset.
 @MainActor
@@ -202,12 +202,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
 
         // App.
-        menu.addItem(item("About TinyBar") { AboutPanel.show() })
+        menu.addItem(item("About MiniBar") { AboutPanel.show() })
         menu.addItem(item("Settings…", key: ",") { [weak self] in self?.windows.showSettings() })
         menu.addItem(.separator())
 
         // Quit.
-        menu.addItem(item("Quit TinyBar", key: "q") { NSApp.terminate(nil) })
+        menu.addItem(item("Quit MiniBar", key: "q") { NSApp.terminate(nil) })
 
         builtContent = content
     }
@@ -301,7 +301,7 @@ private extension MenuContent {
 /// (mac-app-ux.md 4.1).
 @MainActor
 private enum StatusLine {
-    /// `defaults write com.tinybar.TinyBarMac StatusLineStyle view` to try
+    /// `defaults write com.minibar.MiniBarMac StatusLineStyle view` to try
     /// the custom-view version on a real Mac.
     static var usesCustomView: Bool {
         UserDefaults.standard.string(forKey: "StatusLineStyle") == "view"

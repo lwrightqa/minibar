@@ -1,4 +1,4 @@
-# ui: TinyBar's screens in Bold Signal (owner: ui builder)
+# ui: MiniBar's screens in Bold Signal (owner: ui builder)
 
 The ui draws the core model (`tb_app_t`) with LVGL 9 and reports touches. It never changes the model. It runs on the
 app task (`main/app_task.c`): `ui_init()` once, `ui_update()` every loop, touches go to the callback set with
@@ -85,7 +85,7 @@ pattern (below). Under 8% of pixels differ in any scene, nearly all at glyph edg
 - **The pairing round (2026-10-05):** the Devices tile with nothing paired says where to pair. core gives the feet to
   try in order (`tb_tile_t.foot` then `foot_alt`), and `put_menu()` draws the first whose every line fits the tile's
   content width on one line, measured with `lv_text_get_size` (no wrapping) against 86.53 px with the mock-up's
-  half-pixel allowance: "tinybar.local" is 75 px, "10.0.4.42" 54 px, "tinybar-2.local" 90 px (too wide). Forget all's
+  half-pixel allowance: "minibar.local" is 80 px, "10.0.4.42" 54 px, "minibar-2.local" 93 px (too wide). Forget all's
   device names stop at two lines the way Chrome's line clamp does (what the wrap puts on two lines, then "…"), not
   with LVGL's DOTS mode, which ends in three periods. `tools/ref_scenes.js` resets the mock-up's held toast between
   scenes (the page clock is fixed, so a pairing toast would otherwise hold back every later one).
@@ -105,7 +105,7 @@ pixel, and that the fonts carry exactly the characters `tb_text_drawable()` acce
   #2A2E36 use the perceptually nearest 565 neighbor instead (each within 1.6). The progress track is darkened from the
   24-bit spec color before rounding (lv_color_darken on the rounded color landed Focus one red step low).
 - **The clock's AM/PM is 36 px** (the mock-up's .32 em of 112 px, 35.84), with 2 px letter-spacing.
-- **The QR code** is `lv_qrcode` (`WIFI:T:nopass;S:TinyBar-Setup;;`, 116 px, 4 px modules on the white 132 px square).
+- **The QR code** is `lv_qrcode` (`WIFI:T:nopass;S:MiniBar-Setup;;`, 116 px, 4 px modules on the white 132 px square).
   LVGL raises the error correction to Q when it fits the same size (29 modules), so the pattern differs from the
   mock-up's level M code; it's the same size and position, and more forgiving of a phone held at an angle.
 - **The pill has no tomato** (Bold Signal's CSS hides it), so no 16 px sprite was needed.

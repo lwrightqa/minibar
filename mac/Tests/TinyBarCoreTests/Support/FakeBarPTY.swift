@@ -12,7 +12,7 @@ func offPool<T: Sendable>(_ work: @escaping @Sendable () throws -> T) async thro
     }
 }
 
-/// A TinyBar played by the test on the controller side of a pseudo-terminal
+/// A MiniBar played by the test on the controller side of a pseudo-terminal
 /// (criterion 14). Reads the app's lines and writes replies, log output and
 /// events, byte for byte as the firmware would.
 final class FakeBarPTY: @unchecked Sendable {
@@ -20,7 +20,7 @@ final class FakeBarPTY: @unchecked Sendable {
     private let buffer = Locked(Data())
 
     static let client = "6F1C2A9E-5B7D-4E0A-9C3B-2D8F1A7E4B60"
-    static let infoJSON = #"{"ok": true, "device": "TinyBar", "device_id": "f412fa3f2a1c", "name": "TinyBar 2A1C", "fw": "1.0.0", "api": "1.0", "host": "tinybar.local", "auth": "bearer", "pairing": "idle", "heartbeat_s": 30, "timeout_s": 90, "time": "2026-10-04T14:11:58-07:00", "time_source": "ntp", "wifi": "connected"}"#
+    static let infoJSON = #"{"ok": true, "device": "MiniBar", "device_id": "f412fa3f2a1c", "name": "MiniBar 2A1C", "fw": "1.0.0", "api": "1.0", "host": "minibar.local", "auth": "bearer", "pairing": "idle", "heartbeat_s": 30, "timeout_s": 90, "time": "2026-10-04T14:11:58-07:00", "time_source": "ntp", "wifi": "connected"}"#
     static let callReplyJSON = #"{"ok": true, "device_id": "f412fa3f2a1c", "showing": "own", "screen": "on", "stale": false, "call": {"active": false, "app": null, "inputs": null, "via": null, "since": null, "aside": false}, "sources": {"calendar": true, "mac": true}, "heartbeat_s": 30, "timeout_s": 90, "time": "2026-10-04T14:11:58-07:00"}"#
 
     init() throws {

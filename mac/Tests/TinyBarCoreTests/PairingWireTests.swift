@@ -15,13 +15,13 @@ final class PairingWireTests: XCTestCase {
 
     // The replies, as api.md writes them.
     static let started = #"{"ok": true, "pairing_id": "d407580a9215e992", "expires_in_s": 120, "code_length": 6, "attempts": 3}"#
-    static let paired = #"{"ok": true, "token": "tb1_w1rV1lN4jm2ohruSAozMZxVlcceAL7yS8r45__-ref4", "token_id": "74d8a526", "scope": "call", "device_id": "f412fa3f2a1c", "name": "TinyBar 2A1C", "host": "tinybar.local"}"#
+    static let paired = #"{"ok": true, "token": "tb1_w1rV1lN4jm2ohruSAozMZxVlcceAL7yS8r45__-ref4", "token_id": "74d8a526", "scope": "call", "device_id": "f412fa3f2a1c", "name": "MiniBar 2A1C", "host": "minibar.local"}"#
     static let canceled = #"{"ok": true}"#
     static let busy = #"{"ok": false, "error": "pairing_busy", "message": "Another device is pairing. Try again in 74 seconds.", "field": null, "retry_after_s": 74}"#
     static let backOff = #"{"ok": false, "error": "rate_limited", "message": "Too many pairings failed. Try again in 240 seconds.", "field": null, "retry_after_s": 240}"#
     static let oneASecond = #"{"ok": false, "error": "rate_limited", "message": "One pairing request a second.", "field": null, "retry_after_s": 1}"#
-    static let tokenLimit = #"{"ok": false, "error": "token_limit", "message": "TinyBar already has 10 paired devices. Remove one on the Remote.", "field": null}"#
-    static let inSetup = #"{"ok": false, "error": "in_setup", "message": "TinyBar is setting up Wi-Fi.", "field": null}"#
+    static let tokenLimit = #"{"ok": false, "error": "token_limit", "message": "MiniBar already has 10 paired devices. Remove one on the Remote.", "field": null}"#
+    static let inSetup = #"{"ok": false, "error": "in_setup", "message": "MiniBar is setting up Wi-Fi.", "field": null}"#
     static let notPairing = #"{"ok": false, "error": "not_pairing", "message": "No code is on the screen for that pairing_id.", "field": "pairing_id"}"#
     static let wrongClient = #"{"ok": false, "error": "wrong_client", "message": "This token can't report calls for that client.", "field": "client"}"#
     static func wrongCode(_ left: Int) -> String {
@@ -95,7 +95,7 @@ final class PairingWireTests: XCTestCase {
         XCTAssertEqual(sent.bodyText, #"{"pairing_id":"d407580a9215e992"}"#)
         XCTAssertEqual(sent.headers["content-type"], "application/json")
         XCTAssertNil(sent.headers["authorization"])
-        XCTAssertEqual(sent.headers["user-agent"], "TinyBarMac/1.0 (12) (api 1.0)")
+        XCTAssertEqual(sent.headers["user-agent"], "MiniBarMac/1.0 (12) (api 1.0)")
         XCTAssertEqual(sent.headers["accept-language"], "en")
         XCTAssertNil(sent.headers["cookie"])
 
@@ -169,7 +169,7 @@ final class PairingWireTests: XCTestCase {
         }
         let clock = ManualClock()
         let tokens = InMemoryTokenStore(["f412fa3f2a1c": Self.token])
-        let known = KnownBar(deviceID: "f412fa3f2a1c", name: "TinyBar 2A1C", host: "tinybar.local",
+        let known = KnownBar(deviceID: "f412fa3f2a1c", name: "MiniBar 2A1C", host: "minibar.local",
                              lastEndpoint: server.endpoint, auth: .bearer, tokenID: "74d8a526")
         let connection = BarConnection(
             configuration: .init(clientID: Self.client, sessionID: "q8Zr2Lx0", appVersion: "1.0 (12)"),
@@ -177,7 +177,7 @@ final class PairingWireTests: XCTestCase {
         await connection.start()
         await settle(connection)
         let state = await connection.state
-        XCTAssertEqual(state.phase, .unrecognized, "TinyBar 2A1C doesn't recognize this Mac · Pair Again…")
+        XCTAssertEqual(state.phase, .unrecognized, "MiniBar 2A1C doesn't recognize this Mac · Pair Again…")
         XCTAssertNil(try tokens.token(for: "f412fa3f2a1c"))
         XCTAssertEqual(server.requests.map { "\($0.method) \($0.path) \($0.headers["authorization"] ?? "no token")" }, [
             "GET /api/v1/info no token",
@@ -222,7 +222,7 @@ final class PairingWireScenarios {
     }
 
     private var bar: DiscoveredBar {
-        DiscoveredBar(name: "TinyBar 2A1C", deviceID: "f412fa3f2a1c", auth: .bearer, endpoint: server.endpoint)
+        DiscoveredBar(name: "MiniBar 2A1C", deviceID: "f412fa3f2a1c", auth: .bearer, endpoint: server.endpoint)
     }
 
     private func flow() -> WiFiPairingFlow {

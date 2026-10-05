@@ -14,7 +14,7 @@
  */
 
 /* clang-format off */
-#if 1 /* TinyBar host snapshot configuration */
+#if 1 /* MiniBar host snapshot configuration */
 
 #ifndef LV_CONF_H
 #define LV_CONF_H

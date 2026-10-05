@@ -83,15 +83,15 @@ final class ConnectionTests: XCTestCase {
 
     func test_C23_onlyThePairedBar() async throws {
         let rig = ConnectionRig.paired()
-        let other = FakeBar(clock: rig.clock, deviceID: "a0b1c2d3e4f5", name: "TinyBar E4F5")
+        let other = FakeBar(clock: rig.clock, deviceID: "a0b1c2d3e4f5", name: "MiniBar E4F5")
         let otherAddress = BarEndpoint(host: "10.0.4.50")
         let pairedAddress = BarEndpoint(host: "10.0.4.77")
         rig.factory.place(other, at: otherAddress)
         rig.factory.place(rig.bar, at: pairedAddress)
         await rig.start()
         await rig.connection.discovered([
-            DiscoveredBar(name: "TinyBar E4F5", deviceID: "a0b1c2d3e4f5", endpoint: otherAddress),
-            DiscoveredBar(name: "TinyBar 2A1C", deviceID: "f412fa3f2a1c", endpoint: pairedAddress),
+            DiscoveredBar(name: "MiniBar E4F5", deviceID: "a0b1c2d3e4f5", endpoint: otherAddress),
+            DiscoveredBar(name: "MiniBar 2A1C", deviceID: "f412fa3f2a1c", endpoint: pairedAddress),
         ])
         await rig.settle()
         await rig.run(for: 31)
@@ -105,7 +105,7 @@ final class ConnectionTests: XCTestCase {
     func test_wrongDevice() async throws {
         // The last address now belongs to another bar: its replies aren't accepted.
         let rig = ConnectionRig.paired()
-        let other = FakeBar(clock: rig.clock, deviceID: "a0b1c2d3e4f5", name: "TinyBar E4F5")
+        let other = FakeBar(clock: rig.clock, deviceID: "a0b1c2d3e4f5", name: "MiniBar E4F5")
         rig.factory.place(other, at: ConnectionRig.barAddress)
         await rig.start()
         XCTAssertEqual(other.messages.count, 0, "info said it's another bar; nothing sent")
@@ -430,7 +430,7 @@ final class ConnectionTests: XCTestCase {
         await rig.plugIn()
         state = await rig.state
         XCTAssertEqual(state.bar?.deviceID, "f412fa3f2a1c")
-        XCTAssertEqual(state.bar?.name, "TinyBar 2A1C", "the menu shows the bar's name")
+        XCTAssertEqual(state.bar?.name, "MiniBar 2A1C", "the menu shows the bar's name")
         XCTAssertEqual(state.bar?.tokenID, "00000001")
         XCTAssertEqual(state.phase, .connected)
         XCTAssertTrue(state.usbSeen)
@@ -492,7 +492,7 @@ final class ConnectionTests: XCTestCase {
         await rig.connection.stop()
     }
 
-    /// Forget This TinyBar for a bar only ever reached over USB (Wi-Fi
+    /// Forget This MiniBar for a bar only ever reached over USB (Wi-Fi
     /// skipped, or client isolation): the token still comes off the bar, as a
     /// USB `request` for `DELETE /api/v1/clients/{token_id}` (api.md 12.2,
     /// Appendix A), so it doesn't keep one of the bar's 10 places.
@@ -538,11 +538,11 @@ final class ConnectionTests: XCTestCase {
         rig.factory.place(rig.bar, at: ConnectionRig.barAddress)
         await rig.start()
         let oldToken = try XCTUnwrap(try rig.tokens.token(for: "f412fa3f2a1c"))
-        let newBar = FakeBar(clock: rig.clock, deviceID: "a0b1c2d3e4f5", name: "TinyBar E4F5")
+        let newBar = FakeBar(clock: rig.clock, deviceID: "a0b1c2d3e4f5", name: "MiniBar E4F5")
         await rig.plugIn(bar: newBar)
         let state = await rig.state
-        XCTAssertEqual(state.bar?.deviceID, "a0b1c2d3e4f5", "the plugged-in bar becomes your TinyBar")
-        XCTAssertEqual(state.bar?.name, "TinyBar E4F5")
+        XCTAssertEqual(state.bar?.deviceID, "a0b1c2d3e4f5", "the plugged-in bar becomes your MiniBar")
+        XCTAssertEqual(state.bar?.name, "MiniBar E4F5")
         XCTAssertEqual(rig.tokens.deviceIDs, ["a0b1c2d3e4f5"], "the old token is deleted")
         XCTAssertEqual(rig.bar.state.withLock { $0.revoked }, [oldToken], "and the old bar is told to forget this Mac")
         XCTAssertEqual(newBar.messages.count, 1)
@@ -558,9 +558,9 @@ final class ConnectionTests: XCTestCase {
         XCTAssertFalse(rig.bar.log.contains("usb pair"), "nothing to pair")
         XCTAssertEqual(rig.tokens.deviceIDs, [])
         await rig.unplug()
-        // No Bonjour here: the address it had over USB (tinybar.local) isn't
+        // No Bonjour here: the address it had over USB (minibar.local) isn't
         // where the fake answers, so give it the address as Bonjour would.
-        await rig.connection.discovered([DiscoveredBar(name: "TinyBar 2A1C", deviceID: "f412fa3f2a1c", auth: .notRequired,
+        await rig.connection.discovered([DiscoveredBar(name: "MiniBar 2A1C", deviceID: "f412fa3f2a1c", auth: .notRequired,
                                                         endpoint: ConnectionRig.barAddress)])
         await rig.settle()
         let state = await rig.state
@@ -600,7 +600,7 @@ final class ConnectionTests: XCTestCase {
         let token = "tb1_" + String(repeating: "B", count: 43)
         rig.bar.set { $0.tokens.insert(token) }
         try rig.tokens.setToken(token, for: "f412fa3f2a1c")
-        await rig.connection.adopt(KnownBar(deviceID: "f412fa3f2a1c", name: "TinyBar 2A1C", lastEndpoint: ConnectionRig.barAddress,
+        await rig.connection.adopt(KnownBar(deviceID: "f412fa3f2a1c", name: "MiniBar 2A1C", lastEndpoint: ConnectionRig.barAddress,
                                             tokenID: "74d8a526"))
         await rig.settle()
         let state = await rig.state

@@ -91,7 +91,7 @@ typedef enum {
     TB_FX_ROTATE,           /* arg 1 = flipped 180 degrees */
     TB_FX_POWER_OFF,        /* after "Powering off": deep sleep on USB, SYS_EN low on battery */
     TB_FX_RESTART,          /* Restart tile */
-    TB_FX_WIFI_SETUP,       /* show the QR code: start TinyBar-Setup, DNS catch-all and the setup page */
+    TB_FX_WIFI_SETUP,       /* show the QR code: start MiniBar-Setup, DNS catch-all and the setup page */
     TB_FX_WIFI_SKIP,        /* Skip: stop the setup network, stay offline (net remembers it for the next start) */
     TB_FX_WIFI_DONE,        /* the Connected screen was dismissed: setup is over, stop the setup network */
     TB_FX_CAL_SYNC,         /* Sync now from the quick menu */
@@ -189,7 +189,7 @@ typedef struct {
     bool wifi_link_up;              /* joined and has an address; false when it dropped (mode stays OK) */
     char wifi_ssid[TB_SSID_BYTES];
     char wifi_ip[TB_IP_BYTES];
-    char wifi_host[64];             /* mDNS name actually held: "tinybar.local" or "tinybar-2.local" */
+    char wifi_host[64];             /* mDNS name actually held: "minibar.local" or "minibar-2.local" */
     char wifi_error[48];            /* "Wrong password", "No signal"... (the failed screen's headline) */
     tb_ms_t connected_until;
 

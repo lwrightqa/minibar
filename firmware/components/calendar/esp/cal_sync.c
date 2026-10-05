@@ -364,7 +364,7 @@ static cal_sync_err_t fetch(const char *url, const fetch_args_t *a, tb_meeting_t
         .timeout_ms = CAL_NET_TIMEOUT_MS,
         .buffer_size = CAL_READ_CHUNK,
         .buffer_size_tx = 1024,
-        .user_agent = "TinyBar/1 (ESP32-S3)",
+        .user_agent = "MiniBar/1 (ESP32-S3)",
         .disable_auto_redirect = true,
         .max_redirection_count = CAL_MAX_REDIRECTS,
         .keep_alive_enable = false,

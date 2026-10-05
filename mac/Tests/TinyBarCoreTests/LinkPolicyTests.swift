@@ -48,7 +48,7 @@ final class LinkPolicyTests: XCTestCase {
     }
 
     func test_C15_linkChoice() {
-        let endpoint = BarEndpoint(host: "tinybar.local")
+        let endpoint = BarEndpoint(host: "minibar.local")
         func choose(usb: Bool = false, paused: Bool = false, wifi: Bool = true, address: BarEndpoint? = endpoint,
                     authorized: Bool = true, setUp: Bool = true) -> LinkChoice {
             LinkChooser.choose(LinkInputs(usbReady: usb, usbPaused: paused, wifiEnabled: wifi, wifiEndpoint: address,
@@ -56,7 +56,7 @@ final class LinkPolicyTests: XCTestCase {
         }
         XCTAssertEqual(choose(usb: true), .usb, "USB first, even when Wi-Fi works")
         XCTAssertEqual(choose(usb: true, wifi: false, address: nil, authorized: false, setUp: false), .usb,
-                       "a TinyBar on USB works before anything is set up")
+                       "a MiniBar on USB works before anything is set up")
         XCTAssertEqual(choose(usb: true, paused: true), .wifi(endpoint), "Pause USB: Wi-Fi meanwhile")
         XCTAssertEqual(choose(), .wifi(endpoint))
         XCTAssertEqual(choose(setUp: false), .none(.notSetUp))
@@ -68,27 +68,27 @@ final class LinkPolicyTests: XCTestCase {
 
     func test_barEndpointParsesUserInput() {
         func parse(_ text: String) -> String? { BarEndpoint(userInput: text).map { "\($0.host):\($0.port)" } }
-        XCTAssertEqual(parse("tinybar.local"), "tinybar.local:80")
-        XCTAssertEqual(parse("  TinyBar-2.local  "), "tinybar-2.local:80")
+        XCTAssertEqual(parse("minibar.local"), "minibar.local:80")
+        XCTAssertEqual(parse("  MiniBar-2.local  "), "minibar-2.local:80")
         XCTAssertEqual(parse("10.0.4.42"), "10.0.4.42:80")
         XCTAssertEqual(parse("10.0.4.42:8080"), "10.0.4.42:8080")
         XCTAssertEqual(parse("http://10.0.4.42/"), "10.0.4.42:80")
-        XCTAssertEqual(parse("HTTP://tinybar.local:80/"), "tinybar.local:80")
-        XCTAssertEqual(parse("tinybar.local."), "tinybar.local:80")
-        XCTAssertEqual(parse("tinybar"), "tinybar:80")
+        XCTAssertEqual(parse("HTTP://minibar.local:80/"), "minibar.local:80")
+        XCTAssertEqual(parse("minibar.local."), "minibar.local:80")
+        XCTAssertEqual(parse("minibar"), "minibar:80")
 
-        for bad in ["", " ", "tiny bar.local", "tinybar.local/api", "http://tinybar.local/api/v1", "https://tinybar.local",
-                    "ftp://tinybar.local", "tinybar.local:", "tinybar.local:0", "tinybar.local:65536", "tinybar.local:http",
-                    "10.0.4.256", "10.0.4", "1.2.3.4.5", "-tinybar.local", "tiny_bar.local", "tinybär.local", "a..b",
-                    "[fe80::1]", "fe80::1", "user@tinybar.local", "tinybar.local?x=1"] {
+        for bad in ["", " ", "mini bar.local", "minibar.local/api", "http://minibar.local/api/v1", "https://minibar.local",
+                    "ftp://minibar.local", "minibar.local:", "minibar.local:0", "minibar.local:65536", "minibar.local:http",
+                    "10.0.4.256", "10.0.4", "1.2.3.4.5", "-minibar.local", "mini_bar.local", "minibär.local", "a..b",
+                    "[fe80::1]", "fe80::1", "user@minibar.local", "minibar.local?x=1"] {
             XCTAssertNil(BarEndpoint(userInput: bad), "\(bad) should be refused")
         }
     }
 
     func test_barEndpointURLs() {
-        XCTAssertEqual(BarEndpoint.defaultHost.baseURL?.absoluteString, "http://tinybar.local")
+        XCTAssertEqual(BarEndpoint.defaultHost.baseURL?.absoluteString, "http://minibar.local")
         XCTAssertEqual(BarEndpoint(host: "10.0.4.42", port: 8080).baseURL?.absoluteString, "http://10.0.4.42:8080")
-        XCTAssertEqual(BarEndpoint.defaultHost.remotePageURL?.absoluteString, "http://tinybar.local/")
+        XCTAssertEqual(BarEndpoint.defaultHost.remotePageURL?.absoluteString, "http://minibar.local/")
         XCTAssertEqual(BarEndpoint(host: "10.0.4.42", port: 8080).description, "10.0.4.42:8080")
         XCTAssertEqual(LinkKind.usb.via, .usb)
         XCTAssertEqual(LinkKind.wifi.via, .wifi)

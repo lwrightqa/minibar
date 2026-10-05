@@ -1,5 +1,5 @@
 /*
- * ui.h: TinyBar's LVGL screens in Bold Signal. Owner: ui builder.
+ * ui.h: MiniBar's LVGL screens in Bold Signal. Owner: ui builder.
  *
  * The ui draws tb_app_t (through ui_view.h) and reports touches; it never changes the model itself. Everything runs on
  * the app task (main/app_task.c), which owns LVGL. The same code builds on Linux with LVGL's software renderer for

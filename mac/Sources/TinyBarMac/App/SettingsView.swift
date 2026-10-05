@@ -9,19 +9,19 @@ import UniformTypeIdentifiers
 /// change goes through `engine.updateSettings` (validated by the core) or one
 /// of the engine's actions, and the views redraw from `engine.state`.
 ///
-/// - General (`gearshape`): Start TinyBar when you log in (with the reasons
+/// - General (`gearshape`): Start MiniBar when you log in (with the reasons
 ///   from `LoginItemStatus` when macOS refuses), Start a call after / End a
 ///   call after (pop-ups with `DetectionSettings.startDelayPresets` and
 ///   `endDelayPresets`, plus the current value if it isn't one), Count the
 ///   camera (dimmed in "Only the call apps" mode), Send the app's name to
-///   TinyBar. Restore Defaults.
+///   MiniBar. Restore Defaults.
 /// - Apps (`square.grid.2x2`): Count calls from; Call apps table with an
-///   editable "Shown on TinyBar as" column (`NameRules.appNameProblem`); Ignored
-///   apps; Used the mic since TinyBar opened (`state.seenApps`). Restore
+///   editable "Shown on MiniBar as" column (`NameRules.appNameProblem`); Ignored
+///   apps; Used the mic since MiniBar opened (`state.seenApps`). Restore
 ///   Defaults asks first. Add App… uses `NSOpenPanel` in /Applications and
 ///   reads the bundle ID with `Bundle(url:)`.
 /// - Connection (`cable.connector`): `engine.connectionSummary()`, Send Test
-///   Call, Forget This TinyBar… (confirmation alert), Use Wi-Fi when TinyBar
+///   Call, Forget This MiniBar… (confirmation alert), Use Wi-Fi when MiniBar
 ///   isn't plugged in, Advanced (Address, checked with `info`; Name for this
 ///   Mac; Pause USB).
 /// - Privacy (`hand.raised`): the read-only text of mac-app-ux.md 6.5, plus the
@@ -60,7 +60,7 @@ private struct GeneralSettings: View {
         Form {
             Section {
                 VStack(alignment: .leading, spacing: 6) {
-                    Toggle("Start TinyBar when you log in", isOn: mainActorBinding(
+                    Toggle("Start MiniBar when you log in", isOn: mainActorBinding(
                         get: { engine.state.loginItem == .enabled },
                         set: { engine.setLaunchAtLogin($0) }
                     ))
@@ -114,8 +114,8 @@ private struct GeneralSettings: View {
                     get: { detection.sendAppName },
                     set: { value in engine.applySettings { $0.detection.sendAppName = value } }
                 )) {
-                    Text("Send the app’s name to TinyBar")
-                    Text("TinyBar shows it, like “From your Mac · Slack”. Only apps on your call app list send a name, and anyone near your desk can read it.")
+                    Text("Send the app’s name to MiniBar")
+                    Text("MiniBar shows it, like “From your Mac · Slack”. Only apps on your call app list send a name, and anyone near your desk can read it.")
                 }
                 .toggleStyle(.switch)
             }
@@ -178,7 +178,7 @@ private struct AppsSettings: View {
                     Text("Only the call apps on my list").tag(CountingMode.onlyCallApps)
                 } label: {
                     Text("Count calls from")
-                    Text("Any app catches call apps that aren’t on your list. They show on TinyBar without a name.")
+                    Text("Any app catches call apps that aren’t on your list. They show on MiniBar without a name.")
                 }
                 .pickerStyle(.radioGroup)
             }
@@ -204,7 +204,7 @@ private struct AppsSettings: View {
             } header: {
                 Text("Call apps")
             } footer: {
-                Text("Calls from these apps show their name on TinyBar. Double-click a name to change it.")
+                Text("Calls from these apps show their name on MiniBar. Double-click a name to change it.")
                     .foregroundStyle(.secondary)
             }
 
@@ -246,7 +246,7 @@ private struct AppsSettings: View {
 
             Section {
                 if engine.state.seenApps.isEmpty {
-                    Text("No apps have used the mic since TinyBar opened.")
+                    Text("No apps have used the mic since MiniBar opened.")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(engine.state.seenApps, id: \.identity.key) { seen in
@@ -254,9 +254,9 @@ private struct AppsSettings: View {
                     }
                 }
             } header: {
-                Text("Used the mic since TinyBar opened")
+                Text("Used the mic since MiniBar opened")
             } footer: {
-                Text("This list is kept only until TinyBar quits.")
+                Text("This list is kept only until MiniBar quits.")
                     .foregroundStyle(.secondary)
             }
 
@@ -292,7 +292,7 @@ private struct AppsSettings: View {
             .keyboardShortcut(.defaultAction)
             Button("Cancel", role: .cancel) {}
         }
-        .alert("TinyBar can’t tell when this app uses the mic.", isPresented: $cantTellApp) {
+        .alert("MiniBar can’t tell when this app uses the mic.", isPresented: $cantTellApp) {
             Button("OK", role: .cancel) {}
         }
     }
@@ -305,7 +305,7 @@ private struct AppsSettings: View {
                     Text(app.displayName)
                 }
             }
-            TableColumn("Shown on TinyBar as") { app in
+            TableColumn("Shown on MiniBar as") { app in
                 ShortNameField(app: app, engine: engine, problem: $nameProblem)
             }
         }
@@ -380,7 +380,7 @@ private struct AppsSettings: View {
     }
 }
 
-/// "Shown on TinyBar as": 1 to 24 printable ASCII characters (mac-app-ux.md
+/// "Shown on MiniBar as": 1 to 24 printable ASCII characters (mac-app-ux.md
 /// 6.3). Refuses a 25th character as you type, saves on Return or when the
 /// field loses focus, and an empty name puts back the app's default.
 private struct ShortNameField: View {
@@ -414,7 +414,7 @@ private struct ShortNameField: View {
             .onChange(of: focused) { _, isFocused in
                 if !isFocused { commit() }
             }
-            .accessibilityLabel("Shown on TinyBar as, for \(app.displayName)")
+            .accessibilityLabel("Shown on MiniBar as, for \(app.displayName)")
     }
 
     private func commit() {
@@ -434,7 +434,7 @@ private struct ShortNameField: View {
     }
 }
 
-/// One row of "Used the mic since TinyBar opened".
+/// One row of "Used the mic since MiniBar opened".
 private struct SeenAppRow: View {
     let seen: SeenApp
     let mode: CountingMode
@@ -531,8 +531,8 @@ private struct ConnectionSettings: View {
                     get: { engine.state.settings.useWiFi },
                     set: { value in engine.applySettings { $0.useWiFi = value } }
                 )) {
-                    Text("Use Wi-Fi when TinyBar isn’t plugged in")
-                    Text("Off, this Mac talks to TinyBar only over the USB cable, and never asks for Local Network access.")
+                    Text("Use Wi-Fi when MiniBar isn’t plugged in")
+                    Text("Off, this Mac talks to MiniBar only over the USB cable, and never asks for Local Network access.")
                 }
                 .toggleStyle(.switch)
             }
@@ -556,7 +556,7 @@ private struct ConnectionSettings: View {
             addressDraft = engine.state.settings.manualAddress ?? ""
             macNameDraft = engine.state.settings.macName ?? ""
         }
-        .alert(Text(verbatim: "Forget \(summary.barName ?? "TinyBar")?"), isPresented: $confirmForget) {
+        .alert(Text(verbatim: "Forget \(summary.barName ?? "MiniBar")?"), isPresented: $confirmForget) {
             Button("Forget", role: .destructive) {
                 Task { await engine.forgetBar() }
             }
@@ -567,10 +567,10 @@ private struct ConnectionSettings: View {
         }
     }
 
-    /// "Your TinyBar" (mac-app-ux.md 6.4).
+    /// "Your MiniBar" (mac-app-ux.md 6.4).
     private func yourTinyBar(_ summary: ConnectionSummary) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(verbatim: summary.barName ?? "Your TinyBar")
+            Text(verbatim: summary.barName ?? "Your MiniBar")
                 .fontWeight(.semibold)
             Spacer()
             VStack(alignment: .trailing, spacing: 8) {
@@ -597,7 +597,7 @@ private struct ConnectionSettings: View {
         case .pairAgain:
             Button("Pair Again…") { windows.showConnect(welcome: false, wifiPage: true) }
         case .forget:
-            Button("Forget This TinyBar…") { confirmForget = true }
+            Button("Forget This MiniBar…") { confirmForget = true }
         case .sendTestCall:
             let running = engine.state.testCall != nil
             VStack(alignment: .trailing, spacing: 4) {
@@ -605,7 +605,7 @@ private struct ConnectionSettings: View {
                     engine.sendTestCall()
                 }
                 .disabled(running || summary.testCallUnavailableReason != nil)
-                Text(summary.testCallUnavailableReason ?? "Shows On a call on TinyBar for 10 seconds, as “Test”.")
+                Text(summary.testCallUnavailableReason ?? "Shows On a call on MiniBar for 10 seconds, as “Test”.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.trailing)
@@ -635,7 +635,7 @@ private struct ConnectionSettings: View {
                 ErrorLine(message: addressMessage)
                     .font(.callout)
             } else {
-                Text("Leave empty to find TinyBar automatically, or type its address, like tinybar.local or 10.0.4.42.")
+                Text("Leave empty to find MiniBar automatically, or type its address, like minibar.local or 10.0.4.42.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
@@ -660,8 +660,8 @@ private struct ConnectionSettings: View {
                     .font(.callout)
             } else {
                 Text(macNameChanged
-                    ? "Shown in TinyBar’s list of paired devices. TinyBar never sends your Mac’s own name. TinyBar will show the new name after you plug it in or pair again."
-                    : "Shown in TinyBar’s list of paired devices. TinyBar never sends your Mac’s own name.")
+                    ? "Shown in MiniBar’s list of paired devices. MiniBar never sends your Mac’s own name. MiniBar will show the new name after you plug it in or pair again."
+                    : "Shown in MiniBar’s list of paired devices. MiniBar never sends your Mac’s own name.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
@@ -674,7 +674,7 @@ private struct ConnectionSettings: View {
                     engine.setUSBPaused(!paused)
                 }
             }
-            Text("Lets another app, like a firmware flasher, use TinyBar’s USB port. Wi-Fi is used meanwhile.")
+            Text("Lets another app, like a firmware flasher, use MiniBar’s USB port. Wi-Fi is used meanwhile.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
@@ -692,16 +692,16 @@ private struct ConnectionSettings: View {
             return
         }
         guard let endpoint = BarEndpoint(userInput: text) else {
-            addressMessage = "That address isn’t a TinyBar."
+            addressMessage = "That address isn’t a MiniBar."
             return
         }
         guard endpoint.isAllowedOverPlainHTTP else {
             // App Transport Security refuses plain HTTP to other DNS names.
-            addressMessage = PairingProblem.addressNotAllowed.message(barName: "TinyBar")
+            addressMessage = PairingProblem.addressNotAllowed.message(barName: "MiniBar")
             return
         }
         guard engine.state.settings.useWiFi else {
-            addressMessage = engine.applySettings({ $0.manualAddress = text }) == nil ? nil : "That address isn’t a TinyBar."
+            addressMessage = engine.applySettings({ $0.manualAddress = text }) == nil ? nil : "That address isn’t a MiniBar."
             return
         }
         checkingAddress = true
@@ -710,12 +710,12 @@ private struct ConnectionSettings: View {
         switch result {
         case .tinyBar, .nothingAnswered:
             if engine.applySettings({ $0.manualAddress = text }) != nil {
-                addressMessage = "That address isn’t a TinyBar."
+                addressMessage = "That address isn’t a MiniBar."
             } else {
                 addressMessage = result == .nothingAnswered ? "Nothing answered at \(text)." : nil
             }
         case .notATinyBar:
-            addressMessage = "That address isn’t a TinyBar."
+            addressMessage = "That address isn’t a MiniBar."
         }
     }
 
@@ -733,7 +733,7 @@ private struct ConnectionSettings: View {
     }
 }
 
-/// Settings › Connection › Address: is a TinyBar answering there?
+/// Settings › Connection › Address: is a MiniBar answering there?
 enum AddressCheck {
     enum Result: Hashable, Sendable {
         case tinyBar
@@ -746,7 +746,7 @@ enum AddressCheck {
         defer { Task { await transport.close() } }
         do {
             let info = try await transport.hello(HelloRequest(client: clientID))
-            return info.isTinyBar ? .tinyBar : .notATinyBar
+            return info.isKnownBar ? .tinyBar : .notATinyBar
         } catch let error as BarError {
             switch error {
             case .malformedReply, .notATinyBar, .api:
@@ -767,23 +767,23 @@ private struct PrivacySettings: View {
 
     var body: some View {
         Form {
-            Section("What TinyBar sends") {
-                Text("Only to your TinyBar, over the USB cable or your local network:")
+            Section("What MiniBar sends") {
+                Text("Only to your MiniBar, over the USB cable or your local network:")
                 Bullet("Whether you’re on a call: yes or no.")
                 Bullet("The call app’s name, like “Slack”, if Send the app’s name is on. Names of other apps are never sent.")
-                Bullet("A random ID for this copy of TinyBar, so your bar can tell your Mac apart from others. It isn’t your Mac’s name or serial number.")
+                Bullet("A random ID for this copy of MiniBar, so your bar can tell your Mac apart from others. It isn’t your Mac’s name or serial number.")
                 Text("It never sends audio, sound levels, window titles, websites, meeting names, contacts, or your name or your Mac’s. It never connects to the internet.")
             }
-            Section("What TinyBar reads") {
+            Section("What MiniBar reads") {
                 Text("Whether the mic and camera are in use, and which app is using the mic. It never turns them on, listens or records, so it doesn’t ask for microphone or camera access. It keeps no record of which apps used the mic.")
             }
             Section("Good to know") {
-                Bullet("Anyone near your desk can see what TinyBar shows, including the app’s name. TinyBar’s Remote shows it too.")
+                Bullet("Anyone near your desk can see what MiniBar shows, including the app’s name. MiniBar’s Remote shows it too.")
                 Bullet("Over Wi-Fi, messages aren’t encrypted, so someone watching the office network could see them. Over USB, they stay on the cable.")
             }
             if engine.state.localNetworkBlocked {
                 Section {
-                    Text("macOS is blocking TinyBar from your local network, so Wi-Fi can’t work.")
+                    Text("macOS is blocking MiniBar from your local network, so Wi-Fi can’t work.")
                     Button("Open Local Network Settings…") {
                         SystemSettingsLinks.openLocalNetwork()
                     }

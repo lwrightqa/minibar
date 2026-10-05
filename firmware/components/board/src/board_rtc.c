@@ -7,7 +7,7 @@
  * time whenever the bar is unplugged, and sets OS.
  *
  * Trust: a time is used only if OS is clear, the clock isn't stopped, the fields are valid (brd_rtc_decode), and the
- * RAM byte holds TinyBar's mark. The mark is written with every time TinyBar saves: Waveshare's factory program sets
+ * RAM byte holds MiniBar's mark. The mark is written with every time MiniBar saves: Waveshare's factory program sets
  * a fixed local time (2025-07-07 18:43:30) at every start, which would otherwise pass as a valid UTC time.
  */
 #include <sys/time.h>
@@ -76,7 +76,7 @@ esp_err_t board_rtc_init(bool *valid)
     } else {
         ESP_LOGW(TAG, "RTC time not trusted (%s): the clock waits for the network or the Mac",
                  was_stopped ? "clock was stopped" : (b[1] & 0x80) ? "oscillator stopped (power lost)"
-                 : b[0] != TB_RTC_MARK ? "never set by TinyBar" : "invalid date");
+                 : b[0] != TB_RTC_MARK ? "never set by MiniBar" : "invalid date");
     }
     return ESP_OK;
 }

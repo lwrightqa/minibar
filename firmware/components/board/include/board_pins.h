@@ -55,4 +55,4 @@
 #define BOARD_I2S_BCLK          15
 #define BOARD_I2S_WS            46
 #define BOARD_I2S_DOUT          45          /* to the ES8311 (DSDIN on the schematic) */
-#define BOARD_I2S_DIN           6           /* from the ES7210 microphones; unused by TinyBar */
+#define BOARD_I2S_DIN           6           /* from the ES7210 microphones; unused by MiniBar */

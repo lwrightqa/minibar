@@ -27,7 +27,7 @@ void net_wifi_setup_skip(void);
 void net_wifi_setup_done(void);
 /* The radio is on (esp_fill_random gives true random numbers then). */
 bool net_wifi_rf_on(void);
-/* TinyBar-Setup's access point is up (between WIFI_EVENT_AP_START and AP_STOP), for net_http.c's fallback when a
+/* MiniBar-Setup's access point is up (between WIFI_EVENT_AP_START and AP_STOP), for net_http.c's fallback when a
  * socket's own address can't tell which network a request came in on. */
 bool net_wifi_setup_net_up(void);
 /* net_port.h's Wi-Fi functions are implemented there too. */

@@ -16,6 +16,8 @@ LVGL_DIR=$PWD/firmware/managed_components/lvgl__lvgl firmware/components/ui/tool
    renamed **TinyBar Condensed** and **TinyBar Text**, with a modification note in their name tables
    (`firmware/fonts/tinybar/`). The script checks them: every digit one advance (498 units in TinyBar Condensed Bold,
    533, 538 and 544 in TinyBar Text Medium, SemiBold and Bold) and no kerning between digits or a digit and the colon.
+   The family and file names keep the TinyBar prefix from before the project's rename to MiniBar: they're binary
+   files nobody sees on the bar, and these C files are built from them, so they're left byte for byte as they are.
 2. **Converted** with lv_font_conv 1.5.3 at 4 bpp, compressed (its default), autohinting off, so the glyphs keep the
    shapes and advances the mock-up's browser draws.
 3. **Tracking baked in.** Bold Signal letter-spaces the kicker by 1.5 px and the labels, chips and tile labels by
@@ -46,12 +48,12 @@ ESP32-S3's are the same within a few bytes).
 | `ui_font_ampm_17.c` | AM/PM after a side value | TinyBar Condensed Bold | 17 px | A M P | 401 |
 | `ui_font_sub_19.c` | the sub line | TinyBar Text Medium | 19 px | full | 13,467 |
 | `ui_font_step_16.c` | the setup screen's steps | TinyBar Text Medium | 16 px | printable ASCII | 5,888 |
-| `ui_font_step_16b.c` | TinyBar-Setup in the first step | TinyBar Text Bold | 16 px | the letters of TinyBar-Setup | 934 |
+| `ui_font_step_16b.c` | MiniBar-Setup in the first step | TinyBar Text Bold | 16 px | the letters of MiniBar-Setup | 876 |
 | `ui_font_kick_15.c` | the kicker (+1.5 px tracking) | TinyBar Text Bold | 15 px | full | 11,347 |
 | `ui_font_sys_15.c` | status row time, the pill, toasts | TinyBar Text SemiBold | 15 px | full | 11,248 |
 | `ui_font_foot_14.c` | info column foot, tile feet, setup foot, hold line | TinyBar Text Medium | 14 px | full | 10,715 |
 | `ui_font_label_12.c` | labels, source chips, tile labels (+1.2 px tracking) | TinyBar Text Bold | 12 px | full | 9,873 |
-| | | | | **total** | **183,841** |
+| | | | | **total** | **183,783** |
 
 About 180 KB, 1.1% of the 16 MB flash (3% of a 6 MB app slot). Everything at the full character set would add about
 60 KB; the tomato images add 124 KB more (`ui_tomatoes.c`, generated at build time).
@@ -60,4 +62,4 @@ About 180 KB, 1.1% of the 16 MB flash (3% of a 6 MB app slot). Everything at the
 
 Barlow is © 2017 The Barlow Project Authors, under the SIL Open Font License 1.1
 (`firmware/fonts/licenses/Barlow-OFL.txt`); it declares no Reserved Font Name. These C files are converted subsets of
-Barlow and of the TinyBar copies, under the same license.
+Barlow and of the frozen copies named TinyBar Condensed and TinyBar Text, under the same license.

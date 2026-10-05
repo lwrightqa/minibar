@@ -151,7 +151,7 @@ TB_TEST(menu_wifi_and_power_submenus)
     TB_EQ_INT(b->a.menu.n, 4);
     TB_EQ_STR(b->a.menu.tiles[0].label, "Network");
     TB_EQ_STR(b->a.menu.tiles[0].value, "Office-WiFi");
-    TB_EQ_STR(b->a.menu.tiles[0].foot, "TinyBar 2A1C\ntinybar.local \xC2\xB7 10.0.4.42");
+    TB_EQ_STR(b->a.menu.tiles[0].foot, "MiniBar 2A1C\nminibar.local \xC2\xB7 10.0.4.42");
     TB_EQ_INT(b->a.menu.tiles[0].style, TB_TILE_INFO);
     TB_EQ_STR(b->a.menu.tiles[2].label, "Change");
     TB_EQ_STR(b->a.menu.tiles[2].value, "Set up");
@@ -171,7 +171,7 @@ TB_TEST(menu_wifi_and_power_submenus)
     hold(b);
     tap_tile_named(b, TB_ACT_WIFI);
     TB_EQ_STR(b->a.menu.tiles[0].value, "None");
-    TB_EQ_STR(b->a.menu.tiles[0].foot, "TinyBar 2A1C\nnot connected");
+    TB_EQ_STR(b->a.menu.tiles[0].foot, "MiniBar 2A1C\nnot connected");
     TB_EQ_STR(b->a.menu.tiles[2].label, "Set up");
     tap_tile_named(b, TB_ACT_CLOSE);
     /* power */
@@ -199,12 +199,12 @@ TB_TEST(menu_wifi_layout)
     const tb_tile_t *t = b->a.menu.tiles;
     TB_EQ_STR(t[0].label, "Network");
     TB_EQ_STR(t[0].value, "Office-WiFi");
-    TB_EQ_STR(t[0].foot, "TinyBar 2A1C\ntinybar.local \xC2\xB7 10.0.4.42");
+    TB_EQ_STR(t[0].foot, "MiniBar 2A1C\nminibar.local \xC2\xB7 10.0.4.42");
     TB_TRUE(t[0].wide && t[0].foot_lines);
     TB_EQ_INT(t[0].action, TB_ACT_NONE);
     TB_EQ_STR(t[1].label, "Devices");
     TB_EQ_STR(t[1].value, "None");                       /* nothing paired: the tile stays, read-only */
-    TB_EQ_STR(t[1].foot, "pair at\ntinybar.local");          /* where to pair; ui falls back when it doesn't fit */
+    TB_EQ_STR(t[1].foot, "pair at\nminibar.local");          /* where to pair; ui falls back when it doesn't fit */
     TB_EQ_INT(t[1].n_foot_alt, 2);
     TB_EQ_STR(t[1].foot_alt[0], "pair at\n10.0.4.42");
     TB_EQ_STR(t[1].foot_alt[1], "pair at its\nIP address");
@@ -237,7 +237,7 @@ TB_TEST(menu_wifi_offline_and_link_down)
     tap_tile_named(b, TB_ACT_WIFI);
     const tb_tile_t *t = b->a.menu.tiles;
     TB_EQ_STR(t[0].value, "None");
-    TB_EQ_STR(t[0].foot, "TinyBar 2A1C\nnot connected");
+    TB_EQ_STR(t[0].foot, "MiniBar 2A1C\nnot connected");
     TB_EQ_STR(t[1].foot, "set up Wi-Fi\nto pair");
     TB_EQ_STR(t[2].label, "Set up");
     /* the link dropped after setup: no address to show */
@@ -247,7 +247,7 @@ TB_TEST(menu_wifi_offline_and_link_down)
     TB_EQ_STR(tile_with(b, TB_ACT_WIFI)->foot, "reconnecting");
     tap_tile_named(b, TB_ACT_WIFI);
     TB_EQ_STR(b->a.menu.tiles[0].value, "Office-WiFi");
-    TB_EQ_STR(b->a.menu.tiles[0].foot, "TinyBar 2A1C\nnot connected");
+    TB_EQ_STR(b->a.menu.tiles[0].foot, "MiniBar 2A1C\nnot connected");
 }
 
 /* showForgetMenu(): Paired (names, most recently used first), Forget all (danger, 600 ms guard), Keep. */

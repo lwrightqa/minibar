@@ -10,7 +10,7 @@
 #include "settings_store.h"
 
 static const char *TAG = "store";
-#define NS "tinybar"
+#define NS "tinybar"       /* the project's name before the rename to MiniBar; it stays (settings_store.h) */
 #define DEBOUNCE_MS 2000
 
 typedef struct {
@@ -65,6 +65,12 @@ void settings_store_load(tb_settings_t *out, const char *device_id)
     if (nvs_get_blob(h, "settings", &b, &n) == ESP_OK && n == sizeof(b) && b.version == TB_SETTINGS_VERSION) {
         *out = b.s;
         if (tb_settings_sanitize(out)) ESP_LOGW(TAG, "settings out of range, fixed");
+        if (tb_settings_migrate_name(out, device_id)) {
+            /* The default name from before the rename (1.0.3). It's saved under the new one 2 s after start-up, as
+             * any settings change is: the app's copy of these settings is what settings_store_poll() writes. */
+            ESP_LOGI(TAG, "bar name was the old default; now \"%s\"", out->device.name);
+            settings_store_mark_settings();
+        }
     }
     nvs_close(h);
 }

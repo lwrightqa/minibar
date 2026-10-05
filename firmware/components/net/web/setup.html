@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>TinyBar Wi-Fi setup</title>
+<title>MiniBar Wi-Fi setup</title>
 <!--
-  The setup page, served on the TinyBar-Setup network at http://4.3.2.1/ (net builder). A port of the mock-up's
+  The setup page, served on the MiniBar-Setup network at http://4.3.2.1/ (net builder). A port of the mock-up's
   setup view (docs/mockup.html: #setupView, syncSetupForm(), the Connect handler, the masked calendar field and
   checkIcal()) to api.md section 13: GET /api/v1/setup/networks, POST /api/v1/setup/wifi, GET /api/v1/setup/state.
   The bar's own screen always shows the result too: the phone may drop off this network while the bar connects.
@@ -60,19 +60,19 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 </head>
 <body>
 <div class="wrap">
-  <main class="phone" aria-label="TinyBar Wi-Fi setup">
+  <main class="phone" aria-label="MiniBar Wi-Fi setup">
     <div class="phone-head">
       <strong>Wi-Fi setup</strong>
-      <span id="setupAddr">TinyBar-Setup · 4.3.2.1</span>
+      <span id="setupAddr">MiniBar-Setup · 4.3.2.1</span>
     </div>
     <div class="setup" id="setupView">
-      <p>You're on TinyBar's own network. Choose the Wi-Fi it should use.</p>
+      <p>You're on MiniBar's own network. Choose the Wi-Fi it should use.</p>
       <div class="setup-msg" id="setupMsg" role="status" hidden></div>
       <fieldset class="nets" id="nets">
         <legend class="field-label">Network</legend>
         <p class="note-small" id="netsEmpty">Looking for networks…</p>
       </fieldset>
-      <div class="setup-msg" id="guestWarn" hidden>This network has no password. If it needs a sign-in web page, TinyBar can't fill it in. Ask IT whether there's a network for devices.</div>
+      <div class="setup-msg" id="guestWarn" hidden>This network has no password. If it needs a sign-in web page, MiniBar can't fill it in. Ask IT whether there's a network for devices.</div>
       <label class="field" id="userField" hidden><span class="field-label">Work username</span><input id="wUser" type="text" autocomplete="username" autocapitalize="off" spellcheck="false"></label>
       <label class="field" id="passField"><span class="field-label">Password</span><input id="wPass" type="password" autocomplete="current-password"></label>
       <div class="field">
@@ -189,7 +189,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
     case 'wrong_password': return `Couldn't connect to ${ssid}: the password was wrong. Check it and try again.`;
     case 'login_failed': return `Couldn't connect to ${ssid}: the work username or password didn't work. Check them and try again.`;
     case 'not_found': return `Couldn't find ${ssid} anymore. Pick another network.`;
-    case 'no_address': return `TinyBar joined ${ssid} but didn't get an address. The network may need a sign-in web page, which TinyBar can't fill in.`;
+    case 'no_address': return `MiniBar joined ${ssid} but didn't get an address. The network may need a sign-in web page, which MiniBar can't fill in.`;
     default: return `Couldn't reach ${ssid}. It may be too far away. Pick another network.`;
     }
   }
@@ -223,10 +223,10 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
       syncSetupForm();
       const f = r.j && r.j.field;
       if (f === 'calendar_url') { wCalErr(`${r.j.message} Or clear it to add your calendar later on the Remote.`); $('wCal').focus(); }
-      else setupMsg(r.status ? (r.j && r.j.message) || `Something went wrong (${r.status}).` : "Can't reach TinyBar. Make sure your phone is still on TinyBar-Setup.", 'err');
+      else setupMsg(r.status ? (r.j && r.j.message) || `Something went wrong (${r.status}).` : "Can't reach MiniBar. Make sure your phone is still on MiniBar-Setup.", 'err');
       return;
     }
-    setupMsg(`TinyBar is connecting to ${n.ssid}. If it works, this network closes and your phone goes back to its usual Wi-Fi.${calChk ? " It will check your calendar once it's online." : ''}`);
+    setupMsg(`MiniBar is connecting to ${n.ssid}. If it works, this network closes and your phone goes back to its usual Wi-Fi.${calChk ? " It will check your calendar once it's online." : ''}`);
     watch();
   });
 
@@ -241,7 +241,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
         if (++misses >= 4) {
           connecting = false;
           syncSetupForm();
-          setupMsg(`Your phone left TinyBar's network. Look at the bar: it says whether it connected to ${connectingTo}. If it did, open http://tinybar.local on this Wi-Fi for the Remote.`);
+          setupMsg(`Your phone left MiniBar's network. Look at the bar: it says whether it connected to ${connectingTo}. If it did, open http://minibar.local on this Wi-Fi for the Remote.`);
           return;
         }
         continue;
@@ -255,7 +255,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
         $('wPass').value = '';
         $('wCal').value = '';
         maskWCal();
-        setupMsg(`Connected to ${connectingTo}. Join that Wi-Fi with this phone, then open http://${s.host || 'tinybar.local'}${s.ip ? ` (or http://${s.ip})` : ''} for the Remote.`, 'ok');
+        setupMsg(`Connected to ${connectingTo}. Join that Wi-Fi with this phone, then open http://${s.host || 'minibar.local'}${s.ip ? ` (or http://${s.ip})` : ''} for the Remote.`, 'ok');
       } else if (s.state === 'failed') {
         setupMsg(failText(connectingTo, s.error), 'err');
       } else {
@@ -266,7 +266,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
   }
 
   // The address this page came from: the setup network's (NET_SETUP_IP in the firmware).
-  $('setupAddr').textContent = 'TinyBar-Setup · ' + location.hostname;
+  $('setupAddr').textContent = 'MiniBar-Setup · ' + location.hostname;
   loadNets();
   // The list is the bar's scan from just before its setup network opened. The bar doesn't scan again while a phone
   // is on it (a scan takes the radio off the network's channel), unless it found nothing; polling picks that up.

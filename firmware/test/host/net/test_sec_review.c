@@ -406,7 +406,7 @@ static const char *cookie_token(void)
 
 static int cookie_get(const char *token, const char *origin, bool unreadable)
 {
-    net_req_t req = {.via = NET_VIA_HTTP, .method = "GET", .path = "/api/v1/settings", .host = "tinybar.local",
+    net_req_t req = {.via = NET_VIA_HTTP, .method = "GET", .path = "/api/v1/settings", .host = "minibar.local",
                      .cookie_token = token, .peer_ip = nf_ip, .origin = origin, .origin_unreadable = unreadable};
     nf_resp_t r = nf_req(&req);
     int st = r.status;
@@ -419,7 +419,7 @@ TB_TEST(sec_cookie_with_foreign_origin_is_refused)
 {
     nf_setup();
     const char *token = cookie_token();
-    TB_EQ_INT(cookie_get(token, "http://tinybar.local.evil.example", false), 403);
+    TB_EQ_INT(cookie_get(token, "http://minibar.local.evil.example", false), 403);
 }
 
 /* The review: net_http.c read Origin with a 255-byte cap, and a longer value (or no memory) came through as "no
@@ -431,10 +431,10 @@ TB_TEST(sec_cookie_with_an_origin_that_cannot_be_read_is_refused)
     TB_EQ_INT(cookie_get(token, NULL, true), 403);
     TB_EQ_INT(cookie_get(token, "", false), 403);          /* "Origin:" with nothing after it */
     TB_EQ_INT(cookie_get(token, NULL, false), 200);        /* none at all (a same-origin GET from some browsers) */
-    TB_EQ_INT(cookie_get(token, "http://tinybar.local", false), 200);
+    TB_EQ_INT(cookie_get(token, "http://minibar.local", false), 200);
     /* a bearer token isn't held to the Origin rule (a page can't send one without CORS) */
     char *bearer = token_copy(nf_pair("automation", "full", NULL));
-    net_req_t req = {.via = NET_VIA_HTTP, .method = "GET", .path = "/api/v1/settings", .host = "tinybar.local",
+    net_req_t req = {.via = NET_VIA_HTTP, .method = "GET", .path = "/api/v1/settings", .host = "minibar.local",
                      .bearer = bearer, .peer_ip = nf_ip, .origin_unreadable = true};
     nf_resp_t r = nf_req(&req);
     TB_EQ_INT(r.status, 200);
@@ -555,7 +555,7 @@ static nf_resp_t setup_wifi(const char *body)
 static void setup_mode(void)
 {
     nf_setup();
-    fake_wifi = (net_wifi_info_t){.state = NET_WIFI_SETUP, .host = "tinybar.local"};
+    fake_wifi = (net_wifi_info_t){.state = NET_WIFI_SETUP, .host = "minibar.local"};
     nf_app.wifi_mode = TB_WIFI_SETUP;
 }
 
@@ -705,12 +705,12 @@ TB_TEST(sec_host_check_names_only_this_bar)
 {
     nf_setup();
     /* what net_http.c now asks of the Remote page's requests too */
-    TB_TRUE(net_api_host_ok("tinybar.local"));
-    TB_TRUE(net_api_host_ok("TinyBar.Local:80"));
-    TB_TRUE(net_api_host_ok("tinybar.local."));
-    TB_FALSE(net_api_host_ok("tinybar.local.evil.example"));
+    TB_TRUE(net_api_host_ok("minibar.local"));
+    TB_TRUE(net_api_host_ok("MiniBar.Local:80"));
+    TB_TRUE(net_api_host_ok("minibar.local."));
+    TB_FALSE(net_api_host_ok("minibar.local.evil.example"));
     TB_FALSE(net_api_host_ok("evil.example"));
-    TB_FALSE(net_api_host_ok("tinybar.local:8080"));
+    TB_FALSE(net_api_host_ok("minibar.local:8080"));
     TB_FALSE(net_api_host_ok(""));
     TB_FALSE(net_api_host_ok(NULL));
     TB_FALSE(net_api_host_ok(NET_SETUP_IP));      /* only while in setup */
@@ -721,7 +721,7 @@ TB_TEST(sec_other_methods_get_the_json_405_with_allow)
     nf_setup();
     static const char *methods[] = {"OPTIONS", "HEAD", "PROPFIND", "TRACE"};
     for (size_t i = 0; i < sizeof methods / sizeof methods[0]; i++) {
-        net_req_t req = {.via = NET_VIA_HTTP, .method = methods[i], .path = "/api/v1/status", .host = "tinybar.local",
+        net_req_t req = {.via = NET_VIA_HTTP, .method = methods[i], .path = "/api/v1/status", .host = "minibar.local",
                          .peer_ip = nf_ip};
         nf_resp_t r = nf_req(&req);
         TB_EQ_INT(r.status, 405);

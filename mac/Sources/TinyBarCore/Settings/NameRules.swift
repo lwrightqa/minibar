@@ -5,7 +5,7 @@ public enum NameProblem: Hashable, Sendable {
     case empty
     /// More than `limit` characters: "Use 24 characters or fewer."
     case tooLong(limit: Int)
-    /// Characters the bar's fonts can't draw: "TinyBar can't show “é”."
+    /// Characters the bar's fonts can't draw: "MiniBar can't show “é”."
     case unsupportedCharacters([Character])
 
     /// The help line under the field (curly quotes and apostrophes, as in
@@ -25,7 +25,7 @@ public enum NameProblem: Hashable, Sendable {
             case 1: list = shown[0]
             default: list = shown.dropLast().joined(separator: ", ") + " or " + shown[shown.count - 1]
             }
-            return "TinyBar can\u{2019}t show \(list)."
+            return "MiniBar can\u{2019}t show \(list)."
         }
     }
 

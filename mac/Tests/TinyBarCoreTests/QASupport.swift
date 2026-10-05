@@ -92,7 +92,7 @@ func settle(_ connection: BarConnection, file: StaticString = #filePath, line: U
     XCTFail("the connection didn't settle", file: file, line: line)
 }
 
-/// A TinyBar on the controller side of a pseudo-terminal that answers by
+/// A MiniBar on the controller side of a pseudo-terminal that answers by
 /// itself on a background thread, like the firmware: `hello`, `call`, `pair`
 /// and `status`. It can add firmware log noise around its replies, go quiet,
 /// or vanish (the port disappearing).
@@ -164,7 +164,7 @@ final class PTYBarResponder: @unchecked Sendable {
         var body: String
         switch command["cmd"]?.stringValue {
         case "hello":
-            body = #"{"ok": true, "device": "TinyBar", "device_id": "\#(options.deviceID)", "name": "TinyBar 2A1C", "fw": "1.0.0", "api": "1.0", "host": "tinybar.local", "auth": "\#(options.auth)", "pairing": "idle", "heartbeat_s": 30, "timeout_s": 90, "time": "2026-10-04T14:11:58-07:00", "time_source": "ntp", "wifi": "\#(options.wifi)"}"#
+            body = #"{"ok": true, "device": "MiniBar", "device_id": "\#(options.deviceID)", "name": "MiniBar 2A1C", "fw": "1.0.0", "api": "1.0", "host": "minibar.local", "auth": "\#(options.auth)", "pairing": "idle", "heartbeat_s": 30, "timeout_s": 90, "time": "2026-10-04T14:11:58-07:00", "time_source": "ntp", "wifi": "\#(options.wifi)"}"#
         case "call":
             let active = command["active"]?.boolValue ?? false
             let app = command["app"]?.stringValue.map { "\"\($0)\"" } ?? "null"
@@ -172,7 +172,7 @@ final class PTYBarResponder: @unchecked Sendable {
         case "pair":
             let n = state.withLock { s -> Int in s.issued += 1; return s.issued }
             let token = "tb1_" + String(repeating: "Q", count: 42) + String(n % 10)
-            body = #"{"ok": true, "token": "\#(token)", "token_id": "0000000\#(n % 10)", "scope": "call", "device_id": "\#(options.deviceID)", "name": "TinyBar 2A1C", "host": "tinybar.local"}"#
+            body = #"{"ok": true, "token": "\#(token)", "token_id": "0000000\#(n % 10)", "scope": "call", "device_id": "\#(options.deviceID)", "name": "MiniBar 2A1C", "host": "minibar.local"}"#
         default:
             body = #"{"ok": false, "error": "unknown_cmd", "message": "Unknown.", "field": "cmd"}"#
         }

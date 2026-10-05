@@ -1154,7 +1154,7 @@ void tb_app_init(tb_app_t *a, const tb_settings_t *s, tb_wifi_mode_t wifi_start,
     a->boot_until = now->mono + TB_BOOT_SPLASH_MS;
     /* Firmware: a skip is remembered, so an offline bar starts offline (the mock-up's powerOn() keeps the mode). */
     a->wifi_mode = wifi_start == TB_WIFI_OK || wifi_start == TB_WIFI_OFFLINE ? wifi_start : TB_WIFI_SETUP;
-    strcpy(a->wifi_host, "tinybar.local");
+    strcpy(a->wifi_host, "minibar.local");
     tb_pomo_init(&a->pomo, &a->set, now->valid ? tb_local_yyyymmdd(now->wall) : 0);
     tb_gesture_reset(&a->gesture);
     a->last_mono = now->mono;

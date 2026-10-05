@@ -89,7 +89,7 @@ public protocol SerialDeviceWatcher: AnyObject, Sendable {
 
 /// A bar found on the network (api.md 3).
 public struct DiscoveredBar: Hashable, Sendable {
-    /// The Bonjour instance name, which is the bar's name: "TinyBar 2A1C".
+    /// The Bonjour instance name, which is the bar's name: "MiniBar 2A1C".
     public var name: String
     /// TXT `id`: the bar's `device_id`. How the app finds its bar.
     public var deviceID: String?
@@ -98,7 +98,7 @@ public struct DiscoveredBar: Hashable, Sendable {
     public var fw: String?
     public var path: String?
     public var auth: AuthMode?
-    /// Where to send HTTP: the resolved host name (`tinybar.local`) or IPv4
+    /// Where to send HTTP: the resolved host name (`minibar.local`) or IPv4
     /// address, and port.
     public var endpoint: BarEndpoint
 
@@ -121,8 +121,9 @@ public enum DiscoveryError: Hashable, Sendable {
     case failed(String)
 }
 
-/// Browses `_tinybar._tcp` (macOS: `NWBrowser` with
-/// `.bonjourWithTXTRecord`, then resolves each result to a host and port).
+/// Browses `_minibar._tcp`, and `_tinybar._tcp` for a bar on firmware 1.0.2
+/// or earlier (`TinyBarAPI.Bonjour.serviceTypes`; macOS: one `NWBrowser` with
+/// `.bonjourWithTXTRecord` per type, then resolves each result to a host and port).
 /// Starting it is what brings up the Local Network prompt on macOS 15, so the
 /// engine starts it only when Wi-Fi is allowed and the UI has explained why.
 public protocol BarDiscovery: AnyObject, Sendable {
@@ -140,7 +141,7 @@ public protocol BarDiscovery: AnyObject, Sendable {
 // MARK: - Tokens
 
 /// Where bar tokens are kept (macOS: the Keychain, api.md 16: one
-/// generic-password item per bar, service `TinyBar`, account `device_id`,
+/// generic-password item per bar, service `MiniBar`, account `device_id`,
 /// `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`). Never UserDefaults or a
 /// file (criterion 20).
 public protocol TokenStore: AnyObject, Sendable {

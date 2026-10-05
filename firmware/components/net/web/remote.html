@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>TinyBar Remote</title>
+<title>MiniBar Remote</title>
 <!--
-  The Remote, served by the bar at tinybar.local (net builder). A port of the mock-up's Remote panel
+  The Remote, served by the bar at minibar.local (net builder). A port of the mock-up's Remote panel
   (docs/mockup.html: #remoteMain, updateRemote(), updateAutoRemote(), the calendar and Mac cards) to docs/api.md:
   it polls GET /api/v1/status every 2 s while visible (with If-None-Match), and every control is one API call whose
   reply redraws the page. No external resources: system fonts, inline styles and script, tomato sprites as data URIs.
@@ -138,7 +138,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
 </head>
 <body>
 <div class="wrap">
-  <main class="phone" aria-label="TinyBar Remote">
+  <main class="phone" aria-label="MiniBar Remote">
     <div class="phone-head">
       <strong id="phoneTitle">Remote</strong>
       <span id="phoneAddr"></span>
@@ -152,13 +152,13 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
       <div class="auto-card">
         <div class="auto-head"><b id="pairTitle">Pair this phone</b></div>
         <div class="pair-step" id="pairStart">
-          <p id="pairIntro">TinyBar shows a 6-digit code on its screen. Type it here, and this phone becomes its Remote.</p>
+          <p id="pairIntro">MiniBar shows a 6-digit code on its screen. Type it here, and this phone becomes its Remote.</p>
           <div><button class="btn" id="pairAsk" type="button" aria-describedby="pairAskErr">Pair this phone</button></div>
           <p class="field-err" id="pairAskErr" hidden></p>
           <p class="note-small">Only someone who can see the bar can pair, so nobody else on the office Wi-Fi can change your status.</p>
         </div>
         <div class="pair-step" id="pairCode" hidden>
-          <label class="pair-label" for="pairInput">Type the code shown on your TinyBar.</label>
+          <label class="pair-label" for="pairInput">Type the code shown on your MiniBar.</label>
           <input class="code-input" id="pairInput" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="000 000" spellcheck="false" aria-describedby="pairLine pairErr">
           <p class="pair-line" id="pairLine">The code works for 2 minutes.</p>
           <p class="field-err" id="pairErr" hidden></p>
@@ -172,7 +172,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     </div>
 
     <div id="remoteMain" class="setup" hidden>
-      <div class="setup-msg ok" id="pairedMsg" role="status" hidden>Paired. This phone is TinyBar's Remote now.</div>
+      <div class="setup-msg ok" id="pairedMsg" role="status" hidden>Paired. This phone is MiniBar's Remote now.</div>
       <div>
         <span class="field-label">Status</span>
         <div class="auto-banner" id="autoBanner" hidden>
@@ -276,7 +276,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
                   <li>Click Integrate calendar.</li>
                   <li>Under "Secret address in iCal format", click the copy button, then paste the address here.</li>
                 </ol>
-                <p class="note-small" style="margin-top:6px">Google Calendar › Settings › your calendar › Integrate calendar › "Secret address in iCal format". Keep it private: anyone with it can read your calendar. TinyBar only reads it and never shows it again after you save it. If the setting is missing, your work account may have it turned off; ask IT.</p>
+                <p class="note-small" style="margin-top:6px">Google Calendar › Settings › your calendar › Integrate calendar › "Secret address in iCal format". Keep it private: anyone with it can read your calendar. MiniBar only reads it and never shows it again after you save it. If the setting is missing, your work account may have it turned off; ask IT.</p>
               </details>
               <div class="row">
                 <button class="btn" id="calSave" type="button">Add</button>
@@ -292,8 +292,8 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
             <div class="auto-head"><b>Connect your Mac</b></div>
             <label class="check" for="macOn"><input type="checkbox" id="macOn"> Calls from your Mac</label>
             <p class="auto-line" id="macLine"></p>
-            <p class="note-small">The TinyBar menu-bar app sets On a call whenever your Mac's mic or camera is in use, so Slack huddles and Google Meet calls show up even when they aren't on your calendar. It talks to TinyBar over USB when the bar is powered from your Mac, otherwise over Wi-Fi.</p>
-            <p class="note-small" id="macPairNote">To pair your Mac, plug this TinyBar into it once. Or, in the TinyBar menu on your Mac, choose Connect…, then Pair Over Wi-Fi. This TinyBar shows the code.</p>
+            <p class="note-small">The MiniBar menu-bar app sets On a call whenever your Mac's mic or camera is in use, so Slack huddles and Google Meet calls show up even when they aren't on your calendar. It talks to MiniBar over USB when the bar is powered from your Mac, otherwise over Wi-Fi.</p>
+            <p class="note-small" id="macPairNote">To pair your Mac, plug this MiniBar into it once. Or, in the MiniBar menu on your Mac, choose Connect…, then Pair Over Wi-Fi. This MiniBar shows the code.</p>
           </div>
         </div>
       </div>
@@ -358,7 +358,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
   }
   function offline(on) {
     const n = $('offNote');
-    n.textContent = on ? "Can't reach TinyBar right now. If it's powered off, press PWR on the side of the bar to turn it on. It also has to be on this Wi-Fi network." : '';
+    n.textContent = on ? "Can't reach MiniBar right now. If it's powered off, press PWR on the side of the bar to turn it on. It also has to be on this Wi-Fi network." : '';
     n.hidden = !on;
   }
   // Every change in sections 8 and 9 answers with the whole status: draw from it.
@@ -398,15 +398,15 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     if (r.status === 200) { cal = r.j.calendar; render(); }
   }
   // The bar's message for an error reply, or a plain fallback.
-  const errText = r => r.status === 0 ? "Can't reach TinyBar." : (r.j && r.j.message) || `Something went wrong (${r.status}).`;
-  const barName = () => (info && info.name) || 'TinyBar';
+  const errText = r => r.status === 0 ? "Can't reach MiniBar." : (r.j && r.j.message) || `Something went wrong (${r.status}).`;
+  const barName = () => (info && info.name) || 'MiniBar';
   const setText = (el, t) => { if (el.textContent !== t) el.textContent = t; };
   const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   function head() {
     $('phoneAddr').textContent = info ? `${info.name} · ${info.host}` : location.host;
-    document.title = info ? `${info.name} · Remote` : 'TinyBar Remote';
+    document.title = info ? `${info.name} · Remote` : 'MiniBar Remote';
   }
   function showMain() {
     paired = true;
@@ -459,7 +459,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     const list = [...clients].sort((a, b) => (b.self - a.self) || (usedAt(b) - usedAt(a)) || ((parse(b.paired_at) || 0) - (parse(a.paired_at) || 0)));
     const html = list.map(c => {
       const open = confirmId === c.token_id, who = c.self ? 'this phone' : esc(c.name);
-      const q = c.self ? "Remove this phone? The Remote signs out here, and you'll need a code from TinyBar to use it again."
+      const q = c.self ? "Remove this phone? The Remote signs out here, and you'll need a code from MiniBar to use it again."
         : c.kind === 'mac' ? `Remove ${esc(c.name)}? It stops working over Wi-Fi until it pairs again. USB still works.`
         : `Remove ${esc(c.name)}? It can't change your status until it pairs again with a new code from the bar.`;
       return `<li class="dev" data-id="${esc(c.token_id)}"><div class="dev-name"><span>${esc(c.name)}</span>${c.self ? '<span class="badge ok">This phone</span>' : ''}</div>`
@@ -562,17 +562,17 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
   const leftOf = e => Math.max(0, (e.until || 0) - performance.now());
   function askErrText(e) {
     switch (e.error) {
-      case 'pairing_busy': return `Another device is pairing with this TinyBar. Try again in ${waitText(leftOf(e))}.`;
+      case 'pairing_busy': return `Another device is pairing with this MiniBar. Try again in ${waitText(leftOf(e))}.`;
       case 'rate_limited': return `Too many tries. You can try again in ${waitText(leftOf(e))}.`;
-      case 'token_limit': return `${barName()} already has 10 paired devices. Remove one on a paired phone, or forget them all on TinyBar: hold its screen, then Wi-Fi, then Devices.`;
-      case 'in_setup': return 'TinyBar is setting up Wi-Fi. Finish setup on the bar, then try again.';
+      case 'token_limit': return `${barName()} already has 10 paired devices. Remove one on a paired phone, or forget them all on MiniBar: hold its screen, then Wi-Fi, then Devices.`;
+      case 'in_setup': return 'MiniBar is setting up Wi-Fi. Finish setup on the bar, then try again.';
       default: return `${barName()} didn't answer. Make sure it's on, then try again.`;
     }
   }
   const PAIR_ERR = {
     wrong: e => `That code didn't match. ${e.left} ${e.left === 1 ? 'try' : 'tries'} left.`,
-    out: () => "That code didn't match, so TinyBar canceled pairing. Show a new code to try again.",
-    gone: () => 'That code has expired or was canceled on TinyBar. Show a new code to try again.',
+    out: () => "That code didn't match, so MiniBar canceled pairing. Show a new code to try again.",
+    gone: () => 'That code has expired or was canceled on MiniBar. Show a new code to try again.',
     noanswer: () => `${barName()} didn't answer. Make sure it's on, then try again.`,
     // 409 token_limit from pair: a safeguard only, since the code holds a place (api.md 4.3); the pairing has ended.
     full: () => askErrText({ error: 'token_limit' }),
@@ -638,7 +638,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     const r = await api('GET', '/info');
     losing = false;
     if (r.status === 200 && r.j) { info = r.j; head(); }
-    phone.note = r.j && r.j.paired === 0 ? 'TinyBar forgot this phone. Pair it again to use the Remote.'
+    phone.note = r.j && r.j.paired === 0 ? 'MiniBar forgot this phone. Pair it again to use the Remote.'
       : `This phone isn't paired with ${barName()} anymore. Pair it again to use the Remote.`;
     updatePhonePair();
     phoneSay(phone.note);
@@ -671,7 +671,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     $('pairInput').value = '';
     updatePhonePair();
     $('pairInput').focus();
-    phoneSay('Type the code shown on your TinyBar. The code works for 2 minutes.');
+    phoneSay('Type the code shown on your MiniBar. The code works for 2 minutes.');
   }
   async function phoneTry() {
     const d = digitsOf($('pairInput').value);
@@ -754,7 +754,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     $('pairAsk').focus();
     let r = pid ? await api('POST', '/pair/cancel', { pairing_id: pid }) : null;
     if (r && r.status === 429) { await sleep(1100); r = await api('POST', '/pair/cancel', { pairing_id: pid }); }
-    phoneSay(r && r.status === 200 ? 'Pairing canceled. The code is gone from TinyBar.' : 'Pairing canceled.');
+    phoneSay(r && r.status === 200 ? 'Pairing canceled. The code is gone from MiniBar.' : 'Pairing canceled.');
   });
   // The "Paired" line goes after 6 seconds or at the first action.
   $('remoteMain').addEventListener('click', e => { if (phone.okUntil && e.target.closest('button, input, label')) { phone.okUntil = 0; updatePhonePair(); } });
@@ -921,7 +921,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     const { a, k, callNow, meetNow } = autoState();
     const now = barNow();
     $('autoNow').textContent = a ? (a === 'call' ? 'Showing On a call · from your Mac' : 'Showing In a meeting · from your calendar')
-      : st.showing === 'setup' ? 'TinyBar is on its Wi-Fi setup screens'
+      : st.showing === 'setup' ? 'MiniBar is on its Wi-Fi setup screens'
       : k ? `Showing your status · you set the ${k} aside` : 'Showing your status';
     $('autoShowAgain').hidden = !k;
     const ev = a || k, shown = !!a;
@@ -998,7 +998,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
       const r = await api('POST', '/status', { status: s.id });
       if (took(r)) return;
       if (r.j && r.j.error === 'no_message') { msgErr('Type a message here first.'); $('msgInput').focus(); }
-      else if (r.j && r.j.error === 'in_setup') offlineNote('TinyBar is on its Wi-Fi setup screens. Finish setup or skip it on the bar first.');
+      else if (r.j && r.j.error === 'in_setup') offlineNote('MiniBar is on its Wi-Fi setup screens. Finish setup or skip it on the bar first.');
       else if (r.status) offlineNote(errText(r));
     });
     grid.appendChild(b);
@@ -1086,7 +1086,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
   }
   const cantShow = bad => {
     const many = bad.length > 1 || (bad[0] && bad[0].hidden > 1);
-    return `TinyBar can't show ${listChars(bad)}. Remove ${many ? 'them' : 'it'} to show this message.`;
+    return `MiniBar can't show ${listChars(bad)}. Remove ${many ? 'them' : 'it'} to show this message.`;
   };
   function checkMessage() {
     const bad = unsupportedChars($('msgInput').value);
@@ -1137,9 +1137,9 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
   function maskCalInput() { $('calInput').type = 'password'; $('calShow').textContent = 'Show'; $('calShow').setAttribute('aria-pressed', 'false'); }
   const CHECK_TEXT = {
     calendar_rejected: "Google didn't recognize that address. It may have been reset in Google Calendar. Copy the current secret address and paste it again.",
-    calendar_unreachable: "TinyBar couldn't reach the calendar's server. Try again in a minute.",
+    calendar_unreachable: "MiniBar couldn't reach the calendar's server. Try again in a minute.",
     not_a_calendar: "That address didn't send back a calendar. Copy the Secret address in iCal format.",
-    offline: "TinyBar isn't online, so it can't check the address.",
+    offline: "MiniBar isn't online, so it can't check the address.",
   };
   async function waitFor(done, every = 1000, limit = 40) {
     for (let i = 0; i < limit; i++) {
@@ -1166,11 +1166,11 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
       ui.calReplacing = false; ui.calConfirm = false;
       $('calInput').value = ''; maskCalInput();
       const left = c.left_today || 0;
-      calMsg(`Saved. ${cap(left ? `${left} meeting${left === 1 ? '' : 's'} left today` : 'no more meetings today')}.${chk.google ? '' : " This isn't a Google address, but TinyBar can read any iCal feed."}`);
+      calMsg(`Saved. ${cap(left ? `${left} meeting${left === 1 ? '' : 's'} left today` : 'no more meetings today')}.${chk.google ? '' : " This isn't a Google address, but MiniBar can read any iCal feed."}`);
     } else if (c && c.check) {
       calMsg(CHECK_TEXT[c.check.error] || c.check.message || "That address didn't work.", true);
     } else {
-      calMsg('TinyBar is still checking. Look at the bar; it says when the calendar is synced.');
+      calMsg('MiniBar is still checking. Look at the bar; it says when the calendar is synced.');
     }
     poll();
     render();
@@ -1197,7 +1197,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
   $('calSync').addEventListener('click', async () => {
     if (ui.calSyncing) return;
     const r = await api('POST', '/calendar/sync');
-    if (r.status !== 202) { calMsg(r.j && r.j.error === 'offline' ? "TinyBar isn't online, so it can't sync." : errText(r), true); return; }
+    if (r.status !== 202) { calMsg(r.j && r.j.error === 'offline' ? "MiniBar isn't online, so it can't sync." : errText(r), true); return; }
     ui.calSyncing = true;
     render();
     const c = await waitFor(x => !x.syncing);

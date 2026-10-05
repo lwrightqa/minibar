@@ -106,5 +106,5 @@ TB_TEST(settings_sanitize_and_equal)
     strcpy(d.device.time_zone, "Europe/Paris");
     TB_FALSE(tb_settings_equal(&s, &d));
     tb_settings_defaults(&s, "ab");                 /* a short id falls back to 0000 */
-    TB_EQ_STR(s.device.name, "TinyBar 0000");
+    TB_EQ_STR(s.device.name, "MiniBar 0000");
 }

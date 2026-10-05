@@ -124,14 +124,14 @@ static void timer_settings(tb_app_t *a)
 }
 
 /* With nothing paired, the Devices tile says where to pair: this bar's real address, where the Remote is. "pair at"
- * over the host ("tinybar.local" is 75 px of the tile's 86.5 in Barlow 500 14 px), or, when the host doesn't fit on
- * one line (a renamed host after a name clash, "tinybar-2.local", is 90 px), the IP address the bar also answers on,
+ * over the host ("minibar.local" is 80 px of the tile's 86.5 in Barlow 500 14 px), or, when the host doesn't fit on
+ * one line (a renamed host after a name clash, "minibar-2.local", is 93 px), the IP address the bar also answers on,
  * or, when that's too long too ("192.168.100.200"), "pair at its" over "IP address", pointing at the Network tile
  * beside it. ui measures and picks (tb_tile_t.foot_alt), as the mock-up's showWifiMenu() measures in the browser. */
 static void devices_none_tile(tb_app_t *a)
 {
     tb_tile_t *t = add(&a->menu, TB_ACT_NONE, TB_TILE_INFO, "Devices", "None", "");
-    snprintf(t->foot, sizeof t->foot, "pair at\n%s", a->wifi_host[0] ? a->wifi_host : "tinybar.local");
+    snprintf(t->foot, sizeof t->foot, "pair at\n%s", a->wifi_host[0] ? a->wifi_host : "minibar.local");
     if (a->wifi_ip[0]) snprintf(t->foot_alt[t->n_foot_alt++], sizeof t->foot_alt[0], "pair at\n%s", a->wifi_ip);
     snprintf(t->foot_alt[t->n_foot_alt++], sizeof t->foot_alt[0], "pair at its\nIP address");
 }

@@ -189,7 +189,7 @@ static void on_line(const char *line, size_t len, bool too_long, void *ctx)
             jid->valuedouble == (double)(int64_t)jid->valuedouble)
             snprintf(id, sizeof id, "%ld", (long)jid->valuedouble);
         cJSON_Delete(o);
-        snprintf(s_out, OUT_CAP, "@tb {\"id\":%s,\"ok\":false,\"error\":\"busy\",\"message\":\"TinyBar is busy. Try again in a second.\",\"field\":null,\"retry_after_s\":1}", id);
+        snprintf(s_out, OUT_CAP, "@tb {\"id\":%s,\"ok\":false,\"error\":\"busy\",\"message\":\"MiniBar is busy. Try again in a second.\",\"field\":null,\"retry_after_s\":1}", id);
         j.replied = true;
     }
     if (j.replied) net_usb_write_line(s_out);

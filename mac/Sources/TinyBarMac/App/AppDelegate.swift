@@ -4,7 +4,7 @@ import TinyBarCore
 
 /// Owns the engine, the status item and the windows.
 ///
-/// - `applicationDidFinishLaunching`: if another copy of TinyBar is already
+/// - `applicationDidFinishLaunching`: if another copy of MiniBar is already
 ///   running (one in `build/` and one in Applications, or `open -n`), asks it
 ///   to show itself and quits, since both would share the settings and the
 ///   install ID and fight over the bar. Then opts out of App Nap for the
@@ -20,7 +20,7 @@ import TinyBarCore
 ///   `NSApp.reply(toApplicationShouldTerminate: true)`; after 3 seconds it
 ///   quits anyway.
 /// - `applicationShouldHandleReopen`: opening the app again from Finder or
-///   Spotlight opens Settings on General, or the Connect window if TinyBar
+///   Spotlight opens Settings on General, or the Connect window if MiniBar
 ///   isn't set up (mac-app-ux.md 8). *Unverified* that it fires for an
 ///   `LSUIElement` app.
 @MainActor
@@ -171,7 +171,7 @@ enum AppInfo {
 enum AboutPanel {
     static func show() {
         let credits = NSAttributedString(
-            string: "Shows On a call on your TinyBar when this Mac’s mic or camera is in use. It never listens or records.",
+            string: "Shows On a call on your MiniBar when this Mac’s mic or camera is in use. It never listens or records.",
             attributes: [
                 .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
                 .foregroundColor: NSColor.secondaryLabelColor,
@@ -214,12 +214,12 @@ enum MainMenu {
     static func make() -> NSMenu {
         let main = NSMenu()
 
-        let app = NSMenu(title: "TinyBar")
-        app.addItem(withTitle: "About TinyBar", action: #selector(AppDelegate.showAbout(_:)), keyEquivalent: "")
+        let app = NSMenu(title: "MiniBar")
+        app.addItem(withTitle: "About MiniBar", action: #selector(AppDelegate.showAbout(_:)), keyEquivalent: "")
         app.addItem(.separator())
         app.addItem(withTitle: "Settings…", action: #selector(AppDelegate.showSettings(_:)), keyEquivalent: ",")
         app.addItem(.separator())
-        app.addItem(withTitle: "Quit TinyBar", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        app.addItem(withTitle: "Quit MiniBar", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         main.addItem(submenuItem(app))
 
         let edit = NSMenu(title: "Edit")

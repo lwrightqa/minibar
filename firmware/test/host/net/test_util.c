@@ -327,14 +327,14 @@ TB_TEST(log_path_leaves_the_query_out)
 TB_TEST(dns_ignores_garbage)
 {
     uint8_t q[256], a[512];
-    size_t n = query(q, "tinybar.local", 1);
+    size_t n = query(q, "minibar.local", 1);
     TB_EQ_INT(net_dns_answer(q, 5, 0, a, sizeof a), 0);         /* short */
     q[2] |= 0x80;
     TB_EQ_INT(net_dns_answer(q, n, 0, a, sizeof a), 0);         /* a response */
     q[2] &= 0x7F;
     q[12] = 0xC0;
     TB_EQ_INT(net_dns_answer(q, n, 0, a, sizeof a), 0);         /* a pointer in the question */
-    n = query(q, "tinybar.local", 1);
+    n = query(q, "minibar.local", 1);
     TB_EQ_INT(net_dns_answer(q, n - 3, 0, a, sizeof a), 0);     /* cut off */
     TB_EQ_INT(net_dns_answer(q, n, 0, a, 10), 0);               /* no room */
     for (int seed = 0; seed < 2000; seed++) {                   /* random bytes never crash it */

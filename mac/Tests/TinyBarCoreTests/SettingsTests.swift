@@ -31,7 +31,7 @@ final class SettingsTests: XCTestCase {
             useWiFi: false,
             manualAddress: "10.0.4.42:8080",
             macName: "Desk Mac",
-            bar: KnownBar(deviceID: "f412fa3f2a1c", name: "TinyBar 2A1C", host: "tinybar-2.local",
+            bar: KnownBar(deviceID: "f412fa3f2a1c", name: "MiniBar 2A1C", host: "minibar-2.local",
                           lastEndpoint: BarEndpoint(host: "10.0.4.42"), auth: .bearer, tokenID: "74d8a526"),
             pause: .restOfToday(endsAt: try XCTUnwrap(RFC3339.date(from: "2026-10-05T00:00:00-07:00"))),
             didShowWelcome: true,
@@ -141,7 +141,7 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(run.detector.seenApps.count, 4)
 
         var settings = AppSettings(installID: Identifiers.newInstallID(), detection: run.detector.settings)
-        settings.bar = KnownBar(deviceID: "f412fa3f2a1c", name: "TinyBar 2A1C")
+        settings.bar = KnownBar(deviceID: "f412fa3f2a1c", name: "MiniBar 2A1C")
         let store = UserDefaultsSettingsStore(defaults: defaults)
         try store.save(settings)
         let saved = String(decoding: try XCTUnwrap(defaults.data(forKey: UserDefaultsSettingsStore.defaultKey)), as: UTF8.self)
@@ -197,8 +197,8 @@ final class SettingsTests: XCTestCase {
         settings.macName = "Alex’s Mac"
         XCTAssertThrowsError(try settings.validate()) { XCTAssertEqual($0 as? SettingsError, .badMacName(.unsupportedCharacters(["’"]))) }
         settings.macName = nil
-        settings.manualAddress = "tinybar.local/api"
-        XCTAssertThrowsError(try settings.validate()) { XCTAssertEqual($0 as? SettingsError, .badAddress("tinybar.local/api")) }
+        settings.manualAddress = "minibar.local/api"
+        XCTAssertThrowsError(try settings.validate()) { XCTAssertEqual($0 as? SettingsError, .badAddress("minibar.local/api")) }
         settings.manualAddress = nil
         settings.detection.endDelay = 2
         XCTAssertThrowsError(try settings.validate()) { XCTAssertEqual($0 as? SettingsError, .endDelayOutOfRange(2)) }

@@ -5,7 +5,7 @@
  * Codec setup follows 08_Audio_Test's codec_board entry "S3_LCD_3_49" (ES8311 at 0x18 on the system I2C bus, I2S
  * MCLK 7, BCLK 15, WS 46, DOUT 45, MCLK used, 24 kHz 16-bit stereo), through esp_codec_dev. Differences: only the
  * output is set up (standard I2S rather than the 4-slot TDM Waveshare uses to share the bus with the ES7210
- * microphones, which TinyBar never uses), and the amplifier (EXIO7, the NS4150B's CTRL, pulled low on the board) is
+ * microphones, which MiniBar never uses), and the amplifier (EXIO7, the NS4150B's CTRL, pulled low on the board) is
  * switched on only around sounds when CONFIG_TINYBAR_AUDIO_AMP_GATE is set.
  *
  * The sounds are synthesized once at start (brd_chime_render, brd_tick_render; about 130 KB of PSRAM) at the mock-up's

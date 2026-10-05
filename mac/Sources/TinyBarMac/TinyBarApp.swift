@@ -32,7 +32,7 @@ enum TinyBarMain {
 @main
 enum TinyBarMain {
     static func main() {
-        print("TinyBar for Mac runs only on macOS. Here, build and test the core with `swift test`.")
+        print("MiniBar for Mac runs only on macOS. Here, build and test the core with `swift test`.")
     }
 }
 #endif

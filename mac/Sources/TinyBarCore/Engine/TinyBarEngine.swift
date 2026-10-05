@@ -342,7 +342,7 @@ public final class TinyBarEngine {
         updateDiscovery()
     }
 
-    /// Start TinyBar when you log in: registers or unregisters, and records
+    /// Start MiniBar when you log in: registers or unregisters, and records
     /// what macOS did (`state.loginItem`). A registration macOS refused or
     /// holds for approval turns the switch off (mac-app-ux.md 6.2).
     public func setLaunchAtLogin(_ on: Bool) {
@@ -362,7 +362,7 @@ public final class TinyBarEngine {
         scheduleTick()
     }
 
-    /// Forget This TinyBar.
+    /// Forget This MiniBar.
     public func forgetBar() async {
         await connection.forget()
         state.settings.bar = nil

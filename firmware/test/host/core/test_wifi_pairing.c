@@ -33,7 +33,7 @@ TB_TEST(wifi_connect_fail_retry_connect)
     tap(b);
     TB_EQ_INT(b->a.wifi_mode, TB_WIFI_SETUP);            /* back to the QR code */
     tb_app_wifi_connecting(&b->a, "Office-WiFi", &b->now);
-    tb_app_wifi_connected(&b->a, "Office-WiFi", "10.0.4.42", "tinybar.local", &b->now);
+    tb_app_wifi_connected(&b->a, "Office-WiFi", "10.0.4.42", "minibar.local", &b->now);
     TB_EQ_INT(b->a.wifi_mode, TB_WIFI_CONNECTED);
     TB_TRUE(b->a.wifi_link_up);
     bench_run(b, 2900);
@@ -83,10 +83,10 @@ TB_TEST(wifi_link_drop_keeps_mode)
     TB_EQ_STR(b->a.wifi_ip, "");
     hold(b);
     tap_tile_named(b, TB_ACT_WIFI);
-    TB_EQ_STR(b->a.menu.tiles[0].foot, "TinyBar 2A1C\nnot connected");
-    tb_app_wifi_link(&b->a, true, "10.0.4.50", "tinybar-2.local", &b->now);
-    TB_EQ_STR(b->a.wifi_host, "tinybar-2.local");
-    TB_EQ_STR(b->a.menu.tiles[0].foot, "TinyBar 2A1C\ntinybar-2.local \xC2\xB7 10.0.4.50");
+    TB_EQ_STR(b->a.menu.tiles[0].foot, "MiniBar 2A1C\nnot connected");
+    tb_app_wifi_link(&b->a, true, "10.0.4.50", "minibar-2.local", &b->now);
+    TB_EQ_STR(b->a.wifi_host, "minibar-2.local");
+    TB_EQ_STR(b->a.menu.tiles[0].foot, "MiniBar 2A1C\nminibar-2.local \xC2\xB7 10.0.4.50");
 }
 
 /* ---- pairing ---- */

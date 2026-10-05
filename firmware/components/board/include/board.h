@@ -1,5 +1,5 @@
 /*
- * board.h: TinyBar's board support for the Waveshare ESP32-S3-Touch-LCD-3.49 V2. Include this one header.
+ * board.h: MiniBar's board support for the Waveshare ESP32-S3-Touch-LCD-3.49 V2. Include this one header.
  *
  * Owner: board builder. Bring-up checklist: ../README.md.
  *
@@ -20,7 +20,7 @@
  *                                reading, else the pose remembered in NVS, else upright: side buttons on top)
  *   4. board_display_init()      QSPI, panel reset and init, LVGL display, buffers, backlight PWM
  *   5. board_touch_init()
- *   6. board_rtc_init()          sets the system clock if the RTC holds a time TinyBar wrote
+ *   6. board_rtc_init()          sets the system clock if the RTC holds a time MiniBar wrote
  *   7. board_buttons_init()      posts TB_EV_BUTTON
  *   8. board_audio_init()
  *   9. board_imu_start()         posts TB_EV_ORIENTATION

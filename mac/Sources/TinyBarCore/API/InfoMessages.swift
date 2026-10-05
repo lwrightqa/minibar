@@ -45,17 +45,18 @@ public struct HelloRequest: Codable, Hashable, Sendable {
 /// bar is, before pairing.
 public struct InfoReply: Codable, Hashable, Sendable {
     public var ok: Bool
-    /// Always `"TinyBar"`. Over USB, the only proof the port is a TinyBar.
+    /// `"MiniBar"`, or `"TinyBar"` from firmware 1.0.2 and earlier (api.md
+    /// 7.1, 14.6). Over USB, the only proof the port is a MiniBar.
     public var device: String
     /// 12 lowercase hex digits. The key tokens are stored under.
     public var deviceID: String
-    /// The bar's name, for example "TinyBar 2A1C". Shown in the menu.
+    /// The bar's name, for example "MiniBar 2A1C". Shown in the menu.
     public var name: String
     /// Firmware version.
     public var fw: String
     /// API version, for example `"1.0"`.
     public var api: String
-    /// The mDNS name the bar has now, for example `"tinybar.local"`.
+    /// The mDNS name the bar has now, for example `"minibar.local"`.
     public var host: String?
     public var auth: AuthMode
     public var pairing: PairingState
@@ -76,7 +77,7 @@ public struct InfoReply: Codable, Hashable, Sendable {
     public var wifi: WiFiState
 
     public init(
-        device: String = "TinyBar",
+        device: String = TinyBarAPI.deviceName,
         deviceID: String,
         name: String,
         fw: String,
@@ -123,8 +124,9 @@ public struct InfoReply: Codable, Hashable, Sendable {
         case wifi
     }
 
-    /// The `device` field says this is a TinyBar.
-    public var isTinyBar: Bool { device == "TinyBar" }
+    /// The `device` field says this is a MiniBar, under either of its names:
+    /// `"MiniBar"`, or `"TinyBar"` from firmware 1.0.2 and earlier (api.md 14.6).
+    public var isKnownBar: Bool { TinyBarAPI.acceptedDeviceNames.contains(device) }
 
     /// The bar's API version, if it parses.
     public var apiVersion: APIVersion? { APIVersion(api) }

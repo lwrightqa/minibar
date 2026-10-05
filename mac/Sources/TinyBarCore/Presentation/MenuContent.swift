@@ -23,11 +23,11 @@ public enum IconState: String, Hashable, Sendable, CaseIterable {
     /// The VoiceOver label (mac-app-ux.md 3.1).
     public var accessibilityLabel: String {
         switch self {
-        case .connected: return "TinyBar, connected"
-        case .onCall: return "TinyBar, on a call"
-        case .notConnected: return "TinyBar, not connected"
-        case .paused: return "TinyBar, paused"
-        case .needsYou: return "TinyBar, needs attention"
+        case .connected: return "MiniBar, connected"
+        case .onCall: return "MiniBar, on a call"
+        case .notConnected: return "MiniBar, not connected"
+        case .paused: return "MiniBar, paused"
+        case .needsYou: return "MiniBar, needs attention"
         }
     }
 }
@@ -48,7 +48,7 @@ public enum FixItem: Hashable, Sendable {
         case .connect: return "Connect…"
         case .openLocalNetworkSettings: return "Open Local Network Settings…"
         case .pairAgain: return "Pair Again…"
-        case .openRemote: return "Open TinyBar Remote…"
+        case .openRemote: return "Open MiniBar Remote…"
         }
     }
 }

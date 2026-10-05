@@ -64,7 +64,7 @@ final class QAPairingScenarios {
     }
 
     /// The Keychain refuses to store the token. The message shown is the one
-    /// for "TinyBar didn't answer", which sends the user to the wrong fix.
+    /// for "MiniBar didn't answer", which sends the user to the wrong fix.
     func keychainFailureIsReportedAsNoAnswer() async throws {
         let factory = ScriptedWiFiFactory()
         let flow = flow(factory, tokens: FailingTokenStore())
@@ -76,7 +76,7 @@ final class QAPairingScenarios {
     }
 
     func pairReplyForAnotherBarIsRefused() async throws {
-        let other = PairReply(token: ScriptedWiFiFactory.token, tokenID: "1", deviceID: "a0b1c2d3e4f5", name: "TinyBar E4F5", host: nil)
+        let other = PairReply(token: ScriptedWiFiFactory.token, tokenID: "1", deviceID: "a0b1c2d3e4f5", name: "MiniBar E4F5", host: nil)
         let factory = ScriptedWiFiFactory(.init(pair: [.success(other)]))
         let tokens = InMemoryTokenStore()
         let flow = flow(factory, tokens: tokens)

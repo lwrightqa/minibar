@@ -1,4 +1,4 @@
-# core: TinyBar's pure-logic state machines (status engine, Pomodoro, settings, menus, gestures, formatting).
+# core: MiniBar's pure-logic state machines (status engine, Pomodoro, settings, menus, gestures, formatting).
 # Builds as an ESP-IDF component and, unchanged, as a plain static library on Linux for the host tests.
 # Owner: core builder. Rule: no ESP-IDF, FreeRTOS or LVGL headers anywhere under this directory.
 set(TB_CORE_SRCS

@@ -16,18 +16,18 @@ extern "C" {
 /* api.md 7.1 time_source */
 typedef enum { NET_TIME_NONE = 0, NET_TIME_NTP, NET_TIME_RTC, NET_TIME_MAC } net_time_source_t;
 
-/* api.md 7.3 "wifi" and 7.1 "wifi". SETUP while the setup screens show (the TinyBar-Setup network is up). */
+/* api.md 7.3 "wifi" and 7.1 "wifi". SETUP while the setup screens show (the MiniBar-Setup network is up). */
 typedef enum { NET_WIFI_CONNECTED = 0, NET_WIFI_OFFLINE, NET_WIFI_SETUP } net_wifi_state_t;
 typedef struct {
     net_wifi_state_t state;
     bool sta_up;                    /* joined the office Wi-Fi and has an address (also during "Set up again") */
     char ssid[TB_SSID_BYTES];       /* "" when not joined */
     char ip[TB_IP_BYTES];           /* the station's IPv4, "" when not joined */
-    char host[64];                  /* "tinybar.local" or the name mDNS ended up with */
+    char host[64];                  /* "minibar.local" or the name mDNS ended up with */
     int8_t rssi;                    /* dBm; 0 when not joined */
 } net_wifi_info_t;
 
-/* The setup network's address (the bar on TinyBar-Setup: its access point, DHCP server, DNS catch-all and setup page)
+/* The setup network's address (the bar on MiniBar-Setup: its access point, DHCP server, DNS catch-all and setup page)
  * and its subnet. Not a private address: Android's captive-portal check (NetworkMonitor's "a private IP DNS response
  * means no internet", on when Google or the phone's maker turns it on) treats a check host that resolves into 10/8,
  * 172.16/12, 192.168/16 or 169.254/16 as "Connected, no internet" and never shows the sign-in sheet (the most likely

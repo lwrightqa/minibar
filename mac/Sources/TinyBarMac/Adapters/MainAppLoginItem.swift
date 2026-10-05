@@ -11,7 +11,7 @@ import TinyBarCore
 ///   (which can throw `kSMErrorAlreadyRegistered`); not in an Applications
 ///   folder (a first launch from `build/`, or an App Translocation path) →
 ///   `.notFound` without registering, so no login item points at a path that
-///   moves or disappears (mac-app-ux.md 6.2: "Move TinyBar to your
+///   moves or disappears (mac-app-ux.md 6.2: "Move MiniBar to your
 ///   Applications folder"). Otherwise it registers, and after a failure
 ///   reports `.enabled`, `.requiresApproval` or `.notFound` if the status now
 ///   says so, else `.failed(error.localizedDescription)`.

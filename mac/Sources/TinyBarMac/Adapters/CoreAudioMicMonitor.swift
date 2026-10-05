@@ -33,7 +33,7 @@ import TinyBarCore
 ///   blocked main thread (an open panel, a Keychain prompt) would delay them
 ///   to the next re-read. The first monitor made sets it to NULL, before any
 ///   other CoreAudio call, so CoreAudio uses its own notification thread. The
-///   setting is process-wide; TinyBar does no other audio.
+///   setting is process-wide; MiniBar does no other audio.
 ///
 /// **Fallback.** If the system object doesn't have the process list (it
 /// should on every macOS 14 and later; the scratch type-check against the
@@ -71,7 +71,7 @@ final class CoreAudioMicMonitor: MicActivitySource, @unchecked Sendable {
     /// normal case.
     static let safetyNetInterval: Double = 1
 
-    private let work = AdapterQueue(label: "TinyBar.mic")
+    private let work = AdapterQueue(label: "MiniBar.mic")
 
     // Everything below is touched only on `work.queue`.
     private var started = false

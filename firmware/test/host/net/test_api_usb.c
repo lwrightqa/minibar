@@ -29,7 +29,7 @@ TB_TEST(usb_hello)
     TB_TRUE(!strncmp(nf_last_line, "@tb {\"id\":1,", 12));   /* the id comes first */
     TB_EQ_INT(nf_num(j, "id"), 1);
     TB_TRUE(nf_true(j, "ok"));
-    TB_EQ_STR(nf_str(j, "device"), "TinyBar");
+    TB_EQ_STR(nf_str(j, "device"), "MiniBar");
     TB_EQ_STR(nf_str(j, "device_id"), "f412fa3f2a1c");
     TB_EQ_STR(nf_str(j, "api"), "1.0");
     TB_EQ_STR(nf_str(j, "auth"), "bearer");
@@ -59,7 +59,7 @@ TB_TEST(usb_hello_errors)
     TB_EQ_INT(nf_num(j, "id"), 8);
     TB_FALSE(nf_true(j, "ok"));
     TB_EQ_STR(nf_str(j, "error"), "unsupported_api");
-    TB_EQ_STR(nf_str(j, "message"), "This TinyBar speaks API 1.0.");
+    TB_EQ_STR(nf_str(j, "message"), "This MiniBar speaks API 1.0.");
     TB_EQ_STR(nf_str(j, "field"), "api");
     cJSON_Delete(j);
     j = nf_usb("@tb {\"cmd\": \"hello\", \"id\": 9, \"client\": \"" MAC "\"}");
@@ -236,8 +236,8 @@ TB_TEST(usb_pair_gives_a_call_token)
     TB_EQ_INT(strlen(nf_str(j, "token")), 47);
     TB_EQ_STR(nf_str(j, "scope"), "call");
     TB_EQ_STR(nf_str(j, "device_id"), "f412fa3f2a1c");
-    TB_EQ_STR(nf_str(j, "name"), "TinyBar 2A1C");
-    TB_EQ_STR(nf_str(j, "host"), "tinybar.local");
+    TB_EQ_STR(nf_str(j, "name"), "MiniBar 2A1C");
+    TB_EQ_STR(nf_str(j, "host"), "minibar.local");
     char tok[NET_TOKEN_LEN + 1];
     snprintf(tok, sizeof tok, "%s", nf_str(j, "token"));
     cJSON_Delete(j);
@@ -276,7 +276,7 @@ TB_TEST(usb_pair_token_limit)
         cJSON_Delete(j);
     }
     cJSON *j = nf_usb("@tb {\"cmd\": \"pair\", \"id\": 4, \"client\": \"" MAC "\"}");
-    TB_EQ_STR(nf_last_line, "@tb {\"id\":4,\"ok\":false,\"error\":\"token_limit\",\"message\":\"TinyBar already has 10 paired devices. Remove one on the Remote.\",\"field\":null}");
+    TB_EQ_STR(nf_last_line, "@tb {\"id\":4,\"ok\":false,\"error\":\"token_limit\",\"message\":\"MiniBar already has 10 paired devices. Remove one on the Remote.\",\"field\":null}");
     cJSON_Delete(j);
 }
 
@@ -291,7 +291,7 @@ TB_TEST(usb_ready_line)
 TB_TEST(usb_setup_endpoints_while_setting_up)
 {
     nf_setup();
-    fake_wifi = (net_wifi_info_t){.state = NET_WIFI_SETUP, .host = "tinybar.local"};
+    fake_wifi = (net_wifi_info_t){.state = NET_WIFI_SETUP, .host = "minibar.local"};
     nf_app.wifi_mode = TB_WIFI_SETUP;
     cJSON *j = nf_usb("@tb {\"cmd\": \"request\", \"id\": 1, \"method\": \"GET\", \"path\": \"/api/v1/setup/networks\"}");
     TB_EQ_INT(nf_num(j, "http_status"), 200);

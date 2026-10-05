@@ -411,9 +411,9 @@ static void wifi_view(ui_view_t *v, const tb_app_t *a)
         v->layout = UI_LAYOUT_SETUP_QR;
         PUT(v->kicker, "Wi-Fi setup");
         PUT(v->head, "Scan to set up");
-        PUT(v->qr_payload, "WIFI:T:nopass;S:TinyBar-Setup;;");
+        PUT(v->qr_payload, "WIFI:T:nopass;S:MiniBar-Setup;;");
         PUT(v->step1_pre, "Join ");
-        PUT(v->step1_bold, "TinyBar-Setup");
+        PUT(v->step1_bold, "MiniBar-Setup");
         PUT(v->step1_post, " with your phone");
         PUT(v->step2, "Pick your office Wi-Fi on the page that opens");
         PUT(v->sub, "Hold to skip and use without Wi-Fi");      /* the setup screen's foot (.wfoot) */
@@ -429,7 +429,7 @@ static void wifi_view(ui_view_t *v, const tb_app_t *a)
         v->layout = UI_LAYOUT_SETUP_TEXT;
         /* The bar's own name first, so bars in one office can be told apart (pairing round, proposed). */
         PUT(v->kicker, "%s " MID_DOT " Connected to %s", a->set.device.name, a->wifi_ssid);
-        PUT(v->head, "%s", a->wifi_host[0] ? a->wifi_host : "tinybar.local");
+        PUT(v->head, "%s", a->wifi_host[0] ? a->wifi_host : "minibar.local");
         PUT(v->sub, "or %s " MID_DOT " open it on your phone for the Remote", a->wifi_ip);
         return;
     default:
@@ -478,7 +478,7 @@ void ui_view_build(const tb_app_t *a, const tb_clock_t *now, ui_view_t *v)
     if (a->booting) {
         v->layout = UI_LAYOUT_SPLASH;
         v->key = TB_KEY_CLOCK;
-        PUT(v->head, "TinyBar");
+        PUT(v->head, "MiniBar");
         v->head_caps = true;
         return;
     }

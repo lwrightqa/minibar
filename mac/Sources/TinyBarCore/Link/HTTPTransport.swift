@@ -59,7 +59,7 @@ public final class HTTPTransport: WiFiLinkTransport, @unchecked Sendable {
         session.invalidateAndCancel()
     }
 
-    /// `tinybar.local`, or `10.0.4.42:8080`. (URLSession doesn't say which
+    /// `minibar.local`, or `10.0.4.42:8080`. (URLSession doesn't say which
     /// address a name resolved to on every platform, so it's left out.)
     public var endpointDescription: String {
         endpoint.description

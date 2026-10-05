@@ -3,7 +3,7 @@
  *
  * Everything here is plain C11 with no ESP-IDF, FreeRTOS or LVGL headers, so it builds unchanged on Linux and is
  * tested in test/host/board/. The device code in ../src/ feeds it register values, raw samples and times, and carries
- * out what it decides. Times are monotonic milliseconds (int64_t), as everywhere in TinyBar.
+ * out what it decides. Times are monotonic milliseconds (int64_t), as everywhere in MiniBar.
  *
  *   backlight   percent -> LCD_BL PWM duty, through the mock-up's brightness curve and the V2 board's dimming circuit
  *   buttons     5 ms debouncer with "held at boot" suppression
@@ -129,7 +129,7 @@ const char *brd_orient_name(int flipped);
 
 /* The LVGL rotation in degrees (90 or 270) that draws the layout the right way up. Upright is 90 and flipped 270 in
  * Waveshare's 10_LVGL_V9_Test; turn_180 (CONFIG_TINYBAR_LCD_TURN_180) swaps them. On the V2 board, upright (buttons on
- * top) is 270, so TinyBar ships with turn_180 on. Inverting `up` and turn_180 together changes nothing once the IMU
+ * top) is 270, so MiniBar ships with turn_180 on. Inverting `up` and turn_180 together changes nothing once the IMU
  * has a reading (both invert, and cancel); it only changes which pose "upright", the default, means. */
 int brd_lcd_rotation(bool flipped, bool turn_180);
 
@@ -274,7 +274,7 @@ int64_t brd_player_wait_ms(const brd_player_t *p, int64_t now_ms);
 bool brd_player_amp_wanted(const brd_player_t *p, int64_t now_ms);
 
 /* ---------------------------------------------------------------------------------------------------------------
- * RTC: the PCF85063's seven time registers, 0x04 (seconds) to 0x0A (years), in BCD, 24-hour mode. TinyBar keeps UTC
+ * RTC: the PCF85063's seven time registers, 0x04 (seconds) to 0x0A (years), in BCD, 24-hour mode. MiniBar keeps UTC
  * in it. Bit 7 of the seconds register is OS (oscillator stopped): set at power-on, cleared by writing the time.
  * ------------------------------------------------------------------------------------------------------------- */
 

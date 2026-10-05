@@ -1,9 +1,9 @@
 /*
- * tb_types.h: types shared by every TinyBar module. Pure C, no ESP-IDF headers, so it builds on Linux too.
+ * tb_types.h: types shared by every MiniBar module. Pure C, no ESP-IDF headers, so it builds on Linux too.
  *
  * Owner: core builder. Other modules include it read-only; ask the core builder for changes.
  *
- * Time: TinyBar keeps two clocks.
+ * Time: MiniBar keeps two clocks.
  *   tb_ms_t     monotonic milliseconds since boot (esp_timer_get_time() / 1000 on the device, a fake clock in
  *               tests). Every duration and timer (Pomodoro, alarm repeats, menus, toasts, the Mac time-out) runs on it.
  *   tb_epoch_t  wall-clock seconds since 1970 UTC. What the screen prints ("2:04 PM") and what calendar events use.
@@ -94,7 +94,7 @@ typedef enum {
     TB_WIFI_OFFLINE,
     TB_WIFI_SETUP,          /* QR code */
     TB_WIFI_CONNECTING,
-    TB_WIFI_CONNECTED,      /* "tinybar.local" for 3 s or until a tap */
+    TB_WIFI_CONNECTED,      /* "minibar.local" for 3 s or until a tap */
     TB_WIFI_FAILED,
 } tb_wifi_mode_t;
 

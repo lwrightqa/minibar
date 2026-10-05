@@ -31,12 +31,12 @@ final class HTTPTransportTests: XCTestCase {
     func test_makeRequestHeaders() throws {
         let bar = BarEndpoint.defaultHost
         let call = HTTPTransport.makeRequest(to: bar, Endpoints.call, body: Data("{}".utf8), token: Self.token, appVersion: "1.0 (12)")
-        XCTAssertEqual(call.url?.absoluteString, "http://tinybar.local/api/v1/call")
+        XCTAssertEqual(call.url?.absoluteString, "http://minibar.local/api/v1/call")
         XCTAssertEqual(call.httpMethod, "POST")
         XCTAssertEqual(call.value(forHTTPHeaderField: "Content-Type"), "application/json")
         XCTAssertEqual(call.value(forHTTPHeaderField: "Accept"), "application/json")
         XCTAssertEqual(call.value(forHTTPHeaderField: "Authorization"), "Bearer \(Self.token)")
-        XCTAssertEqual(call.value(forHTTPHeaderField: "User-Agent"), "TinyBarMac/1.0 (12) (api 1.0)")
+        XCTAssertEqual(call.value(forHTTPHeaderField: "User-Agent"), "MiniBarMac/1.0 (12) (api 1.0)")
         XCTAssertEqual(call.timeoutInterval, 5)
         XCTAssertEqual(call.cachePolicy, .reloadIgnoringLocalCacheData)
         XCTAssertFalse(call.httpShouldHandleCookies)
@@ -79,7 +79,7 @@ final class HTTPTransportTests: XCTestCase {
                        "the golden bytes (criterion 12)")
         XCTAssertEqual(received.headers["content-type"], "application/json")
         XCTAssertEqual(received.headers["authorization"], "Bearer \(Self.token)")
-        XCTAssertEqual(received.headers["user-agent"], "TinyBarMac/1.0 (12) (api 1.0)")
+        XCTAssertEqual(received.headers["user-agent"], "MiniBarMac/1.0 (12) (api 1.0)")
         XCTAssertEqual(received.headers["host"], "127.0.0.1:\(server.port)", "the bar checks Host (api.md 2.2)")
         XCTAssertNil(received.headers["cookie"])
         await wifi.close()
@@ -124,7 +124,7 @@ final class HTTPTransportTests: XCTestCase {
                 return .respond(status: 202, body: #"{"ok": true, "pairing_id": "d407580a9215e992", "expires_in_s": 120, "code_length": 6, "attempts": 3}"#)
             case "/api/v1/pair":
                 if request.bodyText.contains("482913") {
-                    return .respond(status: 200, body: #"{"ok": true, "token": "tb1_w1rV1lN4jm2ohruSAozMZxVlcceAL7yS8r45__-ref4", "token_id": "74d8a526", "scope": "call", "device_id": "f412fa3f2a1c", "name": "TinyBar 2A1C", "host": "tinybar.local"}"#)
+                    return .respond(status: 200, body: #"{"ok": true, "token": "tb1_w1rV1lN4jm2ohruSAozMZxVlcceAL7yS8r45__-ref4", "token_id": "74d8a526", "scope": "call", "device_id": "f412fa3f2a1c", "name": "MiniBar 2A1C", "host": "minibar.local"}"#)
                 }
                 return .respond(status: 403, body: #"{"ok": false, "error": "wrong_code", "message": "That code doesn't match. 2 tries left.", "field": "code", "attempts_left": 2}"#)
             default:
@@ -160,13 +160,13 @@ final class HTTPTransportTests: XCTestCase {
         let wifi = transport()
         let idle = CallRequest(client: Self.client, session: "q8Zr2Lx0", seq: 1, active: false)
 
-        server.respond(status: 401, #"{"ok": false, "error": "unauthorized", "message": "Pair with this TinyBar first.", "field": null}"#)
+        server.respond(status: 401, #"{"ok": false, "error": "unauthorized", "message": "Pair with this MiniBar first.", "field": null}"#)
         do {
             _ = try await wifi.sendCall(idle)
             XCTFail("expected unauthorized")
         } catch let error as BarError {
             XCTAssertTrue(error.isUnauthorized)
-            XCTAssertEqual(error, .api(APIErrorBody(error: .unauthorized, message: "Pair with this TinyBar first.", field: nil), httpStatus: 401))
+            XCTAssertEqual(error, .api(APIErrorBody(error: .unauthorized, message: "Pair with this MiniBar first.", field: nil), httpStatus: 401))
         }
 
         // A status from the HTTP server itself, without a JSON body (api.md 2.5).
@@ -251,7 +251,7 @@ final class HTTPTransportTests: XCTestCase {
         await XCTAssertThrowsBarError(try await wifi.status(), .closed)
         XCTAssertEqual(server.requests.count, 0)
         XCTAssertEqual(wifi.endpointDescription, "127.0.0.1:\(server.port)")
-        XCTAssertEqual(HTTPTransport(endpoint: .defaultHost, token: nil, appVersion: "1").endpointDescription, "tinybar.local")
+        XCTAssertEqual(HTTPTransport(endpoint: .defaultHost, token: nil, appVersion: "1").endpointDescription, "minibar.local")
     }
 
     func test_cancellingTheTaskCancelsTheRequest() async throws {

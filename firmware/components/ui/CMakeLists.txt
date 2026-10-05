@@ -1,4 +1,4 @@
-# ui: TinyBar's LVGL screens in Bold Signal, plus the pure view model (view/) and build-time assets.
+# ui: MiniBar's LVGL screens in Bold Signal, plus the pure view model (view/) and build-time assets.
 # On the device: an ESP-IDF component. On Linux: view/ alone for the host tests (tb_ui_view), and with LVGL_DIR set,
 # the LVGL layer too (tb_ui) for the snapshot tool in host/. Owner: ui builder.
 set(TB_UI_VIEW_SRCS view/ui_view.c view/ui_theme.c)

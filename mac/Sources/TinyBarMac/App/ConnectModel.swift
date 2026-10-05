@@ -15,21 +15,21 @@ final class ConnectModel {
     }
 
     let engine: TinyBarEngine
-    /// First launch: "Welcome to TinyBar", the intro, the login checkbox.
+    /// First launch: "Welcome to MiniBar", the intro, the login checkbox.
     let welcome: Bool
 
     private(set) var page: Page = .usb
     /// The Wi-Fi page's pairing flow, while that page shows.
     private(set) var flow: WiFiPairingFlow?
 
-    /// Start TinyBar when you log in (first launch only). Applied when the
+    /// Start MiniBar when you log in (first launch only). Applied when the
     /// window closes, by either button.
     var startAtLogin = true
     /// Why macOS refused the login item, shown under the checkbox (6.2). The
     /// window then stays open until Done or Not Now is pressed again.
     private(set) var loginProblem: LoginItemStatus?
 
-    /// No TinyBar on USB after 20 seconds: show the cable hint.
+    /// No MiniBar on USB after 20 seconds: show the cable hint.
     private(set) var stillLooking = false
 
     /// Wi-Fi page: the Enter Address… field.
@@ -37,7 +37,7 @@ final class ConnectModel {
     var addressText = ""
     /// Wi-Fi page: the digits typed so far (at most 6).
     private(set) var codeDigits = ""
-    /// The last search found more than one bar (shows "Choose another TinyBar").
+    /// The last search found more than one bar (shows "Choose another MiniBar").
     private(set) var foundSeveralBars = false
 
     private let closeWindow: @MainActor () -> Void
@@ -108,7 +108,7 @@ final class ConnectModel {
     }
 
     var barName: String {
-        engine.state.connection.bar?.name ?? engine.state.connection.info?.name ?? "TinyBar"
+        engine.state.connection.bar?.name ?? engine.state.connection.info?.name ?? "MiniBar"
     }
 
     /// Waits 20 seconds, then shows the cable hint (if still not connected).
@@ -119,29 +119,29 @@ final class ConnectModel {
         }
     }
 
-    /// The line under "Connected to TinyBar 2A1C over USB." (5.2), if any.
+    /// The line under "Connected to MiniBar 2A1C over USB." (5.2), if any.
     var usbDetailLine: String? {
         let state = engine.state
         let connection = state.connection
         guard connection.link == .usb else { return nil }
         if connection.tokenLimitReached {
-            return "It works over USB. To use Wi-Fi too, remove a device on TinyBar’s Remote; it can keep 10."
+            return "It works over USB. To use Wi-Fi too, remove a device on MiniBar’s Remote; it can keep 10."
         }
         guard state.settings.useWiFi, let wifi = connection.info?.wifi else { return nil }
         if wifi == .connected, connection.wifiReachableHere == false {
             // Checked once after plugging in (mac-app-ux.md 4.3): client
             // isolation or a VPN keeps this Mac from the bar's address.
-            return "This Mac can’t reach TinyBar over this Wi-Fi network, so it works only while plugged in."
+            return "This Mac can’t reach MiniBar over this Wi-Fi network, so it works only while plugged in."
         }
         if wifi == .connected {
             let explain = localNetworkHintDecision
                 ?? (AppInfo.hasLocalNetworkPrivacy && !state.settings.didExplainLocalNetwork)
             return explain
-                ? "When it isn’t plugged in, it uses Wi-Fi. If your Mac asks whether TinyBar can find devices on your local network, choose Allow."
+                ? "When it isn’t plugged in, it uses Wi-Fi. If your Mac asks whether MiniBar can find devices on your local network, choose Allow."
                 : "When it isn’t plugged in, it uses Wi-Fi."
         }
         if wifi == .offline || wifi == .setup {
-            return "TinyBar isn’t on Wi-Fi, so it works only while plugged in."
+            return "MiniBar isn’t on Wi-Fi, so it works only while plugged in."
         }
         return nil
     }
@@ -202,7 +202,7 @@ final class ConnectModel {
         flow?.startLooking()
     }
 
-    /// "Didn't see a code? Choose another TinyBar."
+    /// "Didn't see a code? Choose another MiniBar."
     func chooseAnotherBar() {
         choosePairedBar = false
         codeDigits = ""
@@ -213,7 +213,7 @@ final class ConnectModel {
         flow?.choose(bar)
     }
 
-    /// Show Code on TinyBar / Show a New Code.
+    /// Show Code on MiniBar / Show a New Code.
     func requestCode() {
         guard let flow else { return }
         codeDigits = ""

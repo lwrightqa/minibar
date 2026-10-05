@@ -105,7 +105,7 @@ final class QAEngineScenarios {
         await rig.engine.shutdown()
     }
 
-    /// mac-app-ux.md 6.4: "Use Wi-Fi when TinyBar isn't plugged in" off means
+    /// mac-app-ux.md 6.4: "Use Wi-Fi when MiniBar isn't plugged in" off means
     /// "USB only, no browsing". Expected: the Bonjour browser stops.
     func wifiOffStopsBonjour() async throws {
         let rig = EngineRig.paired()
@@ -114,7 +114,7 @@ final class QAEngineScenarios {
         try rig.engine.updateSettings { $0.useWiFi = false }
         await rig.settle()
         XCTAssertTrue(rig.discovery.stops >= 1 && !rig.discovery.isRunning,
-                      "the platform browser keeps browsing _tinybar._tcp with Wi-Fi off (BarDiscoveryHub never stops it before quit)")
+                      "the platform browser keeps browsing _minibar._tcp with Wi-Fi off (BarDiscoveryHub never stops it before quit)")
         await rig.engine.shutdown()
     }
 
@@ -129,7 +129,7 @@ final class QAEngineScenarios {
         XCTAssertTrue(rig.discovery.isRunning)
         // The bar is found at a new address on the new run, and used at once.
         rig.factory.place(rig.bar, at: BarEndpoint(host: "10.0.4.43"))
-        rig.discovery.emit([DiscoveredBar(name: "TinyBar 2A1C", deviceID: "f412fa3f2a1c", auth: .bearer,
+        rig.discovery.emit([DiscoveredBar(name: "MiniBar 2A1C", deviceID: "f412fa3f2a1c", auth: .bearer,
                                           endpoint: BarEndpoint(host: "10.0.4.43"))])
         await rig.settle()
         XCTAssertEqual(rig.engine.state.connection.phase, .connected)

@@ -38,7 +38,7 @@ void fake_reset(void)
 {
     fake_now = (tb_clock_t){.mono = 1000, .wall = FAKE_WALL, .valid = true};
     fake_wifi = (net_wifi_info_t){.state = NET_WIFI_CONNECTED, .sta_up = true, .ssid = "Office-WiFi", .ip = "10.0.4.42",
-                                  .host = "tinybar.local", .rssi = -61};
+                                  .host = "minibar.local", .rssi = -61};
     fake_time_source = NET_TIME_NTP;
     memset(&fake_cal, 0, sizeof fake_cal);
     memset(fake_networks, 0, sizeof fake_networks);

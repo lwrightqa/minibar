@@ -57,7 +57,7 @@ public struct ReachabilityTracker: Hashable, Sendable {
     }
 
     /// Inside a grace period: nothing has gotten through since it started, and
-    /// 15 seconds haven't passed yet ("Looking for TinyBar…").
+    /// 15 seconds haven't passed yet ("Looking for MiniBar…").
     public func isInGrace(at now: Date) -> Bool {
         guard let graceEnd else { return false }
         return now < graceEnd
@@ -72,11 +72,11 @@ public struct ReachabilityTracker: Hashable, Sendable {
 
 /// What the link chooser knows (api.md 6.8, 16; mac-app-ux.md 6.4).
 public struct LinkInputs: Hashable, Sendable {
-    /// A TinyBar answered `hello` on USB and its port is open.
+    /// A MiniBar answered `hello` on USB and its port is open.
     public var usbReady: Bool
     /// Pause USB is on.
     public var usbPaused: Bool
-    /// "Use Wi-Fi when TinyBar isn't plugged in" is on.
+    /// "Use Wi-Fi when MiniBar isn't plugged in" is on.
     public var wifiEnabled: Bool
     /// The best Wi-Fi address for the paired bar (Bonjour match by `device_id`,
     /// manual address, or the last that worked), if any.

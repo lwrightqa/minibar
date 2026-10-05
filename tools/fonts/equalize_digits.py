@@ -25,8 +25,8 @@ The output is deterministic: the same input and options give a byte-identical fi
 table's modified date is kept from the input unless SOURCE_DATE_EPOCH is set).
 
 Usage (see README.md):
-  python3 equalize_digits.py 'BitcountPropSingle[CRSV,ELSH,ELXP,slnt,wght].ttf' TinyBarBitcount-Round.ttf \
-      --family "TinyBar Bitcount Round" --axes wght=400,ELSH=0,CRSV=0,ELXP=0,slnt=0 \
+  python3 equalize_digits.py 'BitcountPropSingle[CRSV,ELSH,ELXP,slnt,wght].ttf' MiniBarBitcount-Round.ttf \
+      --family "MiniBar Bitcount Round" --axes wght=400,ELSH=0,CRSV=0,ELXP=0,slnt=0 \
       --grid 100 --colon --tnum-shapes --license tools/fonts/licenses/Bitcount-OFL.txt
 """
 
@@ -76,11 +76,11 @@ def rename(font, family, note):
     version = font['head'].fontRevision
     set_name(font, 1, family)
     set_name(font, 2, 'Regular')
-    set_name(font, 3, f'{version:.3f};TinyBar;{ps}')
+    set_name(font, 3, f'{version:.3f};MiniBar;{ps}')
     set_name(font, 4, family)
     set_name(font, 6, ps)
     old5 = name.getDebugName(5) or f'Version {version:.3f}'
-    set_name(font, 5, old5 + '; TinyBar equal-width digits')
+    set_name(font, 5, old5 + '; MiniBar equal-width digits')
     set_name(font, 10, note)
     for nid in (16, 17, 21, 22, 25):                   # typographic/WWS family, variations PS prefix
         name.removeNames(nameID=nid)
@@ -297,7 +297,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('input', help='static TTF, or a variable TTF together with --axes')
     ap.add_argument('output')
-    ap.add_argument('--family', help='family name of the output (default: input family + " TinyBar")')
+    ap.add_argument('--family', help='family name of the output (default: input family + " MiniBar")')
     ap.add_argument('--axes', help='pin a variable font first, e.g. wght=400,ELSH=0,CRSV=0,ELXP=0,slnt=0')
     ap.add_argument('--grid', type=int, default=1,
                     help='round each shift to a multiple of this many font units (Bitcount: 100, one dot)')
@@ -336,7 +336,7 @@ def main(argv=None):
     if a.license:
         texts.append(open(a.license, encoding='utf-8').read())
     rfns = declared_rfns(texts)
-    family = a.family or f'{src_family} TinyBar'
+    family = a.family or f'{src_family} MiniBar'
     ps_family = re.sub(r'[^A-Za-z0-9]', '', family)
     clashes = [r for r in rfns if norm(r) in norm(family) or norm(r) in norm(ps_family)]
     if clashes:
@@ -363,7 +363,7 @@ def main(argv=None):
     if 'OS/2' in font:
         font['OS/2'].recalcAvgCharWidth(font)
 
-    note = (f'Modified by the TinyBar project from {src_desc}: digits 0-9 share one advance width '
+    note = (f'Modified by the MiniBar project from {src_desc}: digits 0-9 share one advance width '
             f'({target} units) with centered outlines'
             + (', using the tabular-figure shapes' if remapped else '')
             + (', the colon has the digits\' side bearings' if colon else '')

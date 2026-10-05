@@ -12,7 +12,7 @@
  *          tickSound(), decisions.md "Ticking during focus"). One a second while ticking is on, the first a second
  *          after it's turned on.
  * A chime and a tick that overlap are mixed, as the mock-up's Web Audio does; a new chime restarts the chime.
- * Loudness is CONFIG_TINYBAR_AUDIO_VOLUME (menuconfig: TinyBar board). It's an open office: tune it on the real bar.
+ * Loudness is CONFIG_TINYBAR_AUDIO_VOLUME (menuconfig: MiniBar board). It's an open office: tune it on the real bar.
  * core decides when (TB_FX_CHIME, TB_FX_TICKING) and never asks for sound during a call or meeting.
  * The amplifier (EXIO7) is switched on around sounds when CONFIG_TINYBAR_AUDIO_AMP_GATE is set (the default).
  */

@@ -1,6 +1,6 @@
 # board: Waveshare ESP32-S3-Touch-LCD-3.49 V2 support
 
-Everything TinyBar does with the hardware: power hold and power off, the panel and backlight, touch, BOOT and PWR,
+Everything MiniBar does with the hardware: power hold and power off, the panel and backlight, touch, BOOT and PWR,
 flip detection, the clock chip, and sound. The interface is `include/board.h`; the start-up order is in its header
 comment and in `main/app_main.c`.
 
@@ -18,7 +18,7 @@ logic/        pure C, no ESP-IDF headers: backlight curve, button debouncer, fli
               PCF85063 registers, touch decoding. Tested in test/host/board/.
 src/          the drivers: board_exio (TCA9554), board_power, board_display (panel, LVGL, backlight),
               board_touch, board_buttons, board_imu, board_rtc, board_audio, board_bringup (self-test)
-Kconfig       menuconfig → "TinyBar board": IMU axis, backlight dark point, volume, amplifier gating, QSPI clock,
+Kconfig       menuconfig → "MiniBar board": IMU axis, backlight dark point, volume, amplifier gating, QSPI clock,
               bring-up self-test
 ```
 
@@ -36,7 +36,7 @@ repository (`schematic/ESP32-S3-Touch-LCD-3.49 V2.pdf`):
 | Buttons | 11_FactoryProgram `button_bsp` | 5 ms polling from an esp_timer, active low with pull-ups | Own debouncer (20 ms) and edge events; core does the timing |
 | Backlight | 10_LVGL_V9_Test `lcd_bl_pwm_bsp` | LEDC, 8-bit, 50 kHz, inverted | A curve from the mock-up's Light levels, and the dark point from the schematic (below) |
 | IMU | 03_I2C_QMI8658 (SensorLib) | Reset, CTRL1 0x40, registers, STATUS0 data-ready (bit 0) | Accelerometer only, ±2 g, 62.5 Hz, low-pass on; 0x6A tried after 0x6B; before the first frame, waits for settled samples (below) |
-| RTC | 02_I2C_PCF85063 (SensorLib) | Registers, BCD, 24-hour mode, OS flag | TinyBar's mark in the RAM byte, so the factory program's fixed local time isn't taken as UTC |
+| RTC | 02_I2C_PCF85063 (SensorLib) | Registers, BCD, 24-hour mode, OS flag | MiniBar's mark in the RAM byte, so the factory program's fixed local time isn't taken as UTC |
 | Audio | 08_Audio_Test `codec_board` S3_LCD_3_49 | ES8311 via esp_codec_dev, MCLK 7, BCLK 15, WS 46, DOUT 45, 24 kHz | Standard I2S output only (no TDM, the microphones are unused); amplifier gated |
 
 What the schematic adds (none of it is in Waveshare's code):
@@ -54,7 +54,7 @@ What the schematic adds (none of it is in Waveshare's code):
 - **IMU address.** SA0 is grounded; Waveshare's code uses 0x6B for it. Both are probed.
 - **RTC power.** 3V3 or the battery through diodes: with no battery, unplugging USB loses the time (OS set).
 
-## Configuration (menuconfig → TinyBar board)
+## Configuration (menuconfig → MiniBar board)
 
 | Option | Default | Set it from |
 |---|---|---|
@@ -151,7 +151,7 @@ put them in `sdkconfig.defaults`).
    - No pop when the amplifier switches on, and no hiss after the sound (1.5 s later it switches off). If switching
      it pops, turn `TINYBAR_AUDIO_AMP_GATE` off and listen for hiss instead.
    - A Pomodoro alarm repeats the chime every 4 s for up to a minute (core's timing).
-9. **RTC.** First boot after flashing: `RTC time not trusted (never set by TinyBar)`. Once Wi-Fi time (SNTP) or the
+9. **RTC.** First boot after flashing: `RTC time not trusted (never set by MiniBar)`. Once Wi-Fi time (SNTP) or the
    Mac has set the clock: `RTC set to ... UTC`. Restart (Restart tile): `clock set from the RTC`, and the clock is
    right before Wi-Fi connects. Unplug USB for a minute (no battery): `oscillator stopped (power lost)`.
 10. **Watchdog and headroom.** No `task_wdt` messages in an hour of normal use, including during calendar syncs. The

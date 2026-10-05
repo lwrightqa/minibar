@@ -1,12 +1,12 @@
 /*
- * tb_test.h: a tiny test harness for TinyBar's host tests (no dependencies). Owner: lead developer.
+ * tb_test.h: a tiny test harness for MiniBar's host tests (no dependencies). Owner: lead developer.
  *
  *   #include "tb_test.h"
  *   TB_TEST(settings_defaults) {
  *       tb_settings_t s;
  *       tb_settings_defaults(&s, "f412fa3f2a1c");
  *       TB_EQ_INT(s.pomodoro.focus_min, 25);
- *       TB_EQ_STR(s.device.name, "TinyBar 2A1C");
+ *       TB_EQ_STR(s.device.name, "MiniBar 2A1C");
  *   }
  *
  * Every TB_TEST in a module directory (every .c file in test/host/<module>/) is linked into that module's runner and run by

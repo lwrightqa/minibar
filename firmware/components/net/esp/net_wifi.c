@@ -1,9 +1,9 @@
 /*
- * net_wifi.c: Wi-Fi for TinyBar. Owner: net builder.
+ * net_wifi.c: Wi-Fi for MiniBar. Owner: net builder.
  *
  * The station joins the office Wi-Fi with the saved credentials (WPA2/WPA3 Personal, open, or WPA2-Enterprise
  * "work login" with PEAP/TTLS through esp_eap_client) and reconnects with a back-off when it drops. The setup
- * network is APSTA: the open "TinyBar-Setup" access point at NET_SETUP_IP with a DNS catch-all (net_dns.c) and the
+ * network is APSTA: the open "MiniBar-Setup" access point at NET_SETUP_IP with a DNS catch-all (net_dns.c) and the
  * setup page (net_http.c); the station side tries the chosen network while the access point stays up, so the phone
  * can read the result (api.md 13.3). Once the bar has an address: mDNS (api.md 3) and SNTP.
  *
@@ -29,7 +29,7 @@
  * own Wi-Fi storage would.
  *
  * Skip is remembered (key "skipped" in the same namespace): decisions.md says Skip uses the bar offline, so the next
- * start stays offline with the radio off, instead of opening the open TinyBar-Setup network again. Set up (the QR
+ * start stays offline with the radio off, instead of opening the open MiniBar-Setup network again. Set up (the QR
  * code) and a join that works clear it.
  */
 #include <stdlib.h>
@@ -63,7 +63,7 @@
 
 static const char *TAG = "net.wifi";
 
-#define SETUP_SSID        "TinyBar-Setup"
+#define SETUP_SSID        "MiniBar-Setup"
 #define SCAN_MAX          20
 #define JOIN_TIMEOUT_US   (30 * 1000000LL)  /* a join that hasn't worked in 30 s has failed */
 #define NO_ADDRESS_US     (15 * 1000000LL)  /* joined but no address in 15 s: often a sign-in-page network */
@@ -131,7 +131,7 @@ static bool s_scanning;
 
 /* mDNS and time */
 static bool s_mdns_on, s_sntp_on;
-static char s_host[64] = "tinybar.local";
+static char s_host[64] = "minibar.local";
 static net_time_source_t s_time_src = NET_TIME_NONE;
 static int64_t s_last_ntp_ms = -1;
 
@@ -591,12 +591,12 @@ static void mdns_start(void)
         ESP_LOGE(TAG, "mDNS: %s", esp_err_to_name(err));
         return;
     }
-    mdns_hostname_set("tinybar");
+    mdns_hostname_set("minibar");
     mdns_instance_name_set(net_bar_name());
     mdns_register_hostname_changed_callback(on_host_changed, NULL);
     mdns_txt_item_t txt[5];
     mdns_txt(txt);
-    mdns_service_add(net_bar_name(), "_tinybar", "_tcp", 80, txt, 5);
+    mdns_service_add(net_bar_name(), "_minibar", "_tcp", 80, txt, 5);
     mdns_txt_item_t page[1] = {{"path", "/"}};
     mdns_service_add(net_bar_name(), "_http", "_tcp", 80, page, 1);
     char got[MDNS_NAME_BUF_LEN];
@@ -608,7 +608,7 @@ void net_mdns_set_name(const char *name)
 {
     if (!s_mdns_on) return;
     mdns_instance_name_set(name);
-    mdns_service_instance_name_set("_tinybar", "_tcp", name);
+    mdns_service_instance_name_set("_minibar", "_tcp", name);
     mdns_service_instance_name_set("_http", "_tcp", name);
 }
 
@@ -686,7 +686,7 @@ static void ap_give_up(void)
     UNLOCK();
 }
 
-/* Open TinyBar-Setup's access point. The caller holds the radio lock. */
+/* Open MiniBar-Setup's access point. The caller holds the radio lock. */
 static void ap_open(void)
 {
     /* The DHCP server, changed while it's stopped (as ESP-IDF's examples do): the setup address, and the bar as the
@@ -880,12 +880,12 @@ esp_err_t net_wifi_init(void)
     s_jobs = xQueueCreate(8, sizeof(job_t));
     if (!s_lock || !s_radio || !s_scan_done || !s_jobs) return ESP_ERR_NO_MEM;
     creds_load();
-    /* The clock: the RTC set it at boot if it held a time TinyBar wrote (board_rtc_init runs before net_init). */
+    /* The clock: the RTC set it at boot if it held a time MiniBar wrote (board_rtc_init runs before net_init). */
     if (time(NULL) > 1735689600) s_time_src = NET_TIME_RTC;     /* after 2025-01-01 */
 
     s_sta = esp_netif_create_default_wifi_sta();
     s_ap = esp_netif_create_default_wifi_ap();
-    esp_netif_set_hostname(s_sta, "tinybar");
+    esp_netif_set_hostname(s_sta, "minibar");
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     esp_err_t err = esp_wifi_init(&cfg);
     if (err != ESP_OK) return err;

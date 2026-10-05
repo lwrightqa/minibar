@@ -4,7 +4,7 @@ import Security
 import TinyBarCore
 
 /// Bar tokens in the login Keychain (api.md 16): one generic-password item per
-/// bar, `kSecAttrService` "TinyBar", `kSecAttrAccount` = `device_id`,
+/// bar, `kSecAttrService` "MiniBar", `kSecAttrAccount` = `device_id`,
 /// `kSecAttrAccessible` = `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`,
 /// value = the token as UTF-8 data. Never UserDefaults or a file (criterion 20).
 ///
@@ -22,8 +22,8 @@ import TinyBarCore
 ///   only" isn't enforced; it's set anyway, for if the item ever moves.
 /// - **Blocking:** the item's access list trusts the build that created it
 ///   by its designated requirement, which for an ad-hoc signature is its
-///   cdhash, new with every build. After a rebuild, macOS shows "TinyBar wants
-///   to use your confidential information stored in “TinyBar”", and the call
+///   cdhash, new with every build. After a rebuild, macOS shows "MiniBar wants
+///   to use your confidential information stored in “MiniBar”", and the call
 ///   waits until it's answered. So no method here may run on the main
 ///   thread: the core calls them from the connection actor and, for pairing,
 ///   from a detached task. `scripts/build-app.sh` can sign ad-hoc builds with
@@ -79,8 +79,8 @@ final class KeychainTokenStore: TokenStore, @unchecked Sendable {
         var item = query
         item[kSecValueData as String] = data
         item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        item[kSecAttrLabel as String] = "TinyBar"
-        item[kSecAttrDescription as String] = "TinyBar pairing"
+        item[kSecAttrLabel as String] = "MiniBar"
+        item[kSecAttrDescription as String] = "MiniBar pairing"
         let added = SecItemAdd(item as CFDictionary, nil)
         guard added == errSecSuccess else {
             throw KeychainError(operation: status == errSecItemNotFound ? "add" : "update", status: added)

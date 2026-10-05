@@ -43,7 +43,7 @@ static void base_opts(tb_app_t *a, tb_clock_t *now, tb_status_t st, bool wifi)
                    "On a deadline until 3 PM, message me instead", REF, 1, 31 * MIN + 18000, tb_local_yyyymmdd(REF));
     if (wifi) {
         tb_strlcpy(a->wifi_ssid, "Office-WiFi", sizeof a->wifi_ssid);
-        tb_app_wifi_link(a, true, "10.0.4.42", "tinybar.local", now);
+        tb_app_wifi_link(a, true, "10.0.4.42", "minibar.local", now);
     }
     run(a, now, TB_BOOT_SPLASH_MS + 100);
     quiet_toast(a);
@@ -299,7 +299,7 @@ static void s_setup_connecting(tb_app_t *a, tb_clock_t *n)
 static void s_setup_connected(tb_app_t *a, tb_clock_t *n)
 {
     base_opts(a, n, TB_ST_CLOCK, false);
-    tb_app_wifi_connected(a, "Office-WiFi", "10.0.4.42", "tinybar.local", n);
+    tb_app_wifi_connected(a, "Office-WiFi", "10.0.4.42", "minibar.local", n);
     quiet_toast(a);
 }
 static void s_setup_failed(tb_app_t *a, tb_clock_t *n)
@@ -388,18 +388,18 @@ static void s_menu_wifi_none(tb_app_t *a, tb_clock_t *n)
     s_menu_quick(a, n);
     tap_action(a, n, TB_ACT_WIFI);
 }
-/* Nothing paired, after a name clash: "tinybar-2.local" (90 px) doesn't fit the tile, so the foot gives the IP. */
+/* Nothing paired, after a name clash: "minibar-2.local" (93 px) doesn't fit the tile, so the foot gives the IP. */
 static void s_menu_wifi_none_renamed(tb_app_t *a, tb_clock_t *n)
 {
     s_menu_quick(a, n);
-    tb_app_wifi_link(a, true, "10.0.4.42", "tinybar-2.local", n);
+    tb_app_wifi_link(a, true, "10.0.4.42", "minibar-2.local", n);
     tap_action(a, n, TB_ACT_WIFI);
 }
 /* ...and an IP address too long as well: "pair at its" over "IP address", pointing at the Network tile. */
 static void s_menu_wifi_none_longip(tb_app_t *a, tb_clock_t *n)
 {
     s_menu_quick(a, n);
-    tb_app_wifi_link(a, true, "192.168.100.200", "tinybar-2.local", n);
+    tb_app_wifi_link(a, true, "192.168.100.200", "minibar-2.local", n);
     tap_action(a, n, TB_ACT_WIFI);
 }
 /* Ten devices, the most a bar keeps: "Full", and Forget all names them on two lines at most. */

@@ -263,7 +263,7 @@ static void run_effects(void)
 
 /* ---------- bring-up figures ---------- */
 
-/* Every task we know of by name, TinyBar's and ESP-IDF's: the bytes of stack it has never used. A name that doesn't
+/* Every task we know of by name, MiniBar's and ESP-IDF's: the bytes of stack it has never used. A name that doesn't
  * exist (mDNS before the first address, the setup DNS before setup) is left out. */
 static const char *const TASKS[] = {"app", "main", "net", "usb_rx", "dns", "httpd", "imu", "audio", "cal_sync",
                                     "tiT", "sys_evt", "wifi", "esp_timer", "mdns", "Tmr Svc", "ipc0", "ipc1", "IDLE0",

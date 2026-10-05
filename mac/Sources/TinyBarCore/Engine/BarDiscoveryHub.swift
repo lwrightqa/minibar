@@ -5,7 +5,7 @@ import Foundation
 ///
 /// The platform browser runs only while at least one client wants it: it's
 /// started for the first client and stopped when the last one stops, so
-/// turning off "Use Wi-Fi when TinyBar isn't plugged in" means no browsing at
+/// turning off "Use Wi-Fi when MiniBar isn't plugged in" means no browsing at
 /// all (mac-app-ux.md 6.4). A client that starts while it's already running
 /// gets the bars found so far at once. Each run of the browser starts with an
 /// empty list, and callbacks from an earlier run are ignored.

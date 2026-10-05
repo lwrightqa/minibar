@@ -40,7 +40,7 @@ extern "C" {
 #define NET_REPLY_MAX  8192    /* response body and USB reply line */
 #define NET_API_VERSION "1.0"
 
-/* HTTP: the station network (the office Wi-Fi). SETUP: a request that came in on the TinyBar-Setup network. */
+/* HTTP: the station network (the office Wi-Fi). SETUP: a request that came in on the MiniBar-Setup network. */
 typedef enum { NET_VIA_HTTP = 0, NET_VIA_USB, NET_VIA_SETUP } net_via_t;
 
 typedef struct {
@@ -68,7 +68,7 @@ typedef struct {
     char etag[16];                  /* "\"r1842\"" for GET /api/v1/status, else "" */
     char set_cookie[160];           /* "" or a whole Set-Cookie value */
     char allow[40];                 /* for 405 */
-    bool www_authenticate;          /* add WWW-Authenticate: Bearer realm="TinyBar" */
+    bool www_authenticate;          /* add WWW-Authenticate: Bearer realm="MiniBar" */
     int retry_after_s;              /* > 0: add Retry-After */
 } net_resp_t;
 

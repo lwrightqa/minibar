@@ -1,5 +1,5 @@
 /*
- * tb_bus.h: the event bus between TinyBar's tasks and the app task.
+ * tb_bus.h: the event bus between MiniBar's tasks and the app task.
  *
  * Owner: lead developer.
  *

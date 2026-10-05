@@ -1,6 +1,6 @@
 // swift-tools-version:6.0
 //
-// TinyBar for Mac: a menu-bar app that shows "On a call" on a TinyBar when the
+// MiniBar for Mac: a menu-bar app that shows "On a call" on a MiniBar when the
 // Mac's microphone or camera is in use. See README.md.
 //
 // Targets:
@@ -23,8 +23,8 @@ let package = Package(
     platforms: [.macOS(.v14)],
     products: [
         .library(name: "TinyBarCore", targets: ["TinyBarCore"]),
-        // The app's executable. scripts/build-app.sh wraps it in TinyBar.app.
-        .executable(name: "TinyBar", targets: ["TinyBarMac"]),
+        // The app's executable. scripts/build-app.sh wraps it in MiniBar.app.
+        .executable(name: "MiniBar", targets: ["TinyBarMac"]),
     ],
     targets: [
         .target(name: "TinyBarCore"),

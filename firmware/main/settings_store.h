@@ -1,7 +1,10 @@
 /*
- * settings_store.h: settings and the bar's own state in NVS (namespace "tinybar"), with debounced writes so a
- * stream of changes costs one flash write. Owner: lead developer.
+ * settings_store.h: settings and the bar's own state in NVS, with debounced writes so a stream of changes costs one
+ * flash write. Owner: lead developer.
  *
+ * The namespace is "tinybar", the project's name before the rename to MiniBar, and it stays: it holds every bar's
+ * settings and state, and a new namespace would orphan them on the first start. The one stored value that carried
+ * the name, the default bar name, is migrated on load instead (tb_settings_migrate_name()).
  * Keys: "settings" (TB_SETTINGS_VERSION + tb_settings_t), "state" (own status, last status, message, today's
  * tomatoes and focused time with their date). A blob with an unknown version is ignored (defaults are used).
  */

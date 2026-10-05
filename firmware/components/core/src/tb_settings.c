@@ -10,6 +10,17 @@
 #include "tb_settings.h"
 #include "tb_text.h"
 
+/* "<prefix> " plus the last four characters of the id, upper case: "MiniBar 2A1C" (api.md section 3). */
+static void default_name(char *out, size_t cap, const char *prefix, const char *device_id)
+{
+    char tail[5] = "0000";
+    size_t n = device_id ? strlen(device_id) : 0;
+    if (n >= 4) {
+        for (int i = 0; i < 4; i++) tail[i] = (char)toupper((unsigned char)device_id[n - 4 + i]);
+    }
+    snprintf(out, cap, "%s %s", prefix, tail);
+}
+
 void tb_settings_defaults(tb_settings_t *s, const char *device_id)
 {
     memset(s, 0, sizeof(*s));
@@ -25,14 +36,18 @@ void tb_settings_defaults(tb_settings_t *s, const char *device_id)
     s->automatic.calendar = false;      /* true once an address is saved */
     s->automatic.mac = true;
     s->automatic.meeting_titles = false;
-    /* "TinyBar" plus the last four characters of the id, upper case: "TinyBar 2A1C" (api.md section 3, proposed). */
-    char tail[5] = "0000";
-    size_t n = device_id ? strlen(device_id) : 0;
-    if (n >= 4) {
-        for (int i = 0; i < 4; i++) tail[i] = (char)toupper((unsigned char)device_id[n - 4 + i]);
-    }
-    snprintf(s->device.name, sizeof(s->device.name), "TinyBar %s", tail);
+    default_name(s->device.name, sizeof(s->device.name), "MiniBar", device_id);
     s->device.time_zone[0] = '\0';
+}
+
+bool tb_settings_migrate_name(tb_settings_t *s, const char *device_id)
+{
+    /* "TinyBar 2A1C" is the default from before the rename, the one name the firmware wrote itself. */
+    char old_default[TB_DEVICE_NAME_BYTES];
+    default_name(old_default, sizeof old_default, "TinyBar", device_id);
+    if (strcmp(s->device.name, old_default) != 0) return false;
+    default_name(s->device.name, sizeof(s->device.name), "MiniBar", device_id);
+    return true;
 }
 
 static bool in_range(int v, int lo, int hi) { return v >= lo && v <= hi; }

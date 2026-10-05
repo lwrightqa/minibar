@@ -122,7 +122,7 @@ public struct PairReply: Codable, Hashable, Sendable {
     public var tokenID: String
     public var scope: TokenScope
     public var deviceID: String
-    /// The bar's name, "TinyBar 2A1C".
+    /// The bar's name, "MiniBar 2A1C".
     public var name: String
     /// The bar's mDNS name.
     public var host: String?

@@ -1,4 +1,4 @@
-menu "TinyBar board (Waveshare ESP32-S3-Touch-LCD-3.49 V2)"
+menu "MiniBar board (Waveshare ESP32-S3-Touch-LCD-3.49 V2)"
 
     choice TINYBAR_IMU_UP
         prompt "IMU axis that points up when the bar stands upright (side buttons on top)"

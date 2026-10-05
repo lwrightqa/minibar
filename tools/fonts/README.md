@@ -59,13 +59,13 @@ From the google/fonts repository. These are the files the font study used (SHA-2
 VF='BitcountPropSingle[CRSV,ELSH,ELXP,slnt,wght].ttf'
 
 # Round dots: headlines (100, 80, 60 and 50 px) and the timer and clock (120 px)
-python3 tools/fonts/equalize_digits.py "$VF" TinyBarBitcount-Round.ttf \
-  --family "TinyBar Bitcount Round" --axes wght=400,ELSH=0,CRSV=0,ELXP=0,slnt=0 \
+python3 tools/fonts/equalize_digits.py "$VF" MiniBarBitcount-Round.ttf \
+  --family "MiniBar Bitcount Round" --axes wght=400,ELSH=0,CRSV=0,ELXP=0,slnt=0 \
   --grid 100 --colon --tnum-shapes --license tools/fonts/licenses/Bitcount-OFL.txt
 
 # Squares: side value (40 px) and the hold-screen title
-python3 tools/fonts/equalize_digits.py "$VF" TinyBarBitcount-Square.ttf \
-  --family "TinyBar Bitcount Square" --axes wght=384.88,ELSH=50,CRSV=0,ELXP=0,slnt=0 \
+python3 tools/fonts/equalize_digits.py "$VF" MiniBarBitcount-Square.ttf \
+  --family "MiniBar Bitcount Square" --axes wght=384.88,ELSH=50,CRSV=0,ELXP=0,slnt=0 \
   --grid 100 --colon --tnum-shapes --license tools/fonts/licenses/Bitcount-OFL.txt
 ```
 
@@ -77,7 +77,7 @@ The script prints each digit's old advance, its shift and its new side bearings.
 
 A Modified Version may not use a **Reserved Font Name** (RFN). Neither Bitcount nor Handjet declares one. Both the name tables and the upstream `OFL.txt` files (in `licenses/`) were checked, and their copyright lines have no "with Reserved Font Name" clause.
 
-The outputs are still renamed ("TinyBar Bitcount Round" and "TinyBar Bitcount Square") so they can't be mistaken for the original. The script reads any RFN in the name table, and in `--license` when given, and refuses a family name that contains one.
+The outputs are still renamed ("MiniBar Bitcount Round" and "MiniBar Bitcount Square") so they can't be mistaken for the original. The script reads any RFN in the name table, and in `--license` when given, and refuses a family name that contains one.
 
 When the fonts ship, in the firmware source or a release, ship `licenses/Bitcount-OFL.txt` and `licenses/Handjet-OFL.txt` with them.
 
@@ -98,7 +98,7 @@ The result is 0.3% soft at 17 px (only the grave accent), and it stays sharp at 
 fonttools varLib.instancer 'Handjet[ELGR,ELSH,wght].ttf' wght=400 ELSH=2 ELGR=1 --static -o HandjetSolid-400.ttf
 
 # 2. Snap it to whole pixels at 17 px, renamed so it isn't mistaken for Handjet
-python3 tools/fonts/snap17.py HandjetSolid-400.ttf TinyBarHandjet-Snap17.ttf "TinyBar Handjet Snap17"
+python3 tools/fonts/snap17.py HandjetSolid-400.ttf MiniBarHandjet-Snap17.ttf "MiniBar Handjet Snap17"
 ```
 
 The mock-up (`docs/mockup.html`) and the font study (`docs/pixel-fonts.html`) embed a woff2 subset of the snapped font, covering ASCII and Latin-1, as "Handjet Snap17".
@@ -116,7 +116,7 @@ Use lv_font_conv 1.5.3, at whole-number sizes only, with `--autohint-off` (the a
 
 ```sh
 FULL=0x20-0x7E,0xB0,0xB7,0x2013,0x2014,0x2018,0x2019,0x201C,0x201D,0x2022,0x2026
-npx lv_font_conv@1.5.3 --font TinyBarBitcount-Round.ttf --size 100 --bpp 4 --autohint-off \
+npx lv_font_conv@1.5.3 --font MiniBarBitcount-Round.ttf --size 100 --bpp 4 --autohint-off \
   -r $FULL --format lvgl --lv-include lvgl.h -o tb_bitcount_round_100.c
 ```
 

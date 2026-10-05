@@ -1,5 +1,5 @@
 /*
- * app_main.c: TinyBar's start-up order. Owner: lead developer. See ARCHITECTURE.md section 4, "Start-up order".
+ * app_main.c: MiniBar's start-up order. Owner: lead developer. See ARCHITECTURE.md section 4, "Start-up order".
  *
  * The order matters:
  *   - Power hold comes FIRST: on battery, the board turns itself off again unless SYS_EN (TCA9554 EXIO6) is driven
@@ -65,7 +65,7 @@ void app_main(void)
 #if CONFIG_TINYBAR_RELEASE
     esp_log_level_set("*", ESP_LOG_WARN);
 #endif
-    ESP_LOGI(TAG, "TinyBar %s starting (%s%s)", esp_app_get_description()->version, reset_reason(),
+    ESP_LOGI(TAG, "MiniBar %s starting (%s%s)", esp_app_get_description()->version, reset_reason(),
              board_woke_from_pwr() ? ", PWR pressed" : "");
     if (hold != ESP_OK)
         ESP_LOGE(TAG, "power hold failed (%s): on battery the bar switches off when PWR is let go",
@@ -98,7 +98,7 @@ void app_main(void)
     if (!board_touch_init(disp)) ESP_LOGE(TAG, "touch failed; BOOT and PWR still work");
     ui_init(disp);
 
-    /* 6. The wall clock from the RTC, if it holds a time TinyBar wrote (or kept through a restart or deep sleep). */
+    /* 6. The wall clock from the RTC, if it holds a time MiniBar wrote (or kept through a restart or deep sleep). */
     bool rtc_valid = false;
     WARN_IF(board_rtc_init(&rtc_valid), "RTC");
     app_clock_set_valid(rtc_valid);

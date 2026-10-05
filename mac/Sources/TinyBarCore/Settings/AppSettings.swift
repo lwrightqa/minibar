@@ -14,9 +14,9 @@ public enum SettingsError: Error, Hashable, Sendable {
 public struct KnownBar: Hashable, Sendable, Codable {
     /// `device_id`. The Keychain account for its token.
     public var deviceID: String
-    /// "TinyBar 2A1C", from the latest `info`, `hello` or pairing reply.
+    /// "MiniBar 2A1C", from the latest `info`, `hello` or pairing reply.
     public var name: String
-    /// The bar's mDNS name, "tinybar.local", if it has Wi-Fi.
+    /// The bar's mDNS name, "minibar.local", if it has Wi-Fi.
     public var host: String?
     /// The last Wi-Fi address that worked (api.md 3: a fallback for networks
     /// where multicast is unreliable).
@@ -44,10 +44,10 @@ public struct AppSettings: Hashable, Sendable, Codable {
     /// `client`: made once per install.
     public var installID: String
     public var detection: DetectionSettings
-    /// Start TinyBar when you log in (the wish; `LoginItemService` says what
+    /// Start MiniBar when you log in (the wish; `LoginItemService` says what
     /// macOS actually did).
     public var launchAtLogin: Bool
-    /// Use Wi-Fi when TinyBar isn't plugged in. Off: USB only, no browsing,
+    /// Use Wi-Fi when MiniBar isn't plugged in. Off: USB only, no browsing,
     /// no Local Network prompt (mac-app-ux.md 6.4).
     public var useWiFi: Bool
     /// Advanced › Address. `nil`: find the bar automatically.

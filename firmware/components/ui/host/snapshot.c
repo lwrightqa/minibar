@@ -1,5 +1,5 @@
 /*
- * snapshot.c: render TinyBar's screens on Linux and write one PNG per scene. Owner: ui builder.
+ * snapshot.c: render MiniBar's screens on Linux and write one PNG per scene. Owner: ui builder.
  *
  *   tinybar_snapshot <out-dir> [scene ...]     every scene in host/ui_scenes.c, or the ones named
  *   tinybar_snapshot --list                    the scenes and what each shows

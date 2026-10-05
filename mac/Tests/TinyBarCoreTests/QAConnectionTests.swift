@@ -20,7 +20,7 @@ final class QAConnectionTests: XCTestCase {
         let bar = FakeBar(clock: ManualClock())
         factory.plug(bar, registryID: ConnectionRig.espressif.registryID)
         let tokens = InMemoryTokenStore(["f412fa3f2a1c": "tb1_" + String(repeating: "A", count: 43)])
-        let known = KnownBar(deviceID: "f412fa3f2a1c", name: "TinyBar 2A1C", host: "tinybar.local", auth: .bearer, tokenID: "1")
+        let known = KnownBar(deviceID: "f412fa3f2a1c", name: "MiniBar 2A1C", host: "minibar.local", auth: .bearer, tokenID: "1")
         let connection = BarConnection(
             configuration: .init(clientID: Self.client, sessionID: "q8Zr2Lx0", appVersion: "1.0 (12)", useWiFi: false),
             bar: known, clock: clock, transports: factory, tokens: tokens)
@@ -146,7 +146,7 @@ final class QAConnectionTests: XCTestCase {
     }
 
     /// mac-app-ux.md 5.2: at the token limit the window says "To use Wi-Fi too,
-    /// remove a device on TinyBar's Remote". The user does, with the bar still
+    /// remove a device on MiniBar's Remote". The user does, with the bar still
     /// plugged in. Expected: the app pairs on its own soon after.
     func test_tokenLimitClearedWhilePluggedIn() async throws {
         let rig = ConnectionRig()
@@ -284,7 +284,7 @@ final class QAConnectionTests: XCTestCase {
     /// goes over Wi-Fi at once, before IOKit even reports the removal.
     func test_serialPortDisappearsMidCall() async throws {
         let token = "tb1_" + String(repeating: "A", count: 43)
-        let known = KnownBar(deviceID: "f412fa3f2a1c", name: "TinyBar 2A1C", host: "tinybar.local",
+        let known = KnownBar(deviceID: "f412fa3f2a1c", name: "MiniBar 2A1C", host: "minibar.local",
                              lastEndpoint: ConnectionRig.barAddress, auth: .bearer, tokenID: "1")
         let (clock, responder, _, connection, _, wifiBar) = try ptyRig(known: known, tokens: ["f412fa3f2a1c": token])
         wifiBar.set { $0.tokens.insert(token) }
@@ -354,7 +354,7 @@ final class QAConnectionTests: XCTestCase {
     /// A line of garbage starting with the marker was left in the bar's input
     /// (a previous app was killed mid-write). The bar answers the first hello
     /// with `bad_json` and `"id": null`. Expected: the app keeps trying, since
-    /// it is a TinyBar.
+    /// it is a MiniBar.
     func test_badJSONReplyToTheFirstHello() async throws {
         let clock = ManualClock()
         let pty = try FakeBarPTY()
@@ -371,9 +371,9 @@ final class QAConnectionTests: XCTestCase {
         }
         do {
             let info = try await handshake.value
-            XCTAssertTrue(info.isTinyBar)
+            XCTAssertTrue(info.isKnownBar)
         } catch {
-            XCTFail("handshake gave up on a TinyBar after one bad_json reply: \(error)")
+            XCTFail("handshake gave up on a MiniBar after one bad_json reply: \(error)")
         }
         await usb.close()
     }

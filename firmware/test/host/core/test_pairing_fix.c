@@ -106,7 +106,7 @@ TB_TEST(text_latin1_composition)
 TB_TEST(devices_none_says_where_to_pair)
 {
     bench_t *b = bench_new();
-    tb_app_wifi_link(&b->a, true, "10.0.4.42", "tinybar-2.local", &b->now);   /* a renamed host after a clash */
+    tb_app_wifi_link(&b->a, true, "10.0.4.42", "minibar-2.local", &b->now);   /* a renamed host after a clash */
     hold(b);
     tap_tile_named(b, TB_ACT_WIFI);
     const tb_tile_t *t = &b->a.menu.tiles[1];
@@ -114,12 +114,12 @@ TB_TEST(devices_none_says_where_to_pair)
     TB_EQ_STR(t->value, "None");
     TB_EQ_INT(t->style, TB_TILE_INFO);
     TB_EQ_INT(t->action, TB_ACT_NONE);
-    TB_EQ_STR(t->foot, "pair at\ntinybar-2.local");    /* ui measures: 90 px of 86.5, so it draws the next */
+    TB_EQ_STR(t->foot, "pair at\nminibar-2.local");    /* ui measures: 93 px of 86.5, so it draws the next */
     TB_EQ_INT(t->n_foot_alt, 2);
     TB_EQ_STR(t->foot_alt[0], "pair at\n10.0.4.42");
     TB_EQ_STR(t->foot_alt[1], "pair at its\nIP address");
     /* the address changes while the menu is open: the tile follows */
-    tb_app_wifi_link(&b->a, true, "192.168.100.200", "tinybar-2.local", &b->now);
+    tb_app_wifi_link(&b->a, true, "192.168.100.200", "minibar-2.local", &b->now);
     TB_EQ_STR(b->a.menu.tiles[1].foot_alt[0], "pair at\n192.168.100.200");
     /* read-only: a tap closes the menu, as on Network */
     tap_tile(b, 1);
@@ -130,7 +130,7 @@ TB_TEST(devices_none_says_where_to_pair)
     hold(b);
     tap_tile_named(b, TB_ACT_WIFI);
     t = &b->a.menu.tiles[1];
-    TB_EQ_STR(t->foot, "pair at\ntinybar-2.local");
+    TB_EQ_STR(t->foot, "pair at\nminibar-2.local");
     TB_EQ_INT(t->n_foot_alt, 1);
     TB_EQ_STR(t->foot_alt[0], "pair at its\nIP address");
     /* offline: how to get there, nothing to measure */
@@ -157,7 +157,7 @@ TB_TEST(devices_none_without_a_host_yet)
     b->a.wifi_host[0] = '\0';
     hold(b);
     tap_tile_named(b, TB_ACT_WIFI);
-    TB_EQ_STR(b->a.menu.tiles[1].foot, "pair at\ntinybar.local");
+    TB_EQ_STR(b->a.menu.tiles[1].foot, "pair at\nminibar.local");
 }
 
 /* ---------- Power off and Restart: not a failed pairing, and the back-off goes ---------- */

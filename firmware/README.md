@@ -1,6 +1,6 @@
-# TinyBar firmware
+# MiniBar firmware
 
-ESP-IDF v5.4 and LVGL 9.5 firmware for TinyBar, the open-office status bar, on the **Waveshare ESP32-S3-Touch-LCD-3.49 V2**
+ESP-IDF v5.4 and LVGL 9.5 firmware for MiniBar, the open-office status bar, on the **Waveshare ESP32-S3-Touch-LCD-3.49 V2**
 (ESP32-S3R8, 8 MB octal PSRAM, 16 MB flash, AXS15231B 172 × 640 QSPI screen used as 640 × 172).
 
 What it must do is decided elsewhere, and those documents win over anything here:
@@ -24,7 +24,12 @@ How the code is organized, and why, is in [ARCHITECTURE.md](ARCHITECTURE.md).
 > merged here with the pairing alignment. **1.0.3** (2026-10-05) answers the review of that alignment: removing a Mac
 > that is on a Wi-Fi call toasts once ("Removed Mac · back to Busy"), the Remote's prompt keeps its code across a
 > reload and tells its own code from the next device's (`pairing_seq` in `info`), and the setup page's test polls
-> instead of sleeping. 459 host tests and both page suites pass; nothing of it has run on the bar yet.
+> instead of sleeping. 1.0.3 also carries the **rename to MiniBar** (decided 2026-10-05): every word a person reads,
+> the setup network `MiniBar-Setup`, the host `minibar.local`, the Bonjour type `_minibar._tcp`, `"device":
+> "MiniBar"`, the default name "MiniBar 2A1C" (a bar that still has the old default is renamed once when it starts)
+> and the file names (`minibar.bin`, `dist/minibar-<version>.bin`); internal names keep the old prefix (`tb_`,
+> `@tb `, `tb1_`, the NVS namespace, `CONFIG_TINYBAR_*`; ARCHITECTURE.md section 14). 460 host tests and
+> both page suites pass; nothing of it has run on the bar yet.
 > Everything else that touches the hardware or the radio is unverified until it runs on the bar. See "What's
 > verified" at the end, and the bring-up checklists in `components/board/README.md`, `components/net/README.md` and
 > `components/calendar/README.md`.
@@ -51,7 +56,7 @@ firmware/
                         RTC, audio, watchdog
   fonts/                Barlow TTF sources and their OFL license                   (ui builder)
   test/host/            Linux test runner (CMake + ctest); one folder per module   (lead; folders: builders)
-  dist/                 the merged image to flash, tinybar-<version>.bin           (lead; not in git)
+  dist/                 the merged image to flash, minibar-<version>.bin           (lead; not in git)
 ```
 
 ## Build
@@ -70,9 +75,11 @@ idf.py -B build-<name> -D SDKCONFIG=build-<name>/sdkconfig build
   driver in board (the registry one resets every pin when it starts, which would drop the power hold).
   Don't change a component manifest without the lead: the lock file and `managed_components/` are shared.
 - `sdkconfig.defaults` holds every setting we rely on. Your `build-<name>/sdkconfig` is generated from it; to pick up
-  a change to the defaults, delete your `build-<name>/sdkconfig` (or the whole build directory).
-- TinyBar's own options are under `idf.py menuconfig` → TinyBar (API authorization, release logging, app task stack)
-  and TinyBar board (IMU axis, backlight dark point, volume, amplifier gating, QSPI clock, the bring-up self-test).
+  a change to the defaults, delete your `build-<name>/sdkconfig` (or the whole build directory). **After the rename to
+  MiniBar (1.0.3) delete it once:** an older sdkconfig keeps `CONFIG_LWIP_LOCAL_HOSTNAME="tinybar"`, so the office
+  router's client list would still show the old name.
+- MiniBar's own options are under `idf.py menuconfig` → MiniBar (API authorization, release logging, app task stack)
+  and MiniBar board (IMU axis, backlight dark point, volume, amplifier gating, QSPI clock, the bring-up self-test).
 - **Release builds** (the image in `dist/`) are made by the lead from a clean configuration, in a fresh build directory
   of the lead's own (not the shared `build/`, since others may be building): `rm -rf build-lead && idf.py -B build-lead
   -D SDKCONFIG=build-lead/sdkconfig build`. A fresh `build-<name>/sdkconfig` is generated from `sdkconfig.defaults`
@@ -115,25 +122,26 @@ Flash **one merged image at address 0x0, at 115200 baud**. A faster write once l
 
    ```sh
    cd build-<name> && mkdir -p ../dist
-   esptool.py --chip esp32s3 merge_bin -o ../dist/tinybar-1.0.3.bin @flash_args
+   esptool.py --chip esp32s3 merge_bin -o ../dist/minibar-1.0.3.bin @flash_args
    ```
 
    The version is `PROJECT_VER` in `CMakeLists.txt` (also what `GET /api/v1/info` reports as `fw`). The image in
-   `dist/` today is `dist/tinybar-1.0.3.bin`, built on 2026-10-05 after the review of the pairing alignment (2.33 MB;
-   the app 2.04 MB; it reports `fw` 1.0.3, this tree's `PROJECT_VER`). `dist/tinybar-1.0.0.bin` is the same image
-   under the name the alignment round asked for; `dist/tinybar-1.0.2.bin` is the one the user has flashed.
+   `dist/` today is `dist/minibar-1.0.3.bin`, built on 2026-10-05 from this tree with the rename to MiniBar (the app
+   2.04 MB; it reports `fw` 1.0.3, this tree's `PROJECT_VER`; see "What's verified"). The older files keep their names:
+   `dist/tinybar-1.0.3.bin` is the pairing alignment's review before the rename, `dist/tinybar-1.0.0.bin` the same
+   image under the name the alignment round asked for, and `dist/tinybar-1.0.2.bin` the one the user has flashed.
 2. Plug the bar into the computer with a USB-C **data** cable (a charge-only cable shows no port). If the Mac app is
    running, choose **Pause USB** in its menu first, so it lets go of the serial port.
 3. Open the Espressif web flasher in Chrome or Edge (<https://espressif.github.io/esptool-js/>), set the baud rate to
    **115200**, click Connect and pick the "USB JTAG/serial debug unit" port. The flasher puts the chip into download
    mode through the port itself; if it can't, see Troubleshooting.
-4. Add `dist/tinybar-1.0.3.bin` at flash address **0x0** and click Program.
+4. Add `dist/minibar-1.0.3.bin` at flash address **0x0** and click Program.
 5. Unplug and plug the bar back in (or press its reset), and it starts.
 
 **Flashing the merged image starts the bar from scratch.** The file covers the whole start of the flash, and the gaps
 between its parts are blank, so it also wipes the settings, the saved Wi-Fi, paired devices and the calendar address
 (the NVS partitions at 0x9000 and 0x12000). The bar comes up on the Wi-Fi setup QR code, as on a first start. To
-update while keeping all that, flash only the app instead: `build/tinybar.bin` at **0x30000** (the app slot), with the
+update while keeping all that, flash only the app instead: `build/minibar.bin` at **0x30000** (the app slot), with the
 same flasher and baud rate. Erase Flash isn't needed in either case (the merged image already clears the crash dump
 too).
 
@@ -141,12 +149,12 @@ With the command line instead: `idf.py -p <port> -b 115200 flash` (keeps NVS too
 
 ## First boot
 
-1. The splash (a tomato and "TinyBar") shows for about 1.5 seconds. The bar holds its own power on from the first
+1. The splash (a tomato and "MiniBar") shows for about 1.5 seconds. The bar holds its own power on from the first
    instructions, and draws the right way up whichever way it stands. Upright is with the side buttons (BOOT, PWR) on
    top; turned over, buttons at the bottom, the layout turns with it. Started lying flat, it draws the way it last
    stood (with nothing remembered yet, buttons on top).
 2. With no Wi-Fi saved, it shows **Scan to set up** with a QR code. Scanning it joins the phone to the bar's own open
-   network, **TinyBar-Setup** (it appears about 2 seconds after the QR code, once the bar has looked for networks),
+   network, **MiniBar-Setup** (it appears about 2 seconds after the QR code, once the bar has looked for networks),
    and the phone's sign-in sheet opens the setup page: the bar answers every name on that network with its own
    address and redirects the phone's check to `http://4.3.2.1/`. On Android, if the sheet doesn't open by itself
    (with mobile data on it often doesn't), pull down the notifications and tap "Sign in to Wi-Fi network". Otherwise
@@ -158,15 +166,15 @@ With the command line instead: `idf.py -p <port> -b 115200 flash` (keeps NVS too
 3. On the page, pick the office Wi-Fi and enter its password, or a work username and password for a WPA2-Enterprise
    network. Guest networks with a sign-in page aren't supported, and the page says so. The calendar's secret iCal
    address can be pasted here too (optional).
-4. The bar shows **Connecting**, then **Connected** with its address (`tinybar.local`), and moves on after 3 seconds
+4. The bar shows **Connecting**, then **Connected** with its address (`minibar.local`), and moves on after 3 seconds
    or a tap. If it can't connect, it says why; a tap goes back to the QR code.
 5. To use the bar without Wi-Fi, hold the screen on the QR code and choose **Skip**. Statuses and the Pomodoro work;
    the calendar and the Remote don't. **The bar remembers it:** after Restart or power-on it starts offline, with its
-   radio off and no TinyBar-Setup network. Wi-Fi can be set up later from the quick menu (hold, Wi-Fi, Set up), which
+   radio off and no MiniBar-Setup network. Wi-Fi can be set up later from the quick menu (hold, Wi-Fi, Set up), which
    brings the QR code back.
-6. On the office Wi-Fi, open `http://tinybar.local` on a phone or computer for the Remote. It asks you to pair first
-   (below). The Wi-Fi menu (hold, Wi-Fi) shows the bar's name and real address, for example "TinyBar 2A1C" and
-   `tinybar.local · 10.0.4.42` (`tinybar-2.local` if another bar has the name).
+6. On the office Wi-Fi, open `http://minibar.local` on a phone or computer for the Remote. It asks you to pair first
+   (below). The Wi-Fi menu (hold, Wi-Fi) shows the bar's name and real address, for example "MiniBar 2A1C" and
+   `minibar.local · 10.0.4.42` (`minibar-2.local` if another bar has the name).
 7. The Mac app finds the bar over USB (when the bar is powered from the Mac) or over Wi-Fi.
 
 ## Pairing the Mac app and a phone
@@ -182,10 +190,10 @@ and a code on its screen for a new device holds one of the 10 places until it en
   the proof), and the bar says "Paired · Mac · over USB". If another device's code is on the bar at that moment, the
   code stays up and the confirmation follows once that pairing ends; if that code holds the bar's last place, the Mac
   gets no Wi-Fi token yet (`token_limit`) but the cable keeps working.
-- **The Mac app, over Wi-Fi:** in the TinyBar menu on the Mac, choose **Connect…**, then **Pair Over Wi-Fi**. The bar
+- **The Mac app, over Wi-Fi:** in the MiniBar menu on the Mac, choose **Connect…**, then **Pair Over Wi-Fi**. The bar
   shows "PAIRING · MAC" with the code and "Type it on your Mac · tap to cancel"; type it in the app. The Mac's token
   can only report calls.
-- **A phone (the Remote):** open `http://tinybar.local` and choose **Pair this phone**. The bar shows the code
+- **A phone (the Remote):** open `http://minibar.local` and choose **Pair this phone**. The bar shows the code
   ("PAIRING · IPHONE", "Type it on your phone · tap to cancel"; the Remote names itself iPhone, iPad or Android phone
   when the browser says, otherwise the bar says Phone); type it on the phone, which pairs at the sixth digit. Cancel
   on the phone takes the code off the bar (`pair/cancel`). If the page reloads meanwhile (or the phone's browser
@@ -198,10 +206,10 @@ and a code on its screen for a new device holds one of the 10 places until it en
   over the bar's name, so in an office with several bars you can check it's the one you meant.
 - **Forget them all:** hold, Wi-Fi, Devices ("3 paired", "Full" at 10), then **Forget all** (a second, deliberate
   tap: one in its first 600 ms is ignored; Keep goes back to the Wi-Fi menu). The bar says "Forgot 3 devices"; every
-  device needs a new code, and a phone's Remote says "TinyBar forgot this phone". USB keeps working. With nothing
-  paired the tile reads "None" and says where to pair: "pair at" over the bar's address (`tinybar.local`, or its IP
+  device needs a new code, and a phone's Remote says "MiniBar forgot this phone". USB keeps working. With nothing
+  paired the tile reads "None" and says where to pair: "pair at" over the bar's address (`minibar.local`, or its IP
   address when a renamed host is too long for the tile).
-- **Without pairing:** build with `CONFIG_TINYBAR_API_AUTH_NONE` (menuconfig → TinyBar) and the bar answers anyone
+- **Without pairing:** build with `CONFIG_TINYBAR_API_AUTH_NONE` (menuconfig → MiniBar) and the bar answers anyone
   on the office Wi-Fi, as the API's `"auth": "none"` (api.md 4.1).
 
 ## Troubleshooting
@@ -219,22 +227,28 @@ and a code on its screen for a new device holds one of the 10 places until it en
   (`components/board/README.md`, "Which way is up" and bring-up step 5).
 - **The picture is upside down both ways up**, even after the bar has stood still: first check the build didn't warn
   that the IMU axis and turn aren't 1.0.2's (an sdkconfig from before 1.0.2: delete `build-<name>/sdkconfig` and
-  rebuild). Otherwise change `CONFIG_TINYBAR_LCD_TURN_180` (menuconfig → TinyBar board; on by default since 1.0.2) and
+  rebuild). Otherwise change `CONFIG_TINYBAR_LCD_TURN_180` (menuconfig → MiniBar board; on by default since 1.0.2) and
   rebuild. If it's right one way up but doesn't turn after a flip, the IMU axis is wrong (bring-up step 5). The
   axis's sign and the turn go together: inverting both changes nothing once the IMU has a reading, only which pose
   counts as upright.
 - **A computer opens msn.com instead of the setup page:** Windows sends its sign-in check out any other connection it
   has (a network cable or a dock), so the page it opens comes from Microsoft. Type `http://4.3.2.1` in the browser
   instead; that address always goes through the bar's own Wi-Fi.
-- **No Remote at `tinybar.local`:** the bar may have been set up offline (Skip is remembered): hold, Wi-Fi, Set up.
+- **The Remote asks you to pair again after updating to 1.0.3, and the Mac app can't find the bar over Wi-Fi:**
+  the rename moved the bar from `tinybar.local` to `minibar.local` (and its Bonjour type to `_minibar._tcp`). A
+  phone's pairing cookie belongs to the old address, so pair the phone once more, then remove its old row (the same
+  phone, the older date) on Paired devices; it counts toward the 10 until then. Update the Mac app, which browses
+  both types; its USB link needs nothing. A bar that still had the default name "TinyBar 2A1C" shows "MiniBar 2A1C"
+  from the first start on 1.0.3; a name you typed yourself is left alone.
+- **No Remote at `minibar.local`:** the bar may have been set up offline (Skip is remembered): hold, Wi-Fi, Set up.
   Some office networks block mDNS: use the address the Wi-Fi menu shows. Guest networks with a sign-in page aren't
   supported.
-- **"Another device is pairing with this TinyBar":** a code for another device is on the bar; wait for it to run out
+- **"Another device is pairing with this MiniBar":** a code for another device is on the bar; wait for it to run out
   (2 minutes at most), cancel it with a tap on the bar, or Cancel on the device that asked. The phone's message goes
   by itself once the code is gone.
-- **"TinyBar 2A1C already has 10 paired devices":** remove one on a paired phone, or forget them all on the bar (hold,
+- **"MiniBar 2A1C already has 10 paired devices":** remove one on a paired phone, or forget them all on the bar (hold,
   Wi-Fi, Devices). The message goes by itself once a place is free.
-- **The phone joins TinyBar-Setup but says "Connected, no internet" and no sign-in sheet opens:** pull down the
+- **The phone joins MiniBar-Setup but says "Connected, no internet" and no sign-in sheet opens:** pull down the
   notifications and tap "Sign in to Wi-Fi network" if it's there. If not, open `http://4.3.2.1` in its browser with
   mobile data turned off (with mobile data on, Android sends the browser over it on a network it judged to have no
   internet, and 4.3.2.1 is a real internet address). The log tells which step failed, and `adb shell dumpsys
@@ -248,6 +262,31 @@ powers off (on USB, a deep sleep), and a press turns it back on; flip the bar ov
 alarm and start what the Pomodoro is waiting for.
 
 ## What's verified
+
+**2026-10-05, 1.0.3: the rename to MiniBar** (details in ARCHITECTURE.md section 14):
+
+- **Compiled:** a fresh `build-rename/` from `sdkconfig.defaults` alone, with **no warnings**; `project(minibar)`, so
+  the build makes `minibar.bin` and the app reports `fw` 1.0.3 (`image_info`: project name `minibar`, app version
+  1.0.3). App 2,138,048 bytes (0x209fc0, 2.04 MB; 66% of the 6 MB slot free). Internal RAM: 141,319 bytes used
+  statically (DIRAM), 200,441 free for the heap. The merged image `dist/minibar-1.0.3.bin` (2,334,656 bytes)
+  was made with `esptool.py merge_bin @flash_args` and checked: the bootloader, partition table, OTA data and app
+  byte for byte at 0x0, 0x8000, 0xF000 and 0x30000 with 0xFF in the gaps, the partition table decoded, and the app's
+  and bootloader's checksums and SHA-256 valid. The Remote and setup pages in it are the renamed ones: the image's
+  two gzip members decompress byte for byte to `components/net/web/remote.html` and `setup.html` as they stand
+  after the rename (checked 2026-10-05), so the rename needs no rebuild of the image.
+- **Tested on the host:** 460 tests in 5 runners under AddressSanitizer and UBSan, no warnings (core 159, calendar
+  67, net 151, ui 30, board 53): 1.0.3's 459 plus the name migration in `core/test_settings.c` (the old default
+  becomes the new one; the new default, a typed name, another bar's old default and a trailing space are left
+  alone; no id; the id's case). Every host test that asserts the name, host, SSID, realm, `device`, User-Agent or
+  an API message changed with the code it tests, and `check_fonts.py` holds the rebuilt `ui_font_step_16b` to
+  exactly the letters of MiniBar-Setup. The ui host tools: all 89 scenes render (the setup screen says "Join
+  MiniBar-Setup" with a real bold M, the splash MINIBAR, the Connected screen and the Wi-Fi menu `minibar.local`),
+  and the touch and layout tests pass ("pair at" over `minibar.local`, 80 px, still on one line in the Devices
+  tile). The page suites are the web team's part of the round.
+- **Unverified until it runs on the bar:** the stored-name migration on the user's bar (its name is the old
+  default, so it should read "MiniBar 2A1C" from the first start and the log says `bar name was the old default`),
+  the new host on the office router and in Bonjour, the phone's Remote pairing again at `minibar.local`, and the
+  Mac app finding `_minibar._tcp`.
 
 **2026-10-05, 1.0.3: the review of the pairing alignment answered** (details in ARCHITECTURE.md section 14):
 
@@ -319,7 +358,7 @@ ARCHITECTURE.md section 14):
 As of 2026-10-04, after the review round and the security review (details in ARCHITECTURE.md section 14):
 
 - **Compiled:** the whole firmware with `idf.py build` from a clean configuration (a fresh `build-lead/` generated
-  from `sdkconfig.defaults`; ESP-IDF v5.4.2, esp32s3), with **no warnings**, in TinyBar's code or the managed
+  from `sdkconfig.defaults`; ESP-IDF v5.4.2, esp32s3), with **no warnings**, in MiniBar's code or the managed
   components. The app is 2.02 MB in a 6 MB slot (66% free). 141 KB of internal RAM is used statically, leaving 201 KB
   for the heap (178 KB before the review round: the core model, LVGL's allocations and three task stacks moved to
   PSRAM; the security review's fixes changed neither).
@@ -342,7 +381,7 @@ As of 2026-10-04, after the review round and the security review (details in ARC
   override), the page's 421, the time a hostile calendar feed takes on the S3, and log escaping on the real port.
   The bring-up checklists say what to look for.
 - **First run on the board (1.0.0, 2026-10-04):** it boots, holds power and draws the "Scan to set up" QR screen. An
-  Android phone joined TinyBar-Setup but said "Connected, no internet", with no sign-in sheet. The cause isn't
+  Android phone joined MiniBar-Setup but said "Connected, no internet", with no sign-in sheet. The cause isn't
   confirmed. **1.0.1** (branch `captive-fix`) addresses the most likely one, Android's private-IP rule, by moving the
   setup network to 4.3.2.1 (ARCHITECTURE.md section 10), and removes 1.0.0's other differences from ESP-IDF's
   captive_portal example: it opens after one scan and in the example's order, answers the phones' check paths,

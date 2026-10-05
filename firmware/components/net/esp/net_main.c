@@ -24,7 +24,7 @@
 
 static const char *TAG = "net";
 static char s_device_id[13];
-static char s_name[TB_DEVICE_NAME_BYTES] = "TinyBar";
+static char s_name[TB_DEVICE_NAME_BYTES] = "MiniBar";
 static tb_app_t *s_app;
 static bool s_started;
 

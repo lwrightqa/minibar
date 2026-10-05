@@ -33,7 +33,7 @@ final class IOKitSerialDeviceWatcher: SerialDeviceWatcher, @unchecked Sendable {
         case matching(kern_return_t)
     }
 
-    private let work = AdapterQueue(label: "TinyBar.serial")
+    private let work = AdapterQueue(label: "MiniBar.serial")
 
     // Everything below is touched only on `work.queue`.
     private var onEvent: (@Sendable (SerialDeviceEvent) -> Void)?

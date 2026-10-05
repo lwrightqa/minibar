@@ -54,7 +54,7 @@ void nf_setup(void)
     net_api_set_auth(true);
     net_api_init();
     nf_ip = 0x1104000a;     /* 10.0.4.17 */
-    nf_host = "tinybar.local";
+    nf_host = "minibar.local";
     nf_advance(1600);       /* past the splash */
 }
 

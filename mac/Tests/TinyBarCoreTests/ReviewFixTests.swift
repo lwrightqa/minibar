@@ -31,8 +31,8 @@ final class ReviewFixTests: XCTestCase {
 
     // MARK: - USB handshake (api.md 6.2)
 
-    /// Error replies only, for the whole 10 seconds: a TinyBar that wasn't
-    /// ready. The handshake says so (not "not a TinyBar").
+    /// Error replies only, for the whole 10 seconds: a MiniBar that wasn't
+    /// ready. The handshake says so (not "not a MiniBar").
     func test_handshakeWithOnlyErrorRepliesThrowsTheError() async throws {
         let clock = ManualClock()
         let pty = try FakeBarPTY()
@@ -112,13 +112,13 @@ final class ReviewFixTests: XCTestCase {
 
     func test_addressesAppTransportSecurityAllows() {
         func allowed(_ text: String) -> Bool? { BarEndpoint(userInput: text)?.isAllowedOverPlainHTTP }
-        XCTAssertEqual(allowed("tinybar.local"), true)
-        XCTAssertEqual(allowed("TinyBar-2.local"), true)
+        XCTAssertEqual(allowed("minibar.local"), true)
+        XCTAssertEqual(allowed("MiniBar-2.local"), true)
         XCTAssertEqual(allowed("10.0.4.42"), true)
         XCTAssertEqual(allowed("10.0.4.42:8080"), true)
-        XCTAssertEqual(allowed("tinybar"), true, "single-label names count as local")
-        XCTAssertEqual(allowed("tinybar.lan"), false)
-        XCTAssertEqual(allowed("tinybar.office.example.com"), false)
+        XCTAssertEqual(allowed("minibar"), true, "single-label names count as local")
+        XCTAssertEqual(allowed("minibar.lan"), false)
+        XCTAssertEqual(allowed("minibar.office.example.com"), false)
     }
 
     func test_enterAddressRefusesNamesThatCantWork() async throws {
@@ -255,7 +255,7 @@ final class PairingFixScenarios {
         let flow = WiFiPairingFlow(clientID: ConnectionRig.client, macName: nil, clock: ManualClock(),
                                    discovery: FakeBarDiscovery(), transports: FakeTransportFactory(),
                                    tokens: InMemoryTokenStore(), needsLocalNetworkExplanation: false, onPaired: { _ in })
-        await flow.useAddress("tinybar.office.example.com")
+        await flow.useAddress("minibar.office.example.com")
         XCTAssertEqual(flow.step, .failed(.addressNotAllowed, bar: nil, retryAt: nil))
     }
 

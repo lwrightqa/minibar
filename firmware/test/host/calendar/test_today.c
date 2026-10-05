@@ -215,8 +215,8 @@ TB_TEST(status_codes_and_wording)
     TB_EQ_STR(cal_sync_err_message(CAL_SYNC_REJECTED, true, true),
               "Google didn't recognize that address. It may have been reset in Google Calendar.");
     TB_TRUE(strstr(cal_sync_err_message(CAL_SYNC_REJECTED, false, true), "Google") == NULL);
-    TB_EQ_STR(cal_sync_err_message(CAL_SYNC_OFFLINE, true, true), "TinyBar isn't online, so it can't check the address.");
-    TB_EQ_STR(cal_sync_err_message(CAL_SYNC_OFFLINE, true, false), "TinyBar isn't online, so it can't sync.");
+    TB_EQ_STR(cal_sync_err_message(CAL_SYNC_OFFLINE, true, true), "MiniBar isn't online, so it can't check the address.");
+    TB_EQ_STR(cal_sync_err_message(CAL_SYNC_OFFLINE, true, false), "MiniBar isn't online, so it can't sync.");
     /* every sentence fits the status's message buffers */
     for (int e = CAL_SYNC_REJECTED; e <= CAL_SYNC_TOO_LARGE; e++) {
         for (int g = 0; g < 2; g++) {

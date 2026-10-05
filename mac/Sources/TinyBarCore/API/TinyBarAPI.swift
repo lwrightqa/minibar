@@ -9,11 +9,21 @@ public enum TinyBarAPI {
     /// Every endpoint is under this path (api.md 2.1).
     public static let basePath = "/api/v1"
 
-    /// The `User-Agent` for HTTP requests (api.md 2.1): `TinyBarMac/1.0 (12) (api 1.0)`.
+    /// The `device` value in `info` and the `hello` reply (api.md 7.1): what
+    /// a bar on firmware 1.0.3 or later says it is.
+    public static let deviceName = "MiniBar"
+    /// What a bar on firmware 1.0.2 or earlier says (the product's old name).
+    /// Accepted for one release, because the user's bar still runs it
+    /// (api.md 14.6).
+    public static let legacyDeviceName = "TinyBar"
+    /// Every `device` value the app treats as a bar.
+    public static let acceptedDeviceNames: Set<String> = [deviceName, legacyDeviceName]
+
+    /// The `User-Agent` for HTTP requests (api.md 2.1): `MiniBarMac/1.0 (12) (api 1.0)`.
     /// It replaces URLSession's default, which would add the macOS and Darwin
     /// versions (docs/mac-app.md, Wi-Fi).
     public static func userAgent(appVersion: String) -> String {
-        "TinyBarMac/\(appVersion) (api \(version))"
+        "MiniBarMac/\(appVersion) (api \(version))"
     }
 
     /// `Accept-Language` for HTTP requests: fixed, so URLSession's default
@@ -34,7 +44,7 @@ public enum TinyBarAPI {
         public static let http: TimeInterval = 5
         /// A USB reply.
         public static let usbReply: TimeInterval = 3
-        /// Between `hello`s while finding out whether a port is a TinyBar.
+        /// Between `hello`s while finding out whether a port is a MiniBar.
         public static let helloInterval: TimeInterval = 2
         /// Give up on a port that hasn't answered `hello` by then.
         public static let helloGiveUp: TimeInterval = 10
@@ -73,9 +83,16 @@ public enum TinyBarAPI {
 
     /// Bonjour and the default address (api.md 3).
     public enum Bonjour {
-        public static let serviceType = "_tinybar._tcp"
+        /// What the firmware advertises from 1.0.3 on.
+        public static let serviceType = "_minibar._tcp"
+        /// What firmware 1.0.2 and earlier advertised. Browsed too, for one
+        /// release (api.md 14.6); the app lists it under `NSBonjourServices`
+        /// as well, since macOS 15 refuses to browse an unlisted type.
+        public static let legacyServiceType = "_tinybar._tcp"
+        /// Every type to browse, the current one first.
+        public static let serviceTypes = [serviceType, legacyServiceType]
         public static let domain = "local."
-        public static let defaultHost = "tinybar.local"
+        public static let defaultHost = "minibar.local"
         public static let port = 80
         /// TXT record keys.
         public enum TXT {
@@ -88,9 +105,9 @@ public enum TinyBarAPI {
     }
 
     /// Where the token is kept (api.md 16): one generic-password item per bar,
-    /// service `TinyBar`, account = `device_id`.
+    /// service `MiniBar`, account = `device_id`.
     public enum Keychain {
-        public static let service = "TinyBar"
+        public static let service = "MiniBar"
     }
 }
 

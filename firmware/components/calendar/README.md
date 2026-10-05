@@ -30,7 +30,7 @@ turns the address into today's and tomorrow's meetings for the app task. Owner: 
    per step), a 5xx or a cut-off transfer are `calendar_unreachable`.
 3. The body goes through `cal_feed_write()` in 2 KB reads. Nothing holds the file: a 9 MB feed with 20,000 past
    events needs the same 28 KB as a small one. A body that isn't iCal stops the fetch after 4 KB (`not_a_calendar`).
-   Limits: 16 MB and 3 minutes per fetch (`calendar_unreachable`, "That calendar is too large for TinyBar to read.").
+   Limits: 16 MB and 3 minutes per fetch (`calendar_unreachable`, "That calendar is too large for MiniBar to read.").
 4. `cal_feed_finish()` drops the instances that overrides replace, sorts by start and returns up to 64;
    `cal_today_trim()` keeps 32 (dropping meetings already over first).
 5. The app task gets `TB_EV_CAL_MEETINGS` when the list changed (always after a PUT), then `TB_EV_CAL_EVENT`

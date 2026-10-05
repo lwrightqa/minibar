@@ -30,12 +30,12 @@ public enum PairingCode {
 /// Why pairing over Wi-Fi didn't work, with the Connect window's messages
 /// (mac-app-ux.md 5.5).
 public enum PairingProblem: Hashable, Sendable {
-    /// No TinyBar found after 10 seconds.
+    /// No MiniBar found after 10 seconds.
     case noneFound
     case localNetworkBlocked
     /// Nothing answered at a typed address.
     case nothingAt(String)
-    /// A typed address answered, but not as a TinyBar.
+    /// A typed address answered, but not as a MiniBar.
     case notATinyBar
     /// A typed DNS name macOS won't reach over plain HTTP (App Transport
     /// Security allows only `.local` names and IP addresses).
@@ -67,27 +67,27 @@ public enum PairingProblem: Hashable, Sendable {
     public func message(barName: String) -> String {
         switch self {
         case .noneFound:
-            return "Can\u{2019}t find a TinyBar on this network. Make sure it\u{2019}s on and on the same Wi-Fi as this Mac. Some office networks keep devices apart; if yours does, plug TinyBar into this Mac instead."
+            return "Can\u{2019}t find a MiniBar on this network. Make sure it\u{2019}s on and on the same Wi-Fi as this Mac. Some office networks keep devices apart; if yours does, plug MiniBar into this Mac instead."
         case .localNetworkBlocked:
-            return "macOS is blocking TinyBar from your local network, so Wi-Fi can\u{2019}t work."
+            return "macOS is blocking MiniBar from your local network, so Wi-Fi can\u{2019}t work."
         case .nothingAt(let address):
             return "Nothing answered at \(address)."
         case .notATinyBar:
-            return "That address isn\u{2019}t a TinyBar."
+            return "That address isn\u{2019}t a MiniBar."
         case .addressNotAllowed:
-            return "Use TinyBar\u{2019}s .local name or its IP address."
+            return "Use MiniBar\u{2019}s .local name or its IP address."
         case .wrongCode(let left):
             return left == 1 ? "That code didn\u{2019}t match. 1 try left." : "That code didn\u{2019}t match. \(left) tries left."
         case .codeUsedUp:
-            return "That code didn\u{2019}t match, so TinyBar canceled pairing. Show a new code to try again."
+            return "That code didn\u{2019}t match, so MiniBar canceled pairing. Show a new code to try again."
         case .expired:
-            return "That code has expired or was canceled on TinyBar. Show a new code to try again."
+            return "That code has expired or was canceled on MiniBar. Show a new code to try again."
         case .busy(let seconds):
-            return "Someone else is pairing with this TinyBar. Try again in \(Formatting.wait(seconds: seconds))."
+            return "Someone else is pairing with this MiniBar. Try again in \(Formatting.wait(seconds: seconds))."
         case .rateLimited(let seconds):
             return "Too many tries. You can try again in \(Formatting.wait(seconds: seconds))."
         case .busyForASecond:
-            return "TinyBar is busy for a second. Try again."
+            return "MiniBar is busy for a second. Try again."
         case .tokenLimit:
             return "\(barName) already has 10 paired devices. Remove one on its Remote, then try again."
         case .inSetup:
@@ -214,7 +214,7 @@ public final class WiFiPairingFlow {
 
     /// Continue after the explanation: starts browsing (which brings up the
     /// macOS prompt). Gives up with `.noneFound` after 10 seconds. A code
-    /// already on a bar (Didn't see a code? Choose another TinyBar.) is taken
+    /// already on a bar (Didn't see a code? Choose another MiniBar.) is taken
     /// off it.
     public func startLooking() {
         releaseCode()
@@ -241,7 +241,7 @@ public final class WiFiPairingFlow {
 
     private func discovered(_ found: [DiscoveredBar], generation: Int) {
         guard generation == self.generation, isBrowsing else { return }
-        // Only TinyBars that say who they are can be paired.
+        // Only MiniBars that say who they are can be paired.
         let tinyBars = found.filter { $0.deviceID.map(Identifiers.isValidDeviceID) ?? false }
         bars = tinyBars
         switch step {
@@ -336,7 +336,7 @@ public final class WiFiPairingFlow {
         defer { Task { await transport.close() } }
         do {
             let info = try await transport.hello(HelloRequest(client: clientID, name: macName))
-            guard info.isTinyBar else { throw BarError.notATinyBar }
+            guard info.isKnownBar else { throw BarError.notATinyBar }
             let bar = DiscoveredBar(name: info.name, deviceID: info.deviceID, api: info.api, fw: info.fw,
                                     path: TinyBarAPI.basePath, auth: info.auth, endpoint: endpoint)
             bars = [bar]
@@ -352,7 +352,7 @@ public final class WiFiPairingFlow {
         }
     }
 
-    /// Show Code on TinyBar / Show a New Code: `POST /api/v1/pair/start` with
+    /// Show Code on MiniBar / Show a New Code: `POST /api/v1/pair/start` with
     /// kind `mac`, scope `call`, this install's `client`, and the Mac's name if set.
     ///
     /// While this flow's own code is still on the bar, the bar answers
@@ -383,7 +383,7 @@ public final class WiFiPairingFlow {
             // Bonjour's TXT record may not say whether the bar pairs; ask it.
             if bar.auth == nil || bar.deviceID == nil {
                 let info = try await transport.hello(HelloRequest(client: clientID, name: macName))
-                guard info.isTinyBar else { throw BarError.notATinyBar }
+                guard info.isKnownBar else { throw BarError.notATinyBar }
                 // Given up meanwhile (Back, the window closed, sleep): ask for nothing.
                 guard generation == codeGeneration, !isClosed else { return }
                 bar.auth = info.auth
@@ -524,7 +524,7 @@ public final class WiFiPairingFlow {
 
     /// The Mac is going to sleep or shutting down: nobody will type the code
     /// now, so it's taken off the bar as Back does, and the page says so
-    /// ("That code has expired or was canceled on TinyBar", with Show a New
+    /// ("That code has expired or was canceled on MiniBar", with Show a New
     /// Code). Browsing carries on.
     ///
     /// - Returns: the `pair/cancel` request (or the request on its way, as

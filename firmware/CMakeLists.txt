@@ -1,4 +1,4 @@
-# TinyBar firmware: ESP-IDF v5.4 project for the Waveshare ESP32-S3-Touch-LCD-3.49 V2.
+# MiniBar firmware: ESP-IDF v5.4 project for the Waveshare ESP32-S3-Touch-LCD-3.49 V2.
 # See README.md (build and flash) and ARCHITECTURE.md (modules, tasks, events).
 #
 # Build in your own build directory, never the shared default one:
@@ -16,4 +16,4 @@ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 # net_json_depth_ok, and asserts the value it sees). The host tests set the same (test/host/CMakeLists.txt).
 idf_build_set_property(COMPILE_DEFINITIONS "CJSON_NESTING_LIMIT=16" APPEND)
 
-project(tinybar)
+project(minibar)

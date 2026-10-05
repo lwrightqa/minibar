@@ -1,4 +1,4 @@
-# TinyBar firmware defaults (ESP-IDF v5.4.2, ESP32-S3R8 on the Waveshare ESP32-S3-Touch-LCD-3.49 V2).
+# MiniBar firmware defaults (ESP-IDF v5.4.2, ESP32-S3R8 on the Waveshare ESP32-S3-Touch-LCD-3.49 V2).
 # Owned by the lead developer. Builders: describe a change in your report rather than editing this file.
 
 # ---------- Chip, flash, PSRAM ----------
@@ -66,7 +66,7 @@ CONFIG_ESP_WIFI_SOFTAP_SUPPORT=y
 CONFIG_ESP_WIFI_ENTERPRISE_SUPPORT=y
 CONFIG_ESP_WIFI_MBEDTLS_TLS_CLIENT=y
 CONFIG_ESP_WIFI_ENABLE_WPA3_SAE=y
-CONFIG_LWIP_LOCAL_HOSTNAME="tinybar"
+CONFIG_LWIP_LOCAL_HOSTNAME="minibar"
 CONFIG_LWIP_MAX_SOCKETS=16
 CONFIG_LWIP_DHCPS=y
 # The setup network's DHCP names the bar as the DNS server, so the catch-all DNS (net_dns.c) answers every name.
@@ -152,7 +152,7 @@ CONFIG_LV_USE_LABEL=y
 CONFIG_LV_LABEL_LONG_TXT_HINT=y
 CONFIG_LV_USE_IMAGE=y
 CONFIG_LV_USE_CANVAS=y
-# The Wi-Fi setup screen's QR code (WIFI:T:nopass;S:TinyBar-Setup;;).
+# The Wi-Fi setup screen's QR code (WIFI:T:nopass;S:MiniBar-Setup;;).
 CONFIG_LV_USE_QRCODE=y
 CONFIG_LV_USE_THEME_DEFAULT=n
 CONFIG_LV_USE_SNAPSHOT=n

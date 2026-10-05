@@ -663,6 +663,7 @@ static void finish_event(cal_feed_t *f)
 {
     event_t *e = &f->ev;
     f->stats.events++;
+    /* The seed keeps the project's old name on purpose: a new one would change every stored hash once. */
     if (!e->has_uid) e->uid_hash = (uint32_t)fnv_time(fnv_str(FNV_OFFSET, "tinybar:no-uid:"), f->stats.events);
     bool is_override = e->rid.kind != DT_NONE;
     if (is_override) {

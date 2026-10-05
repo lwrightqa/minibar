@@ -29,7 +29,7 @@ final class CoreMediaIOCameraMonitor: CameraActivitySource, @unchecked Sendable 
         case unavailable
     }
 
-    private let work = AdapterQueue(label: "TinyBar.camera")
+    private let work = AdapterQueue(label: "MiniBar.camera")
 
     // Everything below is touched only on `work.queue`.
     private var started = false

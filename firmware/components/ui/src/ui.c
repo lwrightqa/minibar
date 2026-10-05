@@ -1,5 +1,5 @@
 /*
- * ui.c: TinyBar's screens in Bold Signal, with LVGL 9 (see ui.h). Owner: ui builder.
+ * ui.c: MiniBar's screens in Bold Signal, with LVGL 9 (see ui.h). Owner: ui builder.
  *
  * The object tree is built once (ui_init) and every screen is a matter of showing, hiding, filling and placing those
  * objects (ui_update). What each screen says comes from the view model (ui_view.h); this file is only the look: the

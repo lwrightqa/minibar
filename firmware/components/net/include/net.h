@@ -1,5 +1,5 @@
 /*
- * net.h: TinyBar's networking on the device: Wi-Fi (station incl. WPA2-Enterprise PEAP; the TinyBar-Setup access
+ * net.h: MiniBar's networking on the device: Wi-Fi (station incl. WPA2-Enterprise PEAP; the MiniBar-Setup access
  * point with a DNS catch-all and the setup page), mDNS, the HTTP server and Remote page, the USB serial protocol,
  * SNTP. ESP-IDF only; the protocol logic is in net_api.h, net_macs.h and net_pair.h.
  *
@@ -35,7 +35,7 @@ esp_err_t net_start(void);
 tb_wifi_mode_t net_wifi_start_mode(void);
 
 /* core's Wi-Fi effects (main forwards them). */
-void net_setup_begin(void);     /* TB_FX_WIFI_SETUP: start TinyBar-Setup (open) at NET_SETUP_IP (4.3.2.1), DNS
+void net_setup_begin(void);     /* TB_FX_WIFI_SETUP: start MiniBar-Setup (open) at NET_SETUP_IP (4.3.2.1), DNS
                                  * catch-all, page; forgets a saved skip */
 void net_setup_skip(void);      /* TB_FX_WIFI_SKIP: stop it; stay offline (station off), and remember it */
 void net_setup_done(void);      /* TB_FX_WIFI_DONE: the Connected screen moved on; stop the setup network */

@@ -24,14 +24,14 @@ const char *cal_sync_err_message(cal_sync_err_t e, bool google, bool for_check)
     case CAL_SYNC_REJECTED:
         return google ? "Google didn't recognize that address. It may have been reset in Google Calendar."
                       : "The calendar's server didn't recognize that address. It may have been reset.";
-    case CAL_SYNC_UNREACHABLE: return "TinyBar couldn't reach the calendar's server. Try again in a minute.";
+    case CAL_SYNC_UNREACHABLE: return "MiniBar couldn't reach the calendar's server. Try again in a minute.";
     case CAL_SYNC_NOT_A_CALENDAR:
         return "That address didn't send back a calendar. Copy the Secret address in iCal format.";
     case CAL_SYNC_OFFLINE:
-        return for_check ? "TinyBar isn't online, so it can't check the address." : "TinyBar isn't online, so it can't sync.";
-    case CAL_SYNC_TOO_LARGE: return "That calendar is too large for TinyBar to read.";
+        return for_check ? "MiniBar isn't online, so it can't check the address." : "MiniBar isn't online, so it can't sync.";
+    case CAL_SYNC_TOO_LARGE: return "That calendar is too large for MiniBar to read.";
     }
-    return "TinyBar couldn't reach the calendar's server. Try again in a minute.";
+    return "MiniBar couldn't reach the calendar's server. Try again in a minute.";
 }
 
 cal_sync_err_t cal_sync_err_from_http(int status)

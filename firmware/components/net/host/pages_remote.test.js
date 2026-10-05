@@ -57,8 +57,8 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   await sleep(800);
   check(await vis('#pairView'), 'the pairing prompt shows on 401');
   check(!(await vis('#remoteMain')), 'the controls are hidden until this phone is paired');
-  check((await text('#phoneAddr')).startsWith('TinyBar 2A1C'), 'the header names the bar');
-  check(await text('#pairIntro') === 'TinyBar 2A1C shows a 6-digit code on its screen. Type it here, and this phone becomes its Remote.', 'intro names the bar');
+  check((await text('#phoneAddr')).startsWith('MiniBar 2A1C'), 'the header names the bar');
+  check(await text('#pairIntro') === 'MiniBar 2A1C shows a 6-digit code on its screen. Type it here, and this phone becomes its Remote.', 'intro names the bar');
   check(!(await vis('#pairNote')), 'no note on a first visit');
   check(!(await vis('#pairName')), 'no name field: the Remote names itself after the kind of phone');
   await noScroll('the prompt');
@@ -67,7 +67,7 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   await sim('/_sim/connected', '');
   await p.click('#pairAsk');
   await sleep(300);
-  check(await text('#pairAskErr') === 'TinyBar is setting up Wi-Fi. Finish setup on the bar, then try again.', 'in_setup: ' + await text('#pairAskErr'));
+  check(await text('#pairAskErr') === 'MiniBar is setting up Wi-Fi. Finish setup on the bar, then try again.', 'in_setup: ' + await text('#pairAskErr'));
   check(await p.getAttribute('#pairAsk', 'aria-disabled') === 'false', 'in_setup leaves the button as it is');
   check(!(await state()).pairing, 'no code during setup');
   await sim('/_sim/tap', '');               // the tap ends the Connected screen: setup is over
@@ -79,7 +79,7 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   check(mac.http_status === 202, 'the Mac asks for a code');
   await p.click('#pairAsk');
   await sleep(300);
-  check(await text('#pairAskErr') === 'Another device is pairing with this TinyBar. Try again in 2 minutes.', 'busy: ' + await text('#pairAskErr'));
+  check(await text('#pairAskErr') === 'Another device is pairing with this MiniBar. Try again in 2 minutes.', 'busy: ' + await text('#pairAskErr'));
   check(await p.getAttribute('#pairAsk', 'aria-disabled') === 'true', 'Pair this phone is dimmed (aria-disabled) while busy');
   check(await active() === 'pairAsk', 'and keeps focus');
   // (Playwright's isDisabled() counts aria-disabled, so ask the element itself)
@@ -102,7 +102,7 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   check((await state()).paired === 10, '10 devices paired');
   await p.click('#pairAsk');
   await sleep(300);
-  check(await text('#pairAskErr') === 'TinyBar 2A1C already has 10 paired devices. Remove one on a paired phone, or forget them all on TinyBar: hold its screen, then Wi-Fi, then Devices.', 'token_limit: ' + await text('#pairAskErr'));
+  check(await text('#pairAskErr') === 'MiniBar 2A1C already has 10 paired devices. Remove one on a paired phone, or forget them all on MiniBar: hold its screen, then Wi-Fi, then Devices.', 'token_limit: ' + await text('#pairAskErr'));
   const list = await usb('GET', '/api/v1/clients');
   await usb('DELETE', `/api/v1/clients/${list.clients[0].token_id}`);
   await sleep(2500);
@@ -127,7 +127,7 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   s = await state();
   check(!s.pairing && s.toast === 'Pairing canceled', 'Cancel takes the code off the bar: ' + s.toast);
   check(await vis('#pairStart') && await active() === 'pairAsk', 'back to the start, focus on Pair this phone');
-  check(await p.textContent('#phoneSay') === 'Pairing canceled. The code is gone from TinyBar.', 'and says so');
+  check(await p.textContent('#phoneSay') === 'Pairing canceled. The code is gone from MiniBar.', 'and says so');
 
   // two failed pairings in a row (the Mac's cancel and this one): the back-off
   await p.click('#pairAsk');
@@ -154,7 +154,7 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   check(await p.evaluate(() => getComputedStyle(document.getElementById('pairInput')).borderTopColor) === ERR_RING, 'and so does the border');
   await sim('/_sim/tap', '');               // someone taps the bar: canceled there
   await sleep(2500);
-  check(await text('#pairErr') === 'That code has expired or was canceled on TinyBar. Show a new code to try again.', 'gone: ' + await text('#pairErr'));
+  check(await text('#pairErr') === 'That code has expired or was canceled on MiniBar. Show a new code to try again.', 'gone: ' + await text('#pairErr'));
   check(await p.isDisabled('#pairInput') && await vis('#pairNew') && !(await vis('#pairGo')), 'the field is disabled and Show a new code offered');
   check(await active() === 'pairNew', 'focus moves to Show a new code');
 
@@ -170,7 +170,7 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   mac = await usb('POST', '/api/v1/pair/start', { kind: 'mac', scope: 'call', client: MAC });
   check(mac.http_status === 202 && (await state()).who === 'Mac', '...and the Mac asks within the poll: the bar shows the Mac\'s code');
   await sleep(2500);
-  check(await text('#pairErr') === 'That code has expired or was canceled on TinyBar. Show a new code to try again.', 'the prompt still notices within about 2 s: ' + await text('#pairErr'));
+  check(await text('#pairErr') === 'That code has expired or was canceled on MiniBar. Show a new code to try again.', 'the prompt still notices within about 2 s: ' + await text('#pairErr'));
   check(await p.isDisabled('#pairInput') && await vis('#pairNew'), 'the field is disabled and Show a new code offered');
   await usb('POST', '/api/v1/pair/cancel', { pairing_id: mac.pairing_id });
   await sim('/_sim/restart', '');           // the two cancels would lock pair/start: a restart clears that
@@ -192,7 +192,7 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   await sleep(400);
   s = await state();
   check(!s.pairing && s.toast === 'Pairing canceled', 'Cancel after the reload still takes the code off the bar: ' + s.toast);
-  check(await p.textContent('#phoneSay') === 'Pairing canceled. The code is gone from TinyBar.', 'and says so');
+  check(await p.textContent('#phoneSay') === 'Pairing canceled. The code is gone from MiniBar.', 'and says so');
   await sim('/_sim/restart', '');
   await sleep(1100);
   // a reload when the code on the bar is another device's: the prompt starts over, and Pair this phone says busy
@@ -202,7 +202,7 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   check(await vis('#pairStart') && !(await vis('#pairCode')), 'a reload under another device\'s code starts over');
   await p.click('#pairAsk');
   await sleep(300);
-  check((await text('#pairAskErr')).startsWith('Another device is pairing with this TinyBar.'), 'and the Mac\'s code is reported as busy, not taken for this phone\'s');
+  check((await text('#pairAskErr')).startsWith('Another device is pairing with this MiniBar.'), 'and the Mac\'s code is reported as busy, not taken for this phone\'s');
   await sleep(1000);
   await usb('POST', '/api/v1/pair/cancel', { pairing_id: mac.pairing_id });
   await sim('/_sim/restart', '');
@@ -227,7 +227,7 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   await p.fill('#pairInput', s.code.slice(0, 3) + ' ' + s.code.slice(3));
   await sleep(900);
   check(await vis('#remoteMain') && !(await vis('#pairView')), 'the Remote shows once paired');
-  check(await text('#pairedMsg') === "Paired. This phone is TinyBar 2A1C's Remote now.", 'Paired line: ' + await text('#pairedMsg'));
+  check(await text('#pairedMsg') === "Paired. This phone is MiniBar 2A1C's Remote now.", 'Paired line: ' + await text('#pairedMsg'));
   s = await state();
   check(s.toast === 'Paired · Phone', 'the bar toasts Paired · Phone: ' + s.toast);
   await sleep(500);
@@ -240,7 +240,7 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   check(/^Mac Remove Mac app · Calls only Paired over USB today, \d+:\d\d [AP]M · used only over USB so far$/.test(rows[1]), 'the Mac: ' + rows[1]);
   check(await text('#devFoot') === "2 of 10. To forget them all at once, hold the bar's screen, then tap Wi-Fi › Devices. Over USB, your Mac needs no pairing.", 'foot: ' + await text('#devFoot'));
   check(await text('#macLine') === 'Not connected right now · paired over USB', 'Mac line before it connects: ' + await text('#macLine'));
-  check((await text('#macPairNote')) === 'To pair your Mac, plug this TinyBar into it once. Or, in the TinyBar menu on your Mac, choose Connect…, then Pair Over Wi-Fi. This TinyBar shows the code.', 'Connect your Mac copy');
+  check((await text('#macPairNote')) === 'To pair your Mac, plug this MiniBar into it once. Or, in the MiniBar menu on your Mac, choose Connect…, then Pair Over Wi-Fi. This MiniBar shows the code.', 'Connect your Mac copy');
   await p.click('.sbtn[data-id="busy"]');
   await sleep(300);
   check(!(await vis('#pairedMsg')), 'the Paired line goes at the first action');
@@ -293,12 +293,12 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   const idxBefore = s.idx;
   await p.fill('#msgInput', 'Pizza 🍕 time');
   await sleep(100);
-  check((await text('#msgErr')) === "TinyBar can't show 🍕. Remove it to show this message.", 'unsupported char named while typing: ' + await text('#msgErr'));
+  check((await text('#msgErr')) === "MiniBar can't show 🍕. Remove it to show this message.", 'unsupported char named while typing: ' + await text('#msgErr'));
   check(await p.isDisabled('#msgShow'), 'Show disabled while it has one');
   check(await p.evaluate(() => { const i = document.getElementById('msgInput'); i.focus(); return getComputedStyle(i).outlineColor; }) === ERR_RING, 'the message field\'s focus ring takes the error color');
   await p.fill('#msgInput', 'Hi 👋🏽 🇺🇸 ✓');
   await sleep(100);
-  check((await text('#msgErr')) === "TinyBar can't show 👋🏽, 🇺🇸 or ✓. Remove them to show this message.", 'several named: ' + await text('#msgErr'));
+  check((await text('#msgErr')) === "MiniBar can't show 👋🏽, 🇺🇸 or ✓. Remove them to show this message.", 'several named: ' + await text('#msgErr'));
   await p.press('#msgInput', 'Enter');
   await sleep(300);
   s = await state();
@@ -306,20 +306,20 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   // characters nobody sees (api.md 2.3): mapped, or named by where they are
   await p.fill('#msgInput', 'Busy' + ch(0xFFF9) + ' now');
   await sleep(100);
-  check((await text('#msgErr')) === 'TinyBar can\'t show a hidden character after "Busy". Remove it to show this message.', 'a hidden character, named by where it is: ' + await text('#msgErr'));
+  check((await text('#msgErr')) === 'MiniBar can\'t show a hidden character after "Busy". Remove it to show this message.', 'a hidden character, named by where it is: ' + await text('#msgErr'));
   await p.fill('#msgInput', 'Busy' + ch(0xFFF9) + ' now' + ch(0xFFF9));
   await sleep(100);
-  check((await text('#msgErr')) === 'TinyBar can\'t show 2 hidden characters, the first after "Busy". Remove them to show this message.', 'two hidden: ' + await text('#msgErr'));
+  check((await text('#msgErr')) === 'MiniBar can\'t show 2 hidden characters, the first after "Busy". Remove them to show this message.', 'two hidden: ' + await text('#msgErr'));
   await p.fill('#msgInput', ch(0xFFF9) + 'Hi');
   await sleep(100);
-  check((await text('#msgErr')) === "TinyBar can't show a hidden character at the start. Remove it to show this message.", 'hidden at the start: ' + await text('#msgErr'));
+  check((await text('#msgErr')) === "MiniBar can't show a hidden character at the start. Remove it to show this message.", 'hidden at the start: ' + await text('#msgErr'));
   for (const [t, what] of [['Back at 3:00' + ch(0x202F) + 'PM', 'narrow no-break space'], ['Busy' + ch(0x200B) + ' now', 'zero-width space'],
     [ch(0xFEFF) + 'Busy', 'byte-order mark'], ['5' + ch(0x2009) + 'min', 'thin space'], ['Done ✓' + ch(0xFE0E), 'a variation selector after a character it names']]) {
     await p.fill('#msgInput', t);
     await sleep(80);
     const err = await vis('#msgErr') ? await text('#msgErr') : '';
     // the mock-up names what you see as one character, as typed: the check mark with its selector
-    check(what.startsWith('a variation') ? err === "TinyBar can't show ✓" + ch(0xFE0E) + '. Remove it to show this message.' : !err, `${what}: ${err || 'fine'}`);
+    check(what.startsWith('a variation') ? err === "MiniBar can't show ✓" + ch(0xFE0E) + '. Remove it to show this message.' : !err, `${what}: ${err || 'fine'}`);
   }
   await p.fill('#msgInput', 'Cafe' + ch(0x301) + ' at noon');
   await sleep(100);
@@ -431,11 +431,11 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   check(await text('#macLine') === 'Connected over USB · heard from it just now', 'removing the Mac leaves USB working: ' + await text('#macLine'));
 
   // ---------- the ways back to the prompt ----------
-  // Forget all on the bar: "TinyBar forgot this phone."
+  // Forget all on the bar: "MiniBar forgot this phone."
   await sim('/_sim/forget', '');
   await sleep(2500);
   check(await vis('#pairView') && !(await vis('#remoteMain')), 'Forget all on the bar: back to the prompt');
-  check(await text('#pairNote') === 'TinyBar forgot this phone. Pair it again to use the Remote.', 'note: ' + await text('#pairNote'));
+  check(await text('#pairNote') === 'MiniBar forgot this phone. Pair it again to use the Remote.', 'note: ' + await text('#pairNote'));
   await noScroll('the prompt with a note');
   // pair again, then Remove this phone
   const pairNow = async pg => {
@@ -451,7 +451,7 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   await sleep(500);
   await p.click('#devList [aria-label="Remove this phone"]');
   await sleep(200);
-  check((await text('#devList .setup-msg p')) === "Remove this phone? The Remote signs out here, and you'll need a code from TinyBar to use it again.", 'remove this phone asks first');
+  check((await text('#devList .setup-msg p')) === "Remove this phone? The Remote signs out here, and you'll need a code from MiniBar to use it again.", 'remove this phone asks first');
   await p.click('#devList [data-yes]');
   await sleep(500);
   check(await vis('#pairView'), 'Remove this phone signs the Remote out');
@@ -459,7 +459,7 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   check(await active() === 'pairAsk', 'focus on Pair this phone');
   s = await state();
   check(s.toast === 'Removed Phone', 'the bar says Removed Phone: ' + s.toast);
-  // removed on another phone: "This phone isn't paired with TinyBar 2A1C anymore."
+  // removed on another phone: "This phone isn't paired with MiniBar 2A1C anymore."
   await pairNow(p);
   const q = await (await b.newContext({ viewport: { width: 390, height: 844 } })).newPage();
   watch(q);
@@ -475,7 +475,7 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   await q.click('#devList [data-yes]');
   await sleep(2600);
   check(await vis('#pairView'), 'the first phone, removed on the other, goes back to the prompt');
-  check(await text('#pairNote') === "This phone isn't paired with TinyBar 2A1C anymore. Pair it again to use the Remote.", 'note: ' + await text('#pairNote'));
+  check(await text('#pairNote') === "This phone isn't paired with MiniBar 2A1C anymore. Pair it again to use the Remote.", 'note: ' + await text('#pairNote'));
 
   // the bar stops answering while the phone waits on its code: "didn't answer"
   await sim('/_sim/restart', '');
@@ -487,7 +487,7 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   await sleep(300);
   await p.fill('#pairInput', code);
   await sleep(800);
-  check(await text('#pairErr') === "TinyBar 2A1C didn't answer. Make sure it's on, then try again.", 'no answer: ' + await text('#pairErr'));
+  check(await text('#pairErr') === "MiniBar 2A1C didn't answer. Make sure it's on, then try again.", 'no answer: ' + await text('#pairErr'));
   check(await p.inputValue('#pairInput') !== '', 'the digits stay, to try again');
 
   check(errors.length === 0, 'no page errors: ' + errors.join(' | '));

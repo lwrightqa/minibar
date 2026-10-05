@@ -86,7 +86,7 @@ const LIB = () => {
       if (!window.__tok0) window.__tok0 = t.tokens.slice();
       t.tokens.length = 0;
       window.__tok0.forEach(x => t.tokens.push(x));
-      t.BAR.host = 'tinybar.local';
+      t.BAR.host = 'minibar.local';
     },
     // Ten devices, used one minute apart in this order, so Forget all names them as host/ui_scenes.c's TEN does.
     ten() {
@@ -176,8 +176,8 @@ const SCENES = {
   menu_timer_settings: () => { __sc.base('pomodoro'); __sc.pomo('focus', 2, 18 * 60 + 42, true); __sc.draw(); __sc.t.showTimerSettings(); },
   menu_wifi: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.draw(); __sc.t.showWifiMenu(); },
   menu_wifi_none: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.t.tokens.length = 0; __sc.draw(); __sc.t.showWifiMenu(); },
-  menu_wifi_none_renamed: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.t.tokens.length = 0; __sc.t.BAR.host = 'tinybar-2.local'; __sc.draw(); __sc.t.showWifiMenu(); },
-  menu_wifi_none_longip: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.t.tokens.length = 0; __sc.t.BAR.host = 'tinybar-2.local'; __sc.t.s.wifi.ip = '192.168.100.200'; __sc.draw(); __sc.t.showWifiMenu(); },
+  menu_wifi_none_renamed: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.t.tokens.length = 0; __sc.t.BAR.host = 'minibar-2.local'; __sc.draw(); __sc.t.showWifiMenu(); },
+  menu_wifi_none_longip: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.t.tokens.length = 0; __sc.t.BAR.host = 'minibar-2.local'; __sc.t.s.wifi.ip = '192.168.100.200'; __sc.draw(); __sc.t.showWifiMenu(); },
   menu_wifi_full: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.ten(); __sc.draw(); __sc.t.showWifiMenu(); },
   menu_wifi_offline: () => { __sc.base('available'); __sc.t.s.wifi.mode = 'offline'; __sc.t.tokens.length = 0; __sc.draw(); __sc.t.showWifiMenu(); },
   menu_forget: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.draw(); __sc.t.showForgetMenu(); },

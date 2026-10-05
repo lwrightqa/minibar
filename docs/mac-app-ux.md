@@ -1,4 +1,4 @@
-# TinyBar for Mac: interface design
+# MiniBar for Mac: interface design
 
 The UX designer's design for the Mac app's interface, 2026-10-04: the menu-bar icon, the menu, connecting and pairing, the Settings window, notifications, and every piece of copy.
 
@@ -24,7 +24,7 @@ The UX designer's design for the Mac app's interface, 2026-10-04: the menu-bar i
 
 ## 1. Principles
 
-- **The bar is the feedback.** TinyBar sits on your desk, in view. The Mac app stays quiet and only has to answer one question when you look at it: *is my bar showing what my Mac sees, and if not, why?*
+- **The bar is the feedback.** MiniBar sits on your desk, in view. The Mac app stays quiet and only has to answer one question when you look at it: *is my bar showing what my Mac sees, and if not, why?*
 - **Small and native.** An `NSStatusItem` with a standard `NSMenu`, one Settings window in the System Settings style, and one Connect window that's only needed once. No popover, no Dock icon, no custom chrome, no colors of its own.
 - **Quiet on calls.** Nothing moves, blinks, sounds or pops up, ever, and the menu bar never shows an app name or a timer. You may be sharing your screen.
 - **Say what's wrong where you look.** Problems show in the icon and the menu, each with the one action that fixes it. No alerts, no notifications (section 7).
@@ -36,8 +36,8 @@ The UX designer's design for the Mac app's interface, 2026-10-04: the menu-bar i
 
 **Names.**
 
-- The app's name is **TinyBar** (as in the menu's About TinyBar and Quit TinyBar). The device is **TinyBar** too. Copy avoids the clash by saying **your TinyBar** or the bar's own name for the device, and by rarely naming the app at all.
-- A bar's name comes from the bar (`name` in `api.md`): "TinyBar 2A1C" by default, or whatever the user renamed it to on the Remote. Use it wherever one bar has to be told from another. Examples here use "TinyBar 2A1C".
+- The app's name is **MiniBar** (as in the menu's About MiniBar and Quit MiniBar). The device is **MiniBar** too. Copy avoids the clash by saying **your MiniBar** or the bar's own name for the device, and by rarely naming the app at all.
+- A bar's name comes from the bar (`name` in `api.md`): "MiniBar 2A1C" by default, or whatever the user renamed it to on the Remote. Use it wherever one bar has to be told from another. Examples here use "MiniBar 2A1C".
 - **On a call** with capitals is the bar's status. In running text it's "on a call".
 - The switch on the Remote is **Calls from your Mac**, as named in the mock-up.
 
@@ -45,8 +45,8 @@ The UX designer's design for the Mac app's interface, 2026-10-04: the menu-bar i
 
 | Where | Style | Example |
 |---|---|---|
-| Menu items, buttons, window titles, tab names, alert buttons | Title style | Pause Detection, For the Rest of Today, Show Code on TinyBar |
-| Status lines in the menu, labels, switches, checkboxes, help text, alert titles and text | Sentence style | Can't reach TinyBar 2A1C since 2:04 PM |
+| Menu items, buttons, window titles, tab names, alert buttons | Title style | Pause Detection, For the Rest of Today, Show Code on MiniBar |
+| Status lines in the menu, labels, switches, checkboxes, help text, alert titles and text | Sentence style | Can't reach MiniBar 2A1C since 2:04 PM |
 
 **Formats.**
 
@@ -68,11 +68,11 @@ One monochrome template image, so macOS tints it for light and dark menu bars an
 
 | State | When | SF Symbol | Custom glyph (fallback) | VoiceOver label | Tooltip |
 |---|---|---|---|---|---|
-| **Connected** | A bar is reachable and you're not on a call (or the Mac is still inside the start delay) | `rectangle` | The bar in outline | TinyBar, connected | TinyBar 2A1C · not on a call |
-| **On a call** | The Mac counts a call and the bar is being told | `rectangle.fill` | The bar filled | TinyBar, on a call | On a call · Slack · 12m |
-| **Not connected** | No bar has answered for 15 seconds, or TinyBar isn't set up yet | `rectangle.slash` | The bar with a slash | TinyBar, not connected | Can't reach TinyBar 2A1C |
-| **Paused** | You paused detection, or the bar is ignoring calls from your Mac | `pause.rectangle` | The bar with a pause mark | TinyBar, paused | Paused until 3:15 PM |
-| **Needs you** | Something only you can fix (below) | `exclamationmark.triangle` | The bar with an exclamation mark | TinyBar, needs attention | Wi-Fi is blocked in Privacy settings |
+| **Connected** | A bar is reachable and you're not on a call (or the Mac is still inside the start delay) | `rectangle` | The bar in outline | MiniBar, connected | MiniBar 2A1C · not on a call |
+| **On a call** | The Mac counts a call and the bar is being told | `rectangle.fill` | The bar filled | MiniBar, on a call | On a call · Slack · 12m |
+| **Not connected** | No bar has answered for 15 seconds, or MiniBar isn't set up yet | `rectangle.slash` | The bar with a slash | MiniBar, not connected | Can't reach MiniBar 2A1C |
+| **Paused** | You paused detection, or the bar is ignoring calls from your Mac | `pause.rectangle` | The bar with a pause mark | MiniBar, paused | Paused until 3:15 PM |
+| **Needs you** | Something only you can fix (below) | `exclamationmark.triangle` | The bar with an exclamation mark | MiniBar, needs attention | Wi-Fi is blocked in Privacy settings |
 
 The tooltip is the menu's first status line, or the second when that one says what's wrong. It updates live.
 
@@ -90,12 +90,12 @@ Not connected is deliberately calm: a laptop away from the office is normal, not
 When several apply, the first one in this list wins:
 
 1. **Needs you.**
-2. **Paused**, including "TinyBar 2A1C is ignoring calls from your Mac" (`sources.mac` is `false`). That switch is a deliberate choice made on the Remote, so it's shown as a pause rather than an error.
+2. **Paused**, including "MiniBar 2A1C is ignoring calls from your Mac" (`sources.mac` is `false`). That switch is a deliberate choice made on the Remote, so it's shown as a pause rather than an error.
 3. **Not connected.** A call the Mac can't deliver shows Not connected, not On a call: the filled icon must never claim the bar is showing something it isn't.
 4. **On a call.** Shown the moment the Mac decides it's a call and sends it (not after the reply), so it's instant. A call set aside on the bar, or waiting behind a dark screen or Wi-Fi setup, still shows On a call: the bar knows about it, and the menu explains.
 5. **Connected.**
 
-**Grace period.** The icon moves to Not connected only after **15 seconds** without a successful reply (the 15 seconds after which `mac-app.md` shows Not connected). Launching, waking from sleep, and switching between USB and Wi-Fi don't flicker the icon: once a bar has been set up, during the first 15 seconds after launch or wake the icon shows Connected and the menu says "Looking for TinyBar…". Before any bar is set up, the icon shows Not connected from the start.
+**Grace period.** The icon moves to Not connected only after **15 seconds** without a successful reply (the 15 seconds after which `mac-app.md` shows Not connected). Launching, waking from sleep, and switching between USB and Wi-Fi don't flicker the icon: once a bar has been set up, during the first 15 seconds after launch or wake the icon shows Connected and the menu says "Looking for MiniBar…". Before any bar is set up, the icon shows Not connected from the start.
 
 **No animation.** The icon never blinks, pulses or animates, and no text sits next to it.
 
@@ -148,8 +148,8 @@ Top to bottom. Groups are separated by a menu separator.
 | **Status** | Line 1, what the Mac sees (4.2). Line 2, the bar and the link (4.3). Not clickable. |
 | **Action** | At most one fix (4.4), then the counting items (4.5). Hidden when there's nothing to show, with its separator. |
 | **Pause** | Pause Detection ▸, or Resume Detection (4.6). |
-| **App** | About TinyBar · Settings… ⌘, |
-| **Quit** | Quit TinyBar ⌘Q |
+| **App** | About MiniBar · Settings… ⌘, |
+| **Quit** | Quit MiniBar ⌘Q |
 
 The status lines look like text, not commands: line 1 in the primary label color, line 2 in the secondary label color, both at the menu's regular font size, with no highlight on hover. *(Implementation: a custom `view` on two `NSMenuItem`s, or disabled items with attributed titles if those keep their colors. Unverified which looks right.)*
 
@@ -177,31 +177,31 @@ The menu keeps its lines current while it's open (the call duration ticks over e
 - Line 1 shows the app's local name even when the bar gets no name (GarageBand above). It's the Mac's own view and never leaves the Mac; it's what makes "Don't Count GarageBand" possible.
 - While paused, line 1 says only that it's paused, whatever the mic is doing.
 
-### 4.3 Line 2: your TinyBar
+### 4.3 Line 2: your MiniBar
 
 | Situation | Line 2 |
 |---|---|
 | Not set up yet | *(no line 2)* |
-| Looking, in the first 15 seconds after launch, wake or losing the link | Looking for TinyBar… |
-| Connected over USB | TinyBar 2A1C · USB |
-| Connected over Wi-Fi | TinyBar 2A1C · Wi-Fi |
-| Connected, USB paused for flashing | TinyBar 2A1C · Wi-Fi · USB paused |
-| A call, set aside on the bar (`call.aside`) | Set aside on TinyBar 2A1C for this call |
-| A call while the bar's screen is dark (`screen` is `dark`) | TinyBar 2A1C · screen off |
-| A call while the bar is in Wi-Fi setup (`showing` is `setup`) | TinyBar 2A1C is setting up Wi-Fi |
-| The bar is ignoring calls (`sources.mac` is `false`) | TinyBar 2A1C is ignoring calls from your Mac |
-| No reply for 15 seconds | Can't reach TinyBar 2A1C since 2:04 PM |
-| Never reached since launch | Can't reach TinyBar 2A1C |
-| Wi-Fi turned off in Settings, bar not plugged in | TinyBar 2A1C isn't plugged in |
+| Looking, in the first 15 seconds after launch, wake or losing the link | Looking for MiniBar… |
+| Connected over USB | MiniBar 2A1C · USB |
+| Connected over Wi-Fi | MiniBar 2A1C · Wi-Fi |
+| Connected, USB paused for flashing | MiniBar 2A1C · Wi-Fi · USB paused |
+| A call, set aside on the bar (`call.aside`) | Set aside on MiniBar 2A1C for this call |
+| A call while the bar's screen is dark (`screen` is `dark`) | MiniBar 2A1C · screen off |
+| A call while the bar is in Wi-Fi setup (`showing` is `setup`) | MiniBar 2A1C is setting up Wi-Fi |
+| The bar is ignoring calls (`sources.mac` is `false`) | MiniBar 2A1C is ignoring calls from your Mac |
+| No reply for 15 seconds | Can't reach MiniBar 2A1C since 2:04 PM |
+| Never reached since launch | Can't reach MiniBar 2A1C |
+| Wi-Fi turned off in Settings, bar not plugged in | MiniBar 2A1C isn't plugged in |
 | Local Network blocked, no USB | Wi-Fi is blocked in Privacy settings |
-| Not plugged in, and while it was plugged in the app found the bar on Wi-Fi but couldn't reach its address from this Mac (client isolation, a VPN) | Wi-Fi can't reach TinyBar 2A1C here · plug it in |
-| The bar no longer recognizes this Mac (`401`, or `403 wrong_client` on a call), no USB | TinyBar 2A1C doesn't recognize this Mac |
-| The bar's API is older than the app's | TinyBar 2A1C needs a firmware update |
-| The bar's API is newer than the app's | This app needs an update for TinyBar 2A1C |
+| Not plugged in, and while it was plugged in the app found the bar on Wi-Fi but couldn't reach its address from this Mac (client isolation, a VPN) | Wi-Fi can't reach MiniBar 2A1C here · plug it in |
+| The bar no longer recognizes this Mac (`401`, or `403 wrong_client` on a call), no USB | MiniBar 2A1C doesn't recognize this Mac |
+| The bar's API is older than the app's | MiniBar 2A1C needs a firmware update |
+| The bar's API is newer than the app's | This app needs an update for MiniBar 2A1C |
 
 - "Since 2:04 PM" is the time of the last successful reply, kept in memory only.
 - "Wi-Fi can't reach … here" needs one check: while connected over USB with the bar reporting Wi-Fi, the app tries the bar's Wi-Fi address once (`info`). If that fails, it remembers it for the current network only, and the Connect window says so too (5.2).
-- Set aside, screen off and Wi-Fi setup show only during a call. When you're not on a call they don't matter, and line 2 shows the normal "TinyBar 2A1C · USB".
+- Set aside, screen off and Wi-Fi setup show only during a call. When you're not on a call they don't matter, and line 2 shows the normal "MiniBar 2A1C · USB".
 - A bar that answers `401` over USB never shows the "doesn't recognize" line: the app pairs again over the cable on its own (5.3).
 - *Proposed (Mac developer, 2026-10-05):* `403 wrong_client` (`api.md` 5.2) means the bar knows this Mac's token, but it was paired for another copy of the app, for example after the app's settings were reset and it made a new install ID. The app treats it as `401`: it checks `info` first (`api.md` 16), then deletes the token and shows the line above with **Pair Again…**. It also tells the bar to forget that token (`DELETE /api/v1/clients/self`, best effort), so the old token doesn't keep one of the bar's 10 places or show twice in the Remote's Paired devices.
 
@@ -214,7 +214,7 @@ At most one, directly under the status lines:
 | Not set up, can't reach, not plugged in, Wi-Fi can't reach it here | **Connect…** | Opens the Connect window (5.2). |
 | Local Network blocked | **Open Local Network Settings…** | Opens System Settings › Privacy & Security › Local Network. |
 | The bar doesn't recognize this Mac | **Pair Again…** | Opens the Connect window on its Wi-Fi page, with this bar chosen (5.4). |
-| The bar is ignoring calls from your Mac | **Open TinyBar Remote…** | Opens the bar's Remote page (`http://<host>/`) in the default browser, where you can turn Calls from your Mac back on. |
+| The bar is ignoring calls from your Mac | **Open MiniBar Remote…** | Opens the bar's Remote page (`http://<host>/`) in the default browser, where you can turn Calls from your Mac back on. |
 | Firmware or app needs an update | *(none)* | |
 
 ### 4.5 Counting items
@@ -252,82 +252,82 @@ Not set up yet
 │──────────────────────────────────────────────│
 │ Pause Detection                            ▸ │
 │──────────────────────────────────────────────│
-│ About TinyBar                                │
+│ About MiniBar                                │
 │ Settings…                                 ⌘, │
 │──────────────────────────────────────────────│
-│ Quit TinyBar                              ⌘Q │
+│ Quit MiniBar                              ⌘Q │
 └──────────────────────────────────────────────┘
 
 Connected, not on a call
 ┌──────────────────────────────────────────────┐
 │ Not on a call                                │
-│ TinyBar 2A1C · USB                           │
+│ MiniBar 2A1C · USB                           │
 │──────────────────────────────────────────────│
 │ Pause Detection                            ▸ │
 │──────────────────────────────────────────────│
-│ About TinyBar                                │
+│ About MiniBar                                │
 │ Settings…                                 ⌘, │
 │──────────────────────────────────────────────│
-│ Quit TinyBar                              ⌘Q │
+│ Quit MiniBar                              ⌘Q │
 └──────────────────────────────────────────────┘
 
 On a call
 ┌──────────────────────────────────────────────┐
 │ On a call · Slack · 12m                      │
-│ TinyBar 2A1C · Wi-Fi                         │
+│ MiniBar 2A1C · Wi-Fi                         │
 │──────────────────────────────────────────────│
 │ Don't Count Slack                            │
 │──────────────────────────────────────────────│
 │ Pause Detection                            ▸ │
 │──────────────────────────────────────────────│
-│ About TinyBar                                │
+│ About MiniBar                                │
 │ Settings…                                 ⌘, │
 │──────────────────────────────────────────────│
-│ Quit TinyBar                              ⌘Q │
+│ Quit MiniBar                              ⌘Q │
 └──────────────────────────────────────────────┘
 
 On a call, set aside on the bar
 ┌──────────────────────────────────────────────┐
 │ On a call · Slack · 12m                      │
-│ Set aside on TinyBar 2A1C for this call      │
+│ Set aside on MiniBar 2A1C for this call      │
 │──────────────────────────────────────────────│
 │ Don't Count Slack                            │
 │──────────────────────────────────────────────│
 │ Pause Detection                            ▸ │
 │──────────────────────────────────────────────│
-│ About TinyBar                                │
+│ About MiniBar                                │
 │ Settings…                                 ⌘, │
 │──────────────────────────────────────────────│
-│ Quit TinyBar                              ⌘Q │
+│ Quit MiniBar                              ⌘Q │
 └──────────────────────────────────────────────┘
 
 On a call, bar can't be reached
 ┌──────────────────────────────────────────────┐
 │ On a call · Zoom · 3m                        │
-│ Can't reach TinyBar 2A1C since 2:04 PM       │
+│ Can't reach MiniBar 2A1C since 2:04 PM       │
 │──────────────────────────────────────────────│
 │ Connect…                                     │
 │ Don't Count Zoom                             │
 │──────────────────────────────────────────────│
 │ Pause Detection                            ▸ │
 │──────────────────────────────────────────────│
-│ About TinyBar                                │
+│ About MiniBar                                │
 │ Settings…                                 ⌘, │
 │──────────────────────────────────────────────│
-│ Quit TinyBar                              ⌘Q │
+│ Quit MiniBar                              ⌘Q │
 └──────────────────────────────────────────────┘
 
 Paused
 ┌──────────────────────────────────────────────┐
 │ Paused until 3:15 PM                         │
-│ TinyBar 2A1C · USB                           │
+│ MiniBar 2A1C · USB                           │
 │──────────────────────────────────────────────│
 │ Resume Detection                             │
 │──────────────────────────────────────────────│
-│ About TinyBar                                │
+│ About MiniBar                                │
 │ Settings…                                 ⌘, │
 │──────────────────────────────────────────────│
-│ Quit TinyBar                              ⌘Q │
+│ Quit MiniBar                              ⌘Q │
 └──────────────────────────────────────────────┘
 
 Needs you: Local Network blocked
@@ -339,26 +339,26 @@ Needs you: Local Network blocked
 │──────────────────────────────────────────────│
 │ Pause Detection                            ▸ │
 │──────────────────────────────────────────────│
-│ About TinyBar                                │
+│ About MiniBar                                │
 │ Settings…                                 ⌘, │
 │──────────────────────────────────────────────│
-│ Quit TinyBar                              ⌘Q │
+│ Quit MiniBar                              ⌘Q │
 └──────────────────────────────────────────────┘
 
 The bar is ignoring calls from your Mac
 ┌──────────────────────────────────────────────┐
 │ On a call · Slack · 5m                       │
-│ TinyBar 2A1C is ignoring calls from your Mac │
+│ MiniBar 2A1C is ignoring calls from your Mac │
 │──────────────────────────────────────────────│
-│ Open TinyBar Remote…                         │
+│ Open MiniBar Remote…                         │
 │ Don't Count Slack                            │
 │──────────────────────────────────────────────│
 │ Pause Detection                            ▸ │
 │──────────────────────────────────────────────│
-│ About TinyBar                                │
+│ About MiniBar                                │
 │ Settings…                                 ⌘, │
 │──────────────────────────────────────────────│
-│ Quit TinyBar                              ⌘Q │
+│ Quit MiniBar                              ⌘Q │
 └──────────────────────────────────────────────┘
 ```
 
@@ -366,10 +366,10 @@ The bar is ignoring calls from your Mac
 
 Holding **Option** while opening the menu (the macOS convention, as in the Wi-Fi menu) adds detail lines under line 2, in the secondary color, and one item:
 
-- Address: tinybar.local (10.0.4.42) *(over Wi-Fi)*, or Port: cu.usbmodem1101 *(over USB)*
+- Address: minibar.local (10.0.4.42) *(over Wi-Fi)*, or Port: cu.usbmodem1101 *(over USB)*
 - Firmware 1.0.0 · API 1.0
 - Last reply 2:31:04 PM
-- **Pause USB** (or **Resume USB**), shown when a TinyBar is or was on USB. It lets go of the USB port so a firmware flasher can use it (`api.md` 6.3), and the app uses Wi-Fi meanwhile. It resumes when chosen again or when the bar is unplugged and plugged back in.
+- **Pause USB** (or **Resume USB**), shown when a MiniBar is or was on USB. It lets go of the USB port so a firmware flasher can use it (`api.md` 6.3), and the app uses Wi-Fi meanwhile. It resumes when chosen again or when the bar is unplugged and plugged back in.
 
 The same Pause USB control is in Settings › Connection › Advanced, so it isn't only for people who know the Option trick.
 
@@ -379,8 +379,8 @@ The same Pause USB control is in Settings › Connection › Advanced, so it isn
 
 ### 5.1 Where it starts
 
-- **First launch:** the Connect window opens by itself, as **Welcome to TinyBar**. It never opens by itself again.
-- **The menu's Connect…** and **Pair Again…**, and **Settings › Connection**, open the same window as **Connect TinyBar**, without the welcome text and the login checkbox.
+- **First launch:** the Connect window opens by itself, as **Welcome to MiniBar**. It never opens by itself again.
+- **The menu's Connect…** and **Pair Again…**, and **Settings › Connection**, open the same window as **Connect MiniBar**, without the welcome text and the login checkbox.
 - **Plugging the bar in** needs no window at all: the app connects and pairs on its own (5.3).
 
 The window is 440 pt wide, fixed size, centered, and brought to the front (the app activates, since it has no Dock icon). It's built with the system font and standard controls. ⌘W, Esc and the close button act like Not Now (or Back, on the Wi-Fi page). Return presses the default button.
@@ -388,19 +388,19 @@ The window is 440 pt wide, fixed size, centered, and brought to the front (the a
 ### 5.2 The Connect window
 
 ```text
-┌───────────────────── Welcome to TinyBar ─────────────────────┐
+┌───────────────────── Welcome to MiniBar ─────────────────────┐
 │                         [app icon]                           │
-│                     Welcome to TinyBar                       │
-│   TinyBar shows On a call on your bar whenever this Mac's    │
+│                     Welcome to MiniBar                       │
+│   MiniBar shows On a call on your bar whenever this Mac's    │
 │   mic or camera is in use, in Slack, Zoom, Google Meet or    │
 │   any other app. It never listens or records.                │
 │ ┌──────────────────────────────────────────────────────────┐ │
-│ │ [cable]  Plug TinyBar into this Mac with a USB cable.    │ │
-│ │          ◌ Looking for TinyBar…                          │ │
+│ │ [cable]  Plug MiniBar into this Mac with a USB cable.    │ │
+│ │          ◌ Looking for MiniBar…                          │ │
 │ └──────────────────────────────────────────────────────────┘ │
 │   Not plugged into this Mac?  Pair Over Wi-Fi…               │
 │                                                              │
-│   ☑ Start TinyBar when you log in                            │
+│   ☑ Start MiniBar when you log in                            │
 │     macOS will show a notice that it was added.              │
 │                                          [Not Now]  [Done]   │
 └──────────────────────────────────────────────────────────────┘
@@ -409,32 +409,32 @@ The window is 440 pt wide, fixed size, centered, and brought to the front (the a
 | Part | Spec |
 |---|---|
 | App icon | 64 pt, centered. First launch only. |
-| Heading | "Welcome to TinyBar" (first launch) or "Connect your TinyBar". System font, title 2 size, semibold, centered. |
-| Intro | First launch only, body size, secondary color, centered: "TinyBar shows On a call on your bar whenever this Mac's mic or camera is in use, in Slack, Zoom, Google Meet or any other app. It never listens or records." |
-| USB box | A rounded group box. `cable.connector` symbol at 28 pt in the secondary color, then "Plug TinyBar into this Mac with a USB cable." Under it, a live status line (below). |
+| Heading | "Welcome to MiniBar" (first launch) or "Connect your MiniBar". System font, title 2 size, semibold, centered. |
+| Intro | First launch only, body size, secondary color, centered: "MiniBar shows On a call on your bar whenever this Mac's mic or camera is in use, in Slack, Zoom, Google Meet or any other app. It never listens or records." |
+| USB box | A rounded group box. `cable.connector` symbol at 28 pt in the secondary color, then "Plug MiniBar into this Mac with a USB cable." Under it, a live status line (below). |
 | Wi-Fi link | "Not plugged into this Mac?" in the secondary color, then a link-style button **Pair Over Wi-Fi…**, which opens the Wi-Fi page (5.4). |
-| Login checkbox | First launch only, checked: "Start TinyBar when you log in". Under it, in the secondary color: "macOS will show a notice that it was added." The choice is applied when the window closes, by either button. If macOS refuses it, the window stays open and the line under the checkbox gives the reason from 6.2, with its button; pressing Done or Not Now again closes the window. |
-| Menu-bar hint | Once connected: "TinyBar is in your menu bar: [icon]" with the Connected glyph inline, above the buttons. |
+| Login checkbox | First launch only, checked: "Start MiniBar when you log in". Under it, in the secondary color: "macOS will show a notice that it was added." The choice is applied when the window closes, by either button. If macOS refuses it, the window stays open and the line under the checkbox gives the reason from 6.2, with its button; pressing Done or Not Now again closes the window. |
+| Menu-bar hint | Once connected: "MiniBar is in your menu bar: [icon]" with the Connected glyph inline, above the buttons. |
 | Buttons | **Not Now** (cancel) and **Done** (default). Done is enabled once a bar is connected. |
 
 The USB status line:
 
 | Situation | Status line |
 |---|---|
-| Waiting | ◌ Looking for TinyBar… *(small spinner)* |
+| Waiting | ◌ Looking for MiniBar… *(small spinner)* |
 | Still waiting after 20 seconds | Adds: "Still looking? Some USB cables only charge. Try another cable, or pair over Wi-Fi." |
-| Connected and paired | ✓ Connected to TinyBar 2A1C over USB. *(`checkmark.circle.fill` in the system green, with the words, so it isn't color alone)* |
-| …and the bar is on Wi-Fi (`wifi` is `connected`) | Adds: "When it isn't plugged in, it uses Wi-Fi." On macOS 15 and later, the first time: "When it isn't plugged in, it uses Wi-Fi. If your Mac asks whether TinyBar can find devices on your local network, choose Allow." The app then checks Wi-Fi (4.3), which is what brings up the prompt, while this line explains it. |
-| …and the bar has no Wi-Fi (`offline` or `setup`) | Adds: "TinyBar isn't on Wi-Fi, so it works only while plugged in." |
-| …and the bar is on Wi-Fi, but this Mac can't reach it there (4.3) | Adds: "This Mac can't reach TinyBar over this Wi-Fi network, so it works only while plugged in." |
-| …and the bar has 10 paired devices (`token_limit`) | Adds: "It works over USB. To use Wi-Fi too, remove a device on TinyBar's Remote; it can keep 10." *(Proposed, Mac developer, 2026-10-05: the bar also answers `token_limit` while another device's code on its screen holds the last place, `api.md` 4.3 and 6.6. The app asks again every 30 seconds while the bar is plugged in, so the line goes by itself once a place is free.)* |
-| Connected, bar doesn't use pairing (`auth` is `none`) | ✓ Connected to TinyBar 2A1C over USB. |
+| Connected and paired | ✓ Connected to MiniBar 2A1C over USB. *(`checkmark.circle.fill` in the system green, with the words, so it isn't color alone)* |
+| …and the bar is on Wi-Fi (`wifi` is `connected`) | Adds: "When it isn't plugged in, it uses Wi-Fi." On macOS 15 and later, the first time: "When it isn't plugged in, it uses Wi-Fi. If your Mac asks whether MiniBar can find devices on your local network, choose Allow." The app then checks Wi-Fi (4.3), which is what brings up the prompt, while this line explains it. |
+| …and the bar has no Wi-Fi (`offline` or `setup`) | Adds: "MiniBar isn't on Wi-Fi, so it works only while plugged in." |
+| …and the bar is on Wi-Fi, but this Mac can't reach it there (4.3) | Adds: "This Mac can't reach MiniBar over this Wi-Fi network, so it works only while plugged in." |
+| …and the bar has 10 paired devices (`token_limit`) | Adds: "It works over USB. To use Wi-Fi too, remove a device on MiniBar's Remote; it can keep 10." *(Proposed, Mac developer, 2026-10-05: the bar also answers `token_limit` while another device's code on its screen holds the last place, `api.md` 4.3 and 6.6. The app asks again every 30 seconds while the bar is plugged in, so the line goes by itself once a place is free.)* |
+| Connected, bar doesn't use pairing (`auth` is `none`) | ✓ Connected to MiniBar 2A1C over USB. |
 
 ### 5.3 USB: plug in and it's done
 
-- When a TinyBar answers on USB and the app has no token for it, the app pairs over the cable at once (`pair`, `api.md` 6.6). Plugging in is the consent, so there's no code, no question and no window. The bar confirms on its screen ("Paired · Mac · over USB").
+- When a MiniBar answers on USB and the app has no token for it, the app pairs over the cable at once (`pair`, `api.md` 6.6). Plugging in is the consent, so there's no code, no question and no window. The bar confirms on its screen ("Paired · Mac · over USB").
 - If the bar later answers `401` over Wi-Fi and is then plugged in, the app pairs again over the cable without asking.
-- **A different TinyBar plugged in** becomes your TinyBar: the app pairs with it, uses it from then on, and forgets the previous one (deleting its token, and telling it to forget this Mac if it can be reached). One bar per Mac in v1. Plugging the old bar back in switches back the same way. Line 2 shows the new name, so the switch is visible without a notification.
+- **A different MiniBar plugged in** becomes your MiniBar: the app pairs with it, uses it from then on, and forgets the previous one (deleting its token, and telling it to forget this Mac if it can be reached). One bar per Mac in v1. Plugging the old bar back in switches back the same way. Line 2 shows the new name, so the switch is visible without a notification.
 
 ### 5.4 Wi-Fi: the code shown on the bar
 
@@ -443,16 +443,16 @@ For a bar that's never plugged into this Mac. The app asks the bar to show a cod
 The page replaces the window's content, with **Back** at the bottom left.
 
 ```text
-┌───────────────────── Connect TinyBar ────────────────────────┐
+┌───────────────────── Connect MiniBar ────────────────────────┐
 │ Pair over Wi-Fi                                              │
 │                                                              │
-│ TinyBar:  [ TinyBar 2A1C          ▾ ]                        │
-│           Hold a TinyBar's screen and tap Wi-Fi to see       │
+│ MiniBar:  [ MiniBar 2A1C          ▾ ]                        │
+│           Hold a MiniBar's screen and tap Wi-Fi to see       │
 │           its name.                                          │
 │                                                              │
-│           [ Show Code on TinyBar ]                           │
+│           [ Show Code on MiniBar ]                           │
 │                                                              │
-│ Type the code shown on TinyBar 2A1C:                         │
+│ Type the code shown on MiniBar 2A1C:                         │
 │           [ 482 913 ]                                        │
 │           The code works for 2 minutes.                      │
 │                                                              │
@@ -462,32 +462,32 @@ The page replaces the window's content, with **Back** at the bottom left.
 
 Step by step:
 
-1. **Before the system prompt** (macOS 15 and later, the first time Wi-Fi is used): "Your Mac will ask whether TinyBar can find devices on your local network. Choose Allow, so this Mac can reach your bar over Wi-Fi." Button **Continue** (default). Then the app starts browsing, which makes macOS ask. The app can't read the permission's state (Apple's TN3179), so it shows this once, remembered in its settings.
-2. **Looking:** spinner and "Looking for TinyBar on this network…".
+1. **Before the system prompt** (macOS 15 and later, the first time Wi-Fi is used): "Your Mac will ask whether MiniBar can find devices on your local network. Choose Allow, so this Mac can reach your bar over Wi-Fi." Button **Continue** (default). Then the app starts browsing, which makes macOS ask. The app can't read the permission's state (Apple's TN3179), so it shows this once, remembered in its settings.
+2. **Looking:** spinner and "Looking for MiniBar on this network…".
 3. **Choosing a bar:**
-   - One bar found: "Found TinyBar 2A1C." as text.
-   - Several: a pop-up button listing them by name, with the help line "Hold a TinyBar's screen and tap Wi-Fi to see its name." (needs the bar to show its name on the Network tile, `api.md` 14.3).
-   - Then **Show Code on TinyBar**. The chosen bar wakes and shows the code.
+   - One bar found: "Found MiniBar 2A1C." as text.
+   - Several: a pop-up button listing them by name, with the help line "Hold a MiniBar's screen and tap Wi-Fi to see its name." (needs the bar to show its name on the Network tile, `api.md` 14.3).
+   - Then **Show Code on MiniBar**. The chosen bar wakes and shows the code.
 4. **Typing the code:** the code field appears and takes focus.
    - One text field, 6 digits, in a large monospaced-digit font (title 2 size), placeholder "000 000". It accepts typing or pasting, ignores spaces and dashes, and shows the digits as "482 913".
    - Help line: "The code works for 2 minutes."
-   - Links under it: **Show a New Code**, and with several bars, **Didn't see a code? Choose another TinyBar.**
+   - Links under it: **Show a New Code**, and with several bars, **Didn't see a code? Choose another MiniBar.**
    - **Pair** (default) is enabled at 6 digits. The app also pairs as soon as the sixth digit is typed or pasted.
 5. **Pairing:** spinner and "Pairing…".
-6. **Paired:** "✓ Paired with TinyBar 2A1C." and "It shows On a call whenever this Mac is on one." The bar confirms on its screen ("Paired · Mac"). The button becomes **Done**.
+6. **Paired:** "✓ Paired with MiniBar 2A1C." and "It shows On a call whenever this Mac is on one." The bar confirms on its screen ("Paired · Mac"). The button becomes **Done**.
 
-**Entering an address.** When nothing is found, an **Enter Address…** link shows a field ("Address", placeholder "tinybar.local or 10.0.4.42") and a **Connect** button. The app checks the address with `info` and goes on to step 3 with that bar.
+**Entering an address.** When nothing is found, an **Enter Address…** link shows a field ("Address", placeholder "minibar.local or 10.0.4.42") and a **Connect** button. The app checks the address with `info` and goes on to step 3 with that bar.
 
 **Backing out takes the code off the bar** *(Proposed, Mac developer, 2026-10-05, following `api.md` 4.7 and `decisions.md`, Pairing)*. Once the bar shows a code this page asked for, these take it off the bar at once with `pair/cancel`, so it doesn't hold up other devices ("Someone else is pairing…") for the rest of its 2 minutes. The bar shows "Pairing canceled".
 
 - **Back**, and the close button, ⌘W or Esc on this page (which act as Back).
-- **The window closing** any other way, and **quitting** TinyBar.
-- **The Mac going to sleep or shutting down.** After the wake, the page says "That code has expired or was canceled on TinyBar. Show a new code to try again." with **Show a New Code**.
-- **Didn't see a code? Choose another TinyBar.** and **Enter Address…**: the first bar's code comes off.
+- **The window closing** any other way, and **quitting** MiniBar.
+- **The Mac going to sleep or shutting down.** After the wake, the page says "That code has expired or was canceled on MiniBar. Show a new code to try again." with **Show a New Code**.
+- **Didn't see a code? Choose another MiniBar.** and **Enter Address…**: the first bar's code comes off.
 
 It's sent in the background and never holds up the window. Quitting waits for it at most 2 seconds, alongside telling the bar the Mac is leaving; sleep waits at most the second the app already takes for that. Nothing is sent after pairing worked, or once the bar has said the code is gone (used up, `not_pairing`, or ended by `token_limit` or `in_setup`). If the code was already canceled on the bar (a tap), the bar answers `not_pairing` and nothing more happens. If a request is still on its way when you back out, its answer decides: a code the bar has just shown is taken off at once, and a code the bar has just accepted stays paired. Quitting waits for that answer too, within the same 2 seconds, and for a cancel a window closed a moment ago started, so neither is lost with the app. Like a tap on the bar, a canceled code counts as a failed pairing (`api.md` 4.9), so canceling can't be used to get more guesses.
 
-**Only the bar knows when a code has expired** *(Mac developer, 2026-10-05, from QA's review)*. The bar's 2 minutes start when the code appears on its screen, which can be later than its reply (`api.md` 4.8), so the app's own timer is a guess and never decides anything: after it runs out, the page keeps the field, Pair stays enabled, the sixth digit still sends the code, Back still takes it off the bar, and the bar's `not_pairing` is what shows "That code has expired or was canceled on TinyBar." Show a New Code while the app still holds a code goes back to typing it when the bar answers `pairing_busy`, even past the app's timer, since the app can't tell its own code from someone else's by its clock; typing it then gets the bar's answer, and the next Show a New Code says "Someone else is pairing…" if that's what it was.
+**Only the bar knows when a code has expired** *(Mac developer, 2026-10-05, from QA's review)*. The bar's 2 minutes start when the code appears on its screen, which can be later than its reply (`api.md` 4.8), so the app's own timer is a guess and never decides anything: after it runs out, the page keeps the field, Pair stays enabled, the sixth digit still sends the code, Back still takes it off the bar, and the bar's `not_pairing` is what shows "That code has expired or was canceled on MiniBar." Show a New Code while the app still holds a code goes back to typing it when the bar answers `pairing_busy`, even past the app's timer, since the app can't tell its own code from someone else's by its clock; typing it then gets the bar's answer, and the next Show a New Code says "Someone else is pairing…" if that's what it was.
 
 **Show a New Code while this Mac's code is still on the bar** goes back to typing that code, as the mock-up's Simulate box does: the bar shows one code at a time and answers `pairing_busy`, which here isn't someone else. If that code has ended on the bar meanwhile (a tap canceled it), the bar shows a new one. *(Proposed, Mac developer, 2026-10-05.)*
 
@@ -497,21 +497,21 @@ Shown in place of the help line under the field or button they're about, in the 
 
 | Situation (`api.md` code) | Message | Then |
 |---|---|---|
-| No TinyBar found after 10 seconds | Can't find a TinyBar on this network. Make sure it's on and on the same Wi-Fi as this Mac. Some office networks keep devices apart; if yours does, plug TinyBar into this Mac instead. | **Try Again**, **Enter Address…** |
-| Local Network blocked | macOS is blocking TinyBar from your local network, so Wi-Fi can't work. | **Open Local Network Settings…** |
+| No MiniBar found after 10 seconds | Can't find a MiniBar on this network. Make sure it's on and on the same Wi-Fi as this Mac. Some office networks keep devices apart; if yours does, plug MiniBar into this Mac instead. | **Try Again**, **Enter Address…** |
+| Local Network blocked | macOS is blocking MiniBar from your local network, so Wi-Fi can't work. | **Open Local Network Settings…** |
 | Nothing at a typed address | Nothing answered at 10.0.4.42. | Field stays, **Connect** again |
-| A typed address isn't a TinyBar | That address isn't a TinyBar. | |
-| A typed DNS name macOS won't reach over plain HTTP (not `.local`, not an IP address; App Transport Security) *(Proposed, lead developer, 2026-10-04; also under Settings › Connection › Address)* | Use TinyBar's .local name or its IP address. | Field stays |
+| A typed address isn't a MiniBar | That address isn't a MiniBar. | |
+| A typed DNS name macOS won't reach over plain HTTP (not `.local`, not an IP address; App Transport Security) *(Proposed, lead developer, 2026-10-04; also under Settings › Connection › Address)* | Use MiniBar's .local name or its IP address. | Field stays |
 | Wrong code, tries left (`wrong_code`) | That code didn't match. 2 tries left. / That code didn't match. 1 try left. | Field cleared and focused |
-| Wrong code, none left | That code didn't match, so TinyBar canceled pairing. Show a new code to try again. | **Show a New Code** |
-| Code expired, canceled on the bar or already used (`not_pairing`); also after the Mac slept with a code on the bar (5.4) | That code has expired or was canceled on TinyBar. Show a new code to try again. | **Show a New Code** |
-| Someone else is pairing (`pairing_busy`, with `retry_after_s`) | Someone else is pairing with this TinyBar. Try again in 45 seconds. | Button enabled again when the time is up. If the code on the bar is this Mac's own, the page goes back to typing it instead (5.4). |
+| Wrong code, none left | That code didn't match, so MiniBar canceled pairing. Show a new code to try again. | **Show a New Code** |
+| Code expired, canceled on the bar or already used (`not_pairing`); also after the Mac slept with a code on the bar (5.4) | That code has expired or was canceled on MiniBar. Show a new code to try again. | **Show a New Code** |
+| Someone else is pairing (`pairing_busy`, with `retry_after_s`) | Someone else is pairing with this MiniBar. Try again in 45 seconds. | Button enabled again when the time is up. If the code on the bar is this Mac's own, the page goes back to typing it instead (5.4). |
 | Too many failed pairings (`rate_limited` from `pair/start`, with `retry_after_s`) | Too many tries. You can try again in 4 minutes. | The same |
-| `pair` refused for the limit it shares with `pair/cancel`, one request a second (`rate_limited` from `pair`, `api.md` 4.9; a phone's cancel landed in the same second) *(Mac developer, 2026-10-05, from QA's review)* | Nothing at first: the refused request had no effect, so the app waits the second (`retry_after_s`, or 1 when it's left out) and sends the same code once more, as the Remote does. Refused again: TinyBar is busy for a second. Try again. | The code is still on the bar, so the field stays, and **Pair** works again after a second. A longer `retry_after_s` from a later bar shows the "Too many tries" wait instead. |
-| 10 devices already (`token_limit`), from asking for a code or, as a safeguard that ends the code, from sending it (`api.md` 4.3, 4.7) | TinyBar 2A1C already has 10 paired devices. Remove one on its Remote, then try again. | **Open TinyBar Remote…**, and *(Proposed, Mac developer, 2026-10-05)* **Show Code on TinyBar** to try again once a device is removed |
-| The bar is setting up Wi-Fi (`in_setup`, from asking for a code or from sending it; setup ends the code) | TinyBar 2A1C is setting up Wi-Fi. Finish setup on the bar, then try again. | **Show Code on TinyBar** |
-| No reply (time-out) | TinyBar 2A1C didn't answer. Make sure it's on, then try again. | |
-| The bar doesn't use pairing (`auth` is `none`) | TinyBar 2A1C doesn't need pairing, so you're all set. | **Done** |
+| `pair` refused for the limit it shares with `pair/cancel`, one request a second (`rate_limited` from `pair`, `api.md` 4.9; a phone's cancel landed in the same second) *(Mac developer, 2026-10-05, from QA's review)* | Nothing at first: the refused request had no effect, so the app waits the second (`retry_after_s`, or 1 when it's left out) and sends the same code once more, as the Remote does. Refused again: MiniBar is busy for a second. Try again. | The code is still on the bar, so the field stays, and **Pair** works again after a second. A longer `retry_after_s` from a later bar shows the "Too many tries" wait instead. |
+| 10 devices already (`token_limit`), from asking for a code or, as a safeguard that ends the code, from sending it (`api.md` 4.3, 4.7) | MiniBar 2A1C already has 10 paired devices. Remove one on its Remote, then try again. | **Open MiniBar Remote…**, and *(Proposed, Mac developer, 2026-10-05)* **Show Code on MiniBar** to try again once a device is removed |
+| The bar is setting up Wi-Fi (`in_setup`, from asking for a code or from sending it; setup ends the code) | MiniBar 2A1C is setting up Wi-Fi. Finish setup on the bar, then try again. | **Show Code on MiniBar** |
+| No reply (time-out) | MiniBar 2A1C didn't answer. Make sure it's on, then try again. | |
+| The bar doesn't use pairing (`auth` is `none`) | MiniBar 2A1C doesn't need pairing, so you're all set. | **Done** |
 
 Waiting times round up: under a minute in seconds ("45 seconds"), otherwise in minutes ("4 minutes"), as in the mock-up ("74 seconds" reads "2 minutes"). A reply without `retry_after_s` waits a minute.
 
@@ -525,18 +525,18 @@ These are the words the mock-up's Simulate box uses for the Mac app's answers (i
 - **Kicker** (Barlow 700, 15 px, capitals, 1.5 px spacing, baseline y 30): "PAIRING · MAC", or the name the Mac was given.
 - **Headline:** the code, "482 913", in Barlow Condensed 700 at **112 px** with tabular digits, baseline y 125, white. About 357 px wide, inside the 404 px field. Only digits and a space, which the 112 px font already has.
 - **Sub line** (Barlow 500, 19 px, baseline y 152): "Type it on your Mac · tap to cancel" for a Mac, and `api.md`'s "Type this code on that device · tap to cancel" for anything else.
-- **Info column:** label "EXPIRES IN", value the countdown "1:52" (Barlow Condensed 700, 46 px, tabular), foot the bar's own name, "TinyBar 2A1C", so you can check you're pairing the right bar.
+- **Info column:** label "EXPIRES IN", value the countdown "1:52" (Barlow Condensed 700, 46 px, tabular), foot the bar's own name, "MiniBar 2A1C", so you can check you're pairing the right bar.
 - Behavior, cancel and the toasts ("Paired · Mac", "Paired · Mac · over USB", "Pairing canceled", "Pairing timed out", "Pairing canceled · wrong code") are as `api.md` 4.8 says.
 
 ### 5.7 Forgetting a bar
 
-- **Settings › Connection › Forget This TinyBar…** asks first:
-  - Title: "Forget TinyBar 2A1C?"
+- **Settings › Connection › Forget This MiniBar…** asks first:
+  - Title: "Forget MiniBar 2A1C?"
   - Text: "This Mac will stop showing calls on it. To use it again, plug it into this Mac or pair over Wi-Fi."
   - Buttons: **Forget** (destructive) and **Cancel** (default).
 - Forgetting deletes the token from the Keychain and tells the bar, best effort and within 2 seconds, over the link in use: while the bar is plugged in, `DELETE /api/v1/clients/{token_id}` as a USB `request` (`api.md` 12.2), since USB carries no token and `clients/self` can't name the Mac there (Appendix A), and the cable may be the only way to reach the bar (Wi-Fi skipped, or a network that keeps devices apart); otherwise `DELETE /api/v1/clients/self` over Wi-Fi (12.3). Either way the Mac stops holding one of the bar's 10 places, and the Remote's Paired devices no longer lists it. *(Mac developer, 2026-10-05, from QA's review: before, a bar only ever reached over USB kept the token.)*
 - **If the bar is plugged in** when you forget it, the app leaves its USB port alone until it's unplugged and plugged in again. Otherwise plugging-in-pairs-automatically would undo the Forget at once.
-- **To switch to another TinyBar over Wi-Fi,** forget this one, then choose Connect… (one bar per Mac in v1). Over USB, just plug the other one in (5.3).
+- **To switch to another MiniBar over Wi-Fi,** forget this one, then choose Connect… (one bar per Mac in v1). Over USB, just plug the other one in (5.3).
 
 ---
 
@@ -560,12 +560,12 @@ These are the words the mock-up's Simulate box uses for the Mac app's answers (i
 
 | Setting | Control | Default | Help text (secondary color, under the control) |
 |---|---|---|---|
-| Start TinyBar when you log in | Switch | On | *(none, unless it failed; see below)* |
+| Start MiniBar when you log in | Switch | On | *(none, unless it failed; see below)* |
 | **Calls** *(section header)* | | | |
 | Start a call after | Pop-up: Right away, 1 second, 2 seconds, 3 seconds, 5 seconds, 10 seconds, 15 seconds, 30 seconds | 3 seconds | How long the mic or camera has to be in use first. Filters out apps that open the mic for a moment. |
 | End a call after | Pop-up: 3, 5, 10, 15, 30 or 60 seconds | 10 seconds | How long they have to be idle first. Bridges short gaps, like switching to AirPods. |
 | Count the camera | Switch | On | The camera alone counts as a call, without an app name. Turn this off if a webcam app or Photo Booth shows you as on a call. |
-| Send the app's name to TinyBar | Switch | On | TinyBar shows it, like "From your Mac · Slack". Only apps on your call app list send a name, and anyone near your desk can read it. |
+| Send the app's name to MiniBar | Switch | On | MiniBar shows it, like "From your Mac · Slack". Only apps on your call app list send a name, and anyone near your desk can read it. |
 
 - **Delays are pop-ups, not number fields,** so an out-of-range value can't be typed. The core still accepts any whole number in range (`mac-app.md`); if a value set some other way isn't one of the presets, the pop-up adds it as an extra item.
 - **Count the camera in "Only the call apps on my list" mode** is dimmed and off, with: "Not available with “Only the call apps on my list”, because macOS doesn't say which app is using the camera."
@@ -573,8 +573,8 @@ These are the words the mock-up's Simulate box uses for the Mac app's answers (i
 
   | Status | Help line | Button |
   |---|---|---|
-  | `requiresApproval` | Allow TinyBar in Login Items to start it when you log in. | **Open Login Items Settings…** (`SMAppService.openSystemSettingsLoginItems()`) |
-  | `notFound`, or the app isn't in Applications | Move TinyBar to your Applications folder, then turn this on again. | |
+  | `requiresApproval` | Allow MiniBar in Login Items to start it when you log in. | **Open Login Items Settings…** (`SMAppService.openSystemSettingsLoginItems()`) |
+  | `notFound`, or the app isn't in Applications | Move MiniBar to your Applications folder, then turn this on again. | |
   | Registering threw an error | macOS didn't allow it. Your organization may manage login items. | |
 
 ### 6.3 Apps
@@ -583,11 +583,11 @@ These are the words the mock-up's Simulate box uses for the Mac app's answers (i
 Count calls from   (•) Any app, except ignored apps
                    ( ) Only the call apps on my list
                    Any app catches call apps that aren't on your list.
-                   They show on TinyBar without a name.
+                   They show on MiniBar without a name.
 
 Call apps
 ┌──────────────────────────────────────────────────┐
-│ App                      Shown on TinyBar as     │
+│ App                      Shown on MiniBar as     │
 │ [icon] Slack             Slack                   │
 │ [icon] zoom.us           Zoom                    │
 │ [icon] Google Chrome     Chrome                  │
@@ -595,7 +595,7 @@ Call apps
 ├──────────────────────────────────────────────────┤
 │ [+] [−]                                          │
 └──────────────────────────────────────────────────┘
-Calls from these apps show their name on TinyBar.
+Calls from these apps show their name on MiniBar.
 Double-click a name to change it.
 
 Ignored apps
@@ -609,71 +609,71 @@ Ignored apps
 └──────────────────────────────────────────────────┘
 These never count as a call, even while they use the mic.
 
-Used the mic since TinyBar opened
+Used the mic since MiniBar opened
   [icon] GarageBand   counted, no name   [Add to Call Apps] [Ignore]
   [icon] Voice Memos  ignored
-This list is kept only until TinyBar quits.
+This list is kept only until MiniBar quits.
 
                                               [Restore Defaults]
 ```
 
 - **Count calls from:** radio group, default **Any app, except ignored apps**. Help as drawn.
-- **Call apps:** a two-column table, app (icon and name as in Finder) and **Shown on TinyBar as** (editable on double-click). There's **no on/off switch per row**: to stop counting an app, move it to Ignored apps (each row's context menu has **Ignore Slack**), and to stop naming it, remove it (−), which makes it an ordinary app.
-- **The name** is 1 to 24 characters (the bar shows 24, `api.md` 5.2). As you type, the field refuses more than 24 with "Use 24 characters or fewer." Characters outside printable ASCII get "TinyBar can't show “é”." (the bar's fonts, `api.md` 2.3). An empty name puts back the app's default.
-- **+ (Add App…)** opens a standard open panel in Applications: title "Choose an App", button **Add**, applications only. If the app is already on the other list: "Zoom is in Ignored Apps. Move it to Call Apps?" with **Move** and **Cancel**. An app with no bundle identifier gets "TinyBar can't tell when this app uses the mic."
+- **Call apps:** a two-column table, app (icon and name as in Finder) and **Shown on MiniBar as** (editable on double-click). There's **no on/off switch per row**: to stop counting an app, move it to Ignored apps (each row's context menu has **Ignore Slack**), and to stop naming it, remove it (−), which makes it an ordinary app.
+- **The name** is 1 to 24 characters (the bar shows 24, `api.md` 5.2). As you type, the field refuses more than 24 with "Use 24 characters or fewer." Characters outside printable ASCII get "MiniBar can't show “é”." (the bar's fonts, `api.md` 2.3). An empty name puts back the app's default.
+- **+ (Add App…)** opens a standard open panel in Applications: title "Choose an App", button **Add**, applications only. If the app is already on the other list: "Zoom is in Ignored Apps. Move it to Call Apps?" with **Move** and **Cancel**. An app with no bundle identifier gets "MiniBar can't tell when this app uses the mic."
 - **Ignored apps:** one column, + and −, and a context menu **Count Voice Memos**. Built-in entries (Siri, Dictation, Voice Control) show their name and a system icon, since they aren't apps you can pick in Finder.
-- **Used the mic since TinyBar opened:** one row per app the Mac has seen using the mic this session, with its state (counted, counted, no name, or ignored) and **Add to Call Apps** and **Ignore** buttons where they apply. Empty: "No apps have used the mic since TinyBar opened." Kept in memory only, as `mac-app.md` requires.
+- **Used the mic since MiniBar opened:** one row per app the Mac has seen using the mic this session, with its state (counted, counted, no name, or ignored) and **Add to Call Apps** and **Ignore** buttons where they apply. Empty: "No apps have used the mic since MiniBar opened." Kept in memory only, as `mac-app.md` requires.
 - **Restore Defaults** asks first, since lists can hold real work: "Restore the default app lists?" / "Your changes to call apps and ignored apps will be lost." / **Restore** and **Cancel**. It also resets Count calls from.
 
 ### 6.4 Connection
 
 ```text
-TinyBar 2A1C                       ● Connected over USB
+MiniBar 2A1C                       ● Connected over USB
                                    [Send Test Call]
-                                   Shows On a call on TinyBar for 10 seconds, as “Test”.
-                                   [Forget This TinyBar…]
+                                   Shows On a call on MiniBar for 10 seconds, as “Test”.
+                                   [Forget This MiniBar…]
 
-Use Wi-Fi when TinyBar isn't plugged in              [on]
-Off, this Mac talks to TinyBar only over the USB cable,
+Use Wi-Fi when MiniBar isn't plugged in              [on]
+Off, this Mac talks to MiniBar only over the USB cable,
 and never asks for Local Network access.
 
 ▸ Advanced
     Address               [ Automatic                    ]
-    Leave empty to find TinyBar automatically, or type its
-    address, like tinybar.local or 10.0.4.42.
+    Leave empty to find MiniBar automatically, or type its
+    address, like minibar.local or 10.0.4.42.
     Name for this Mac     [ Mac                          ]
-    Shown in TinyBar's list of paired devices. TinyBar never
+    Shown in MiniBar's list of paired devices. MiniBar never
     sends your Mac's own name.
     USB                   [Pause USB]
-    Lets another app, like a firmware flasher, use TinyBar's
+    Lets another app, like a firmware flasher, use MiniBar's
     USB port. Wi-Fi is used meanwhile.
 
                                               [Restore Defaults]
 ```
 
-**Your TinyBar** (top section):
+**Your MiniBar** (top section):
 
 | Situation | Status | Buttons |
 |---|---|---|
 | Not set up | Not set up yet | **Connect…** |
-| Connected over USB | ● Connected over USB | **Send Test Call**, **Forget This TinyBar…** |
+| Connected over USB | ● Connected over USB | **Send Test Call**, **Forget This MiniBar…** |
 | Connected over Wi-Fi | ● Connected over Wi-Fi | The same |
-| Can't reach | ○ Can't reach it since 2:04 PM | **Connect…**, **Forget This TinyBar…** |
-| Paired, but the bar refuses this Mac | ○ It doesn't recognize this Mac | **Pair Again…**, **Forget This TinyBar…** |
+| Can't reach | ○ Can't reach it since 2:04 PM | **Connect…**, **Forget This MiniBar…** |
+| Paired, but the bar refuses this Mac | ○ It doesn't recognize this Mac | **Pair Again…**, **Forget This MiniBar…** |
 | The bar doesn't use pairing | ● Connected over Wi-Fi · no pairing needed | **Send Test Call** |
 
-*Proposed (lead developer, 2026-10-04), the rows the table doesn't cover, for the UX designer to confirm:* Looking (the 15-second grace): ○ Looking for TinyBar…, with **Send Test Call** (dimmed: "Connect TinyBar first.") and **Forget This TinyBar…**. Wi-Fi off and not plugged in: ○ It isn’t plugged in. Wi-Fi can't reach it here: ○ Wi-Fi can’t reach it here. Both with **Connect…** and **Forget This TinyBar…**. Local Network blocked: ○ Wi-Fi is blocked in Privacy settings, with **Forget This TinyBar…** (Privacy has the button). Firmware or app too old: ○ It needs a firmware update, or ○ This app needs an update for it, with **Forget This TinyBar…**.
+*Proposed (lead developer, 2026-10-04), the rows the table doesn't cover, for the UX designer to confirm:* Looking (the 15-second grace): ○ Looking for MiniBar…, with **Send Test Call** (dimmed: "Connect MiniBar first.") and **Forget This MiniBar…**. Wi-Fi off and not plugged in: ○ It isn’t plugged in. Wi-Fi can't reach it here: ○ Wi-Fi can’t reach it here. Both with **Connect…** and **Forget This MiniBar…**. Local Network blocked: ○ Wi-Fi is blocked in Privacy settings, with **Forget This MiniBar…** (Privacy has the button). Firmware or app too old: ○ It needs a firmware update, or ○ This app needs an update for it, with **Forget This MiniBar…**.
 
 The dot is filled (●) when connected and hollow (○) when not, in the system green or secondary color: the shape and the words carry it, not the color.
 
-**Send Test Call.** Shows On a call on the bar for 10 seconds with the name "Test", then ends it. While it runs, the button reads **Sending Test Call…** and is dimmed, and line 1 of the menu says "Sending a test call". It's dimmed with a reason when it can't run: "Not available during a call." or "Connect TinyBar first."
+**Send Test Call.** Shows On a call on the bar for 10 seconds with the name "Test", then ends it. While it runs, the button reads **Sending Test Call…** and is dimmed, and line 1 of the menu says "Sending a test call". It's dimmed with a reason when it can't run: "Not available during a call." or "Connect MiniBar first."
 
-**Use Wi-Fi when TinyBar isn't plugged in.** Switch, on by default. Off: USB only, no browsing, no Local Network prompt; the menu says "TinyBar 2A1C isn't plugged in" when it isn't. A new setting: some people and IT departments will want calls to stay on the cable.
+**Use Wi-Fi when MiniBar isn't plugged in.** Switch, on by default. Off: USB only, no browsing, no Local Network prompt; the menu says "MiniBar 2A1C isn't plugged in" when it isn't. A new setting: some people and IT departments will want calls to stay on the cable.
 
 **Advanced** (a disclosure group, closed by default):
 
-- **Address:** text field, placeholder "Automatic". Help as drawn. Checked with `info` when you press Return or leave the field: "That address isn't a TinyBar." or "Nothing answered at 10.0.4.42." under the field.
-- **Name for this Mac:** text field, empty by default, placeholder "Mac", 1 to 32 characters. Sent as `name` (`api.md` 4.6 and 6.6) so the Remote's list can tell your Macs apart. Help as drawn. The bar learns a new name the next time the Mac pairs or is plugged in (there's no rename over Wi-Fi), so the help line adds, once it's changed: "TinyBar will show the new name after you plug it in or pair again."
+- **Address:** text field, placeholder "Automatic". Help as drawn. Checked with `info` when you press Return or leave the field: "That address isn't a MiniBar." or "Nothing answered at 10.0.4.42." under the field.
+- **Name for this Mac:** text field, empty by default, placeholder "Mac", 1 to 32 characters. Sent as `name` (`api.md` 4.6 and 6.6) so the Remote's list can tell your Macs apart. Help as drawn. The bar learns a new name the next time the Mac pairs or is plugged in (there's no rename over Wi-Fi), so the help line adds, once it's changed: "MiniBar will show the new name after you plug it in or pair again."
 - **USB: Pause USB / Resume USB.** As in 4.8.
 
 **Restore Defaults** turns Wi-Fi back on and clears Advanced. It doesn't forget the bar.
@@ -682,34 +682,34 @@ The dot is filled (●) when connected and hollow (○) when not, in the system 
 
 Read-only text, no controls except the Local Network button. Headings in semibold.
 
-> **What TinyBar sends**
+> **What MiniBar sends**
 >
-> Only to your TinyBar, over the USB cable or your local network:
+> Only to your MiniBar, over the USB cable or your local network:
 >
 > - Whether you're on a call: yes or no.
 > - The call app's name, like “Slack”, if Send the app's name is on. Names of other apps are never sent.
-> - A random ID for this copy of TinyBar, so your bar can tell your Mac apart from others. It isn't your Mac's name or serial number.
+> - A random ID for this copy of MiniBar, so your bar can tell your Mac apart from others. It isn't your Mac's name or serial number.
 >
 > It never sends audio, sound levels, window titles, websites, meeting names, contacts, or your name or your Mac's. It never connects to the internet.
 >
-> **What TinyBar reads**
+> **What MiniBar reads**
 >
 > Whether the mic and camera are in use, and which app is using the mic. It never turns them on, listens or records, so it doesn't ask for microphone or camera access. It keeps no record of which apps used the mic.
 >
 > **Good to know**
 >
-> - Anyone near your desk can see what TinyBar shows, including the app's name. TinyBar's Remote shows it too.
+> - Anyone near your desk can see what MiniBar shows, including the app's name. MiniBar's Remote shows it too.
 > - Over Wi-Fi, messages aren't encrypted, so someone watching the office network could see them. Over USB, they stay on the cable.
 
-When the app has seen Local Network blocked (macOS 15 and later), a line and a button follow: "macOS is blocking TinyBar from your local network, so Wi-Fi can't work." **Open Local Network Settings…**
+When the app has seen Local Network blocked (macOS 15 and later), a line and a button follow: "macOS is blocking MiniBar from your local network, so Wi-Fi can't work." **Open Local Network Settings…**
 
-*The third bullet under "What TinyBar sends" depends on the user's OK for `client` (`api.md` 14.2). If the Mac's time is approved for `hello` too, add: "Over USB, your Mac's time, so TinyBar's clock is right without Wi-Fi."*
+*The third bullet under "What MiniBar sends" depends on the user's OK for `client` (`api.md` 14.2). If the Mac's time is approved for `hello` too, add: "Over USB, your Mac's time, so MiniBar's clock is right without Wi-Fi."*
 
 ---
 
 ## 7. Notifications
 
-**TinyBar for Mac shows no notifications in v1, and never asks for permission to.** This follows `decisions.md` ("No alerts or notifications about the connection", and notifications not in v1), and it's the right design, not just a scope cut:
+**MiniBar for Mac shows no notifications in v1, and never asks for permission to.** This follows `decisions.md` ("No alerts or notifications about the connection", and notifications not in v1), and it's the right design, not just a scope cut:
 
 - **The bar is on your desk.** If calls aren't showing, you can see that on the bar itself, and the icon says why.
 - **Calls are exactly when a banner hurts.** It interrupts you, and it can appear in a screen share.
@@ -724,10 +724,10 @@ Where each event shows instead:
 | Call set aside on the bar | The bar (you did it). Menu line 2. |
 | Can't reach the bar | Icon (after 15 s), menu line 2, Settings › Connection. |
 | Paired, over USB or Wi-Fi | The bar's toast, the Connect window, menu line 2. |
-| A different TinyBar plugged in | Menu line 2 names it. |
+| A different MiniBar plugged in | Menu line 2 names it. |
 | Pause ended | The icon changes back. |
 | Local Network blocked, or pairing refused | The Needs-you icon, menu line 2 with its fix item. |
-| Bar ignoring calls from your Mac | The Paused icon, menu line 2, **Open TinyBar Remote…** |
+| Bar ignoring calls from your Mac | The Paused icon, menu line 2, **Open MiniBar Remote…** |
 | Starting at login failed | Settings › General, when you change the switch. |
 | Firmware or app needs an update | The Needs-you icon, menu line 2. |
 
@@ -739,21 +739,21 @@ Where each event shows instead:
 
 ## 8. Other moments
 
-**The Local Network prompt** (macOS 15 and later). macOS shows the app's usage text, `NSLocalNetworkUsageDescription`: "TinyBar connects to your TinyBar on this network to show when you're on a call." The app makes its first Wi-Fi request, which is what makes macOS ask, while the Connect window explains it: on the Wi-Fi page (5.4), or right after a USB connection in the Connect window (5.2). The one exception is a bar first plugged in with no window open (after Not Now): the prompt then comes right after the plug-in, when the app checks Wi-Fi, so it still follows something you just did. With Wi-Fi turned off in Settings, it never appears.
+**The Local Network prompt** (macOS 15 and later). macOS shows the app's usage text, `NSLocalNetworkUsageDescription`: "Finds your MiniBar on this network and tells it when you're on a call." (macOS puts the app's name in front of it, so the text doesn't repeat it.) The app makes its first Wi-Fi request, which is what makes macOS ask, while the Connect window explains it: on the Wi-Fi page (5.4), or right after a USB connection in the Connect window (5.2). The one exception is a bar first plugged in with no window open (after Not Now): the prompt then comes right after the plug-in, when the app checks Wi-Fi, so it still follows something you just did. With Wi-Fi turned off in Settings, it never appears.
 
-**Reopening the app.** With no Dock icon, people who can't find the menu-bar icon (a full menu bar, a hidden item, the MacBook notch) open the app again from Finder, Spotlight or Launchpad. When that happens while it's running (`applicationShouldHandleReopen`), it opens **Settings** on the General tab, or the **Connect window** if TinyBar isn't set up.
+**Reopening the app.** With no Dock icon, people who can't find the menu-bar icon (a full menu bar, a hidden item, the MacBook notch) open the app again from Finder, Spotlight or Launchpad. When that happens while it's running (`applicationShouldHandleReopen`), it opens **Settings** on the General tab, or the **Connect window** if MiniBar isn't set up.
 
-**About TinyBar.** The standard About panel (`orderFrontStandardAboutPanel`): the app icon, name, "Version 1.0 (12)", and the credits line "Shows On a call on your TinyBar when this Mac's mic or camera is in use. It never listens or records."
+**About MiniBar.** The standard About panel (`orderFrontStandardAboutPanel`): the app icon, name, "Version 1.0 (12)", and the credits line "Shows On a call on your MiniBar when this Mac's mic or camera is in use. It never listens or records."
 
-**Quit TinyBar.** Quits at once, with no confirmation, like other menu-bar apps; during a call it tells the bar first (`leaving`, `api.md` 5.2).
+**Quit MiniBar.** Quits at once, with no confirmation, like other menu-bar apps; during a call it tells the bar first (`leaving`, `api.md` 5.2).
 
-**The app icon** (Finder, About, the Connect window, Login Items). A standard macOS app icon on Apple's icon grid: the TinyBar seen from the front, a wide rounded bar with the main field in On a call blue #1450B4 and the info column in its tint #0F3D89, on a dark #0E1013 rounded-square background. Two short white bars stand in for the text (real words turn to mush at 16 px). Flat fills, no glass or gloss. *For macOS 26, the same artwork can go through Icon Composer for the dark and tinted styles.*
+**The app icon** (Finder, About, the Connect window, Login Items). A standard macOS app icon on Apple's icon grid: the MiniBar seen from the front, a wide rounded bar with the main field in On a call blue #1450B4 and the info column in its tint #0F3D89, on a dark #0E1013 rounded-square background. Two short white bars stand in for the text (real words turn to mush at 16 px). Flat fills, no glass or gloss. *For macOS 26, the same artwork can go through Icon Composer for the dark and tinted styles.*
 
 ---
 
 ## 9. Accessibility
 
-- **VoiceOver:** the status item's label is "TinyBar, " plus the state (3.1), and its value is the tooltip text, so "TinyBar, on a call, On a call · Slack · 12m" is read in full. Status lines in the menu are read in order. Every control in the windows has a label; the code field is "Pairing code, 6 digits".
+- **VoiceOver:** the status item's label is "MiniBar, " plus the state (3.1), and its value is the tooltip text, so "MiniBar, on a call, On a call · Slack · 12m" is read in full. Status lines in the menu are read in order. Every control in the windows has a label; the code field is "Pairing code, 6 digits".
 - **Color is never the only signal:** icon states differ in shape; checkmarks and dots come with words; errors have a symbol and words.
 - **Increase Contrast and Reduce Transparency:** handled by template images and standard controls. The custom glyphs' 1.5 pt strokes stay visible with Increase Contrast. *Check on a real Mac (`mac-app.md` criterion 25).*
 - **Keyboard:** every window works with Tab and Full Keyboard Access; Return and Esc do what the default and cancel buttons do; ⌘, and ⌘Q work while the menu is open; menu items can be reached with the arrow keys as in any menu.
@@ -770,17 +770,17 @@ The product manager's spec should be brought in line with these (none changes wh
 
 1. **Five icon states, not four:** adds **Needs you** (Local Network blocked, pairing refused, API mismatch). "Calls from your Mac" off on the bar shows as **Paused**, not as an error. Not connected waits 15 seconds before it shows.
 2. **Two status lines, not three.** What the bar is showing is folded into line 2, and only when it differs from what you'd expect (set aside, screen off, Wi-Fi setup, ignoring calls).
-3. **"Calls from your Mac are off on TinyBar (turn them on in the Remote)"** becomes "TinyBar 2A1C is ignoring calls from your Mac" with **Open TinyBar Remote…** (now a `200` with `sources.mac: false`, `api.md` 14.1).
+3. **"Calls from your Mac are off on MiniBar (turn them on in the Remote)"** becomes "MiniBar 2A1C is ignoring calls from your Mac" with **Open MiniBar Remote…** (now a `200` with `sources.mac: false`, `api.md` 14.1).
 4. **Don't Count <app> has an undo,** Count <app> Again, while the app is still using the mic, and a camera equivalent, Don't Count the Camera. Criterion 26 should cover both.
 5. **Pause** keeps its three durations, in a submenu named **Pause Detection**, with **Resume Detection** while paused.
 6. **Connect…** joins the menu whenever the bar isn't connected.
-7. **Settings tabs:** General, Apps, **Connection** (was "TinyBar") and Privacy. **Restore Defaults** (Apple's wording) replaces "Reset to defaults", and Privacy has none.
+7. **Settings tabs:** General, Apps, **Connection** (was "MiniBar") and Privacy. **Restore Defaults** (Apple's wording) replaces "Reset to defaults", and Privacy has none.
 8. **Delays are pop-ups** with preset values (Right away to 30 seconds; 3 to 60 seconds), so criterion 9's "refused" becomes impossible to reach from the UI. The core still validates.
 9. **Call apps have no per-row on switch:** moving an app between Call apps and Ignored apps is the control.
-10. **New settings:** **Use Wi-Fi when TinyBar isn't plugged in** (on), **Name for this Mac** (empty, from `api.md`), and **Pause USB** (from `api.md` 6.3), the last two under Advanced. Pause USB is also in the Option-click menu.
+10. **New settings:** **Use Wi-Fi when MiniBar isn't plugged in** (on), **Name for this Mac** (empty, from `api.md`), and **Pause USB** (from `api.md` 6.3), the last two under Advanced. Pause USB is also in the Option-click menu.
 11. **Pairing over Wi-Fi** is started from the app, and the code is shown on the bar, as `api.md` 14.5 already says. The Connect window replaces the first-run window's three steps with one page plus the Wi-Fi page.
-12. **"This TinyBar doesn't support pairing yet"** becomes "TinyBar 2A1C doesn't need pairing, so you're all set." (`auth: none`).
-13. **A different TinyBar on USB** becomes your TinyBar and the old one is forgotten (5.3). **Forget** while plugged in ignores the port until it's replugged (5.7).
+12. **"This MiniBar doesn't support pairing yet"** becomes "MiniBar 2A1C doesn't need pairing, so you're all set." (`auth: none`).
+13. **A different MiniBar on USB** becomes your MiniBar and the old one is forgotten (5.3). **Forget** while plugged in ignores the port until it's replugged (5.7).
 14. **Reopening the app** opens Settings, or the Connect window if not set up (section 8).
 15. **Privacy text** lists the random install ID, pending the user's OK in `api.md` 14.2.
 
@@ -792,8 +792,8 @@ Nothing needs changing. This design uses: `name` from `info`, `hello` and pairin
 
 - Draw the **pairing screen** (5.6) and its toasts in the mock-up, and add it to the firmware's screens.
 - Show the bar's **name** on the Wi-Fi menu's **Network** tile, as `api.md` 14.3 asks: the Wi-Fi page's help line depends on it.
-- The Remote's **Connect your Mac** card: replace the planned Pair a Mac button with the instructions in `api.md` 14.3. Suggested copy: "To pair your Mac, plug this TinyBar into it once. Or, in the TinyBar menu on your Mac, choose Connect…, then Pair Over Wi-Fi; this TinyBar shows the code." Plus a list of paired devices with **Remove**.
-- The card's link to "How the Mac app talks to TinyBar" stays; its "Coming later" badge goes when the app ships.
+- The Remote's **Connect your Mac** card: replace the planned Pair a Mac button with the instructions in `api.md` 14.3. Suggested copy: "To pair your Mac, plug this MiniBar into it once. Or, in the MiniBar menu on your Mac, choose Connect…, then Pair Over Wi-Fi; this MiniBar shows the code." Plus a list of paired devices with **Remove**.
+- The card's link to "How the Mac app talks to MiniBar" stays; its "Coming later" badge goes when the app ships.
 
 ### 10.4 For `docs/decisions.md`
 
@@ -805,7 +805,7 @@ The follow-up "UX: draw the four menu-bar icon states, and design the menu, the 
 
 The Linux container can't build AppKit or SwiftUI, so none of this has been seen on screen. To check on macOS 14, 15 and 26:
 
-- **SF Symbol size and weight** in the status item (3.3), and whether `rectangle` reads as TinyBar among other menu-bar icons; if not, switch to the custom glyphs.
+- **SF Symbol size and weight** in the status item (3.3), and whether `rectangle` reads as MiniBar among other menu-bar icons; if not, switch to the custom glyphs.
 - **The status lines' look** (4.1): whether disabled items keep attributed colors, or a custom view is needed, and that it doesn't highlight on hover.
 - **The menu updating while open** (4.1): timers in the menu's event-tracking run-loop mode.
 - **Option-click** (4.8): reading `NSEvent.modifierFlags` in `menuWillOpen(_:)`.
@@ -815,6 +815,6 @@ The Linux container can't build AppKit or SwiftUI, so none of this has been seen
 - **`applicationShouldHandleReopen`** firing for an app with `LSUIElement` (section 8).
 - **The custom glyphs** at 1x on a non-Retina display (rendered in a browser only).
 - **Taking a code off the bar** (5.4): that Back, the close button, ⌘W and Esc on the Wi-Fi page, and closing the window all send `pair/cancel` without the window pausing; that the request gets out before the app quits (it waits up to 2 seconds, also for a `pair/start` or `pair` still on its way and for a cancel a closed window started) and before the Mac sleeps (about a second); and that the bar then shows "Pairing canceled". Tested on Linux with fakes and a local HTTP server only.
-- **A code past the app's own 2 minutes** (5.4): that typing it on a bar that still shows it pairs, and on a bar where it has ended shows "That code has expired or was canceled on TinyBar."; and that a `pair` refused with `429 rate_limited` is sent again a second later without a message (5.5). Tested on Linux with fakes only.
-- **Forget This TinyBar while plugged in** (5.7): that the USB `request` for `DELETE /api/v1/clients/{token_id}` takes the Mac off the Remote's Paired devices (the firmware answers it over USB without a token; captured by QA on the fake bar, not yet on a real one from the app).
+- **A code past the app's own 2 minutes** (5.4): that typing it on a bar that still shows it pairs, and on a bar where it has ended shows "That code has expired or was canceled on MiniBar."; and that a `pair` refused with `429 rate_limited` is sent again a second later without a message (5.5). Tested on Linux with fakes only.
+- **Forget This MiniBar while plugged in** (5.7): that the USB `request` for `DELETE /api/v1/clients/{token_id}` takes the Mac off the Remote's Paired devices (the firmware answers it over USB without a token; captured by QA on the fake bar, not yet on a real one from the app).
 - **`wrong_client`** (4.3): the menu's "doesn't recognize this Mac" line and **Pair Again…** after a bar refuses a call with it, and that the old token is gone from the Remote's Paired devices afterwards.

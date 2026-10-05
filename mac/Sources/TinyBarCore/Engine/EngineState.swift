@@ -54,7 +54,7 @@ public struct EngineState: Hashable, Sendable {
     public var call: DetectedCall?
     public var testCall: TestCall?
     public var connection: ConnectionState
-    /// Used the mic since TinyBar opened (memory only).
+    /// Used the mic since MiniBar opened (memory only).
     public var seenApps: [SeenApp]
     public var undo: UndoState
     public var loginItem: LoginItemStatus

@@ -1,4 +1,4 @@
-# TinyBar host tests: the pure-logic parts of core, calendar, net (proto/) and ui (view/), built with the host's gcc
+# MiniBar host tests: the pure-logic parts of core, calendar, net (proto/) and ui (view/), built with the host's gcc
 # and run with ctest. Owner: lead developer (this file and tb_test.*); each builder owns test/host/<module>/.
 #
 #   cmake -S firmware/test/host -B firmware/build-host-<name>

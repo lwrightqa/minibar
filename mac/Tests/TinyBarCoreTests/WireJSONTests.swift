@@ -19,14 +19,14 @@ final class WireJSONTests: XCTestCase {
     }
 
     func testUSBErrorRepliesHaveNoHTTPStatus() {
-        let text = #"{"id": 4, "ok": false, "error": "token_limit", "message": "TinyBar already has 10 paired devices. Remove one on the Remote.", "field": null}"#
+        let text = #"{"id": 4, "ok": false, "error": "token_limit", "message": "MiniBar already has 10 paired devices. Remove one on the Remote.", "field": null}"#
         XCTAssertThrowsError(try decode(PairReply.self, text, status: nil)) { error in
             XCTAssertEqual((error as? BarError)?.apiCode, .tokenLimit)
         }
     }
 
     func testUnauthorized() {
-        let text = #"{"ok": false, "error": "unauthorized", "message": "Pair with this TinyBar first.", "field": null}"#
+        let text = #"{"ok": false, "error": "unauthorized", "message": "Pair with this MiniBar first.", "field": null}"#
         XCTAssertThrowsError(try decode(CallReply.self, text, status: 401)) { error in
             XCTAssertTrue((error as? BarError)?.isUnauthorized ?? false)
         }

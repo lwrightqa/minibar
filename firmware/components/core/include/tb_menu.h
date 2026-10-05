@@ -69,10 +69,10 @@ typedef struct {
     bool wide;              /* spans two of the five columns (the Wi-Fi menu's Network tile) */
     bool foot_lines;        /* the foot is "line\nline": two separate lines, each cut with "…" (never wraps) */
     bool foot_clamp2;       /* the foot wraps onto at most two lines, the second cut with "…" (the device names) */
-    char foot[160];         /* <small>: "tap to change", "synced 2m ago", "TinyBar 2A1C\ntinybar.local · 10.0.4.42" */
+    char foot[160];         /* <small>: "tap to change", "synced 2m ago", "MiniBar 2A1C\nminibar.local · 10.0.4.42" */
     /* Feet to fall back on, in order, when a line of foot doesn't fit the tile on one line: ui measures each line
      * against the tile's content width (lv_text_get_size) and draws the first that fits, else the last. The Devices
-     * tile with nothing paired: "pair at\ntinybar.local", then "pair at\n10.0.4.42", then "pair at its\nIP address". */
+     * tile with nothing paired: "pair at\nminibar.local", then "pair at\n10.0.4.42", then "pair at its\nIP address". */
     char foot_alt[2][32];
     uint8_t n_foot_alt;
 } tb_tile_t;

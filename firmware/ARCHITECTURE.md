@@ -1,4 +1,4 @@
-# TinyBar firmware architecture
+# MiniBar firmware architecture
 
 Lead developer, 2026-10-04. Read with `../docs/decisions.md` (what), `../docs/mockup.html` (how it behaves and looks)
 and `../docs/api.md` (the wire contract). Where this file and those disagree, they win; tell the lead.
@@ -114,7 +114,7 @@ No cycles, and nothing depends on main. net doesn't call board: it posts `TB_EV_
    most 150 ms after the accelerometer is turned on). If they can't tell (lying flat) or there's no IMU, the pose
    remembered in NVS (`board`/`pose`), else upright: **side buttons on top**.
 5. `lv_init()`, `board_display_init(flipped)`, `board_touch_init()`, `ui_init()`.
-6. `board_rtc_init()`: the system clock from the RTC if it holds a time TinyBar wrote. The clock counts as known if
+6. `board_rtc_init()`: the system clock from the RTC if it holds a time MiniBar wrote. The clock counts as known if
    the RTC was trusted or the system clock already reads 2025 or later (it survives a restart and a deep sleep).
 7. `tb_app_init()` (booting = true: the splash) with how the Wi-Fi starts (`net_wifi_start_mode()`: a saved network,
    a remembered Skip, or the QR code), `settings_store_restore()`, `tb_app_flip(initial)`.
@@ -272,11 +272,11 @@ Where core departs from the mock-up's behavior (each marked "Firmware:" in `tb_a
 | `flash` | core `flash_at` → ui animates the white flash for 1.7 s |
 | `view`, `pomoView`, `autoView`, `wifiView`, `sysRow`, `side`, splash | ui `view/ui_view.c` (words) + `src/ui.c` (layout) |
 | `fitWords` with Bold Signal's ladder | ui `src/ui.c`: largest ladder size that fits 404 px (`lv_text_get_width`), marquee for long messages |
-| `qrSvg` | ui: `lv_qrcode` with `WIFI:T:nopass;S:TinyBar-Setup;;` |
+| `qrSvg` | ui: `lv_qrcode` with `WIFI:T:nopass;S:MiniBar-Setup;;` |
 | `startSetup`, `skipWifi`, `wifiTap`, the setup page's Connect | core (screens) + net (AP, DNS, page, join) via `TB_FX_WIFI_*` and `TB_EV_WIFI` |
 | The Remote panel (`#remoteMain`, `updateRemote`, `updateAutoRemote`) | net `web/remote.html` over `/api/v1/` |
 | The setup page (`#setupView`) | net `web/setup.html` over `/api/v1/setup/` |
-| "How the Mac app talks to TinyBar" | superseded by `docs/api.md` (net) |
+| "How the Mac app talks to MiniBar" | superseded by `docs/api.md` (net) |
 | Style panel, design directions, Simulate, demo speed | mock-up only; not in the firmware |
 
 ## 9. Screens and the host snapshot tool
@@ -305,7 +305,7 @@ rendered at 640 × 172 in headless Chromium per `docs/testing.md`):
 ## 10. Network
 
 - **Wi-Fi:** station with WPA2/WPA3 Personal, or WPA2-Enterprise (PEAP/MSCHAPv2, TTLS) through `esp_eap_client`.
-  Credentials in NVS namespace `wifi`. Setup mode is APSTA: the open `TinyBar-Setup` AP at 4.3.2.1/24, a DNS
+  Credentials in NVS namespace `wifi`. Setup mode is APSTA: the open `MiniBar-Setup` AP at 4.3.2.1/24, a DNS
   catch-all, and the setup page; the station side tries the chosen network while the AP stays up, so the phone sees
   the result (api.md 13.3 `setup/state`). The page's list comes from one scan made just before the AP opens; while a
   phone is on the AP the bar scans again only if that list is empty, because an APSTA scan takes the radio off the
@@ -342,7 +342,7 @@ rendered at 640 × 172 in headless Chromium per `docs/testing.md`):
   (the join, the Connected screen, the 15 s linger), an office host with a route to 4.3.2.1 through the bar would
   otherwise reach the setup endpoints, which take no token; a forged source address can't finish the TCP handshake.
   If the socket's address can't be read as IPv4, a peer in the setup subnet while the AP is up counts.
-- **mDNS:** host `tinybar` (or what it gets after a conflict), `_tinybar._tcp` and `_http._tcp` on port 80 with the
+- **mDNS:** host `minibar` (or what it gets after a conflict), `_minibar._tcp` and `_http._tcp` on port 80 with the
   TXT record of api.md section 3; instance name = `device.name`.
 - **HTTP:** `max_open_sockets` 7 with `lru_purge_enable`, header limit 2048 (sdkconfig), body limit 2048 (router),
   replies ≤ 8 KB (GET calendar lists as many meetings as fit); every API response carries `Content-Type:
@@ -383,7 +383,7 @@ rendered at 640 × 172 in headless Chromium per `docs/testing.md`):
   and the Wi-Fi password is kept in plain NVS until encryption is agreed. Both are open decisions (section 13).
 - **Power off on USB** is a deep sleep: the USB serial port disappears, and comes back on the next PWR press.
 - **Skip is remembered** (`wifi/skipped` in NVS): an offline bar starts offline after Restart or power-on, with the
-  radio off and no TinyBar-Setup network, as the mock-up's `powerOn()` keeps offline mode. Set up (the QR code) and a
+  radio off and no MiniBar-Setup network, as the mock-up's `powerOn()` keeps offline mode. Set up (the QR code) and a
   join that works clear it.
 
 ### Secrets
@@ -396,7 +396,7 @@ reads the flash. A work login is often the person's company sign-in.
 
 - **NVS encryption** (api.md section 15, the HMAC-based scheme) **burns an HMAC key into an eFuse block on first boot
   and can't be undone** on that board. It stops a passive dump only: without secure boot, someone could flash a
-  dumping firmware that uses the same HMAC key (the chip still holds it), read the secrets, and flash TinyBar back.
+  dumping firmware that uses the same HMAC key (the chip still holds it), read the secrets, and flash MiniBar back.
   Switching it on is a config change (`CONFIG_NVS_ENCRYPTION`, `CONFIG_NVS_SEC_KEY_PROTECT_USING_HMAC`, the eFuse key
   id) plus `nvs_flash_secure_init_partition("nvs_sec")` (and the default partition) in `settings_store_init()`.
 - **Full protection** needs flash encryption plus secure boot (signed images only), or disabling USB download mode and
@@ -431,7 +431,7 @@ reports or estimated, and the real heap figures come from the health log line on
 |---|---|---|
 | Internal SRAM, static (measured) | code that must run from RAM (IDF, Wi-Fi, the IRAM-safe I2C ISR), `.data`, `.bss` | **141 KB of 342 KB DIRAM, so 201 KB is left for the heap** (141,159 bytes used, 200,601 free after the security review's fixes; it was 164 KB and 178 KB before the review round), plus the 16 KB IRAM block |
 | Internal heap (estimated) | app task stack | 12 KB |
-| | TinyBar's internal stacks: net 4, cal_sync 10, imu 4, audio 4 | 22 KB |
+| | MiniBar's internal stacks: net 4, cal_sync 10, imu 4, audio 4 | 22 KB |
 | | IDF's task stacks: wifi about 6.5, sys_evt 5, mdns 4, esp_timer 3.5, tiT 4, two idle 1.5 each, two ipc 1.25 each, the timer task 2 | about 30 KB |
 | | display DMA chunk buffer (172 × 64 × 2) | 22 KB |
 | | I2S DMA buffers | about 4 KB |
@@ -482,6 +482,10 @@ that do I2C (the ISR is IRAM-safe and may read their buffers while the cache is 
 | `nvs_sec` / `calsec` | `url`: the calendar address (write-only to the outside) | calendar | on a successful check; erased on remove |
 | `nvs_sec` / `tokens` | `table`: token hashes and records | net | on pairing, revoke, forget all, and (rate-limited) last-used updates |
 
+The namespace `tinybar` is the project's name from before the rename to MiniBar, and it stays: it holds every bar's
+settings and state, and a new namespace would orphan them on the first start. The one stored value that carried the
+name, the default bar name, is migrated instead (`tb_settings_migrate_name()`, section 14, 1.0.3).
+
 The settings and state blobs are written with their padding zeroed, so NVS (which skips a write whose bytes haven't
 changed) doesn't wear the flash for nothing. A blob whose version or size doesn't match (an older firmware's) is
 ignored and the defaults apply. Away's back-at time and note aren't in the state blob yet: after a restart the bar
@@ -501,7 +505,7 @@ the erases over the partition's six pages.
    round and, since 2026-10-05, its fix round: the held place, `pair/cancel`, the back-off cleared only by a code typed
    right, Power off or Restart, a code stopping a flash under way, the Devices tile's measured "pair at" foot, and the
    Remote's prompt as the mock-up draws it. One contract detail the mock-up left open is the firmware's: `info.paired`
-   (api.md 7.1), which the Remote reads to clear its 10-device refusal and to say "TinyBar forgot this phone".
+   (api.md 7.1), which the Remote reads to clear its 10-device refusal and to say "MiniBar forgot this phone".
 2. **Stored secrets** (section 10): readable over the USB-C port with esptool in about a minute. NVS encryption alone
    stops only a passive dump; full protection (flash encryption with secure boot, or USB download mode off) is
    irreversible. Off until the user decides, which should be before the bar joins an office network with a work login.
@@ -521,7 +525,7 @@ the erases over the partition's six pages.
 10. **Skipped rounds on the Remote:** `status` has no list of skipped rounds, so the Remote's tomato row can't show a
     skipped one pale the way the bar does (api.md change).
 11. **A feed that's too large** (over 16 MB) has no error code of its own in api.md; it's reported as
-    `calendar_unreachable` with "That calendar is too large for TinyBar to read." (for the Mac app team).
+    `calendar_unreachable` with "That calendar is too large for MiniBar to read." (for the Mac app team).
 12. **New copy and behaviors from core** (section 7, items 2 to 8), and the ui's proposals (plain Away "Not at my
     desk", a message from another day "yesterday" / "Oct 1", an undrawable app name shown as "Mic or camera on").
 13. **The Away "back at" input on the Remote** (api.md 14.3) still needs design.
@@ -563,10 +567,10 @@ What was run on 2026-10-04, after the security review's fixes (the review round'
 they changed):
 
 - **Firmware build:** `idf.py build` from a clean configuration in a fresh `build-lead/` (its sdkconfig generated
-  from `sdkconfig.defaults` alone): no warnings at all (TinyBar's code and the managed components). App 2.02 MB
+  from `sdkconfig.defaults` alone): no warnings at all (MiniBar's code and the managed components). App 2.02 MB
   (0x204bb0 bytes; was 0x203db0), 66% of the slot free; DIRAM 141,159 bytes used statically, 200,601 free. The
   compile commands show `-DCJSON_NESTING_LIMIT=16` on IDF's `cJSON.c`. The merged image is
-  `dist/tinybar-<version>.bin` (README, "Flash"), checked byte for byte against the build (bootloader, partition
+  `dist/minibar-<version>.bin` (README, "Flash"), checked byte for byte against the build (bootloader, partition
   table, OTA data and app, with 0xFF in the gaps), the partition table decoded, and the app's and bootloader's
   checksums and SHA-256 valid.
 - **Host tests** (`test/host/`, ctest, AddressSanitizer and UBSan, no compiler warnings): 5 runners, 402 tests (370),
@@ -634,3 +638,37 @@ they changed):
   the setup page's suite (20) polls for each message instead of sleeping a fixed time, so it no longer misreads the
   previous message when the machine is loaded. The fake bar's `/_sim/forget` toasts in core's order (the count first,
   then net's "· back to" lead).
+- **The rename to MiniBar (2026-10-05, in 1.0.3; decided in decisions.md, Product):** every word a person reads says
+  MiniBar: the splash (MINIBAR), the setup screen's step and its QR payload (`WIFI:T:nopass;S:MiniBar-Setup;;`),
+  the setup network `MiniBar-Setup` (`SETUP_SSID`), the host `minibar.local` (`minibar-2.local` after a clash;
+  `mdns_hostname_set`, `esp_netif_set_hostname` and `CONFIG_LWIP_LOCAL_HOSTNAME` together), the Bonjour service
+  `_minibar._tcp` (the firmware advertises only the new type; the Mac app browses both types and accepts both
+  `device` values for one release, since the user's bar runs 1.0.2), `"device": "MiniBar"` in `info` and `hello`,
+  the 401 realm `MiniBar`, the calendar fetch's User-Agent `MiniBar/1 (ESP32-S3)`, the captive-portal and 421
+  bodies, every API error message (api.md quotes them), the join and calendar sync messages, the boot log's first
+  line, the menuconfig titles and the default bar name "MiniBar 2A1C". `project(minibar)`: the build makes
+  `minibar.bin` (and `flash_args` names it), the image's `esp_app_desc.project_name` is `minibar`, and the merged
+  image is `dist/minibar-<version>.bin`; the older `dist/tinybar-*.bin` files keep their names as history.
+  **Internal names keep the old prefix:** `tb_`/`TB_` identifiers and file names, the `@tb ` line marker, `tb1_`
+  tokens, the `tb_token` cookie, the NVS namespace `tinybar` (section 12: a new one would orphan every bar's
+  settings and state), the `CONFIG_TINYBAR_*` symbols (only their menu titles change; renaming them would reset
+  every existing `build-*/sdkconfig`), the FNV seed in `cal_ics.c`, the RTC mark, the host tools' names
+  (`tinybar_snapshot`, `tinybar_touch_test`, `tinybar_layout_test`, `tb_fakebar`, the host CMake project names)
+  and the frozen fonts in `fonts/tinybar/` (file names and the family names TinyBar Condensed and TinyBar Text:
+  binary files nobody sees on the bar, left byte for byte as they are). **The stored name migrates once:**
+  `tb_settings_migrate_name()` (core, pure, `test_settings.c`) turns a saved "TinyBar " + the last four of the
+  device id, the old default and never a name a person typed, into "MiniBar " + the same four when
+  `settings_store_load()` runs; any other name is left alone, the change is saved 2 s after start-up like any
+  settings change, and `TB_SETTINGS_VERSION` stays at 1 (a bump would throw every setting away). **Paired phones
+  pair again:** the Remote's cookie is per host, so at `minibar.local` each phone sees the pairing prompt once; the
+  old rows stay on the bar until removed on Paired devices (they count toward the 10). Paired Macs keep their
+  tokens: USB at once, Wi-Fi once the app browses `_minibar._tcp`. Fonts: `ui_font_step_16b` was rebuilt
+  (`build_fonts.sh`, `--symbols MiniBar-Setup`) for the M, the only new glyph; 876 bytes (was 934), and the other 14
+  sets came out byte-identical. Widths in Barlow 500 14 px as LVGL rounds them: "minibar.local" 80 px (was 75; the
+  Devices tile's limit is 86.5, so the host still shows), "minibar-2.local" 93 px (was 90; still falls back to the
+  IP). A `build-<name>/sdkconfig` from before the rename keeps `CONFIG_LWIP_LOCAL_HOSTNAME="tinybar"` (the defaults
+  seed new sdkconfigs only): delete it once. A fresh `build-rename/`: no warnings; `minibar.bin`, app 2,138,048
+  bytes (0x209fc0); DIRAM 141,319 used statically, 200,441 free; the merged image `dist/minibar-1.0.3.bin`
+  (2,334,656 bytes) checked as above. 460 host tests (core 159, calendar 67, net 151, ui 30, board 53): 1 new,
+  the name migration. The ui host tools: 89 scenes render, the touch and layout tests pass. The page suites are
+  the web team's part of the round.

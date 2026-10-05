@@ -37,7 +37,8 @@ final class APIContractTests: XCTestCase {
         if value["event"] != nil { return .ready }
         if value["rev"] != nil, value["own"] != nil { return .status }
         if value["stale"] != nil { return .callReply }
-        if value["device"]?.stringValue == "TinyBar" { return .info }
+        // Either name: api.md 14.6 keeps the old one in its dated entries.
+        if let device = value["device"]?.stringValue, TinyBarAPI.acceptedDeviceNames.contains(device) { return .info }
         if value["pairing_id"] != nil { return .pairStart }
         if value["token_id"] != nil, value.objectValue?.keys.contains("token") == true { return .pair }
         if value["revoked"] != nil { return .revoke }

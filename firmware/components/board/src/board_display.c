@@ -7,7 +7,7 @@
  *     (high 30 ms, low 250 ms, high 30 ms);
  *   - LVGL display at the native 172 x 640 with a full-frame RGB565 buffer in PSRAM (LV_DISPLAY_RENDER_MODE_FULL) and
  *     software rotation: LV_DISPLAY_ROTATION_90, or 270 when the bar is flipped (swapped by CONFIG_TINYBAR_LCD_TURN_180,
- *     which TinyBar ships on: upright, side buttons on top, is 270 on the V2 board; see brd_lcd_rotation()),
+ *     which MiniBar ships on: upright, side buttons on top, is 270 on the V2 board; see brd_lcd_rotation()),
  *     turned by lv_draw_sw_rotate() into a second PSRAM frame. One draw buffer, not the example's two: the flush is
  *     synchronous (rotate, copy, send, then flush_ready), so a second buffer would never overlap any work;
  *   - the frame goes out in ten 64-line chunks through one internal DMA buffer, each chunk waiting for the previous

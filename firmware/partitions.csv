@@ -1,4 +1,4 @@
-# TinyBar partition table, 16 MB flash.
+# MiniBar partition table, 16 MB flash.
 # Name,     Type, SubType,  Offset,   Size,     Flags
 #
 # nvs      settings, Wi-Fi credentials, own status, today's tomatoes, the calendar's saved copy

@@ -27,7 +27,7 @@ typedef enum {
     UI_LAYOUT_MESSAGE,      /* the message headline sits in a marquee that scrolls when too wide */
     UI_LAYOUT_SETUP_QR,     /* Wi-Fi setup: QR code, kicker, title, two steps, foot; no info column */
     UI_LAYOUT_SETUP_TEXT,   /* Connecting, Connected, Couldn't connect: kicker, title, sub; no info column */
-    UI_LAYOUT_SPLASH,       /* 64 px tomato + TINYBAR on the dark surface */
+    UI_LAYOUT_SPLASH,       /* 64 px tomato + MINIBAR on the dark surface */
 } ui_layout_t;
 
 /* How the headline is sized (the mock-up's BOLD_SIGNAL.ladder by data-fit). ui.c measures with lv_text_get_width(). */
@@ -78,8 +78,8 @@ typedef struct {
     tb_tomato_t tomato[TB_POMO_MAX_ROUNDS];
 
     /* setup */
-    char qr_payload[64];            /* "WIFI:T:nopass;S:TinyBar-Setup;;" */
-    char step1_pre[32], step1_bold[32], step1_post[64];   /* "Join " "TinyBar-Setup" " with your phone" */
+    char qr_payload[64];            /* "WIFI:T:nopass;S:MiniBar-Setup;;" */
+    char step1_pre[32], step1_bold[32], step1_post[64];   /* "Join " "MiniBar-Setup" " with your phone" */
     char step2[96];                 /* "Pick your office Wi-Fi on the page that opens" */
 } ui_view_t;
 

@@ -334,7 +334,7 @@ TB_TEST(usb_pair_cancel_during_setup)
     tb_app_pointer(&nf_app, false, 200, 80, TB_TILE_NONE, &fake_now);   /* the tap cancels it first */
     nf_advance(100);
     TB_FALSE(nf_app.pairing.active);
-    fake_wifi = (net_wifi_info_t){.state = NET_WIFI_SETUP, .host = "tinybar.local"};
+    fake_wifi = (net_wifi_info_t){.state = NET_WIFI_SETUP, .host = "minibar.local"};
     nf_app.wifi_mode = TB_WIFI_SETUP;
     char line[160];
     snprintf(line, sizeof line, "@tb {\"cmd\": \"request\", \"id\": 9, \"method\": \"POST\", \"path\": \"/api/v1/pair/cancel\", \"body\": {\"pairing_id\": \"%s\"}}", pid);
@@ -529,7 +529,7 @@ TB_TEST(appendix_a_every_endpoint_is_routed)
     TB_EQ_STR(nf_str(r.j, "field"), "token_id");
     nf_free(&r);
     /* the setup endpoints: over USB while setting up */
-    fake_wifi = (net_wifi_info_t){.state = NET_WIFI_SETUP, .host = "tinybar.local"};
+    fake_wifi = (net_wifi_info_t){.state = NET_WIFI_SETUP, .host = "minibar.local"};
     nf_app.wifi_mode = TB_WIFI_SETUP;           /* the bar is on its setup screens too (setup/wifi checks both) */
     static const char *const SETUP[] = {
         "{\"method\": \"GET\", \"path\": \"/api/v1/setup/networks\"}",
@@ -582,7 +582,7 @@ TB_TEST(appendix_b_pairing_codes)
 }
 
 /* info.paired (api.md 7.1): no token needed; the Remote's prompt reads it to clear the 10-device refusal once a place
- * is free, and to say "TinyBar forgot this phone" after Forget all. Over USB, hello carries it too. */
+ * is free, and to say "MiniBar forgot this phone" after Forget all. Over USB, hello carries it too. */
 TB_TEST(info_reports_how_many_are_paired)
 {
     nf_setup();

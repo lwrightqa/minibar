@@ -15,7 +15,7 @@ import XCTest
 private let t0 = ManualClock.apiExampleStart
 private let la = TimeZone(identifier: "America/Los_Angeles")!
 private let enUS = Locale(identifier: "en_US")
-private let barName = "TinyBar 2A1C"
+private let barName = "MiniBar 2A1C"
 
 /// The menu as text, the way mac-app-ux.md 4.7 draws it.
 private struct MenuText: Equatable, CustomStringConvertible {
@@ -61,7 +61,7 @@ private enum Make {
     }
 
     static func bar(auth: AuthMode = .bearer) -> KnownBar {
-        KnownBar(deviceID: "f412fa3f2a1c", name: barName, host: "tinybar.local", auth: auth, tokenID: "74d8a526")
+        KnownBar(deviceID: "f412fa3f2a1c", name: barName, host: "minibar.local", auth: auth, tokenID: "74d8a526")
     }
 
     static func connection(_ phase: ConnectionState.Phase, link: LinkKind? = .usb, reply: CallReply? = nil,
@@ -118,37 +118,37 @@ final class PresentationTests: XCTestCase {
 
         // Connected, not on a call.
         XCTAssertEqual(text(Make.state(Make.connection(.connected, reply: Make.reply(active: false)))),
-                       MenuText(icon: .connected, tooltip: "TinyBar 2A1C · not on a call",
-                                lines: ["Not on a call", "TinyBar 2A1C · USB"]))
+                       MenuText(icon: .connected, tooltip: "MiniBar 2A1C · not on a call",
+                                lines: ["Not on a call", "MiniBar 2A1C · USB"]))
 
         // On a call.
         let (slack12, slackUse) = Make.call(Proc.slack, minutes: 12)
         XCTAssertEqual(text(Make.state(Make.connection(.connected, link: .wifi, reply: Make.reply(active: true)),
                                        call: slack12, observation: slackUse)),
                        MenuText(icon: .onCall, tooltip: "On a call · Slack · 12m",
-                                lines: ["On a call · Slack · 12m", "TinyBar 2A1C · Wi-Fi"],
+                                lines: ["On a call · Slack · 12m", "MiniBar 2A1C · Wi-Fi"],
                                 actions: ["Don\u{2019}t Count Slack"]))
 
         // On a call, set aside on the bar.
         XCTAssertEqual(text(Make.state(Make.connection(.connected, link: .wifi, reply: Make.reply(active: true, aside: true)),
                                        call: slack12, observation: slackUse)),
                        MenuText(icon: .onCall, tooltip: "On a call · Slack · 12m",
-                                lines: ["On a call · Slack · 12m", "Set aside on TinyBar 2A1C for this call"],
+                                lines: ["On a call · Slack · 12m", "Set aside on MiniBar 2A1C for this call"],
                                 actions: ["Don\u{2019}t Count Slack"]))
 
         // On a call, bar can't be reached: Zoom by its short name.
         let (zoom3, zoomUse) = Make.call(Proc.zoom, minutes: 3)
         let lost = Make.connection(.unreachable, lastSuccess: t0.addingTimeInterval(-8 * 60))
         XCTAssertEqual(text(Make.state(lost, call: zoom3, observation: zoomUse)),
-                       MenuText(icon: .notConnected, tooltip: "Can\u{2019}t reach TinyBar 2A1C since 2:04 PM",
-                                lines: ["On a call · Zoom · 3m", "Can\u{2019}t reach TinyBar 2A1C since 2:04 PM"],
+                       MenuText(icon: .notConnected, tooltip: "Can\u{2019}t reach MiniBar 2A1C since 2:04 PM",
+                                lines: ["On a call · Zoom · 3m", "Can\u{2019}t reach MiniBar 2A1C since 2:04 PM"],
                                 actions: ["Connect…", "Don\u{2019}t Count Zoom"]))
 
         // Paused until 3:15 PM.
         let paused = Make.settings(pause: .until(t0.addingTimeInterval(63 * 60)))
         XCTAssertEqual(text(Make.state(Make.connection(.connected, reply: Make.reply(active: false)), settings: paused)),
                        MenuText(icon: .paused, tooltip: "Paused until 3:15 PM",
-                                lines: ["Paused until 3:15 PM", "TinyBar 2A1C · USB"], pause: "Resume Detection"))
+                                lines: ["Paused until 3:15 PM", "MiniBar 2A1C · USB"], pause: "Resume Detection"))
 
         // Needs you: Local Network blocked.
         XCTAssertEqual(text(Make.state(Make.connection(.localNetworkBlocked))),
@@ -161,10 +161,10 @@ final class PresentationTests: XCTestCase {
         let ignoring = Make.state(Make.connection(.connected, link: .wifi, reply: Make.reply(active: true, mac: false)),
                                   call: slack5, observation: slackUse)
         XCTAssertEqual(text(ignoring),
-                       MenuText(icon: .paused, tooltip: "TinyBar 2A1C is ignoring calls from your Mac",
-                                lines: ["On a call · Slack · 5m", "TinyBar 2A1C is ignoring calls from your Mac"],
-                                actions: ["Open TinyBar Remote…", "Don\u{2019}t Count Slack"]))
-        XCTAssertEqual(menu(ignoring).fixItem, .openRemote(URL(string: "http://tinybar.local/")!))
+                       MenuText(icon: .paused, tooltip: "MiniBar 2A1C is ignoring calls from your Mac",
+                                lines: ["On a call · Slack · 5m", "MiniBar 2A1C is ignoring calls from your Mac"],
+                                actions: ["Open MiniBar Remote…", "Don\u{2019}t Count Slack"]))
+        XCTAssertEqual(menu(ignoring).fixItem, .openRemote(URL(string: "http://minibar.local/")!))
     }
 
     // MARK: - Line 1 (4.2)
@@ -209,20 +209,20 @@ final class PresentationTests: XCTestCase {
         }
         var usbPaused = Make.connection(.connected, link: .wifi, reply: Make.reply(active: true))
         usbPaused.usbPaused = true
-        XCTAssertEqual(line2(usbPaused), "TinyBar 2A1C · Wi-Fi · USB paused")
+        XCTAssertEqual(line2(usbPaused), "MiniBar 2A1C · Wi-Fi · USB paused")
         XCTAssertEqual(line2(Make.connection(.connected, reply: Make.reply(active: true, screen: .dark))),
-                       "TinyBar 2A1C · screen off")
+                       "MiniBar 2A1C · screen off")
         XCTAssertEqual(line2(Make.connection(.connected, reply: Make.reply(active: true, showing: .setup))),
-                       "TinyBar 2A1C is setting up Wi-Fi")
+                       "MiniBar 2A1C is setting up Wi-Fi")
         XCTAssertEqual(line2(Make.connection(.connected, reply: Make.reply(active: true, aside: true)), onCall: false),
-                       "TinyBar 2A1C · USB", "set aside, screen off and setup show only during a call")
-        XCTAssertEqual(line2(Make.connection(.looking)), "Looking for TinyBar…")
-        XCTAssertEqual(line2(Make.connection(.unreachable)), "Can\u{2019}t reach TinyBar 2A1C")
-        XCTAssertEqual(line2(Make.connection(.notPluggedIn)), "TinyBar 2A1C isn\u{2019}t plugged in")
-        XCTAssertEqual(line2(Make.connection(.wifiCantReachHere)), "Wi-Fi can\u{2019}t reach TinyBar 2A1C here · plug it in")
-        XCTAssertEqual(line2(Make.connection(.unrecognized)), "TinyBar 2A1C doesn\u{2019}t recognize this Mac")
-        XCTAssertEqual(line2(Make.connection(.barNeedsUpdate)), "TinyBar 2A1C needs a firmware update")
-        XCTAssertEqual(line2(Make.connection(.appNeedsUpdate)), "This app needs an update for TinyBar 2A1C")
+                       "MiniBar 2A1C · USB", "set aside, screen off and setup show only during a call")
+        XCTAssertEqual(line2(Make.connection(.looking)), "Looking for MiniBar…")
+        XCTAssertEqual(line2(Make.connection(.unreachable)), "Can\u{2019}t reach MiniBar 2A1C")
+        XCTAssertEqual(line2(Make.connection(.notPluggedIn)), "MiniBar 2A1C isn\u{2019}t plugged in")
+        XCTAssertEqual(line2(Make.connection(.wifiCantReachHere)), "Wi-Fi can\u{2019}t reach MiniBar 2A1C here · plug it in")
+        XCTAssertEqual(line2(Make.connection(.unrecognized)), "MiniBar 2A1C doesn\u{2019}t recognize this Mac")
+        XCTAssertEqual(line2(Make.connection(.barNeedsUpdate)), "MiniBar 2A1C needs a firmware update")
+        XCTAssertEqual(line2(Make.connection(.appNeedsUpdate)), "This app needs an update for MiniBar 2A1C")
         XCTAssertNil(line2(Make.connection(.notSetUp), onCall: false))
         XCTAssertEqual(line2(Make.connection(.notSetUp), onCall: false, settings: Make.settings(paired: false, pause: .untilResumed)),
                        "Not set up yet", "paused and not set up: line 2 says so")
@@ -263,14 +263,14 @@ final class PresentationTests: XCTestCase {
         // The 15-second grace: Looking shows Connected (or On a call).
         XCTAssertEqual(icon(.looking), .connected)
         XCTAssertEqual(icon(.looking, onCall: true), .onCall)
-        XCTAssertEqual(text(Make.state(Make.connection(.looking))).tooltip, "TinyBar 2A1C · not on a call")
+        XCTAssertEqual(text(Make.state(Make.connection(.looking))).tooltip, "MiniBar 2A1C · not on a call")
         // Before any bar is set up: Not connected from the start.
         XCTAssertEqual(icon(.notSetUp), .notConnected)
 
         // Labels and symbols (3.1).
         XCTAssertEqual(IconState.allCases.map(\.symbolName),
                        ["exclamationmark.triangle", "pause.rectangle", "rectangle.slash", "rectangle.fill", "rectangle"])
-        XCTAssertEqual(IconState.onCall.accessibilityLabel, "TinyBar, on a call")
+        XCTAssertEqual(IconState.onCall.accessibilityLabel, "MiniBar, on a call")
     }
 
     /// A monitor that couldn't start: Needs you, with the reason in line 1.
@@ -322,10 +322,10 @@ final class PresentationTests: XCTestCase {
         var connection = Make.connection(.connected, link: .wifi, reply: Make.reply(active: false),
                                          lastSuccess: t0.addingTimeInterval(-29))
         connection.info = InfoReply(deviceID: "f412fa3f2a1c", name: barName, fw: "1.0.0")
-        connection.endpointDescription = "tinybar.local"
+        connection.endpointDescription = "minibar.local"
         connection.usbSeen = true
         let content = menu(Make.state(connection), details: true)
-        XCTAssertEqual(content.details.map(plain), ["Address: tinybar.local", "Firmware 1.0.0 · API 1.0", "Last reply 2:11:31 PM"])
+        XCTAssertEqual(content.details.map(plain), ["Address: minibar.local", "Firmware 1.0.0 · API 1.0", "Last reply 2:11:31 PM"])
         XCTAssertTrue(content.showsUSBToggle)
         XCTAssertFalse(menu(Make.state(connection), details: false).showsUSBToggle)
         XCTAssertEqual(menu(Make.state(connection), details: false).details, [])
@@ -373,7 +373,7 @@ final class PresentationTests: XCTestCase {
         XCTAssertEqual(summary(Make.connection(.connected, link: .wifi, auth: .notRequired)),
                        ConnectionSummary(barName: barName, status: "Connected over Wi-Fi · no pairing needed", isConnected: true,
                                          buttons: [.sendTestCall], testCallUnavailableReason: nil))
-        XCTAssertEqual(summary(Make.connection(.looking)).testCallUnavailableReason, "Connect TinyBar first.")
+        XCTAssertEqual(summary(Make.connection(.looking)).testCallUnavailableReason, "Connect MiniBar first.")
     }
 
     // MARK: - Formatting and messages
@@ -391,10 +391,10 @@ final class PresentationTests: XCTestCase {
 
     func test_nameProblemMessages() {
         XCTAssertEqual(NameProblem.tooLong(limit: 24).message, "Use 24 characters or fewer.")
-        XCTAssertEqual(NameRules.appNameProblem("Café")?.message, "TinyBar can\u{2019}t show \u{201C}é\u{201D}.")
+        XCTAssertEqual(NameRules.appNameProblem("Café")?.message, "MiniBar can\u{2019}t show \u{201C}é\u{201D}.")
         XCTAssertEqual(NameRules.appNameProblem("Zoë – Ünï")?.message,
-                       "TinyBar can\u{2019}t show \u{201C}ë\u{201D}, \u{201C}–\u{201D} or \u{201C}Ü\u{201D}.")
-        XCTAssertEqual(NameRules.macNameProblem("Alex\tMac")?.message, "TinyBar can\u{2019}t show U+0009.")
+                       "MiniBar can\u{2019}t show \u{201C}ë\u{201D}, \u{201C}–\u{201D} or \u{201C}Ü\u{201D}.")
+        XCTAssertEqual(NameRules.macNameProblem("Alex\tMac")?.message, "MiniBar can\u{2019}t show U+0009.")
         XCTAssertEqual(NameProblem.empty.message, "Type a name.")
     }
 
@@ -403,24 +403,24 @@ final class PresentationTests: XCTestCase {
         XCTAssertEqual(PairingProblem.wrongCode(attemptsLeft: 2).message(barName: name), "That code didn\u{2019}t match. 2 tries left.")
         XCTAssertEqual(PairingProblem.wrongCode(attemptsLeft: 1).message(barName: name), "That code didn\u{2019}t match. 1 try left.")
         XCTAssertEqual(PairingProblem.busy(retryAfter: 45).message(barName: name),
-                       "Someone else is pairing with this TinyBar. Try again in 45 seconds.")
+                       "Someone else is pairing with this MiniBar. Try again in 45 seconds.")
         XCTAssertEqual(PairingProblem.rateLimited(retryAfter: 221).message(barName: name),
                        "Too many tries. You can try again in 4 minutes.")
         XCTAssertEqual(PairingProblem.tokenLimit.message(barName: name),
-                       "TinyBar 2A1C already has 10 paired devices. Remove one on its Remote, then try again.")
+                       "MiniBar 2A1C already has 10 paired devices. Remove one on its Remote, then try again.")
         XCTAssertEqual(PairingProblem.inSetup.message(barName: name),
-                       "TinyBar 2A1C is setting up Wi-Fi. Finish setup on the bar, then try again.")
-        XCTAssertEqual(PairingProblem.noAnswer.message(barName: name), "TinyBar 2A1C didn\u{2019}t answer. Make sure it\u{2019}s on, then try again.")
+                       "MiniBar 2A1C is setting up Wi-Fi. Finish setup on the bar, then try again.")
+        XCTAssertEqual(PairingProblem.noAnswer.message(barName: name), "MiniBar 2A1C didn\u{2019}t answer. Make sure it\u{2019}s on, then try again.")
         XCTAssertEqual(PairingProblem.nothingAt("10.0.4.42").message(barName: name), "Nothing answered at 10.0.4.42.")
-        XCTAssertEqual(PairingProblem.notATinyBar.message(barName: name), "That address isn\u{2019}t a TinyBar.")
-        XCTAssertEqual(PairingProblem.addressNotAllowed.message(barName: name), "Use TinyBar\u{2019}s .local name or its IP address.")
+        XCTAssertEqual(PairingProblem.notATinyBar.message(barName: name), "That address isn\u{2019}t a MiniBar.")
+        XCTAssertEqual(PairingProblem.addressNotAllowed.message(barName: name), "Use MiniBar\u{2019}s .local name or its IP address.")
         XCTAssertEqual(PairingProblem.codeUsedUp.message(barName: name),
-                       "That code didn\u{2019}t match, so TinyBar canceled pairing. Show a new code to try again.")
+                       "That code didn\u{2019}t match, so MiniBar canceled pairing. Show a new code to try again.")
         XCTAssertEqual(PairingProblem.expired.message(barName: name),
-                       "That code has expired or was canceled on TinyBar. Show a new code to try again.")
+                       "That code has expired or was canceled on MiniBar. Show a new code to try again.")
         XCTAssertEqual(PairingProblem.localNetworkBlocked.message(barName: name),
-                       "macOS is blocking TinyBar from your local network, so Wi-Fi can\u{2019}t work.")
-        XCTAssertTrue(PairingProblem.noneFound.message(barName: name).hasPrefix("Can\u{2019}t find a TinyBar on this network."))
+                       "macOS is blocking MiniBar from your local network, so Wi-Fi can\u{2019}t work.")
+        XCTAssertTrue(PairingProblem.noneFound.message(barName: name).hasPrefix("Can\u{2019}t find a MiniBar on this network."))
         // No straight apostrophes anywhere in the app's copy (mac-app-ux.md 2).
         let all: [PairingProblem] = [.noneFound, .localNetworkBlocked, .nothingAt("x"), .notATinyBar, .addressNotAllowed,
                                      .wrongCode(attemptsLeft: 2), .codeUsedUp, .expired, .busy(retryAfter: 1),

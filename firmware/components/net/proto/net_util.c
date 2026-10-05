@@ -343,9 +343,9 @@ const char *net_join_err_message(net_join_err_t e)
     switch (e) {
     case NET_JOIN_WRONG_PASSWORD: return "The password didn't work.";
     case NET_JOIN_LOGIN_FAILED: return "The work username or password didn't work.";
-    case NET_JOIN_NOT_FOUND: return "TinyBar can't find that network anymore.";
+    case NET_JOIN_NOT_FOUND: return "MiniBar can't find that network anymore.";
     case NET_JOIN_NO_SIGNAL: return "The signal is too weak, or the network didn't answer.";
-    case NET_JOIN_NO_ADDRESS: return "TinyBar joined but got no address. The network may need a sign-in page.";
+    case NET_JOIN_NO_ADDRESS: return "MiniBar joined but got no address. The network may need a sign-in page.";
     default: return NULL;
     }
 }

@@ -1,4 +1,4 @@
-# Host snapshot tool: renders TinyBar's screens with LVGL's software renderer on Linux and writes one PNG per scene,
+# Host snapshot tool: renders MiniBar's screens with LVGL's software renderer on Linux and writes one PNG per scene,
 # so they can be compared with docs/mockup.html without the board (tools/ref_scenes.js and tools/compare.py), and
 # the touch test. Owner: ui builder.
 #

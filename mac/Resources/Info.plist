@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  TinyBar.app's Info.plist. scripts/build-app.sh fills in __BUNDLE_ID__,
+  MiniBar.app's Info.plist. scripts/build-app.sh fills in __BUNDLE_ID__,
   __VERSION__ and __BUILD__.
 
   Deliberately absent: NSMicrophoneUsageDescription and NSCameraUsageDescription.
@@ -13,15 +13,15 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleExecutable</key>
-	<string>TinyBar</string>
+	<string>MiniBar</string>
 	<key>CFBundleIdentifier</key>
 	<string>__BUNDLE_ID__</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>TinyBar</string>
+	<string>MiniBar</string>
 	<key>CFBundleDisplayName</key>
-	<string>TinyBar</string>
+	<string>MiniBar</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -38,14 +38,18 @@
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>Shows On a call on your TinyBar when this Mac’s mic or camera is in use. It never listens or records.</string>
+	<string>Shows On a call on your MiniBar when this Mac’s mic or camera is in use. It never listens or records.</string>
 	<!-- macOS 15 and later ask for Local Network access with this text the
-	     first time the app reaches the bar over Wi-Fi (Apple TN3179). -->
+	     first time the app reaches the bar over Wi-Fi (Apple TN3179). The
+	     prompt's title already names the app, so the text names only the bar. -->
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>TinyBar connects to your TinyBar on this network to show when you’re on a call.</string>
-	<!-- Browsing for an unlisted Bonjour service type fails on macOS 15. -->
+	<string>Finds your MiniBar on this network and tells it when you’re on a call.</string>
+	<!-- Browsing for an unlisted Bonjour service type fails on macOS 15. The
+	     old type is listed too, for a bar still on firmware 1.0.2 or earlier
+	     (api.md 14.6); the firmware advertises only the new one. -->
 	<key>NSBonjourServices</key>
 	<array>
+		<string>_minibar._tcp</string>
 		<string>_tinybar._tcp</string>
 	</array>
 	<!-- The bar serves plain HTTP on the local network (api.md 4.10). -->

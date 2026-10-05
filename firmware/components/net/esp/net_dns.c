@@ -1,7 +1,7 @@
 /*
  * net_dns.c: the setup network's DNS catch-all. Owner: net builder.
  *
- * While TinyBar-Setup is up, every A query from a phone on it is answered with the setup address (NET_SETUP_IP), so
+ * While MiniBar-Setup is up, every A query from a phone on it is answered with the setup address (NET_SETUP_IP), so
  * its captive-portal check lands on the bar, where net_http.c answers it with a 302 to the setup page. Other types
  * (AAAA, HTTPS...) get an empty answer (NODATA), so phones use IPv4. The answers come from net_dns_answer()
  * (net_util.c, host-tested).
@@ -120,7 +120,7 @@ static void serve(void)
         errors = 0;
         if (fl < sizeof from || from.sin_family != AF_INET) continue;
         uint32_t me = s_ip, mask = s_mask;
-        if (!net_ip_same_subnet(from.sin_addr.s_addr, me, mask)) continue;    /* not from TinyBar-Setup */
+        if (!net_ip_same_subnet(from.sin_addr.s_addr, me, mask)) continue;    /* not from MiniBar-Setup */
         size_t m = net_dns_answer(q, (size_t)n, me, a, 600);
         int send_err = 0;
         if (m && sendto(sock, a, m, 0, (struct sockaddr *)&from, sizeof from) < 0) send_err = errno ? errno : -1;

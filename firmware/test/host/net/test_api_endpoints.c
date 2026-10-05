@@ -475,7 +475,7 @@ TB_TEST(settings_get_and_patch)
     TB_FALSE(nf_true(r.j, "settings.automatic.calendar"));
     TB_TRUE(nf_true(r.j, "settings.automatic.mac"));
     TB_FALSE(nf_true(r.j, "settings.automatic.meeting_titles"));
-    TB_EQ_STR(nf_str(r.j, "settings.device.name"), "TinyBar 2A1C");
+    TB_EQ_STR(nf_str(r.j, "settings.device.name"), "MiniBar 2A1C");
     TB_TRUE(nf_null(r.j, "settings.device.time_zone"));
     nf_free(&r);
     r = nf_http("PATCH", "/api/v1/settings", "{\"pomodoro\": {\"ticking\": true, \"tick_volume\": \"medium\"}}", T);
@@ -723,8 +723,8 @@ TB_TEST(pairing_start_and_finish)
     TB_EQ_INT(strlen(nf_str(r.j, "token_id")), 8);
     TB_EQ_STR(nf_str(r.j, "scope"), "call");
     TB_EQ_STR(nf_str(r.j, "device_id"), "f412fa3f2a1c");
-    TB_EQ_STR(nf_str(r.j, "name"), "TinyBar 2A1C");
-    TB_EQ_STR(nf_str(r.j, "host"), "tinybar.local");
+    TB_EQ_STR(nf_str(r.j, "name"), "MiniBar 2A1C");
+    TB_EQ_STR(nf_str(r.j, "host"), "minibar.local");
     nf_free(&r);
     TB_FALSE(nf_app.pairing.active);
     TB_TRUE(toast_has("Paired \xC2\xB7 Mac"));
@@ -905,7 +905,7 @@ static nf_resp_t setup_req(const char *method, const char *path, const char *bod
 static void in_setup_mode(void)
 {
     nf_setup();
-    fake_wifi = (net_wifi_info_t){.state = NET_WIFI_SETUP, .host = "tinybar.local"};
+    fake_wifi = (net_wifi_info_t){.state = NET_WIFI_SETUP, .host = "minibar.local"};
     nf_app.wifi_mode = TB_WIFI_SETUP;
 }
 
@@ -933,10 +933,10 @@ TB_TEST(setup_networks_and_state)
     TB_EQ_STR(nf_str(r.j, "error"), "wrong_password");
     TB_EQ_STR(nf_str(r.j, "message"), "The password didn't work.");
     nf_free(&r);
-    fake_join = (net_join_status_t){.state = NET_JOIN_CONNECTED, .host = "tinybar.local", .ip = "10.0.4.42"};
+    fake_join = (net_join_status_t){.state = NET_JOIN_CONNECTED, .host = "minibar.local", .ip = "10.0.4.42"};
     r = setup_req("GET", "/api/v1/setup/state", NULL);
     TB_EQ_STR(nf_str(r.j, "state"), "connected");
-    TB_EQ_STR(nf_str(r.j, "host"), "tinybar.local");
+    TB_EQ_STR(nf_str(r.j, "host"), "minibar.local");
     TB_EQ_STR(nf_str(r.j, "ip"), "10.0.4.42");
     nf_free(&r);
 }
@@ -1051,7 +1051,7 @@ TB_TEST(setup_endpoints_only_on_the_setup_network)
     TB_EQ_INT(r.status, 404);
     nf_free(&r);
     /* the page can still read the result while the setup network lingers after Connected */
-    fake_join = (net_join_status_t){.state = NET_JOIN_CONNECTED, .host = "tinybar.local", .ip = "10.0.4.42"};
+    fake_join = (net_join_status_t){.state = NET_JOIN_CONNECTED, .host = "minibar.local", .ip = "10.0.4.42"};
     r = setup_req("GET", "/api/v1/setup/state", NULL);
     TB_EQ_INT(r.status, 200);
     TB_EQ_STR(nf_str(r.j, "state"), "connected");

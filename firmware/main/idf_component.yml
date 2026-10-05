@@ -1,4 +1,4 @@
-## TinyBar: registry dependencies are declared by the component that uses them
+## MiniBar: registry dependencies are declared by the component that uses them
 ## (components/*/idf_component.yml) and pinned there. The lead developer owns every manifest:
 ## ask before adding or changing a dependency, because the lock file and managed_components/ are shared.
 dependencies:

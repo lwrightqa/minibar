@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# build_fonts.sh: TinyBar's Bold Signal fonts, from the Barlow TTFs to LVGL 9 C files. Owner: ui builder.
+# build_fonts.sh: MiniBar's Bold Signal fonts, from the Barlow TTFs to LVGL 9 C files. Owner: ui builder.
 #
 #   firmware/components/ui/tools/build_fonts.sh
 #
@@ -13,6 +13,10 @@
 #     digit 498). The frozen copies get a TinyBar family name and a modification note in their name tables, and keep
 #     the Barlow Project's copyright and the OFL (firmware/fonts/licenses/Barlow-OFL.txt). They're written to
 #     firmware/fonts/tinybar/. Barlow names no Reserved Font Name, so the new names are a courtesy, not a requirement.
+#     The family and file names kept the TinyBar prefix through the project's rename to MiniBar: they're binary files
+#     nobody sees on the bar, and the C files are built from them, so the committed TTFs stay byte for byte as they
+#     are (fontTools stamps a new modification time, so a rerun of this step rewrites them; renaming the fonts is a
+#     separate step).
 #  2. Check the frozen copies: every digit the same advance and no kerning pair between two digits or a digit and the
 #     colon, so a ticking timer, clock or countdown never moves.
 #  3. Convert one font per role in ../include/ui_theme.h (ui_font_role_t) with lv_font_conv at 4 bpp, compressed,
@@ -23,7 +27,7 @@
 #       - The 112, 100 and 78 px headlines carry only their fixed copy's characters: A to Z, 0 to 9, colon, hyphen,
 #         space and middle dot. The 46 px value: digits, colon, space, h, m and A to Z (the hold screen's KEEP
 #         HOLDING and POWERING OFF). AM/PM fonts: A, M, P. The setup steps: printable ASCII; their bold network
-#         name: the letters of TinyBar-Setup.
+#         name: the letters of MiniBar-Setup.
 #     Digits are tabular everywhere except the 100, 78 and 62 px headlines, as in the mock-up's Signal layout CSS
 #     (font-variant-numeric: tabular-nums on the screen, proportional-nums on headlines other than the timer and
 #     clock): those never tick, and a proportional 1 keeps BACK AT 12:30 at 78 px.
@@ -168,7 +172,7 @@ conv ui_font_ampm_36     36 "$TAB"  "${AMPM[@]}"
 conv ui_font_ampm_17     17 "$TAB"  "${AMPM[@]}"
 conv ui_font_sub_19      19 "$MED"  "${FULL[@]}"
 conv ui_font_step_16     16 "$MED"  "${ASCII[@]}"
-conv ui_font_step_16b    16 "$BOLD" --symbols "TinyBar-Setup"
+conv ui_font_step_16b    16 "$BOLD" --symbols "MiniBar-Setup"
 conv ui_font_kick_15     15 "$BOLD" "${FULL[@]}"
 conv ui_font_sys_15      15 "$SEMI" "${FULL[@]}"
 conv ui_font_foot_14     14 "$MED"  "${FULL[@]}"

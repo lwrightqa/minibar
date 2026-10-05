@@ -3,18 +3,20 @@ import Foundation
 import Network
 import TinyBarCore
 
-/// Browses `_tinybar._tcp` and resolves each bar to an IPv4 address and port
-/// (api.md 3).
+/// Browses `_minibar._tcp`, and `_tinybar._tcp` for a bar still on firmware
+/// 1.0.2 or earlier (api.md 3, 14.6), and resolves each bar to an IPv4 address
+/// and port.
 ///
 /// Starting it is what makes macOS 15 and later ask for Local Network access,
 /// so the engine starts it only when Wi-Fi is allowed and the UI has
-/// explained the prompt (mac-app-ux.md 5.4, 8). Info.plist lists
-/// `_tinybar._tcp` under `NSBonjourServices` and has
-/// `NSLocalNetworkUsageDescription`; without them browsing fails on macOS 15.
+/// explained the prompt (mac-app-ux.md 5.4, 8). Info.plist lists both types
+/// under `NSBonjourServices` and has `NSLocalNetworkUsageDescription`;
+/// without them browsing fails on macOS 15.
 ///
 /// How:
-/// - `NWBrowser(for: .bonjourWithTXTRecord(type: "_tinybar._tcp", domain: "local."))`,
-///   on `queue`. Each result's instance name is the bar's name ("TinyBar 2A1C");
+/// - One `NWBrowser(for: .bonjourWithTXTRecord(type:domain:))` per type in
+///   `TinyBarAPI.Bonjour.serviceTypes`, on `queue`; their results are merged.
+///   Each result's instance name is the bar's name ("MiniBar 2A1C");
 ///   its TXT record gives `id`, `api`, `fw`, `path` and `auth`.
 /// - Resolving: a UDP `NWConnection` to the result's endpoint, restricted to
 ///   IPv4 (api.md 3: IPv4 only), goes `.ready` once the service is resolved,
@@ -55,11 +57,14 @@ final class BonjourBarBrowser: BarDiscovery, @unchecked Sendable {
         var token: UUID
     }
 
-    private let work = AdapterQueue(label: "TinyBar.bonjour")
+    private let work = AdapterQueue(label: "MiniBar.bonjour")
 
     // Everything below is touched only on `work.queue`.
     private var running = false
-    private var browser: NWBrowser?
+    /// One browser per service type, keyed by type.
+    private var browsers: [String: NWBrowser] = [:]
+    /// The latest results of each browser, keyed by type; merged in `resultsChanged`.
+    private var results: [String: Set<NWBrowser.Result>] = [:]
     private var onChange: (@Sendable ([DiscoveredBar]) -> Void)?
     private var onError: (@Sendable (DiscoveryError) -> Void)?
     private var found: [String: Found] = [:]
@@ -84,7 +89,9 @@ final class BonjourBarBrowser: BarDiscovery, @unchecked Sendable {
             running = true
             self.onChange = onChange
             self.onError = onError
-            startBrowser()
+            for type in TinyBarAPI.Bonjour.serviceTypes {
+                startBrowser(type: type)
+            }
             refreshTimer = work.repeatingTimer(every: 300) { [weak self] in
                 self?.resolveAll()
             }
@@ -97,8 +104,11 @@ final class BonjourBarBrowser: BarDiscovery, @unchecked Sendable {
             running = false
             refreshTimer?.cancel()
             refreshTimer = nil
-            browser?.cancel()
-            browser = nil
+            for browser in browsers.values {
+                browser.cancel()
+            }
+            browsers = [:]
+            results = [:]
             for resolution in resolving.values {
                 resolution.connection.cancel()
             }
@@ -114,24 +124,24 @@ final class BonjourBarBrowser: BarDiscovery, @unchecked Sendable {
 
     // MARK: - On the queue
 
-    private func startBrowser() {
+    private func startBrowser(type: String) {
         let parameters = NWParameters()
         parameters.includePeerToPeer = false
         let browser = NWBrowser(
-            for: .bonjourWithTXTRecord(type: TinyBarAPI.Bonjour.serviceType, domain: TinyBarAPI.Bonjour.domain),
+            for: .bonjourWithTXTRecord(type: type, domain: TinyBarAPI.Bonjour.domain),
             using: parameters
         )
         browser.stateUpdateHandler = { [weak self] state in
-            self?.browserStateChanged(state)
+            self?.browserStateChanged(type: type, state)
         }
         browser.browseResultsChangedHandler = { [weak self] results, _ in
-            self?.resultsChanged(results)
+            self?.resultsChanged(type: type, results)
         }
-        self.browser = browser
+        browsers[type] = browser
         browser.start(queue: work.queue)
     }
 
-    private func browserStateChanged(_ state: NWBrowser.State) {
+    private func browserStateChanged(type: String, _ state: NWBrowser.State) {
         guard running else { return }
         switch state {
         case .ready:
@@ -145,11 +155,11 @@ final class BonjourBarBrowser: BarDiscovery, @unchecked Sendable {
             report(error)
         case .failed(let error):
             report(error)
-            browser?.cancel()
-            browser = nil
+            browsers.removeValue(forKey: type)?.cancel()
+            results[type] = nil
             work.queue.asyncAfter(deadline: .now() + 10) { [weak self] in
-                guard let self, self.running, self.browser == nil else { return }
-                self.startBrowser()
+                guard let self, self.running, self.browsers[type] == nil else { return }
+                self.startBrowser(type: type)
             }
         default:
             break
@@ -166,8 +176,12 @@ final class BonjourBarBrowser: BarDiscovery, @unchecked Sendable {
         }
     }
 
-    private func resultsChanged(_ results: Set<NWBrowser.Result>) {
+    /// One browser's results changed: merges every browser's results (a bar
+    /// advertises one type or the other, never both) and resolves what's new.
+    private func resultsChanged(type: String, _ changed: Set<NWBrowser.Result>) {
         guard running else { return }
+        results[type] = changed
+        let results = self.results.values.reduce(into: Set<NWBrowser.Result>()) { $0.formUnion($1) }
         var names: Set<String> = []
         for result in results {
             guard case .service(let name, _, _, _) = result.endpoint else { continue }

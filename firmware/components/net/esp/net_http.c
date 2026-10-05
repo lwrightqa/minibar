@@ -6,7 +6,7 @@
  *   (headers, body up to 2 KB, which network it came in on, the peer's address) and writes the reply with the headers
  *   api.md requires: Content-Type, Cache-Control: no-store, X-Content-Type-Options: nosniff, no CORS, plus ETag,
  *   Set-Cookie, Allow, WWW-Authenticate and Retry-After when the router asks for them.
- * - everything else (GET): the Remote page on the office Wi-Fi, the setup page on TinyBar-Setup, both gzipped in
+ * - everything else (GET): the Remote page on the office Wi-Fi, the setup page on MiniBar-Setup, both gzipped in
  *   flash. On the setup network a phone's captive-portal check (a well-known check path, or any other host) gets a
  *   302 to http://NET_SETUP_IP/ with a short HTML body (iOS wants one), so the phone opens the setup page in its
  *   sign-in sheet (ARCHITECTURE.md 10). Every request on the setup network is logged (INFO): method, Host, the path
@@ -14,7 +14,7 @@
  *   and everything else another 40.
  * A request is on the setup network when the socket's own address is NET_SETUP_IP and the peer is in its subnet
  * (setup_net()); if the socket's address ever can't be read as a plain IPv4 address, a peer in the setup subnet while
- * TinyBar-Setup is up counts.
+ * MiniBar-Setup is up counts.
  * esp_http_server runs every handler in one task, so handlers stay short; slow work answers 202 (the router's job).
  * Seven sockets at most, the least recently used one is closed for a new client (lru_purge_enable).
  *
@@ -126,7 +126,7 @@ static uint32_t setup_mask(void)
 
 /* Which network a request came in on, and its two ends for the log. */
 typedef struct {
-    bool setup;         /* on TinyBar-Setup */
+    bool setup;         /* on MiniBar-Setup */
     bool by_peer;       /* decided by the peer's address: the local one wasn't a plain IPv4 address */
     uint32_t local, peer;
     char local_text[48], peer_text[48];
@@ -342,7 +342,7 @@ static esp_err_t api_handler(httpd_req_t *r)
     if (!tb_bus_exec(api_job, &job, 900)) {
         resp.status = 503;
         resp.retry_after_s = 1;
-        resp.body = strdup("{\"ok\":false,\"error\":\"busy\",\"message\":\"TinyBar is busy. Try again in a second.\",\"field\":null,\"retry_after_s\":1}");
+        resp.body = strdup("{\"ok\":false,\"error\":\"busy\",\"message\":\"MiniBar is busy. Try again in a second.\",\"field\":null,\"retry_after_s\":1}");
         resp.len = resp.body ? strlen(resp.body) : 0;
     }
 
@@ -354,7 +354,7 @@ static esp_err_t api_handler(httpd_req_t *r)
     if (resp.etag[0]) httpd_resp_set_hdr(r, "ETag", resp.etag);
     if (resp.set_cookie[0]) httpd_resp_set_hdr(r, "Set-Cookie", resp.set_cookie);
     if (resp.allow[0]) httpd_resp_set_hdr(r, "Allow", resp.allow);
-    if (resp.www_authenticate) httpd_resp_set_hdr(r, "WWW-Authenticate", "Bearer realm=\"TinyBar\"");
+    if (resp.www_authenticate) httpd_resp_set_hdr(r, "WWW-Authenticate", "Bearer realm=\"MiniBar\"");
     if (resp.retry_after_s > 0) {
         snprintf(retry, sizeof retry, "%d", resp.retry_after_s);
         httpd_resp_set_hdr(r, "Retry-After", retry);
@@ -407,8 +407,8 @@ static esp_err_t to_setup_page(httpd_req_t *r)
     httpd_resp_set_hdr(r, "Location", "http://" NET_SETUP_IP "/");
     httpd_resp_set_hdr(r, "Cache-Control", "no-store");
     httpd_resp_set_type(r, "text/html; charset=utf-8");
-    return httpd_resp_sendstr(r, "<!doctype html><title>TinyBar setup</title>"
-                                 "<a href=\"http://" NET_SETUP_IP "/\">Set up TinyBar's Wi-Fi</a>");
+    return httpd_resp_sendstr(r, "<!doctype html><title>MiniBar setup</title>"
+                                 "<a href=\"http://" NET_SETUP_IP "/\">Set up MiniBar's Wi-Fi</a>");
 }
 
 static esp_err_t not_found(httpd_req_t *r)
@@ -423,7 +423,7 @@ static esp_err_t wrong_host(httpd_req_t *r)
     httpd_resp_set_status(r, "421 Misdirected Request");
     httpd_resp_set_type(r, "text/plain; charset=utf-8");
     httpd_resp_set_hdr(r, "Cache-Control", "no-store");
-    return httpd_resp_sendstr(r, "Use this TinyBar's own address, such as tinybar.local.");
+    return httpd_resp_sendstr(r, "Use this MiniBar's own address, such as minibar.local.");
 }
 
 static esp_err_t page_handler(httpd_req_t *r)

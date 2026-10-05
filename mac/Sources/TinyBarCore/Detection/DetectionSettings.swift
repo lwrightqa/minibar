@@ -17,7 +17,7 @@ public struct DetectionSettings: Hashable, Sendable, Codable {
     public var endDelay: Int
     /// Camera use alone counts as a call (with no name). Default on.
     public var countCamera: Bool
-    /// "Send the app's name to TinyBar". Off: no message has `app`. Default on.
+    /// "Send the app's name to MiniBar". Off: no message has `app`. Default on.
     public var sendAppName: Bool
     public var mode: CountingMode
     public var catalog: AppCatalog

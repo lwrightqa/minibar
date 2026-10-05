@@ -44,7 +44,7 @@ public enum MenuPresenter {
         return content
     }
 
-    /// Settings › Connection, "Your TinyBar" (mac-app-ux.md 6.4): the status
+    /// Settings › Connection, "Your MiniBar" (mac-app-ux.md 6.4): the status
     /// text, whether it shows a filled dot, and which buttons apply.
     public static func connectionSummary(
         for state: EngineState,
@@ -70,7 +70,7 @@ public enum MenuPresenter {
             status = noPairing ? over + " · no pairing needed" : over
             buttons = noPairing ? [.sendTestCall] : [.sendTestCall, .forget]
         case .looking:
-            status = "Looking for TinyBar…"
+            status = "Looking for MiniBar…"
             buttons = [.sendTestCall, .forget]
         case .unreachable:
             status = connection.lastSuccess.map { "Can\u{2019}t reach it since \(context.clock($0))" } ?? "Can\u{2019}t reach it"
@@ -100,7 +100,7 @@ public enum MenuPresenter {
             if state.call != nil {
                 reason = "Not available during a call."
             } else if connection.phase != .connected {
-                reason = "Connect TinyBar first."
+                reason = "Connect MiniBar first."
             }
         }
         return ConnectionSummary(barName: name, status: status, isConnected: isConnected, buttons: buttons,
@@ -118,9 +118,9 @@ public enum MenuPresenter {
 
         var connection: ConnectionState { state.connection }
 
-        /// The bar's own name, as the bar reports it ("TinyBar 2A1C").
+        /// The bar's own name, as the bar reports it ("MiniBar 2A1C").
         var barName: String {
-            connection.bar?.name ?? connection.info?.name ?? state.settings.bar?.name ?? "TinyBar"
+            connection.bar?.name ?? connection.info?.name ?? state.settings.bar?.name ?? "MiniBar"
         }
 
         var paused: Bool { state.isPaused(at: now) }
@@ -196,7 +196,7 @@ public enum MenuPresenter {
                 // something else (paused, or a monitor that didn't start).
                 return paused || state.testCall != nil || problemLine != nil ? "Not set up yet" : nil
             case .looking:
-                return "Looking for TinyBar…"
+                return "Looking for MiniBar…"
             case .connected:
                 if ignoringCalls { return "\(name) is ignoring calls from your Mac" }
                 if onCall, let reply = connection.lastReply {
@@ -360,7 +360,7 @@ public struct ConnectionSummary: Hashable, Sendable {
         case connect, sendTestCall, forget, pairAgain
     }
 
-    /// "TinyBar 2A1C", or nil when not set up.
+    /// "MiniBar 2A1C", or nil when not set up.
     public var barName: String?
     /// "Connected over USB", "Can’t reach it since 2:04 PM"…
     public var status: String
@@ -368,7 +368,7 @@ public struct ConnectionSummary: Hashable, Sendable {
     public var isConnected: Bool
     public var buttons: [Button]
     /// Why Send Test Call is dimmed: "Not available during a call." or
-    /// "Connect TinyBar first.", else nil.
+    /// "Connect MiniBar first.", else nil.
     public var testCallUnavailableReason: String?
 
     public init(barName: String?, status: String, isConnected: Bool, buttons: [Button], testCallUnavailableReason: String?) {

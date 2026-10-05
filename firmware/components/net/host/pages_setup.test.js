@@ -47,7 +47,7 @@ const check = (c, what) => { if (!c) { fails++; console.log('FAIL', what); } els
   await p.fill('#wPass', 'wrong-password');
   await p.click('#wConnect');
   await sleep(300);
-  check((await p.textContent('#setupMsg')).startsWith('TinyBar is connecting to Office-WiFi.'), 'connecting message');
+  check((await p.textContent('#setupMsg')).startsWith('MiniBar is connecting to Office-WiFi.'), 'connecting message');
   check(await p.isDisabled('#wConnect'), 'Connect disabled while connecting');
   let s = await sim('/_sim/state');
   check(s.wifi_mode === 3, 'bar shows Connecting');

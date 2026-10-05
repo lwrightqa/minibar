@@ -49,7 +49,7 @@ public struct IgnoredApp: Hashable, Sendable, Codable, Identifiable {
     }
 }
 
-/// An app as the Mac sees it, for the menu, the "Used the mic since TinyBar
+/// An app as the Mac sees it, for the menu, the "Used the mic since MiniBar
 /// opened" list and "Don't Count …". Never sent to the bar.
 public struct AppIdentity: Hashable, Sendable, Codable {
     /// Stable key: the matching list entry's `id`; else the outer app's bundle
