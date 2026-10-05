@@ -346,16 +346,62 @@ These fill in what `docs/api.md` 4.8 and 14.3 left open. They're built into the 
 
 ## Look
 
+- **Alternate theme: Low Glare Pixel, set in Handjet (decided 2026-10-05).** The user asked "Is it possible to do the low glare pixel layout using Handjet?", then "I'd like to use it as an alternate theme. Not a replacement."
+  - **Bold Signal stays the default look**, unchanged: the simulator's default, what a new bar shows, and what the firmware runs today.
+  - **A second theme, Low Glare Pixel, that you choose** on the bar and on the Remote. It's the Low Glare layout (a warm near-black screen, a 6 px edge bar in the status color, a colored sentence-case headline, a faint side tint, warm off-white and muted text, a status-color frame for the alarm instead of the white flash, and a paused timer held still in the muted color) set **entirely in Handjet**: headlines, the timer and clock, side values and all small text. No Bitcount. It's close to the font study's option C (Handjet headlines), with Handjet instead of Micro 5 for the small text too.
+  - **Option G** (Bitcount round dots with Handjet small text) **stays as history only** (its entries below). From now on, "Low Glare Pixel" means the Handjet theme.
+  - **Order:** the theme is built into the mock-up first. The firmware gets it after the user has seen it there; this round doesn't touch the firmware or the Mac app.
+  - **The Handjet facts it's built on** (measured 2026-10-05, wght 400 or 700, solid squares ELSH 2, element grid ELGR 1, advance widths without kerning):
+    - An element is 1/17 em (480 of 8,160 units), so at a size of N px it's N/17 px. Capitals are 11 elements tall.
+    - Every digit is 7 elements wide (3,360 units), so the timer and clock are already tabular.
+    - As served, many elements sit on half-element offsets, which land on whole pixels only when N/17 is even (68, 102, 136 px). `tools/fonts/snap17.py` moves every element onto a whole element, so any multiple of 17 px is crisp, and the firmware can convert snapped copies.
+    - Widths at 102 px (6 px elements), in capitals: AVAILABLE 333 px, BUSY 168, ON A CALL 318, MEETING 264, BREAK TIME 357, SET UP WI-FI 396, and "18:41" 186. IN A MEETING (414) and SHORT BREAK (411) are over the 408 px headline column at 102 px and fit at 85 px (345 and 342). At 119 px AVAILABLE is 388 and "18:41" 217; at 136 px "18:41" is about 248.
+  - How it's switched, stored and sent is **Proposed** below ("Proposed for the Low Glare Pixel theme").
 - **Direction A, Bold Signal (decided 2026-10-04).** On 2026-10-04 the user switched the bar's look to **Direction A, Bold Signal**, the first direction on `docs/design-directions.html` (not to be confused with option A of the font study): **solid, saturated status-color fields**, white **Barlow Condensed 700** uppercase headlines, **Barlow** for all other text, and a darker **tinted info column** on the right. It **replaces** the earlier pick, the Low Glare layout in Bitcount Prop Single round dots with Handjet, which is kept below as history.
-  - Bold Signal is the look that goes to the firmware, the simulator's default, and the design card with the "pick" badge. The **Low Glare Pixel** card (Bitcount and Handjet) stays on the mock-up page and can still be applied, but it's no longer the default.
+  - Bold Signal is the look that goes to the firmware, the simulator's default, and the design card with the "pick" badge. The **Low Glare Pixel** card (Bitcount and Handjet) stays on the mock-up page and can still be applied, but it's no longer the default. *(2026-10-05: that card now shows the new Low Glare Pixel theme, set in Handjet, which is the bar's alternate theme; see above.)*
   - The switch changes only the look. Every other decision and open proposal stands, including focus ticking going silent on a dark screen, meeting titles hidden by default, the offline behavior and the Mac app's API.
-  - `tools/fonts/` (the Bitcount and Handjet tools `equalize_digits.py` and `snap17.py`, with their README and the fonts' licenses) is **kept for reference**, but the current look doesn't use it.
+  - `tools/fonts/` (the Bitcount and Handjet tools `equalize_digits.py` and `snap17.py`, with their README and the fonts' licenses) is **kept for reference**, but the current look doesn't use it. *(2026-10-05: the Low Glare Pixel theme uses `snap17.py` and Handjet's license again.)*
   - The spec, proposals and follow-ups for Bold Signal are below. Option G's type spec, trade-offs and proposals are kept after them as history.
 - **Low Glare layout in a pixel font (decided 2026-10-04; superseded the same day by Bold Signal).** The user reviewed the four design directions on a separate page (`docs/design-directions.html`) and prefers the **Low Glare** layout: a warm near-black background, a 6 px edge bar in the status color, a colored sentence-case headline, a faint side tint, warm off-white and muted text, a status-color frame instead of the white alarm flash, and a paused timer shown steadily in the muted color instead of blinking. It is to be set in a **pixel font**.
 - **Pixel font (decided 2026-10-04; superseded the same day by Bold Signal): option D, with Handjet for the small text.** The user picked option D of the font study (`docs/pixel-fonts.html`): **Bitcount Prop Single in round dots** for the headlines, the timer and the clock, with **Handjet** replacing option D's Tiny5 for the small text. This is the user's choice over the team's recommendation: the UX designer, lead developer and product manager had all ranked option A (Jersey 15 with Micro 5) first, for its bold solid word across the room, real lowercase and perfectly sharp pixels. The team set the pick up as **option G**, first on the font study page, and fixed what the study had flagged (see the type spec and trade-offs below).
   - *History:* until 2026-10-04 this was open. The mock-up showed the choice as the **Low Glare Pixel** direction with Jersey 15 headlines and Jersey 10 small text as a stand-in, and the simulator's default look stayed as it was, to switch once the font was chosen.
   - Now that it's chosen, the Low Glare Pixel direction and the simulator's default switch to option G. **Not done yet:** `docs/mockup.html` still shows the Jersey stand-in (see Follow-ups). *(Built later on 2026-10-04, then replaced as the default by Bold Signal.)*
 - In the Style panel, the **dark** screen mode is the Low Glare treatment: choosing it starts from Low Glare's colors (brightened so they read on near-black), tints and sentence-case headlines, and keeps the fonts already chosen.
+
+### Proposed for the Low Glare Pixel theme (2026-10-05, waiting for the user's OK)
+
+The product manager's defaults for what the user hasn't said yet. The mock-up is built to them this round. Change any of them and the team will follow.
+
+- **Proposed: on the bar, the quick menu's Light tile becomes Display.** Its value stays the light level ("70%") with "light and theme" as its foot, and a tap opens a Display menu, built like the timer menu's Settings:
+  - **Light:** 40, 70 and 100% as now.
+  - **Theme:** the current theme's full name; a tap switches to the other theme.
+  - **Back:** returns to the quick menu.
+
+  The menu stays open after a change, so you see the new look at once and can switch back, and it closes after 8 s like every menu. The light takes one more tap than now, and the quick menu keeps five tiles, so the themes' full names fit. *The other choice:* a sixth tile on the quick menu, which only has room for short names ("Signal", "Pixel"). On the Pomodoro screen, holding still opens the timer menu, so the theme is changed from any other screen.
+- **Proposed: on the Remote, a Display section** with a **Theme** choice, Bold Signal or Low Glare Pixel, and one line under it: "Bold Signal fills the screen with the status color. Low Glare Pixel is dark, with the color in the words and a thin edge, so it gives off less light." The Remote page itself keeps its own look.
+- **Proposed: the confirmation** is a toast, "Theme · Low Glare Pixel" or "Theme · Bold Signal", drawn in the new theme. Choosing the theme the bar already has changes nothing and shows no toast.
+- **Proposed: a switch changes only the look,** at once, on every screen and overlay, an open menu and a pairing code included. The status, the Pomodoro, an alarm, a call or meeting and whether it's set aside, ticking, the light and the flip stay as they are, and nothing makes a sound. On a dark screen, or while a pairing code shows, the toast waits, as it does for any change from the Remote.
+- **Proposed: it's kept like every other setting:** across Restart and power off and on (the first frame after power-on is already in the theme), and Wi-Fi setup, Skip and Forget all don't change it. A new bar starts in Bold Signal. The setup page doesn't offer it.
+- **Proposed: the API.** A new setting, `display.theme`, `"bold_signal"` (the default) or `"low_glare_pixel"`, read and changed through `/api/v1/settings` like the others, and over USB through `request`. See `docs/api.md` 10.3 (Proposed). **The Mac app needs nothing:** it doesn't read or change settings, and ignores fields it doesn't know.
+- **Proposed: the same words, and the bar's drawing rules.**
+  - Every screen says exactly what it says in Bold Signal; only the look differs.
+  - The headline is in sentence case, as in the Low Glare layout and option G (the widths above are measured in capitals).
+  - The colors, tints and pre-mixed fills are Low Glare's (the Low Glare spec in `docs/design-directions.html`, which option G also used).
+  - Every Handjet size is a whole multiple of 17 px, drawn on whole pixels, and every line, ring and frame is a whole number of pixels wide (Low Glare's 1.5 px rings become 1 or 2 px), since LVGL can't draw half pixels either.
+  - All text meets 4.5:1 against what's behind it, as in Bold Signal.
+- **Proposed: the mock-up page.**
+  - The Bold Signal and Low Glare Pixel design cards are the bar's two themes. Each says so, the one on the bar is marked, and Apply on either switches the bar's theme, as the Remote does.
+  - The other directions (Low Glare, Soft Light, Pixel Arcade) and any change in the Style panel stay mock-up-only previews, and the page says so. Switching the theme on the bar or the Remote puts that theme back, unedited.
+  - Reset to defaults drops edits and previews and shows the bar's theme, without changing it.
+  - The mock-up remembers the theme in the browser, standing in for the bar's flash.
+- **Proposed: option G is no longer a card** on the mock-up page. It stays in the font study (`docs/pixel-fonts.html`) and in the history below, and Bitcount stays among the Style panel's pixel fonts. If you'd like option G kept as a card beside the new theme, say so.
+
+### Follow-ups for the Low Glare Pixel theme (open)
+
+- **Mock-up (this round):** the theme on every screen, the Display menu, the Remote's Display section, the cards and Style panel, the Google Fonts link (Handjet with every axis value the theme uses), and the notes, controls table, menu diagram and API section. Then the published Artifact needs updating.
+- **Firmware (after the user has seen the mock-up):** `display.theme` in the settings store and the API, the Display menu, the second look in `ui`, Handjet converted at the theme's sizes from snapped static instances (measure the flash; with every element on a whole pixel, 1 bpp should lose nothing), and the Theme choice on the firmware's Remote page.
+- **`tools/fonts/README.md`:** say that the Low Glare Pixel theme uses `snap17.py`, at which sizes and weights, and stop calling option G the user's pick (alongside its Bold Signal follow-up).
+- **Mac app:** nothing.
 
 ### Spec: Bold Signal (2026-10-04)
 
@@ -478,6 +524,7 @@ These applied only to Bitcount and Handjet. **Superseded on 2026-10-04 by the sw
   - **Updated 2026-10-04:** a fifth card, **Low Glare Pixel** (the user's pick, with the font still to be chosen), comes first across the full row. It uses Jersey 15 and Jersey 10, like Pixel Arcade, as a stand-in, and Bold Signal and Low Glare share Barlow Condensed; the "no shared fonts" rule for directions is waived now that the user has picked.
   - **Updated 2026-10-04 (font chosen):** the Low Glare Pixel card is to use option G, Bitcount round dots with Handjet Snap17, instead of the Jersey stand-in, and becomes the simulator's default. Not built yet (see Look). *(Built later on 2026-10-04.)*
   - **Updated 2026-10-04 (switch to Bold Signal):** the user switched to **Direction A, Bold Signal**. It becomes the simulator's default, carries the "pick" badge and comes first, and it's the direction that goes to the firmware. The Low Glare Pixel card stays and can still be applied, but it's no longer the default. See Look.
+  - **Updated 2026-10-05 (alternate theme):** the Low Glare Pixel card now shows the Handjet theme, and the Bold Signal and Low Glare Pixel cards become the bar's two themes. **Proposed:** Apply on either sets the bar's theme; the other cards stay mock-up only (see Look, "Proposed for the Low Glare Pixel theme").
   - **Proposed:** every direction keeps all screen text at a contrast of 4.5:1 or better on every status color. It uses only what LVGL 9 can draw: solid fills, simple gradients, and Google Fonts under the OFL or Apache license. (The current default misses 4.5:1 with white text on Available, about 4.0:1; on Focus, about 3.2:1; and on Short break, about 4.2:1.) *Note 2026-10-04: those figures are for the original solid look. Bold Signal, the default now, meets the rule: white is 4.91:1 or better on every status field.*
 - **Simulate controls** (decided 2026-10-04): buttons that start and end a call or a meeting, so the automatic statuses can be tried before the Mac app exists. They're clearly labeled mock-up only, and they sit outside the Remote panel.
   - **Updated 2026-10-04 (pairing round):** a Pairing box joins them.

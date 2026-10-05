@@ -898,6 +898,7 @@ Scope `full`.
 | `pomodoro.ticking` | boolean | `false` | Ticking during focus (decided 2026-10-04: optional, off by default). |
 | `pomodoro.tick_volume` | `"soft"` or `"medium"` | `"soft"` | Kept while ticking is off, as on the Remote. |
 | `display.brightness` | 10 to 100 (percent) | 70 | The bar's Light tile steps through 40, 70 and 100; from any other value its next tap goes to the next of those above it (from 100, to 40). |
+| `display.theme` | `"bold_signal"` or `"low_glare_pixel"` (*open*) | `"bold_signal"` | **Proposed (2026-10-05), see 10.3.** The bar's look: Bold Signal, or Low Glare Pixel (the Low Glare layout set in Handjet). Not in the example above until it's approved. |
 | `automatic.calendar` | boolean | `true` once an address is saved, `false` before | Calendar meetings. Can't be `true` with no address saved. |
 | `automatic.mac` | boolean | `true` | Calls from your Mac. |
 | `automatic.meeting_titles` | boolean | `false` | Show meeting titles. Needs a saved address. |
@@ -935,6 +936,43 @@ What changes on the bar, as in the mock-up:
 ```json
 {"ok": false, "error": "no_calendar", "message": "Add a calendar address first.", "field": "automatic.calendar"}
 ```
+
+### 10.3 Proposed: `display.theme`, the bar's theme
+
+**Proposed (2026-10-05), waiting for the user's OK.** On 2026-10-05 the user decided to add a second look, **Low Glare Pixel** (the Low Glare layout set entirely in Handjet), as an alternate theme beside the default, **Bold Signal** (`decisions.md`, Look). This is how the setting travels. It's built in the mock-up first; the firmware adds it after the user has seen it there.
+
+| | |
+|---|---|
+| Name | `display.theme` |
+| Values | `"bold_signal"` or `"low_glare_pixel"`. *Open:* a later version may add themes. A client that doesn't know a value shows it by name and leaves it alone. |
+| Default | `"bold_signal"`, on a new bar and on a bar updated from firmware that had no themes. |
+| Read | `GET /api/v1/settings` (10.1): `settings.display.theme`, always present. |
+| Change | `PATCH /api/v1/settings` (10.2), scope `full`. Over USB, `request` (6.6) with no token, like every other setting. |
+| On the bar | The Theme tile in the quick menu's Display menu (**Proposed**, `decisions.md`). |
+| On the Remote | The Theme choice in its Display section (**Proposed**). |
+
+```json
+{"display": {"theme": "low_glare_pixel"}}
+```
+
+```text
+mac → bar  @tb {"cmd": "request", "id": 9, "method": "PATCH", "path": "/api/v1/settings", "body": {"display": {"theme": "low_glare_pixel"}}}
+bar → mac  @tb {"id": 9, "http_status": 200, "ok": true, "settings": {"pomodoro": {"focus_min": 25, "short_min": 5, "long_min": 15, "long_every": 4, "auto_start": false, "chime": true, "ticking": false, "tick_volume": "soft"}, "display": {"brightness": 70, "theme": "low_glare_pixel"}, "automatic": {"calendar": true, "mac": true, "meeting_titles": false}, "device": {"name": "TinyBar 2A1C", "time_zone": "America/Los_Angeles"}}}
+```
+
+- **Checks:** a string that is exactly one of the values. Anything else (an unknown name, other capitals such as `"Low_Glare_Pixel"`, a number, `null`) is `400 bad_value` with `"field": "display.theme"`, and nothing else in the request applies (10.2). No new error codes.
+
+  ```json
+  {"ok": false, "error": "bad_value", "message": "theme must be \"bold_signal\" or \"low_glare_pixel\".", "field": "display.theme"}
+  ```
+
+- **What changes on the bar:** every screen redraws in the new theme at once, an open menu and a pairing code included, and the bar shows the toast "Theme · Low Glare Pixel" (or "Theme · Bold Signal"). Nothing else changes: the status, a running or paused Pomodoro, a ringing alarm, a call or meeting and whether it's set aside, ticking, the light and a dark screen stay as they are, and nothing makes a sound. On a dark screen, or while a pairing code shows, the toast waits, as it does for any change from the Remote.
+- **The theme it already has:** changes nothing and shows no toast. The reply is still `200` with the full settings.
+- **Kept** with the other settings, across Restart and power off and on. Wi-Fi setup, Skip and Forget all don't change it.
+- **`rev`:** a theme change, including one made on the bar, bumps `rev` in `GET /api/v1/status` (7.3), so the Remote, which reads the settings again whenever `rev` changes, shows it within about 2 seconds. `status` itself doesn't carry the theme, and neither do the `call` replies.
+- **Version:** a new field and an open set of values, so it's an addition under 2.1 (API 1.1). Clients that speak 1.0 ignore it.
+- **The Mac app needs nothing.** It doesn't read or change settings, and it ignores fields it doesn't know (2.1).
+- **The setup network (section 13) doesn't offer it.** A bar in setup shows its setup screens in the saved theme.
 
 ---
 
@@ -1178,6 +1216,7 @@ The mock-up's "How the Mac app talks to TinyBar" and `decisions.md` need these b
 - **What else the Mac app sends:** a random install ID with a per-launch session ID and a counter (`client`, `session`, `seq`), and over USB the Mac's time and time zone, so a bar used without Wi-Fi still has a clock for the Clock screen and "since 2:04 PM". None of it says anything about calls, and none of it is a hardware ID or the computer's or user's name, but it isn't on the Mac app spec's list of what leaves the Mac yet (14.5).
 - **Away's back-at time and note** (8.1).
 - **The default bar name "TinyBar 2A1C"** (section 3).
+- **The theme setting `display.theme`** (10.3), for the alternate theme the user decided on 2026-10-05.
 
 ### 14.3 Needs design (UX designer, then the mock-up)
 
