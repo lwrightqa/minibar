@@ -38,6 +38,6 @@ const fs = require('fs');
 - The action log under the device (`#log`) describes what the last control did, which makes assertions easy.
 - `#hint` shows the controls for the current state.
 - Pointer gestures on `#screen`: `mouse.move` to a point inside it, `mouse.down`, wait (about 700 ms for a hold), `mouse.up`. Call `locator('#screen').scrollIntoViewIfNeeded()` first; clicking buttons lower on the page scrolls the screen out of view.
-- The PWR side button (`#btnPwr`) uses pointer down/up: hold 3 s to power off.
+- The PWR side button (`#btnPwr`) uses pointer down/up: hold 3 s to power off. Moving the mouse off the button while it's down lets go of it (`pointerleave` ends the hold), so with one mouse you can't hold PWR and click something else. To do something on the page mid-hold, hold with a second pointer: dispatch a `pointerdown` on `#btnPwr` (`new PointerEvent('pointerdown', { bubbles: true, pointerId: 7, pointerType: 'touch', isPrimary: true })`), drive the page with the mouse, then dispatch the matching `pointerup`. The Remote's "Hold PWR 3 s" stand-in (`#pwrHoldBtn`) runs a hold on its own timer too.
 - The demo speed (`#speedSeg button[data-v="60"]`) runs timers at 60×, so a 25-minute focus session ends in about 25 s.
 - Write scratch scripts and screenshots in your scratchpad directory, not in the repo.
