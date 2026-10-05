@@ -125,6 +125,32 @@ TB_TEST(pair_safeguard_is_not_a_failure)
     TB_EQ_STR(net_pair_state(&p, &now), "idle");
 }
 
+/* The back-off is about codes: only a code typed right resets it (the mock-up's pairEnd('paired')). Pairing the Mac
+ * over USB takes no code, so it leaves the wait as it was. */
+TB_TEST(pair_usb_leaves_the_back_off)
+{
+    net_pair_t p;
+    fresh(&p);
+    char pid[17], tok[NET_TOKEN_LEN + 1], code[8];
+    int retry, left;
+    tb_clock_t now = at(1000);
+    for (int i = 0; i < 2; i++) {
+        TB_EQ_INT(net_pair_start(&p, "iPhone", NET_KIND_REMOTE, NET_SCOPE_FULL, NULL, &now, pid, &retry), NET_PAIR_OK);
+        net_pair_cancel(&p, &now);
+    }
+    TB_EQ_STR(net_pair_state(&p, &now), "locked");
+    TB_EQ_INT(net_pair_usb(&p, MAC, "Mac", &now, tok, NULL), NET_PAIR_OK);
+    TB_EQ_STR(net_pair_state(&p, &now), "locked");
+    TB_EQ_INT(p.failures_in_row, 2);
+    /* the wait runs out; a code typed right then resets it */
+    now = at(1000 + NET_PAIR_LOCK_FIRST_MS);
+    TB_EQ_INT(net_pair_start(&p, "iPhone", NET_KIND_REMOTE, NET_SCOPE_FULL, NULL, &now, pid, &retry), NET_PAIR_OK);
+    memcpy(code, p.code, sizeof code);
+    TB_EQ_INT(net_pair_finish(&p, pid, code, 0, &now, tok, NULL, &left), NET_PAIR_OK);
+    TB_EQ_INT(p.failures_in_row, 0);
+    TB_EQ_STR(net_pair_state(&p, &now), "idle");
+}
+
 TB_TEST(pair_cancel_by_id)
 {
     net_pair_t p;
@@ -504,6 +530,7 @@ TB_TEST(appendix_a_every_endpoint_is_routed)
     nf_free(&r);
     /* the setup endpoints: over USB while setting up */
     fake_wifi = (net_wifi_info_t){.state = NET_WIFI_SETUP, .host = "tinybar.local"};
+    nf_app.wifi_mode = TB_WIFI_SETUP;           /* the bar is on its setup screens too (setup/wifi checks both) */
     static const char *const SETUP[] = {
         "{\"method\": \"GET\", \"path\": \"/api/v1/setup/networks\"}",
         "{\"method\": \"POST\", \"path\": \"/api/v1/setup/wifi\", \"body\": {}}",

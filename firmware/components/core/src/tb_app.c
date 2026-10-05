@@ -1086,7 +1086,8 @@ static void settle(tb_app_t *a, const tb_clock_t *now)
     if (!a->powered_off) {
         /* pairTryShow(): a waiting code goes on the screen once the power screens are gone (never during Wi-Fi setup).
          * It wakes a dark screen, closes an open menu without acting on it, hides the toast, and holds a ringing alarm
-         * as a call does. The 2 minutes count from here. */
+         * as a call does. The 2 minutes count from here. A flash already under way stops too, so the code never shows
+         * in the alarm's white (the mock-up drops its 'alert' class); a chime's notes in progress play out, as there. */
         if (a->pairing.active && !a->pairing.shown_at && !a->booting && !a->powering_off && a->hold == TB_HOLD_NONE &&
             !tb_app_on_wifi_screen(a)) {
             a->pairing.shown_at = stamp(now);
@@ -1096,6 +1097,7 @@ static void settle(tb_app_t *a, const tb_clock_t *now)
             a->toast[0] = '\0';
             a->toast_title_off = a->toast_title_len = 0;
             a->toast_hold_until = 0;
+            a->flash_at = 0;
             if (a->ringing) {
                 a->ringing = false;
                 a->alarm_held_by_pairing = true;

@@ -1254,10 +1254,11 @@ static void h_pair_start(rt_t *r, cJSON *b)
     cJSON_AddNumberToObject(r->o, "attempts", NET_PAIR_TRIES);
 }
 
+/* No in_setup check (api.md 4.7 lists none): starting setup ends any pairing, so during setup this answers
+ * not_pairing, as pair/cancel does and as the mock-up's pairTry() does on the Connected screen. */
 static void h_pair(rt_t *r, cJSON *b)
 {
     if (!need_body(r, b)) return;
-    if (in_setup(r)) return;
     const char *pid, *code;
     if (get_str(b, "pairing_id", &pid) != F_OK) { bad_request(r, "pairing_id", "\"pairing_id\" is required."); return; }
     if (get_str(b, "code", &code) != F_OK) {

@@ -9,8 +9,8 @@
  * Codes: 6 digits, shown on the bar for 2 minutes, one at a time, 3 tries. A code for a device that isn't paired yet
  * holds one of the 10 places until it ends (api.md 4.3), so a USB pairing of another new device meanwhile gets
  * token_limit. Back-off: after two failed pairings in a row (timed out, canceled on the bar or with pair/cancel, out of
- * tries), pair/start is refused for 30 s, then 1, 2, 4 minutes... up to 1 hour; success, Power off and Restart reset
- * it; kept in RAM only. POST /api/v1/pair and /pair/cancel are limited to one request a second in total.
+ * tries), pair/start is refused for 30 s, then 1, 2, 4 minutes... up to 1 hour; a code typed right, Power off and
+ * Restart reset it (a USB pairing takes no code and doesn't); kept in RAM only. POST /api/v1/pair and /pair/cancel are limited to one request a second in total.
  * Storage: the table is saved through net_port_tokens_save() as a versioned blob on every pairing, revoke and forget,
  * and when a token's last_used moves on by an hour or more (flash wear: at most once an hour per token).
  */

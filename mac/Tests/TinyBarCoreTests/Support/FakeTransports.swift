@@ -120,7 +120,7 @@ final class FakeBar: @unchecked Sendable {
     func revoke(_ token: String?) throws(BarError) -> RevokeReply {
         let result: Result<RevokeReply, BarError> = state.withLock { s in
             s.log.append("wifi unpair")
-            guard let token, s.tokens.remove(token) != nil else {
+            guard let token, s.tokens.remove(token) != nil || s.foreignTokens.remove(token) != nil else {
                 return .failure(.api(APIErrorBody(error: .unauthorized), httpStatus: 401))
             }
             s.revoked.append(token)

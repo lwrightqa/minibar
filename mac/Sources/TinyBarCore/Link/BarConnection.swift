@@ -157,7 +157,8 @@ public struct ConnectionState: Hashable, Sendable {
 ///   over Wi-Fi, or `403 wrong_client` (a token tied to another install ID,
 ///   api.md 5.2): `GET info` first; another bar at that address → find the
 ///   right one again and keep the token; the paired bar itself → delete the
-///   token and report `.unrecognized` (api.md 16). `unsupported_api` or an
+///   token and report `.unrecognized` (api.md 16), and after `wrong_client`
+///   also revoke that token on the bar, best effort. `unsupported_api` or an
 ///   `info` with another major version → `.barNeedsUpdate`/`.appNeedsUpdate`.
 ///   A device that answers the USB handshake with errors only is tried again
 ///   after 10 seconds, not ignored.
@@ -816,7 +817,7 @@ public actor BarConnection {
             // `401`, or `403 wrong_client` (the token is tied to another
             // install ID, api.md 5.2): either way this Mac's token doesn't
             // match, so drop it and offer Pair Again.
-            await handleUnauthorized(at: endpoint)
+            await handleUnauthorized(at: endpoint, wrongClient: error.apiCode == .wrongClient)
         case .wrongDevice, .notATinyBar:
             markWrong(endpoint)
         case .localNetworkDenied:
@@ -834,7 +835,13 @@ public actor BarConnection {
     /// Another bar, or something that isn't a TinyBar (another device took
     /// the address and wants a login): find the right one again and keep the
     /// token. No answer: keep the token and try again later.
-    private func handleUnauthorized(at endpoint: BarEndpoint) async {
+    ///
+    /// - Parameter wrongClient: the refusal was `403 wrong_client`. The bar
+    ///   still knows that token (it was paired for another install ID, for
+    ///   example before the app's settings were reset), so it's also revoked
+    ///   on the bar (`DELETE /api/v1/clients/self`, best effort), rather than
+    ///   left holding one of its 10 places for nobody.
+    private func handleUnauthorized(at endpoint: BarEndpoint, wrongClient: Bool = false) async {
         guard let bar = state.bar else { return }
         let probe = transports.makeWiFi(endpoint: endpoint, token: nil)
         let result: Result<InfoReply, BarError>
@@ -861,11 +868,34 @@ public actor BarConnection {
             }
             return
         }
+        let refused = token(for: bar)
         try? tokens.removeToken(for: bar.deviceID)
         cachedToken = (bar.deviceID, nil)
         state.bar?.tokenID = nil
         unauthorized = true
         closeWiFi()
+        if wrongClient, let refused {
+            revokeInBackground(refused, at: endpoint)
+        }
+    }
+
+    /// Tells the bar to forget `token` (`DELETE /api/v1/clients/self`), in
+    /// the background and best effort: 5 seconds at most, and any answer is
+    /// fine. The token is already gone from this Mac.
+    private func revokeInBackground(_ token: String, at endpoint: BarEndpoint) {
+        backgroundWork += 1
+        let transport = transports.makeWiFi(endpoint: endpoint, token: token)
+        let clock = self.clock
+        Task {
+            await BarConnection.withTimeout(5, clock: clock) { _ = try? await transport.unpairSelf() }
+            await transport.close()
+            self.backgroundWorkDone()
+        }
+    }
+
+    private func backgroundWorkDone() {
+        backgroundWork -= 1
+        wake()
     }
 
     private func markWrong(_ endpoint: BarEndpoint) {

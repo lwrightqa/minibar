@@ -380,8 +380,9 @@ TB_TEST(in_setup_refuses_status_message_aside_pomodoro_and_pairing)
     TB_EQ_INT(r.status, 409);
     TB_EQ_STR(nf_err(&r), "in_setup");
     nf_free(&r);
+    /* pair isn't refused for setup (api.md 4.7): setup ended any code, so there's no pairing for this id */
     r = nf_http("POST", "/api/v1/pair", "{\"pairing_id\": \"x\", \"code\": \"1\"}", NULL);
-    TB_EQ_STR(nf_err(&r), "in_setup");
+    TB_EQ_STR(nf_err(&r), "not_pairing");
     nf_free(&r);
     /* settings and reading still work */
     r = nf_http("GET", "/api/v1/status", NULL, T);

@@ -221,8 +221,6 @@ static const net_token_t *issue(net_pair_t *p, const char *name, net_kind_t kind
     t->paired_via = via;
     t->last_used = t->saved_used = t->paired_at;
     t->last_ip = peer_ip;
-    p->failures_in_row = 0;
-    p->locked_until = 0;
     save(p);
     return t;
 }
@@ -308,7 +306,12 @@ net_pair_err_t net_pair_finish(net_pair_t *p, const char *pairing_id, const char
     if (!has_room(p, p->client)) return NET_PAIR_TOKEN_LIMIT;
     const net_token_t *t = issue(p, p->name, p->kind, p->scope, p->client, TB_LINK_WIFI, peer_ip, now, token_out);
     if (rec) *rec = t;
-    return t ? NET_PAIR_OK : NET_PAIR_TOKEN_LIMIT;
+    if (!t) return NET_PAIR_TOKEN_LIMIT;
+    /* A code typed right resets the back-off (api.md 4.9; the mock-up's pairEnd('paired')). A pairing over USB
+     * doesn't: it takes no code, so it says nothing about the codes someone may be guessing. */
+    p->failures_in_row = 0;
+    p->locked_until = 0;
+    return NET_PAIR_OK;
 }
 
 net_pair_err_t net_pair_usb(net_pair_t *p, const char *client, const char *name, const tb_clock_t *now,

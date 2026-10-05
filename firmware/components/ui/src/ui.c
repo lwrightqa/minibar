@@ -886,11 +886,31 @@ static void put_menu(const tb_menu_t *m)
          * at most two lines, the second cut with "…" (Forget all's device names). */
         const lv_font_t *ff = font_of(t->foot);
         const int32_t line_space = TILE_FOOT_PITCH - ff->line_height;
+        /* foot_alt (the Devices tile with nothing paired): the first foot whose every line fits the tile's content
+         * width on one line, else the last. "pair at" over the host, then the IP address, then "pair at its" over "IP
+         * address". Measured with lv_text_get_size (EXPAND: no wrapping, x is the widest line) against the content
+         * width as a float (86.53 px on the Wi-Fi menu's five columns), with the mock-up's half-pixel allowance. */
+        const char *src = d->foot;
+        int32_t fw = tw;        /* the foot's width: a line within the half-pixel allowance mustn't wrap */
+        if (d->n_foot_alt) {
+            const char *cand[3] = {d->foot, d->foot_alt[0], d->foot_alt[1]};
+            int nc = 1 + (d->n_foot_alt < 2 ? d->n_foot_alt : 2);
+            src = cand[nc - 1];
+            for (int k = 0; k < nc; k++) {
+                lv_point_t one;
+                lv_text_get_size(&one, cand[k], ff, 0, line_space, LV_COORD_MAX, LV_TEXT_FLAG_EXPAND);
+                if (one.x <= tile_w - 2 * TILE_PAD + .5f) {
+                    src = cand[k];
+                    if (one.x > fw) fw = one.x;
+                    break;
+                }
+            }
+        }
         char foot[sizeof d->foot + 16];
         if (d->foot_lines) {
             char line[sizeof d->foot], cut[sizeof d->foot + 4];
             foot[0] = '\0';
-            const char *p = d->foot;
+            const char *p = src;
             while (*p) {
                 const char *nl = strchr(p, '\n');
                 size_t n = nl ? (size_t)(nl - p) : strlen(p);
@@ -903,18 +923,18 @@ static void put_menu(const tb_menu_t *m)
                 p = nl ? nl + 1 : p + n;
             }
         } else {
-            tb_strlcpy(foot, d->foot, sizeof foot);
+            tb_strlcpy(foot, src, sizeof foot);
         }
         lv_point_t sz;
-        lv_text_get_size(&sz, foot, ff, 0, line_space, tw, LV_TEXT_FLAG_NONE);
+        lv_text_get_size(&sz, foot, ff, 0, line_space, fw, LV_TEXT_FLAG_NONE);
         int lines = (sz.y + line_space) / TILE_FOOT_PITCH;
         if (lines < 1) lines = 1;
         if (d->foot_clamp2 && lines > 2) {
             lines = 2;
             if (lv_label_get_long_mode(t->foot) != LV_LABEL_LONG_MODE_DOTS) lv_label_set_long_mode(t->foot, LV_LABEL_LONG_MODE_DOTS);
-            set_size(t->foot, tw, ff->line_height + TILE_FOOT_PITCH);
+            set_size(t->foot, fw, ff->line_height + TILE_FOOT_PITCH);
         } else {
-            set_long(t->foot, LV_LABEL_LONG_MODE_WRAP, tw);
+            set_long(t->foot, LV_LABEL_LONG_MODE_WRAP, fw);
             if (lv_obj_get_style_height(t->foot, 0) != LV_SIZE_CONTENT) lv_obj_set_height(t->foot, LV_SIZE_CONTENT);
         }
         set_text(t->foot, foot);

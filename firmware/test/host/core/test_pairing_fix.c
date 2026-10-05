@@ -228,3 +228,31 @@ TB_TEST(pairing_cancel_endings_still_tell_net)
     TB_EQ_STR(b->a.toast, "Pairing canceled");
     TB_EQ_INT(fx_count(b, TB_FX_PAIRING_CANCELED), 0);
 }
+
+/* ---------- A code stops a flash already under way (the mock-up's alarm-flash fix, QA's C21) ---------- */
+
+/* The alarm rang and its flash is mid-pulse when a code arrives: the flash stops at once, so the code never shows in
+ * the alarm's white, and the alarm is held (no repeats). When pairing ends it chimes and flashes once. */
+TB_TEST(pairing_stops_a_flash_under_way)
+{
+    bench_t *b = bench_new();
+    pomo_start(b);
+    bench_run(b, POMO_FOCUS_MS + 100);
+    TB_TRUE(b->a.ringing);
+    TB_TRUE(b->a.flash_at != 0);
+    TB_TRUE(b->now.mono - b->a.flash_at < TB_FLASH_MS);     /* the flash is still running */
+    tb_app_pairing_show(&b->a, "482913", NULL, TB_PAIR_KIND_MAC, &b->now);
+    bench_drain(b);
+    TB_TRUE(tb_app_pairing_visible(&b->a));
+    TB_EQ_INT(b->a.flash_at, 0);
+    TB_FALSE(b->a.ringing);
+    TB_TRUE(b->a.alarm_held_by_pairing);
+    bench_clear_log(b);
+    bench_run(b, 12000);                                     /* no repeats while the code shows */
+    TB_EQ_INT(fx_count(b, TB_FX_CHIME), 0);
+    TB_EQ_INT(b->a.flash_at, 0);
+    tap(b);                                                  /* cancel: one chime and one flash */
+    TB_EQ_STR(b->a.toast, "Pairing canceled");
+    TB_EQ_INT(fx_count(b, TB_FX_CHIME), 1);
+    TB_EQ_INT(b->a.flash_at, b->now.mono);
+}
