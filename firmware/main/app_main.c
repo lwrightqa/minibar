@@ -5,7 +5,7 @@
  *   - Power hold comes FIRST: on battery, the board turns itself off again unless SYS_EN (TCA9554 EXIO6) is driven
  *     high. Nothing slow may come before it. It also drives the backlight pin dark, so nothing flashes.
  *   - The USB writer comes next, so every later log line goes through the protocol-safe path (api.md 6.4).
- *   - The IMU is read before the display so the splash is drawn the right way up.
+ *   - The IMU is read before the display so the splash is drawn the right way up (upright is side buttons on top).
  *   - The app task starts as soon as the model and the ui exist, so the splash is up within a few hundred ms; the
  *     slower parts (audio codec, Wi-Fi, calendar) start after it and only talk to it through the bus.
  *
@@ -81,10 +81,12 @@ void app_main(void)
     ESP_LOGI(TAG, "device %s, \"%s\", time zone %s", device_id, settings.device.name,
              settings.device.time_zone[0] ? settings.device.time_zone : "not set (UTC)");
 
-    /* 4. Which way up, before the first frame. Without an IMU the bar starts upright and never flips. */
+    /* 4. Which way up, before the first frame: the IMU's first settled reading (it waits for real data, 150 ms at
+     * most), else the orientation remembered from the last steady one (board's NVS namespace; lying flat, or no IMU),
+     * else upright, side buttons on top. Without an IMU the bar never flips. */
     bool flipped = false;
-    if (board_imu_init() == ESP_OK) board_imu_read_flipped(&flipped);
-    else ESP_LOGW(TAG, "no IMU: the layout stays upright");
+    if (board_imu_init() != ESP_OK) ESP_LOGW(TAG, "no IMU: the layout won't follow a flip");
+    board_imu_read_flipped(&flipped);
 
     /* 5. LVGL, display, touch, ui. */
     lv_init();

@@ -7,12 +7,30 @@
  * accelerometer on; data at 0x35..0x3A. The gyroscope stays off.
  * The address is 0x6B in Waveshare's code (SA0 is tied to ground on the V2 schematic); 0x6A is tried too.
  * The decisions (axis, thresholds, hysteresis, steadiness) are brd_orient_*() in logic/, tested on the host.
+ *
+ * Upright is the way the user stands the bar, side buttons on top (verified 2026-10-05). The QMI8658's Y axis reading
+ * about -1 g there is inferred from 1.0.1, whose steady pictures were right with +Y and no turn; so the default up
+ * axis is -Y (Kconfig), and the picture is turned to match (board_display.c). The start-up log line confirms it.
+ *
+ * Before the first frame (board_imu_read_flipped), the reading waits for real data rather than a fixed time: it polls
+ * STATUS0 (0x2E) bit 0, aDA, "accelerometer new data available; 0: no updates since last read" (QMI8658A datasheet
+ * Rev A, table 22; SensorLib's getDataReady() reads the same bit when only the accelerometer runs), and feeds each
+ * new sample to brd_boot_read_*() (logic/), which drops the turn-on and settling samples (3 ms + 3/ODR, datasheet
+ * table 7) and anything that isn't 0.8 to 1.2 g (the flip detection's own range), and averages three good ones. If
+ * the bit never shows by the end of turn-on plus one period, it reads at the data rate instead and lets the 1 g check
+ * sort the samples. The whole wait ends 150 ms after the enable at the latest; the first frame waits on it.
+ *
+ * The last steady orientation is remembered in NVS (nvs, namespace "board", key "pose": the axis that pointed up, a
+ * brd_up_axis_t) once the bar has stood still in a new one for 10 s, and used when the start-up reading can't tell
+ * (lying flat) or the IMU doesn't answer. Reading it never blocks: NVS keeps its index in RAM, and an unreadable or
+ * missing partition just means nothing is remembered.
  */
 #include "esp_check.h"
 #include "esp_log.h"
 #include "esp_task_wdt.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "nvs.h"
 
 #include "board.h"
 #include "board_internal.h"
@@ -26,14 +44,25 @@ static const char *TAG = "board.imu";
 #define QMI_CTRL2       0x03
 #define QMI_CTRL5       0x06
 #define QMI_CTRL7       0x08
+#define QMI_STATUS0     0x2E
+#define QMI_STATUS0_ADA 0x01    /* accelerometer: new data since the last read */
 #define QMI_AX_L        0x35
 #define QMI_RST_RESULT  0x4D
 #define QMI_RESET       0x60
 #define QMI_ID          0x05
 
-#define IMU_TASK_STACK  4096    /* logs on flips and read errors (the protocol-safe logger adds about 300 B) */
+#define IMU_TASK_STACK  4096    /* logs on flips and read errors (the protocol-safe logger adds about 300 B), and the
+                                   rare NVS write of the pose: a separate call chain, not on top of the logging */
 #define IMU_TASK_PRIO   3
 #define IMU_TASK_CORE   0
+
+#define QMI_ODR_MS      16      /* 62.5 Hz */
+#define QMI_POLL_MS     2       /* STATUS0 polling while the first frame waits */
+/* No data-ready bit by the end of turn-on plus one period: read at the data rate instead. */
+#define QMI_DRDY_LATE_MS (BRD_BOOT_SETTLE_MS + QMI_ODR_MS)
+
+#define NVS_NS          "board"
+#define NVS_KEY_POSE    "pose"
 
 #if CONFIG_TINYBAR_IMU_UP_X_POS
 #define IMU_UP BRD_UP_X_POS
@@ -49,8 +78,20 @@ static const char *TAG = "board.imu";
 #define IMU_UP_NAME "+Y"
 #endif
 
+/* The V2 board's pair since 1.0.2. An sdkconfig made before then keeps +Y (Kconfig never changes a value it already
+ * holds), and one made before TINYBAR_LCD_TURN_180 existed also takes the turn from sdkconfig.defaults: +Y with the
+ * turn draws every pose upside down. If bring-up (board README, step 5) shows another pair, change it in Kconfig,
+ * sdkconfig.defaults and here together. */
+#if !(CONFIG_TINYBAR_IMU_UP_Y_NEG && CONFIG_TINYBAR_LCD_TURN_180)
+#warning "IMU up axis and picture turn aren't 1.0.2's -Y with TINYBAR_LCD_TURN_180: an sdkconfig from before 1.0.2? Delete build-<name>/sdkconfig and rebuild"
+#endif
+
+static const char *const POSE_NAME[4] = {"+X", "-X", "+Y", "-Y"};   /* brd_up_axis_t order */
+
 static i2c_master_dev_handle_t s_dev;
+static int64_t s_accel_on_ms;   /* when CTRL7 turned the accelerometer on */
 static bool s_boot_flipped;
+static int s_saved = -1;        /* the remembered orientation (0, 1, or -1 for none), as NVS holds it */
 static TaskHandle_t s_task;
 
 static esp_err_t wr(uint8_t reg, uint8_t val)
@@ -124,39 +165,98 @@ esp_err_t board_imu_init(void)
         ESP_LOGE(TAG, "QMI8658 setup failed: %s", esp_err_to_name(err));
         return err;
     }
-    vTaskDelay(pdMS_TO_TICKS(40));                          /* first samples */
-    ESP_LOGI(TAG, "QMI8658 at 0x%02x, up axis %s", addr, IMU_UP_NAME);
+    s_accel_on_ms = board_now_ms();                         /* board_imu_read_flipped() waits for its data */
+    ESP_LOGI(TAG, "QMI8658 at 0x%02x, up axis %s (upright: buttons on top)", addr, IMU_UP_NAME);
     return ESP_OK;
+}
+
+/* The remembered pose (a brd_up_axis_t), or -1: nothing saved yet, or NVS unusable. Never blocks. */
+static int pose_load(void)
+{
+    nvs_handle_t h;
+    if (nvs_open(NVS_NS, NVS_READONLY, &h) != ESP_OK) return -1;
+    uint8_t v = 0xff;
+    esp_err_t err = nvs_get_u8(h, NVS_KEY_POSE, &v);
+    nvs_close(h);
+    return err == ESP_OK && v <= BRD_UP_Y_NEG ? v : -1;
+}
+
+static esp_err_t pose_save(brd_up_axis_t pose)
+{
+    nvs_handle_t h;
+    esp_err_t err = nvs_open(NVS_NS, NVS_READWRITE, &h);
+    if (err != ESP_OK) return err;
+    err = nvs_set_u8(h, NVS_KEY_POSE, (uint8_t)pose);
+    if (err == ESP_OK) err = nvs_commit(h);
+    nvs_close(h);
+    return err;
+}
+
+/* Wait for settled samples (at most BRD_BOOT_WAIT_MS after the enable) and classify their mean: 0 upright, 1 flipped,
+ * -1 can't tell. Logs what it saw. */
+static int boot_reading(void)
+{
+    brd_boot_read_t b;
+    brd_boot_read_init(&b);
+    bool done = false, drdy_seen = false, by_time = false;
+    int64_t last_read = 0;
+    int32_t x = 0, y = 0, z = 0;
+    unsigned errors = 0;
+    while (!done) {
+        int64_t now = board_now_ms();
+        if (now - s_accel_on_ms >= BRD_BOOT_WAIT_MS) break;
+        bool fresh;
+        if (by_time) {
+            fresh = now - last_read >= QMI_ODR_MS;
+        } else {
+            uint8_t st = 0;
+            if (rd(QMI_STATUS0, &st, 1) != ESP_OK) errors++;
+            fresh = (st & QMI_STATUS0_ADA) != 0;
+            drdy_seen = drdy_seen || fresh;
+            if (!drdy_seen && now - s_accel_on_ms >= QMI_DRDY_LATE_MS) by_time = fresh = true;
+        }
+        if (fresh) {
+            if (read_mg(&x, &y, &z) == ESP_OK) {
+                last_read = now;
+                done = brd_boot_read_feed(&b, x, y, z, (int32_t)(now - s_accel_on_ms));
+            } else {
+                errors++;
+            }
+        }
+        if (!done) vTaskDelay(pdMS_TO_TICKS(QMI_POLL_MS));
+    }
+    long took = (long)(board_now_ms() - s_accel_on_ms);
+    const char *how = by_time ? "; STATUS0 never showed data ready, so read at 62.5 Hz" : "";
+    if (!brd_boot_read_mean(&b, &x, &y, &z)) {
+        /* x, y, z still hold the last sample read, if any. */
+        ESP_LOGW(TAG, "IMU at start: no settled sample of 0.8 to 1.2 g in %ld ms (%u read: %u settling, %u not 1 g, "
+                      "last x=%ld y=%ld z=%ld mg; %u I2C errors%s) -> can't tell",
+                 took, b.seen, b.early, b.implausible, (long)x, (long)y, (long)z, errors, how);
+        return -1;
+    }
+    int c = brd_orient_classify(IMU_UP, x, y, z, BRD_OR_BOOT_MG);
+    /* For bring-up: standing upright (buttons on top), the up axis reads about +1000 mg (README, step 5). */
+    ESP_LOGI(TAG, "IMU at start: x=%ld y=%ld z=%ld mg, mean of %u samples, %ld ms after enabling it (%u read, %u while "
+                  "settling%s) -> %s",
+             (long)x, (long)y, (long)z, b.good, took, b.seen, b.early, how, brd_orient_name(c));
+    return c;
 }
 
 bool board_imu_read_flipped(bool *flipped)
 {
-    *flipped = false;
-    s_boot_flipped = false;
-    if (!s_dev) return false;
-    int32_t sx = 0, sy = 0, sz = 0;
-    int n = 0;
-    for (int i = 0; i < 4; i++) {
-        int32_t x, y, z;
-        if (read_mg(&x, &y, &z) == ESP_OK) {
-            sx += x;
-            sy += y;
-            sz += z;
-            n++;
-        }
-        vTaskDelay(pdMS_TO_TICKS(16));
-    }
-    if (n == 0) return false;
-    sx /= n;
-    sy /= n;
-    sz /= n;
-    int c = brd_orient_classify(IMU_UP, sx, sy, sz, BRD_OR_BOOT_MG);
-    /* For bring-up: standing the normal way up, the up axis should read about +1000 mg (README). */
-    ESP_LOGI(TAG, "IMU at start: x=%ld y=%ld z=%ld mg -> %s", (long)sx, (long)sy, (long)sz,
-             c == 0 ? "upright" : c == 1 ? "upside down" : "can't tell (upright assumed)");
-    *flipped = c == 1;
+    int reading = s_dev ? boot_reading() : -1;
+    int pose = pose_load();
+    s_saved = brd_orient_from_pose(IMU_UP, pose);
+    if (pose >= 0 && s_saved < 0)
+        ESP_LOGW(TAG, "remembered pose %s up isn't on the %s axis: ignored", POSE_NAME[pose], IMU_UP_NAME);
+    brd_boot_src_t src;
+    *flipped = brd_orient_boot_choice(reading, s_saved, &src);
     s_boot_flipped = *flipped;
-    return true;
+    if (src == BRD_BOOT_FROM_MEMORY)
+        ESP_LOGI(TAG, "starting %s, as remembered from the last steady reading", brd_orient_name(*flipped));
+    else if (src == BRD_BOOT_DEFAULT)
+        ESP_LOGI(TAG, "starting %s (nothing remembered yet)", brd_orient_name(*flipped));
+    return s_dev != NULL;
 }
 
 static void post(bool flipped, bool initial)
@@ -165,6 +265,14 @@ static void post(bool flipped, bool initial)
     ev.u.orient.flipped = flipped;
     ev.u.orient.initial = initial;
     tb_bus_post(&ev);
+}
+
+static void remember(int flipped)
+{
+    esp_err_t err = pose_save(brd_orient_pose(IMU_UP, flipped == 1));
+    s_saved = flipped;      /* even if the write failed: the next change tries again, not every 40 ms */
+    if (err == ESP_OK) ESP_LOGI(TAG, "remembered for a start lying flat: %s", brd_orient_name(flipped));
+    else ESP_LOGW(TAG, "couldn't remember the orientation (%s)", esp_err_to_name(err));
 }
 
 static void imu_task(void *arg)
@@ -183,19 +291,32 @@ static void imu_task(void *arg)
             if ((errors++ % 250) == 0) ESP_LOGW(TAG, "read failed (%lu so far)", (unsigned long)errors);
             continue;
         }
+        int64_t now = board_now_ms();
         bool flipped = false;
-        switch (brd_orient_feed(&o, x, y, z, board_now_ms(), &flipped)) {
+        switch (brd_orient_feed(&o, x, y, z, now, &flipped)) {
         case BRD_OR_INITIAL:
+            if (o.vote < 0 || now - o.vote_since_ms < BRD_OR_STEADY_MS) {
+                ESP_LOGI(TAG, "no steady reading in 2 s (lying flat?): staying %s", brd_orient_name(flipped));
+            } else if (flipped == s_boot_flipped) {
+                ESP_LOGI(TAG, "steady: %s, as drawn at start (x=%ld y=%ld z=%ld mg)", brd_orient_name(flipped),
+                         (long)x, (long)y, (long)z);
+            } else {
+                /* The start-up picture was the wrong way up (the 1.0.1 report): worth a warning in the log. */
+                ESP_LOGW(TAG, "steady: %s, so the start was drawn the wrong way up (x=%ld y=%ld z=%ld mg)",
+                         brd_orient_name(flipped), (long)x, (long)y, (long)z);
+            }
             post(flipped, true);
             break;
         case BRD_OR_CHANGED:
-            ESP_LOGI(TAG, "flipped: %s (x=%ld y=%ld z=%ld mg)", flipped ? "upside down" : "upright", (long)x, (long)y,
+            ESP_LOGI(TAG, "turned over: %s (x=%ld y=%ld z=%ld mg)", brd_orient_name(flipped), (long)x, (long)y,
                      (long)z);
             post(flipped, false);
             break;
         default:
             break;
         }
+        int want = brd_orient_to_remember(&o, s_saved, now);
+        if (want >= 0) remember(want);
     }
 }
 

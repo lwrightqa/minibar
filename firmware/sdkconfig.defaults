@@ -89,6 +89,16 @@ CONFIG_LWIP_TCPIP_TASK_STACK_SIZE=4096
 # finish instead of timing out (every I2C caller's buffers are on internal stacks).
 CONFIG_I2C_ISR_IRAM_SAFE=y
 
+# ---------- Board: which way up (components/board/Kconfig, README bring-up steps 3 and 5) ----------
+# Upright is the way the user stands the bar, side buttons on top (verified on the V2 board 2026-10-05). There the
+# QMI8658's Y axis reads about -1 g and the picture needs LVGL rotation 270: inferred from 1.0.1, which had +Y and no
+# turn. That drew the same steady pictures (the two inversions cancel; test/host/board/test_orient_start.c proves it)
+# but called buttons-at-the-bottom "upright", so a start where the IMU couldn't tell came up upside down.
+# An existing sdkconfig keeps its own +Y (and may take only the turn: upside down both ways). Delete
+# build-<name>/sdkconfig; board_imu.c warns at build time unless the pair is -Y with the turn.
+CONFIG_TINYBAR_IMU_UP_Y_NEG=y
+CONFIG_TINYBAR_LCD_TURN_180=y
+
 # ---------- HTTP server (api.md 2.5 and section 15) ----------
 CONFIG_HTTPD_MAX_REQ_HDR_LEN=2048
 CONFIG_HTTPD_MAX_URI_LEN=512

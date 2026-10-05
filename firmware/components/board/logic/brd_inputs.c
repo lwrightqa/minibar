@@ -135,6 +135,119 @@ int32_t brd_qmi_raw_to_mg(int16_t raw)
     return v >= 0 ? (v + 8192) / 16384 : -((-v + 8192) / 16384);
 }
 
+const char *brd_orient_name(int flipped)
+{
+    return flipped == 0 ? "upright, buttons on top" : flipped == 1 ? "upside down, buttons at the bottom" : "can't tell";
+}
+
+int brd_lcd_rotation(bool flipped, bool turn_180)
+{
+    return flipped != turn_180 ? 270 : 90;
+}
+
+/* ---------- The reading before the first frame ---------- */
+
+void brd_boot_read_init(brd_boot_read_t *b)
+{
+    *b = (brd_boot_read_t){0};
+}
+
+static void count(uint8_t *n)
+{
+    if (*n < UINT8_MAX) (*n)++;
+}
+
+bool brd_boot_read_feed(brd_boot_read_t *b, int32_t ax, int32_t ay, int32_t az, int32_t t_ms)
+{
+    count(&b->seen);
+    if (t_ms < BRD_BOOT_SETTLE_MS) {
+        count(&b->early);
+        return false;
+    }
+    if (!about_one_g(ax, ay, az)) {     /* the classifier's range, so a finished run can be classified */
+        count(&b->implausible);
+        b->good = 0;
+        b->sx = b->sy = b->sz = 0;
+        return false;
+    }
+    if (b->good > 0 && (labs((long)ax - b->lx) > BRD_OR_JITTER_MG || labs((long)ay - b->ly) > BRD_OR_JITTER_MG ||
+                        labs((long)az - b->lz) > BRD_OR_JITTER_MG)) {
+        count(&b->restarts);    /* still settling, or moved: this sample starts a new run */
+        b->good = 0;
+        b->sx = b->sy = b->sz = 0;
+    }
+    b->sx += ax;
+    b->sy += ay;
+    b->sz += az;
+    b->lx = ax;
+    b->ly = ay;
+    b->lz = az;
+    b->good++;
+    return b->good >= BRD_BOOT_SAMPLES;
+}
+
+static int32_t mean_of(int32_t sum, int32_t n)
+{
+    return sum >= 0 ? (sum + n / 2) / n : -((-sum + n / 2) / n);
+}
+
+bool brd_boot_read_mean(const brd_boot_read_t *b, int32_t *ax, int32_t *ay, int32_t *az)
+{
+    if (b->good == 0) return false;
+    *ax = mean_of(b->sx, b->good);
+    *ay = mean_of(b->sy, b->good);
+    *az = mean_of(b->sz, b->good);
+    return true;
+}
+
+bool brd_orient_boot_choice(int reading, int remembered, brd_boot_src_t *src)
+{
+    if (reading == 0 || reading == 1) {
+        *src = BRD_BOOT_FROM_IMU;
+        return reading == 1;
+    }
+    if (remembered == 0 || remembered == 1) {
+        *src = BRD_BOOT_FROM_MEMORY;
+        return remembered == 1;
+    }
+    *src = BRD_BOOT_DEFAULT;
+    return false;               /* upright: buttons on top */
+}
+
+/* ---------- Remembering the orientation ---------- */
+
+static brd_up_axis_t opposite(brd_up_axis_t a)
+{
+    switch (a) {
+    case BRD_UP_X_POS: return BRD_UP_X_NEG;
+    case BRD_UP_X_NEG: return BRD_UP_X_POS;
+    case BRD_UP_Y_POS: return BRD_UP_Y_NEG;
+    case BRD_UP_Y_NEG: return BRD_UP_Y_POS;
+    }
+    return a;
+}
+
+brd_up_axis_t brd_orient_pose(brd_up_axis_t up, bool flipped)
+{
+    return flipped ? opposite(up) : up;
+}
+
+int brd_orient_from_pose(brd_up_axis_t up, int pose)
+{
+    if (pose == (int)up) return 0;
+    if (pose == (int)opposite(up)) return 1;
+    return -1;
+}
+
+int brd_orient_to_remember(const brd_orient_t *o, int stored, int64_t now_ms)
+{
+    if (!o->initial_sent || o->vote < 0) return -1;
+    if ((o->vote == 1) != o->flipped) return -1;                    /* turning over: wait for CHANGED */
+    if (now_ms - o->vote_since_ms < BRD_OR_REMEMBER_MS) return -1;   /* not still for long enough */
+    int now_is = o->flipped ? 1 : 0;
+    return stored == now_is ? -1 : now_is;
+}
+
 /* ---------- Touch ---------- */
 
 bool brd_touch_decode(const uint8_t *buf, size_t len, int16_t *x, int16_t *y)

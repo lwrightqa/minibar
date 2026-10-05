@@ -27,9 +27,10 @@ extern "C" {
 /* Bring up QSPI (SPI3, 40 MHz, mode 3), reset the panel (EXIO5: high 30 ms, low 250 ms, high 30 ms), send the init
  * commands (0x11, 0x29), create the LVGL display with one full-frame RGB565 buffer and a rotation buffer in PSRAM
  * (2 x 215 KB) and a 64-line DMA buffer in internal RAM (21.5 KB), set the tick source, and set up the backlight PWM
- * (dark). flipped picks the rotation (90 upright, 270 flipped; CONFIG_TINYBAR_LCD_TURN_180 swaps them). Call lv_init() first (main does). If the panel itself fails, the display is
- * still created (it draws nowhere, and the log says why) so the rest of the bar keeps working. Returns NULL only
- * when there's no memory. Takes about 0.6 s. */
+ * (dark). flipped picks the rotation (90 upright, 270 flipped; CONFIG_TINYBAR_LCD_TURN_180, on by default, swaps them:
+ * upright, side buttons on top, is 270 on the V2 board). Call lv_init() first (main does). If the panel itself fails,
+ * the display is still created (it draws nowhere, and the log says why) so the rest of the bar keeps working.
+ * Returns NULL only when there's no memory. Takes about 0.6 s. */
 lv_display_t *board_display_init(bool flipped);
 
 /* Turn the layout 180 degrees (the flip): rotation 90 or 270. LVGL redraws the whole screen. App task only. */

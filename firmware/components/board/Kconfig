@@ -1,14 +1,19 @@
 menu "TinyBar board (Waveshare ESP32-S3-Touch-LCD-3.49 V2)"
 
     choice TINYBAR_IMU_UP
-        prompt "IMU axis that points up when the bar stands the normal way up"
-        default TINYBAR_IMU_UP_Y_POS
+        prompt "IMU axis that points up when the bar stands upright (side buttons on top)"
+        default TINYBAR_IMU_UP_Y_NEG
         help
             The bar stands on a long edge, so gravity runs along the panel's short side: one of the QMI8658's X or Y
-            axes, depending on how the chip sits on the board. Pick the axis that reads about +1000 mg when the
-            layout is drawn the right way up without a flip (display rotation 90). The boot log prints the raw
-            reading ("IMU at start: x=... y=... z=... mg") to find it; see components/board/README.md. If the splash
-            is upside down when the bar stands still, the sign is wrong: pick the opposite one.
+            axes, depending on how the chip sits on the board. Upright is the way the user stands the bar, with the
+            side buttons (BOOT, PWR) on top (verified on the V2 board, 2026-10-05). The default is -Y because the Y
+            axis should read about -1000 mg there: inferred from 1.0.1, whose steady pictures were right with +Y and
+            no turn, and not yet seen in a log. Pick the axis that reads about +1000 mg standing upright: the boot log
+            prints the reading ("IMU at start: x=... y=... z=... mg"); see components/board/README.md, step 5.
+            Upright is what the bar starts with when the IMU can't tell (lying flat) and nothing is remembered.
+            This and TINYBAR_LCD_TURN_180 go together: inverting both leaves every steady picture as it was and only
+            changes which pose counts as upright. If the picture is upside down both ways up once the bar has stood
+            still for half a second, change TINYBAR_LCD_TURN_180, not this.
 
         config TINYBAR_IMU_UP_X_POS
             bool "+X"
@@ -56,15 +61,17 @@ menu "TinyBar board (Waveshare ESP32-S3-Touch-LCD-3.49 V2)"
             chime and both tick levels.
 
     config TINYBAR_LCD_TURN_180
-        bool "Turn the picture 180 degrees (the bar starts upside down)"
-        default n
+        bool "Turn the picture 180 degrees (upright, buttons on top, is LVGL rotation 270)"
+        default y
         help
-            The layout is drawn with LVGL rotation 90 when the bar stands the normal way up, and 270 when it's
-            flipped. That 90 comes from Waveshare's 10_LVGL_V9_Test, whose rotated path was never run as shipped, so
-            which of the two is "up" is only known once the panel is seen. If the splash is upside down, turn this
-            on: it swaps 90 and 270 everywhere. With an IMU, CONFIG_TINYBAR_IMU_UP also decides which reading is
-            "flipped" (pick the opposite sign there instead if the picture is right but flips the wrong way); without
-            an IMU this is the only way to turn the picture.
+            Waveshare's 10_LVGL_V9_Test draws with LVGL rotation 90, and the layout turns to 270 when the bar is
+            flipped. On the V2 board, upright (side buttons on top, the way the user stands the bar) needs 270
+            (inferred from 1.0.1 on the bar, 2026-10-05: its start-up default, 90, came up upside down there), so
+            this is on: it swaps 90 and 270 everywhere. It goes with TINYBAR_IMU_UP (-Y by default): inverting both
+            leaves every steady picture as it was. If the picture is upside down both ways up once the bar has stood
+            still for half a second, change this; without an IMU it's the only way to turn the picture.
+            An sdkconfig from before 1.0.2 keeps +Y (and, if it predates this option, takes this one on), so the
+            build warns unless the pair is -Y with this on: delete build-<name>/sdkconfig.
 
     config TINYBAR_LCD_PCLK_MHZ
         int "QSPI clock for the panel (MHz)"

@@ -25,7 +25,7 @@ if(ESP_PLATFORM)
         PRIV_INCLUDE_DIRS "src" "logic/include"
         REQUIRES esp_driver_i2c esp_lcd lvgl__lvgl
         PRIV_REQUIRES bus core esp_driver_gpio esp_driver_ledc esp_driver_spi esp_driver_i2s esp_timer esp_psram
-                      esp_hw_support esp_system
+                      esp_hw_support esp_system nvs_flash
                       espressif__esp_lcd_axs15231b espressif__esp_codec_dev)
     # LVGL calls the memory functions board_lv_mem.c defines (CONFIG_LV_USE_CUSTOM_MALLOC), but board comes before
     # lvgl in the link order, so pull that object in up front.

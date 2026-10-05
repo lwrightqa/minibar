@@ -6,6 +6,8 @@ and `../docs/api.md` (the wire contract). Where this file and those disagree, th
 **Status (2026-10-04, integration):** every module is built and wired together. The firmware compiles with no
 warnings and the host tests pass (section 14), but **nothing has run on the board yet**. Each component's README has
 a bring-up checklist for the first runs (`components/board`, `components/net`, `components/calendar`).
+*(2026-10-05: firmware 1.0.1 runs on the user's bar, and Wi-Fi setup works; 1.0.2 fixes its upside-down first frame.
+Upright is the side buttons on top; see `components/board/README.md`, "Which way is up".)*
 
 ## 1. Principles
 
@@ -55,7 +57,7 @@ No cycles, and nothing depends on main. net doesn't call board: it posts `TB_EV_
 |---|---|---|---|---|---|
 | **app** | main | 1 | 5 | 12 KB, internal | core, ui, LVGL rendering and touch reading, the router (via `tb_bus_exec`), effects, saves |
 | esp_timer (IDF) | board | 0 | 22 | IDF | The 5 ms button poll (a timer callback, no task of its own) |
-| imu | board | 0 | 3 | 4 KB, internal | QMI8658 at about 25 Hz; posts `TB_EV_ORIENTATION` after 0.5 s of a steady new orientation |
+| imu | board | 0 | 3 | 4 KB, internal | QMI8658 at about 25 Hz; posts `TB_EV_ORIENTATION` after 0.5 s of a steady new orientation; writes the pose to NVS after 10 s still in a new one |
 | audio | board | 1 | 6 | 4 KB, internal | Mixes the chime and tick PCM into I2S; one tick a second while ticking is on |
 | httpd (IDF) | net | 0 | 5 | 6 KB, **PSRAM** | HTTP handlers: parse, then `tb_bus_exec(router)`; serves the gzipped pages directly. A request has 3 s from its first byte to arrive (headers and body), so one client can't hold the task |
 | usb_rx | net | 0 | 4 | 4 KB, **PSRAM** | Reads "@tb " lines (2 KB max), `tb_bus_exec(net_api_usb_line)`, writes the reply |
@@ -107,7 +109,10 @@ No cycles, and nothing depends on main. net doesn't call board: it posts `TB_EV_
    log line names the firmware version and why the chip started (power-on, restart, deep sleep, crash, watchdog).
 3. NVS (`nvs` and `nvs_sec`; a partition that can't be read is erased and started again), the device id (Wi-Fi MAC),
    settings, and the time zone (`setenv("TZ")`, and the calendar's copy).
-4. `board_imu_init()` and one reading, so the first frame is drawn the right way up.
+4. `board_imu_init()` and `board_imu_read_flipped()`, so the first frame is drawn the right way up: it waits for
+   three settled samples (STATUS0's data-ready bit, past turn-on and filter settling, 0.8 to 1.2 g; about 85 ms, at
+   most 150 ms after the accelerometer is turned on). If they can't tell (lying flat) or there's no IMU, the pose
+   remembered in NVS (`board`/`pose`), else upright: **side buttons on top**.
 5. `lv_init()`, `board_display_init(flipped)`, `board_touch_init()`, `ui_init()`.
 6. `board_rtc_init()`: the system clock from the RTC if it holds a time TinyBar wrote. The clock counts as known if
    the RTC was trusted or the system clock already reads 2025 or later (it survives a restart and a deep sleep).
@@ -452,6 +457,11 @@ Task stacks were checked with `-fstack-usage`: the deepest frames on the app tas
 (about 1 KB), `ui_update` (0.9 KB) and LVGL's drawing; 12 KB leaves room. The protocol-safe logger adds a 304 B frame
 on top of newlib's `vsnprintf` to every task that logs, so the review round raised the tight ones for the first runs
 (imu 4 KB, dns 4 KB, sys_evt 5 KB, tcpip 4 KB). The health line reports every task's margin by name.
+*(1.0.2: the imu task now also writes the remembered pose to NVS. Checked with `-fcallgraph-info=su`: its deepest
+direct chain is 2,048 B, through NVS's error log into `__assert_func`, and 1,296 B on the normal write path; the flash
+driver's function-pointer targets add at most about 1 KB (`spi_flash_chip_generic_read`, 1,040 B; the write path's are
+under 200 B). So about 2.3 KB normally and 3.1 KB at worst, plus the context frame, within its 4 KB, and the NVS
+write never runs nested in a log call.)*
 
 Large allocations should name their heap (`heap_caps_malloc(..., MALLOC_CAP_SPIRAM)`) rather than rely on the
 4 KB threshold. Stacks of tasks that do flash writes (NVS) must stay in internal RAM, and so must the stacks of tasks
@@ -466,6 +476,7 @@ that do I2C (the ISR is IRAM-safe and may read their buffers while the cache is 
 | `nvs` / `wifi` | ssid, security, username, password (plain until NVS encryption is agreed) | net | on a successful join |
 | `nvs` / `wifi` | `skipped`: Skip was the last Wi-Fi choice | net | on Skip; erased by Set up and a working join |
 | `nvs` / `cal` | `list`: the last good meetings list and its sync time, packed (`cal_store.h`; a few hundred bytes, at most 4.7 KB) | calendar | when the list changes |
+| `nvs` / `board` | `pose`: the IMU axis that pointed up when the bar last stood still (a `brd_up_axis_t`; 1.0.2) | board (imu task) | once the bar has stood still for 10 s in an orientation other than the stored one |
 | `nvs_sec` / `calsec` | `url`: the calendar address (write-only to the outside) | calendar | on a successful check; erased on remove |
 | `nvs_sec` / `tokens` | `table`: token hashes and records | net | on pairing, revoke, forget all, and (rate-limited) last-used updates |
 
@@ -475,7 +486,9 @@ ignored and the defaults apply. Away's back-at time and note aren't in the state
 shows plain Away (core's `tb_app_restore` would need two more arguments).
 
 Flash wear: the busiest key is `state` (a few writes an hour at most); `last_used` of tokens is written at most once
-an hour per token.
+an hour per token; `pose` (one byte) once per turn of the bar held 10 s: a few dozen a day at most, since a flip is how
+the Pomodoro starts. Even 30 a day fill one 4 KB NVS page (126 entries) only every four days or so, and NVS spreads
+the erases over the partition's six pages.
 
 ## 13. Open decisions and assumptions (for the lead and the product manager)
 
@@ -526,8 +539,10 @@ an hour per token.
 **Only the board can answer** (each component README's bring-up checklist says how to check):
 
 20. Whether opening or closing the USB port from macOS resets the bar (DTR/RTS), and the USB serial number.
-21. The IMU's address, axis and sign; which LVGL rotation is upright (90 is the example's never-run path:
-    `CONFIG_TINYBAR_LCD_TURN_180` swaps it); the touch coordinates after a flip (both ways up); the touch edges.
+21. The IMU's address; the touch coordinates after a flip (both ways up); the touch edges. *(2026-10-05: the axis,
+    sign and rotation are settled by 1.0.1 on the bar: upright is the side buttons on top, which is −Y and LVGL
+    rotation 270, so `CONFIG_TINYBAR_IMU_UP_Y_NEG` and `CONFIG_TINYBAR_LCD_TURN_180` are the defaults since 1.0.2.
+    Still open: what the QMI8658's first samples hold after the enable, which 1.0.2's start-up log line reports.)*
 22. The panel's colors and byte order, the frame time (now logged at INFO), and whether the marquee needs LVGL's
     direct render mode.
 23. The backlight's dark point (duty 164 of 255 is calculated from the schematic) and any flash at power-up: on a
@@ -590,3 +605,16 @@ they changed):
   with `pair/cancel`, the code gone within 2 s, the focus and error ring, the list and foot, the Mac line, the hidden
   characters, Forget all, Remove this phone, removed on another phone, no answer); the setup page's 20 pass.
 - **Not yet:** anything on the board. Then an end-to-end run of the controls table on the bar (QA).
+- **1.0.2 (2026-10-05, the orientation fix):** a clean `idf.py build` in a fresh `build-orient/` with no warnings;
+  host tests 5 runners, 426 tests, all passing (core 150, calendar 67, net 128, ui 29, board 52). The board's new
+  `test_orient_start.c` (17) checks that inverting the IMU's up axis and the picture's turn together leaves every
+  classified sample and 40 random pose sequences drawing the same rotation, with the remembered pose written at the
+  same moments, and that only the can't-tell default moved to buttons on top; the start-up reading against the
+  datasheet's turn-on and a late first sample (1.0.1's averaging can't tell there; 1.0.2 can, within 150 ms); and the
+  pose memory (10 s still, no write for a jiggle, a quick turn or lying flat; a pose on another axis ignored).
+- **The merge (2026-10-05):** `orient-fix` merged into the main branch on top of the pairing alignment, `PROJECT_VER`
+  1.0.2. A fresh `build-merge/` from `sdkconfig.defaults` (every stale `sdkconfig` deleted first): no warnings, and
+  `board_imu.c`'s stale-sdkconfig check quiet (`CONFIG_TINYBAR_IMU_UP_Y_NEG` and `CONFIG_TINYBAR_LCD_TURN_180` set);
+  app 2,137,008 bytes (0x209bb0), 66% of the slot free; DIRAM 141,311 bytes used statically, 200,449 free; the merged
+  image `dist/tinybar-1.0.2.bin` (2,333,616 bytes) checked as above. 452 host tests (core 158, calendar 67, net 144,
+  ui 30, board 53) under ASan and UBSan with no warnings: the alignment's 434 plus the orientation fix's 18.

@@ -15,10 +15,12 @@ How the code is organized, and why, is in [ARCHITECTURE.md](ARCHITECTURE.md).
 > and the 2026-10-04 review round's findings are fixed (or answered in decisions.md), as are the defensive security
 > review's (ARCHITECTURE.md sections 10 and 14). On 2026-10-05 pairing was brought in line with the mock-up's pairing
 > fix round (the held place, `pair/cancel`, the back-off rules, the Devices tile's "pair at" foot, and the Remote's
-> prompt and Paired devices as the mock-up draws them). The firmware compiles with no warnings, 434 host tests pass,
+> prompt and Paired devices as the mock-up draws them). The firmware compiles with no warnings, 452 host tests pass,
 > and every screen the mock-up can show matches it line for line. 1.0.0 was flashed once: it boots, holds power and
-> draws the QR screen, and an Android phone couldn't get to the setup page; with 1.0.1 the phone sets up Wi-Fi and
-> the Remote pairs with the code on the bar (see "What's verified").
+> draws the QR screen, and an Android phone couldn't get to the setup page. With 1.0.1 the phone sets up Wi-Fi and
+> the Remote pairs with the code on the bar (which of 1.0.1's changes fixed the phone isn't confirmed; see "What's
+> verified"), but its first frame comes up upside down with the side buttons on top, which is how the bar stands,
+> until it rights itself: 1.0.2 fixes that, and is merged here with the pairing alignment.
 > Everything else that touches the hardware or the radio is unverified until it runs on the bar. See "What's
 > verified" at the end, and the bring-up checklists in `components/board/README.md`, `components/net/README.md` and
 > `components/calendar/README.md`.
@@ -109,18 +111,18 @@ Flash **one merged image at address 0x0, at 115200 baud**. A faster write once l
 
    ```sh
    cd build-<name> && mkdir -p ../dist
-   esptool.py --chip esp32s3 merge_bin -o ../dist/tinybar-1.0.1.bin @flash_args
+   esptool.py --chip esp32s3 merge_bin -o ../dist/tinybar-1.0.2.bin @flash_args
    ```
 
    The version is `PROJECT_VER` in `CMakeLists.txt` (also what `GET /api/v1/info` reports as `fw`). The image in
-   `dist/` today is the 2026-10-05 pairing alignment's build, `dist/tinybar-1.0.0.bin` (2.33 MB; the app 2.04 MB; it
-   reports `fw` 1.0.1, this tree's `PROJECT_VER`).
+   `dist/` today is `dist/tinybar-1.0.2.bin`, built on 2026-10-05 from the merge of the orientation fix into the
+   pairing alignment (2.33 MB; the app 2.04 MB; it reports `fw` 1.0.2, this tree's `PROJECT_VER`).
 2. Plug the bar into the computer with a USB-C **data** cable (a charge-only cable shows no port). If the Mac app is
    running, choose **Pause USB** in its menu first, so it lets go of the serial port.
 3. Open the Espressif web flasher in Chrome or Edge (<https://espressif.github.io/esptool-js/>), set the baud rate to
    **115200**, click Connect and pick the "USB JTAG/serial debug unit" port. The flasher puts the chip into download
    mode through the port itself; if it can't, see Troubleshooting.
-4. Add `dist/tinybar-1.0.1.bin` at flash address **0x0** and click Program.
+4. Add `dist/tinybar-1.0.2.bin` at flash address **0x0** and click Program.
 5. Unplug and plug the bar back in (or press its reset), and it starts.
 
 **Flashing the merged image starts the bar from scratch.** The file covers the whole start of the flash, and the gaps
@@ -135,7 +137,9 @@ With the command line instead: `idf.py -p <port> -b 115200 flash` (keeps NVS too
 ## First boot
 
 1. The splash (a tomato and "TinyBar") shows for about 1.5 seconds. The bar holds its own power on from the first
-   instructions, and draws the right way up whichever way it stands.
+   instructions, and draws the right way up whichever way it stands. Upright is with the side buttons (BOOT, PWR) on
+   top; turned over, buttons at the bottom, the layout turns with it. Started lying flat, it draws the way it last
+   stood (with nothing remembered yet, buttons on top).
 2. With no Wi-Fi saved, it shows **Scan to set up** with a QR code. Scanning it joins the phone to the bar's own open
    network, **TinyBar-Setup** (it appears about 2 seconds after the QR code, once the bar has looked for networks),
    and the phone's sign-in sheet opens the setup page: the bar answers every name on that network with its own
@@ -202,9 +206,16 @@ and a code on its screen for a new device holds one of the 10 places until it en
 - **The screen shows noise after flashing:** flash again at **115200** baud.
 - **The bar came up on the Wi-Fi QR code and your settings are gone:** flashing the merged image at 0x0 wipes the
   settings, Wi-Fi, paired devices and the calendar address (see Flash). Flash only the app at 0x30000 to keep them.
-- **The picture is upside down whichever way the bar stands:** set `CONFIG_TINYBAR_LCD_TURN_180` (menuconfig →
-  TinyBar board) and rebuild. If it's right one way up but turns the wrong way after a flip, pick the opposite sign of
-  the IMU axis instead (`components/board/README.md`, bring-up step 5).
+- **The first frame is upside down, then the bar rights itself half a second later** (1.0.1 with the side buttons on
+  top): the start-up reading couldn't tell which way up the bar stood. 1.0.2 waits for settled samples and calls
+  buttons on top "upright"; its log line `IMU at start: ...` says what it read and how long it took
+  (`components/board/README.md`, "Which way is up" and bring-up step 5).
+- **The picture is upside down both ways up**, even after the bar has stood still: first check the build didn't warn
+  that the IMU axis and turn aren't 1.0.2's (an sdkconfig from before 1.0.2: delete `build-<name>/sdkconfig` and
+  rebuild). Otherwise change `CONFIG_TINYBAR_LCD_TURN_180` (menuconfig → TinyBar board; on by default since 1.0.2) and
+  rebuild. If it's right one way up but doesn't turn after a flip, the IMU axis is wrong (bring-up step 5). The
+  axis's sign and the turn go together: inverting both changes nothing once the IMU has a reading, only which pose
+  counts as upright.
 - **A computer opens msn.com instead of the setup page:** Windows sends its sign-in check out any other connection it
   has (a network cable or a dock), so the page it opens comes from Microsoft. Type `http://4.3.2.1` in the browser
   instead; that address always goes through the bar's own Wi-Fi.
@@ -231,6 +242,27 @@ alarm and start what the Pomodoro is waiting for.
 
 ## What's verified
 
+**2026-10-05, `orient-fix` merged into the main branch: 1.0.2 together with the pairing alignment** (details in
+ARCHITECTURE.md section 14):
+
+- **Compiled:** a fresh `build-merge/` from `sdkconfig.defaults` alone, after deleting every stale `sdkconfig`
+  (`firmware/sdkconfig` and each `build-<name>/sdkconfig`, all from before 1.0.2), with **no warnings**: the
+  generated sdkconfig has `CONFIG_TINYBAR_IMU_UP_Y_NEG=y` and `CONFIG_TINYBAR_LCD_TURN_180=y`, so `board_imu.c`'s
+  stale-sdkconfig warning stays quiet, and the app reports `fw` 1.0.2. App 2,137,008 bytes (0x209bb0, 2.04 MB; 66% of
+  the 6 MB slot free). Internal RAM: 141,311 bytes used statically (DIRAM), 200,449 free for the heap (was 141,287
+  and 200,473). The merged image `dist/tinybar-1.0.2.bin` (2,333,616 bytes) was made with `esptool.py merge_bin
+  @flash_args` and checked the same way as before: the bootloader, partition table, OTA data and app byte for byte at
+  0x0, 0x8000, 0xF000 and 0x30000 with 0xFF in the gaps, the partition table decoded, and the app's and bootloader's
+  checksums and SHA-256 valid.
+- **Tested on the host:** 452 tests in 5 runners under AddressSanitizer and UBSan, no warnings (core 158, calendar 67,
+  net 144, ui 30, board 53): the alignment round's 434 plus the orientation fix's 18 in `board/test_orient_start.c`.
+  The merge needed no code beyond what the two branches carried: only this README conflicted (the status above and
+  the troubleshooting entries on an upside-down picture), and `brd_logic.h`'s tick gains (0.55 Soft, 1.10 Medium)
+  were already the same on both sides. The ui host tools and the Playwright page suites weren't run again; the
+  orientation fix doesn't touch ui or the pages.
+- **Unverified until it runs on the bar:** both rounds' lists below, and the 1.0.2 image itself; nothing from this
+  merge has been flashed yet.
+
 **2026-10-05, pairing aligned with the mock-up's pairing fix round** (details in ARCHITECTURE.md sections 10 and 14):
 
 - **Compiled:** a fresh `build-lead-align/` from `sdkconfig.defaults` alone, with **no warnings**. App 2,134,352
@@ -240,7 +272,7 @@ alarm and start what the Pomodoro is waiting for.
   the `PROJECT_VER` of this tree) was made with `esptool.py merge_bin @flash_args` and checked: the bootloader,
   partition table, OTA data and app byte for byte at 0x0, 0x8000, 0xF000 and 0x30000 with 0xFF in the gaps, the
   partition table decoded, and the app's and bootloader's checksums and SHA-256 valid. It doesn't have the 1.0.2
-  orientation change, which is on the `orient-fix` branch.
+  orientation change, which was on the `orient-fix` branch until the merge above.
 - **Tested on the host:** 434 tests in 5 runners under AddressSanitizer and UBSan, no warnings (core 158, calendar 67,
   net 144, ui 30, board 35; 25 new). The ui's layout test (the three "pair at" feet each on one line inside the tile,
   Forget all's ten names cut after two lines) and touch test; 89 screen snapshots, 86 compared with the mock-up with
@@ -287,4 +319,19 @@ As of 2026-10-04, after the review round and the security review (details in ARC
   opening leaves the radio off, the setup endpoints need a peer on the setup network as well as its address, the
   HTTP server starts before Wi-Fi, and the log never delays a DNS answer or shows a query string. Built clean with no
   warnings (app 2.03 MB; static internal RAM unchanged at 141 KB); 409 host tests (net 128) and both page suites
-  pass. Unverified until the user flashes it.
+  pass. **Verified on the bar (2026-10-05):** the phone opens the setup page and the bar joins Wi-Fi.
+- **1.0.2 (2026-10-05, branch `orient-fix`): the first frame the right way up.** On 1.0.1 the user saw the picture
+  upside down at start-up, then right without turning the bar over. The user stands the bar with its side buttons on
+  top, and that's upright now: the IMU's up axis is −Y and the picture is turned 180 degrees
+  (`CONFIG_TINYBAR_IMU_UP_Y_NEG`, `CONFIG_TINYBAR_LCD_TURN_180`). The two inversions cancel once the IMU has a reading,
+  so the steady pictures and flips are exactly as in 1.0.1; what changed is that a start where the IMU can't tell
+  draws buttons on top. The start-up reading waits for real data (STATUS0's data-ready bit, past the datasheet's
+  turn-on and filter settling, three 0.8 to 1.2 g samples in a row, 150 ms at most) instead of a fixed 40 ms, and
+  logs the averaged x, y, z and the time it took. The last steady orientation is remembered in NVS (`board`/`pose`,
+  written after 10 s standing still in a new one) for a start lying flat. Built clean with no warnings; 427 host tests
+  pass (board 53, 18 of them new). Unverified until the user flashes it: the start-up log line will say what the
+  first samples held, which the 1.0.1 report couldn't (no serial log). The −Y axis and rotation 270 are inferred
+  from 1.0.1's steady pictures; that log line confirms them.
+  **Delete your `build-<name>/sdkconfig` (and `firmware/sdkconfig`) before building 1.0.2.** An existing sdkconfig
+  keeps 1.0.1's +Y, and one older than `CONFIG_TINYBAR_LCD_TURN_180` also takes the turn on: +Y with the turn draws
+  every pose upside down. The build warns (`board_imu.c`) unless the pair is −Y with the turn.
