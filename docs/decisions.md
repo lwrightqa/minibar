@@ -69,9 +69,11 @@ The running record of what has been decided, and why. The product manager keeps 
     sheet, which stays on the setup network), the setup page's next request after mobile data was turned on mid-setup,
     which could carry the Wi-Fi password in plain text to whoever answers at that address. At 192.168.4.1 those
     requests simply failed. The docs say to type the address with mobile data off.
-  - **The choices:**
-    - **4.3.2.1** (the lead's pick for the next test): widely used by ESP32 captive portals, so it's known to work on
-      phones.
+  - **Verified on the bar (2026-10-05):** with firmware 1.0.1 the user's Android phone opens the setup page and the
+    bar joins Wi-Fi. No serial log was taken, so which of 1.0.1's changes fixed it is still not confirmed.
+  - **The choices** (the address is still the user's call):
+    - **4.3.2.1** (the lead's pick, now working on the user's phone): widely used by ESP32 captive portals, so it's
+      known to work on phones.
     - **192.0.2.1:** a documentation address (RFC 5737) that's never routed, so a stray request reaches nobody. It
       also passes Android's rule, which only looks for 10/8, 172.16/12, 192.168/16, 169.254/16 and private IPv6
       addresses. Untested on phones. Switching is one line in the firmware (`NET_SETUP_IP`) plus the setup page's
