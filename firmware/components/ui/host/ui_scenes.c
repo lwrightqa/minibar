@@ -388,6 +388,34 @@ static void s_menu_wifi_none(tb_app_t *a, tb_clock_t *n)
     s_menu_quick(a, n);
     tap_action(a, n, TB_ACT_WIFI);
 }
+/* Nothing paired, after a name clash: "tinybar-2.local" (90 px) doesn't fit the tile, so the foot gives the IP. */
+static void s_menu_wifi_none_renamed(tb_app_t *a, tb_clock_t *n)
+{
+    s_menu_quick(a, n);
+    tb_app_wifi_link(a, true, "10.0.4.42", "tinybar-2.local", n);
+    tap_action(a, n, TB_ACT_WIFI);
+}
+/* ...and an IP address too long as well: "pair at its" over "IP address", pointing at the Network tile. */
+static void s_menu_wifi_none_longip(tb_app_t *a, tb_clock_t *n)
+{
+    s_menu_quick(a, n);
+    tb_app_wifi_link(a, true, "192.168.100.200", "tinybar-2.local", n);
+    tap_action(a, n, TB_ACT_WIFI);
+}
+/* Ten devices, the most a bar keeps: "Full", and Forget all names them on two lines at most. */
+static const char TEN[] = "iPhone, Mac, Desk script, iPad, Android phone, Windows browser, Hallway sign, Shortcuts, "
+                          "Chromebook, Kitchen iPad";
+static void s_menu_wifi_full(tb_app_t *a, tb_clock_t *n)
+{
+    s_menu_quick(a, n);
+    tb_app_set_paired(a, 10, TEN);
+    tap_action(a, n, TB_ACT_WIFI);
+}
+static void s_menu_forget_full(tb_app_t *a, tb_clock_t *n)
+{
+    s_menu_wifi_full(a, n);
+    tap_action(a, n, TB_ACT_DEVICES);
+}
 static void s_menu_wifi_offline(tb_app_t *a, tb_clock_t *n)
 {
     base(a, n, TB_ST_AVAILABLE);
@@ -487,6 +515,49 @@ static void pairing_up(tb_app_t *a, tb_clock_t *n, const char *who, tb_pair_kind
 static void s_pairing(tb_app_t *a, tb_clock_t *n) { pairing_up(a, n, NULL, TB_PAIR_KIND_MAC); }
 static void s_pairing_phone(tb_app_t *a, tb_clock_t *n) { pairing_up(a, n, NULL, TB_PAIR_KIND_PHONE); }
 static void s_pairing_named(tb_app_t *a, tb_clock_t *n) { pairing_up(a, n, "Alex's MacBook Air", TB_PAIR_KIND_MAC); }
+/* A script (kind automation, no name): "PAIRING · SCRIPT" and the sub line for any other device. */
+static void s_pairing_script(tb_app_t *a, tb_clock_t *n) { pairing_up(a, n, NULL, TB_PAIR_KIND_SCRIPT); }
+/* The code with 0:05 left: the progress bar nearly full. */
+static void s_pairing_late(tb_app_t *a, tb_clock_t *n)
+{
+    pairing_up(a, n, NULL, TB_PAIR_KIND_PHONE);
+    a->pairing.shown_at -= 97 * 1000;      /* 1:42 - 1:37 = 0:05 left */
+    a->pairing.expires -= 97 * 1000;
+    a->rev++;
+}
+/* How a pairing ends, as the bar says it: a tap cancels it ("Pairing canceled"); the right code ("Paired · iPhone");
+ * a flip over a ready Pomodoro cancels it and starts focus ("Pairing canceled · Focus started"). */
+static void s_toast_pair_canceled(tb_app_t *a, tb_clock_t *n)
+{
+    pairing_up(a, n, NULL, TB_PAIR_KIND_PHONE);
+    tb_app_pointer(a, true, 300, 80, TB_TILE_NONE, n);
+    run(a, n, 60);
+    tb_app_pointer(a, false, 300, 80, TB_TILE_NONE, n);
+    run(a, n, 50);
+}
+static void s_toast_paired(tb_app_t *a, tb_clock_t *n)
+{
+    pairing_up(a, n, "iPhone", TB_PAIR_KIND_PHONE);
+    tb_app_pairing_end(a, TB_PAIR_END_PAIRED, NULL, n);
+    run(a, n, 50);
+}
+static void s_toast_pair_flip(tb_app_t *a, tb_clock_t *n)
+{
+    base(a, n, TB_ST_POMODORO);
+    tb_app_pairing_show(a, "482913", NULL, TB_PAIR_KIND_MAC, n);
+    run(a, n, 50);
+    tb_app_flip(a, true, true, n);
+    tb_app_flip(a, false, true, n);     /* turned back: the scene is drawn the right way up, as the mock-up's is */
+    run(a, n, 50);
+}
+/* Forget all, confirmed with a deliberate second tap: "Forgot 3 devices", the menu closed. */
+static void s_toast_forgot(tb_app_t *a, tb_clock_t *n)
+{
+    s_menu_forget(a, n);
+    run(a, n, TB_FORGET_GUARD_MS);
+    tap_action(a, n, TB_ACT_FORGET_ALL);
+    tb_app_set_paired(a, 0, "");        /* net revokes every token and says so (TB_FX_FORGET_DEVICES) */
+}
 static void s_dark(tb_app_t *a, tb_clock_t *n)
 {
     base(a, n, TB_ST_BUSY);
@@ -563,8 +634,12 @@ const ui_scene_t ui_scenes[] = {
     {"menu_timer_settings", "Timer settings", s_menu_timer_settings, 0, false},
     {"menu_wifi", "The Wi-Fi menu, 3 devices paired", s_menu_wifi, 0, false},
     {"menu_wifi_none", "The Wi-Fi menu, nothing paired", s_menu_wifi_none, 0, false},
+    {"menu_wifi_none_renamed", "The Wi-Fi menu, nothing paired, after a name clash (pair at the IP address)", s_menu_wifi_none_renamed, 0, false},
+    {"menu_wifi_none_longip", "The Wi-Fi menu, nothing paired, host and IP too long (pair at its IP address)", s_menu_wifi_none_longip, 0, false},
+    {"menu_wifi_full", "The Wi-Fi menu with 10 devices: Full", s_menu_wifi_full, 0, false},
     {"menu_wifi_offline", "The Wi-Fi menu offline", s_menu_wifi_offline, 0, false},
     {"menu_forget", "Forget all's confirmation", s_menu_forget, 0, false},
+    {"menu_forget_full", "Forget all's confirmation with 10 devices (names on two lines)", s_menu_forget_full, 0, false},
     {"menu_power", "The power menu", s_menu_power, 0, false},
     {"menu_setup", "The setup menu", s_menu_setup, 0, false},
     {"toast_status", "A toast over a status (the sub line hides)", s_toast_status, 0, false},
@@ -579,6 +654,12 @@ const ui_scene_t ui_scenes[] = {
     {"pairing", "The pairing screen for a Mac (proposed)", s_pairing, 0, false},
     {"pairing_phone", "The pairing screen for a phone", s_pairing_phone, 0, false},
     {"pairing_named", "The pairing screen for a Mac with a name", s_pairing_named, 0, false},
+    {"pairing_script", "The pairing screen for a script (any other device)", s_pairing_script, 0, false},
+    {"pairing_late", "The pairing screen with 0:05 left", s_pairing_late, 0, false},
+    {"toast_pair_canceled", "Pairing canceled by a tap", s_toast_pair_canceled, 0, false},
+    {"toast_paired", "Paired with the right code", s_toast_paired, 0, false},
+    {"toast_pair_flip", "A flip cancels pairing and starts focus", s_toast_pair_flip, 0, false},
+    {"toast_forgot", "Forget all confirmed: Forgot 3 devices", s_toast_forgot, 0, false},
     {"dark", "The dark screen", s_dark, 0, false},
     {"flipped", "Flipped: a toast over Available, the display turned 180 degrees", s_flipped, 0, true},
 };
