@@ -362,6 +362,71 @@ TB_TEST(view_splash_and_pairing)
     MAIN("Pairing \xC2\xB7 Alex's MacBook Air", "482 913", "Type it on your Mac \xC2\xB7 tap to cancel");
 }
 
+/* The mock-up's pairing round (2026-10-04, approved with pairing): the code for any other device, the last seconds,
+ * how pairing ends on the bar, the Wi-Fi menu's Devices tile and Forget all with ten devices. */
+TB_TEST(view_pairing_round)
+{
+    scene("pairing_script");
+    TB_EQ_INT(V.key, TB_KEY_CLOCK);
+    MAIN("Pairing \xC2\xB7 Script", "482 913", "Type this code on that device \xC2\xB7 tap to cancel");
+    SIDE("Code expires in", "1:42", "", "TinyBar 2A1C");
+    TB_FALSE(O.toast);
+    TB_FALSE(O.menu);
+    scene("pairing_late");
+    SIDE("Code expires in", "0:05", "", "TinyBar 2A1C");
+    TB_EQ_INT(V.bar_permille, 958);             /* 115 s of 120 gone */
+    /* Math.max(1, Math.ceil(left / 1000)): the last moment still reads 0:01, the bar full */
+    NOW.mono = A.pairing.expires - 1;
+    ui_view_build(&A, &NOW, &V);
+    TB_EQ_STR(V.value, "0:01");
+    TB_EQ_INT(V.bar_permille, 999);
+    /* the endings: the screen underneath, with the pairing's own toast on the status field */
+    scene("toast_pair_canceled");
+    TB_EQ_INT(V.key, TB_KEY_BUSY);
+    TB_EQ_STR(O.toast_text, "Pairing canceled");
+    TB_TRUE(O.toast_on_field);
+    scene("toast_paired");
+    TB_EQ_STR(O.toast_text, "Paired \xC2\xB7 iPhone");
+    scene("toast_pair_flip");
+    TB_EQ_INT(V.key, TB_KEY_FOCUS);
+    TB_EQ_STR(V.head, "25:00");
+    TB_EQ_STR(O.toast_text, "Pairing canceled \xC2\xB7 Focus started");
+    scene("toast_forgot");
+    TB_FALSE(O.menu);
+    TB_EQ_STR(O.toast_text, "Forgot 3 devices");
+    /* nothing paired: "pair at" over the host, with the IP address and "its IP address" for ui to measure */
+    scene("menu_wifi_none_renamed");
+    TB_TRUE(O.menu);
+    const tb_tile_t *t = &A.menu.tiles[1];
+    TB_EQ_STR(t->value, "None");
+    TB_EQ_INT(t->style, TB_TILE_INFO);
+    TB_EQ_STR(t->foot, "pair at\ntinybar-2.local");
+    TB_EQ_INT(t->n_foot_alt, 2);
+    TB_EQ_STR(t->foot_alt[0], "pair at\n10.0.4.42");
+    TB_EQ_STR(t->foot_alt[1], "pair at its\nIP address");
+    TB_EQ_STR(A.menu.tiles[0].foot, "TinyBar 2A1C\ntinybar-2.local \xC2\xB7 10.0.4.42");
+    scene("menu_wifi_full");
+    TB_EQ_STR(A.menu.tiles[1].value, "Full");
+    TB_EQ_STR(A.menu.tiles[1].foot, "tap to\nforget all");
+    scene("menu_forget_full");
+    TB_EQ_STR(A.menu.tiles[0].value, "10 devices");
+    TB_TRUE(A.menu.tiles[0].foot_clamp2);
+    TB_EQ_STR(A.menu.tiles[1].label, "Tap again");
+    TB_EQ_STR(A.menu.tiles[1].value, "Forget all");
+    TB_EQ_INT(A.menu.tiles[1].style, TB_TILE_DANGER);
+    TB_EQ_STR(A.menu.tiles[2].label, "Cancel");
+    TB_EQ_STR(A.menu.tiles[2].value, "Keep");
+    TB_EQ_STR(A.menu.tiles[2].foot, "back to Wi-Fi");
+    /* a code that arrives during the alarm's flash stops it at once (no flash over the code) */
+    scene("flash");
+    TB_TRUE(O.flash);
+    tb_app_pairing_show(&A, "482913", NULL, TB_PAIR_KIND_MAC, &NOW);
+    ui_view_build(&A, &NOW, &V);
+    ui_overlay_build(&A, &NOW, &O);
+    TB_FALSE(O.flash);
+    TB_EQ_STR(V.head, "482 913");
+}
+
 /* ---------- overlays ---------- */
 
 TB_TEST(overlay_toasts_and_where_they_sit)

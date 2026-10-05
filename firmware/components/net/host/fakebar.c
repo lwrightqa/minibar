@@ -12,6 +12,10 @@
  *   POST /_sim/usb       body: one "@tb ..." line; answers the reply line (a Mac on USB)
  *   GET  /_sim/state     the bar's screen state as JSON (toast, own status, pairing code...) for test checks
  *   POST /_sim/meetings  body: minutes from now for each meeting's start, length 30 min, e.g. "-5 45"
+ *   POST /_sim/tap       a tap on the bar's screen (cancels a pairing code, finishes the Connected screen...)
+ *   POST /_sim/forget    Forget all, confirmed on the bar (hold, Wi-Fi, Devices, Forget all)
+ *   POST /_sim/restart   what a restart does to pairing: any code ends, the back-off is cleared (tokens stay)
+ *   POST /_sim/connected the bar shows Wi-Fi setup's Connected screen (it's back on the office Wi-Fi; a tap ends it)
  * Not part of the firmware or the host tests.
  */
 #include <arpa/inet.h>
@@ -445,11 +449,30 @@ static void handle(int fd, bool *quit)
         sample_meetings(starts, n, &now);
         tb_app_set_calendar(&s_app, true, false, now.wall, &now);
         respond(fd, 200, "text/plain", NULL, "ok", 2);
+    } else if (!strcmp(q.path, "/_sim/tap")) {
+        tb_app_pointer(&s_app, true, 300, 80, TB_TILE_NONE, &now);
+        tb_app_pointer(&s_app, false, 300, 80, TB_TILE_NONE, &now);
+        respond(fd, 200, "text/plain", NULL, "ok", 2);
+    } else if (!strcmp(q.path, "/_sim/forget")) {
+        char t[TB_TOAST_BYTES];
+        snprintf(t, sizeof t, "Forgot %u device%s", (unsigned)s_app.paired_count, s_app.paired_count == 1 ? "" : "s");
+        net_api_forget_devices(&now);
+        tb_app_notify(&s_app, t, &now);
+        respond(fd, 200, "text/plain", NULL, "ok", 2);
+    } else if (!strcmp(q.path, "/_sim/restart")) {
+        if (s_app.pairing.active) tb_app_pairing_end(&s_app, TB_PAIR_END_CANCELED, NULL, &now);
+        net_api_pairing_reset(&now);
+        respond(fd, 200, "text/plain", NULL, "ok", 2);
+    } else if (!strcmp(q.path, "/_sim/connected")) {
+        s_wifi.state = NET_WIFI_SETUP;     /* the setup network stays up until the Connected screen is over */
+        tb_app_wifi_connected(&s_app, "Office-WiFi", "127.0.0.1", s_wifi.host, &now);
+        respond(fd, 200, "text/plain", NULL, "ok", 2);
     } else if (!strcmp(q.path, "/_sim/state")) {
         char b[1024];
-        int n = snprintf(b, sizeof b, "{\"toast\":\"%s\",\"pending\":\"%s\",\"idx\":%d,\"wifi_mode\":%d,\"pairing\":%s,\"code\":\"%s\",\"off\":%s}",
+        int n = snprintf(b, sizeof b, "{\"toast\":\"%s\",\"pending\":\"%s\",\"idx\":%d,\"wifi_mode\":%d,\"pairing\":%s,\"code\":\"%s\",\"who\":\"%s\",\"paired\":%d,\"off\":%s}",
                          s_app.toast, s_app.pending_toast, (int)s_app.idx, (int)s_app.wifi_mode,
-                         s_app.pairing.active ? "true" : "false", s_app.pairing.code, s_app.off ? "true" : "false");
+                         s_app.pairing.active ? "true" : "false", s_app.pairing.code, s_app.pairing.who,
+                         (int)s_app.paired_count, s_app.off ? "true" : "false");
         respond(fd, 200, "application/json", NULL, b, (size_t)n);
     } else if (!strcmp(q.method, "GET") && (!strcmp(q.path, "/") || !strncmp(q.path, "/?", 2))) {
         size_t len = 0;

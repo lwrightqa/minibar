@@ -580,3 +580,33 @@ TB_TEST(appendix_b_pairing_codes)
     TB_EQ_STR(nf_err(&r), "not_pairing");
     nf_free(&r);
 }
+
+/* info.paired (api.md 7.1): no token needed; the Remote's prompt reads it to clear the 10-device refusal once a place
+ * is free, and to say "TinyBar forgot this phone" after Forget all. Over USB, hello carries it too. */
+TB_TEST(info_reports_how_many_are_paired)
+{
+    nf_setup();
+    nf_resp_t r = nf_http("GET", "/api/v1/info", NULL, NULL);
+    TB_EQ_INT(r.status, 200);
+    TB_EQ_INT(nf_num(r.j, "paired"), 0);
+    nf_free(&r);
+    const char *tok = nf_pair("remote", "full", "phone-0003");
+    TB_TRUE(tok != NULL);
+    cJSON *j = nf_usb("@tb {\"cmd\": \"pair\", \"id\": 1, \"client\": \"" MAC "\"}");
+    TB_TRUE(nf_true(j, "ok"));
+    cJSON_Delete(j);
+    r = nf_http("GET", "/api/v1/info", NULL, NULL);
+    TB_EQ_INT(nf_num(r.j, "paired"), 2);
+    nf_free(&r);
+    j = nf_usb("@tb {\"cmd\": \"hello\", \"id\": 2, \"client\": \"" MAC "\", \"api\": \"1.0\"}");
+    TB_EQ_INT(nf_num(j, "paired"), 2);
+    cJSON_Delete(j);
+    /* Forget all on the bar: 0, and the phone's next request is refused */
+    net_api_forget_devices(&fake_now);
+    r = nf_http("GET", "/api/v1/info", NULL, NULL);
+    TB_EQ_INT(nf_num(r.j, "paired"), 0);
+    nf_free(&r);
+    r = nf_http("GET", "/api/v1/status", NULL, tok);
+    TB_EQ_INT(r.status, 401);
+    nf_free(&r);
+}

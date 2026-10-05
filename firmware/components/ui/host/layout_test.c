@@ -119,6 +119,21 @@ static const char *cut_label(lv_obj_t *o)
     return NULL;
 }
 
+/* The first visible label whose text starts with prefix (NULL if none). */
+static lv_obj_t *label_with(lv_obj_t *o, const char *prefix)
+{
+    if (lv_obj_has_flag(o, LV_OBJ_FLAG_HIDDEN)) return NULL;
+    if (lv_obj_check_type(o, &lv_label_class)) {
+        const char *t = lv_label_get_text(o);
+        if (t && !strncmp(t, prefix, strlen(prefix))) return o;
+    }
+    for (uint32_t i = 0; i < lv_obj_get_child_count(o); i++) {
+        lv_obj_t *f = label_with(lv_obj_get_child(o, (int32_t)i), prefix);
+        if (f) return f;
+    }
+    return NULL;
+}
+
 static void check(bool ok, const char *what)
 {
     printf("%s %s\n", ok ? "ok  " : "FAIL", what);
@@ -165,13 +180,41 @@ int main(void)
                                           "meeting_cal_titles", "available_free_titles", "clock_titles", "away_back",
                                           "setup_qr", "setup_connected", "pairing", "pairing_phone", "menu_quick", "menu_quick_linkdown",
                                           "menu_timer", "menu_timer_settings", "menu_wifi", "menu_wifi_none",
-                                          "menu_wifi_offline", "menu_forget", "menu_power", "menu_setup", "toast_status"};
+                                          "menu_wifi_offline", "menu_forget", "menu_power", "menu_setup", "toast_status",
+                                          "menu_wifi_none_renamed", "menu_wifi_full", "pairing_script", "pairing_late",
+                                          "pairing_named", "toast_pair_canceled", "toast_paired", "toast_pair_flip",
+                                          "toast_forgot"};
     for (size_t i = 0; i < sizeof LONGEST / sizeof LONGEST[0]; i++) {
         render(d, LONGEST[i]);
         const char *t = cut_label(lv_display_get_screen_active(d));
         snprintf(what, sizeof what, "%s: nothing cut with an ellipsis%s%s", LONGEST[i], t ? ", but: " : "", t ? t : "");
         check(t == NULL, what);
     }
+    /* The Devices tile with nothing paired says where to pair, measured against the tile (lv_text_get_size): the host
+     * when it fits on one line, else the IP address, else "pair at its" over "IP address". Each line whole, on one
+     * line (the label is as wide as its widest line), inside the tile. */
+    static const struct { const char *scene, *foot; } WHERE[] = {
+        {"menu_wifi_none", "pair at\ntinybar.local"},
+        {"menu_wifi_none_renamed", "pair at\n10.0.4.42"},
+        {"menu_wifi_none_longip", "pair at its\nIP address"},
+    };
+    for (size_t i = 0; i < sizeof WHERE / sizeof WHERE[0]; i++) {
+        render(d, WHERE[i].scene);
+        lv_obj_t *l = label_with(lv_display_get_screen_active(d), "pair at");
+        const char *t = l ? lv_label_get_text(l) : "(none)";
+        lv_point_t sz = {0, 0};
+        if (l) lv_text_get_size(&sz, t, lv_obj_get_style_text_font(l, 0), 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_EXPAND);
+        lv_area_t c = {0};
+        if (l) lv_obj_get_coords(l, &c);
+        bool one_line_each = l && sz.x <= lv_obj_get_width(l) && lv_obj_get_height(l) < 2 * 18 + 4;
+        snprintf(what, sizeof what, "%s: Devices foot \"%s\" (want \"%s\"), %d px wide in a %d px label, x %d..%d", WHERE[i].scene,
+                 t, WHERE[i].foot, (int)sz.x, l ? (int)lv_obj_get_width(l) : 0, (int)c.x1, (int)c.x2);
+        check(l && !strcmp(t, WHERE[i].foot) && one_line_each && sz.x <= 87, what);
+    }
+    /* Forget all with 10 devices: the names stop at two lines, the second cut with "…" (by design). */
+    render(d, "menu_forget_full");
+    check(cut_label(lv_display_get_screen_active(d)) != NULL, "menu_forget_full: the ten names are cut after two lines");
+
     /* ...and the check sees a cut when there is one: a meeting title too long for the column is cut by design. */
     render(d, "meeting_cal_long");
     check(cut_label(lv_display_get_screen_active(d)) != NULL, "meeting_cal_long: its long title is cut with an ellipsis");

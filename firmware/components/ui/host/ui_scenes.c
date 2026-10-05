@@ -546,8 +546,8 @@ static void s_toast_pair_flip(tb_app_t *a, tb_clock_t *n)
     base(a, n, TB_ST_POMODORO);
     tb_app_pairing_show(a, "482913", NULL, TB_PAIR_KIND_MAC, n);
     run(a, n, 50);
-    tb_app_flip(a, true, true, n);
-    tb_app_flip(a, false, true, n);     /* turned back: the scene is drawn the right way up, as the mock-up's is */
+    tb_app_flip(a, true, false, n);     /* a real flip: cancel, then turn, silence, start focus */
+    tb_app_flip(a, false, true, n);     /* the layout only, back: the scene is drawn the right way up, as the mock-up's */
     run(a, n, 50);
 }
 /* Forget all, confirmed with a deliberate second tap: "Forgot 3 devices", the menu closed. */

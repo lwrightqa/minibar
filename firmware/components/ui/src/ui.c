@@ -930,13 +930,34 @@ static void put_menu(const tb_menu_t *m)
         int lines = (sz.y + line_space) / TILE_FOOT_PITCH;
         if (lines < 1) lines = 1;
         if (d->foot_clamp2 && lines > 2) {
+            /* -webkit-line-clamp: 2, as Chrome draws it: what the wrap puts on the first two lines (the longest start
+             * that ends at a word and still takes two lines), then "…"; characters come off only if the "…" doesn't
+             * fit ("iPad, Android phone,…"). LVGL's DOTS mode would end it in three periods. At most the names of 10
+             * devices, measured once per redraw. */
+            char cut[sizeof foot];
+            size_t best = 0, len = strlen(foot);
+            for (size_t k = 1; k <= len; k++) {
+                if (foot[k] != ' ' && foot[k] != '\0') continue;         /* a word ends at k */
+                memcpy(cut, foot, k);
+                cut[k] = '\0';
+                lv_text_get_size(&sz, cut, ff, 0, line_space, fw, LV_TEXT_FLAG_NONE);
+                if ((sz.y + line_space) / TILE_FOOT_PITCH > 2) break;
+                best = k;
+            }
+            for (;;) {
+                while (best > 0 && foot[best - 1] == ' ') best--;     /* trimEnd() before the ellipsis */
+                memcpy(cut, foot, best);
+                memcpy(cut + best, "\xE2\x80\xA6", 4);
+                lv_text_get_size(&sz, cut, ff, 0, line_space, fw, LV_TEXT_FLAG_NONE);
+                if (best == 0 || (sz.y + line_space) / TILE_FOOT_PITCH <= 2) break;
+                do best--;                                            /* one character off, on a UTF-8 boundary */
+                while (best > 0 && (foot[best] & 0xC0) == 0x80);
+            }
+            tb_strlcpy(foot, cut, sizeof foot);
             lines = 2;
-            if (lv_label_get_long_mode(t->foot) != LV_LABEL_LONG_MODE_DOTS) lv_label_set_long_mode(t->foot, LV_LABEL_LONG_MODE_DOTS);
-            set_size(t->foot, fw, ff->line_height + TILE_FOOT_PITCH);
-        } else {
-            set_long(t->foot, LV_LABEL_LONG_MODE_WRAP, fw);
-            if (lv_obj_get_style_height(t->foot, 0) != LV_SIZE_CONTENT) lv_obj_set_height(t->foot, LV_SIZE_CONTENT);
         }
+        set_long(t->foot, LV_LABEL_LONG_MODE_WRAP, fw);
+        if (lv_obj_get_style_height(t->foot, 0) != LV_SIZE_CONTENT) lv_obj_set_height(t->foot, LV_SIZE_CONTENT);
         set_text(t->foot, foot);
         at_base(t->foot, tx, TILE_BASE_FOOT - (lines - 1) * TILE_FOOT_PITCH);
     }

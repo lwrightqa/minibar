@@ -422,6 +422,9 @@ static void add_info(rt_t *r)
     cJSON_AddStringToObject(r->o, "host", bar_host(&w));
     cJSON_AddStringToObject(r->o, "auth", s_bearer ? "bearer" : "none");
     cJSON_AddStringToObject(r->o, "pairing", net_pair_state(&s_pair, &r->now));
+    /* How many devices are paired (api.md 7.1, firmware alignment): a phone that isn't paired yet reads it to clear
+     * "already has 10 paired devices" once a place is free, and to tell Forget all from a removal after a 401. */
+    cJSON_AddNumberToObject(r->o, "paired", net_pair_count(&s_pair));
     cJSON_AddNumberToObject(r->o, "heartbeat_s", NET_MAC_HEARTBEAT_S);
     cJSON_AddNumberToObject(r->o, "timeout_s", NET_MAC_TIMEOUT_MS / 1000);
     add_now(r, r->o, "time");

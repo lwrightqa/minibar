@@ -79,7 +79,7 @@ The tooltip is the menu's first status line, or the second when that one says wh
 **Needs you** covers:
 
 - macOS is blocking Local Network access and USB isn't connected (Wi-Fi can't work).
-- Your bar no longer recognizes this Mac (its pairing was removed) and USB isn't connected.
+- Your bar no longer recognizes this Mac (its pairing was removed, or its token was paired for another copy of the app) and USB isn't connected.
 - The bar and the app speak different API versions (`unsupported_api`).
 - *Proposed (lead developer, 2026-10-04), copy for the UX designer to confirm:* the Mac can't watch the mic, or the camera while it counts, because its monitor didn't start (CoreAudio's or CoreMediaIO's list couldn't be read). Line 1 says "Can’t tell when the mic is in use" (or "the camera", or "the mic or camera") unless a call is on, and the tooltip says the same. The app tries again every minute and logs the error. No fix item: there's nothing the person can change.
 
@@ -195,7 +195,7 @@ The menu keeps its lines current while it's open (the call duration ticks over e
 | Wi-Fi turned off in Settings, bar not plugged in | TinyBar 2A1C isn't plugged in |
 | Local Network blocked, no USB | Wi-Fi is blocked in Privacy settings |
 | Not plugged in, and while it was plugged in the app found the bar on Wi-Fi but couldn't reach its address from this Mac (client isolation, a VPN) | Wi-Fi can't reach TinyBar 2A1C here · plug it in |
-| The bar no longer recognizes this Mac (`401`), no USB | TinyBar 2A1C doesn't recognize this Mac |
+| The bar no longer recognizes this Mac (`401`, or `403 wrong_client` on a call), no USB | TinyBar 2A1C doesn't recognize this Mac |
 | The bar's API is older than the app's | TinyBar 2A1C needs a firmware update |
 | The bar's API is newer than the app's | This app needs an update for TinyBar 2A1C |
 
@@ -203,6 +203,7 @@ The menu keeps its lines current while it's open (the call duration ticks over e
 - "Wi-Fi can't reach … here" needs one check: while connected over USB with the bar reporting Wi-Fi, the app tries the bar's Wi-Fi address once (`info`). If that fails, it remembers it for the current network only, and the Connect window says so too (5.2).
 - Set aside, screen off and Wi-Fi setup show only during a call. When you're not on a call they don't matter, and line 2 shows the normal "TinyBar 2A1C · USB".
 - A bar that answers `401` over USB never shows the "doesn't recognize" line: the app pairs again over the cable on its own (5.3).
+- *Proposed (Mac developer, 2026-10-05):* `403 wrong_client` (`api.md` 5.2) means the bar knows this Mac's token, but it was paired for another copy of the app, for example after the app's settings were reset and it made a new install ID. The app treats it as `401`: it checks `info` first (`api.md` 16), then deletes the token and shows the line above with **Pair Again…**. It also tells the bar to forget that token (`DELETE /api/v1/clients/self`, best effort), so the old token doesn't keep one of the bar's 10 places or show twice in the Remote's Paired devices.
 
 ### 4.4 The fix item
 
@@ -426,7 +427,7 @@ The USB status line:
 | …and the bar is on Wi-Fi (`wifi` is `connected`) | Adds: "When it isn't plugged in, it uses Wi-Fi." On macOS 15 and later, the first time: "When it isn't plugged in, it uses Wi-Fi. If your Mac asks whether TinyBar can find devices on your local network, choose Allow." The app then checks Wi-Fi (4.3), which is what brings up the prompt, while this line explains it. |
 | …and the bar has no Wi-Fi (`offline` or `setup`) | Adds: "TinyBar isn't on Wi-Fi, so it works only while plugged in." |
 | …and the bar is on Wi-Fi, but this Mac can't reach it there (4.3) | Adds: "This Mac can't reach TinyBar over this Wi-Fi network, so it works only while plugged in." |
-| …and the bar has 10 paired devices (`token_limit`) | Adds: "It works over USB. To use Wi-Fi too, remove a device on TinyBar's Remote; it can keep 10." |
+| …and the bar has 10 paired devices (`token_limit`) | Adds: "It works over USB. To use Wi-Fi too, remove a device on TinyBar's Remote; it can keep 10." *(Proposed, Mac developer, 2026-10-05: the bar also answers `token_limit` while another device's code on its screen holds the last place, `api.md` 4.3 and 6.6. The app asks again every 30 seconds while the bar is plugged in, so the line goes by itself once a place is free.)* |
 | Connected, bar doesn't use pairing (`auth` is `none`) | ✓ Connected to TinyBar 2A1C over USB. |
 
 ### 5.3 USB: plug in and it's done
@@ -477,6 +478,17 @@ Step by step:
 
 **Entering an address.** When nothing is found, an **Enter Address…** link shows a field ("Address", placeholder "tinybar.local or 10.0.4.42") and a **Connect** button. The app checks the address with `info` and goes on to step 3 with that bar.
 
+**Backing out takes the code off the bar** *(Proposed, Mac developer, 2026-10-05, following `api.md` 4.7 and `decisions.md`, Pairing)*. Once the bar shows a code this page asked for, these take it off the bar at once with `pair/cancel`, so it doesn't hold up other devices ("Someone else is pairing…") for the rest of its 2 minutes. The bar shows "Pairing canceled".
+
+- **Back**, and the close button, ⌘W or Esc on this page (which act as Back).
+- **The window closing** any other way, and **quitting** TinyBar.
+- **The Mac going to sleep or shutting down.** After the wake, the page says "That code has expired or was canceled on TinyBar. Show a new code to try again." with **Show a New Code**.
+- **Didn't see a code? Choose another TinyBar.** and **Enter Address…**: the first bar's code comes off.
+
+It's sent in the background and never holds up the window. Quitting waits for it at most 2 seconds, alongside telling the bar the Mac is leaving; sleep waits at most the second the app already takes for that. Nothing is sent after pairing worked, or once the code has ended on the bar as far as the app knows (used up, expired, canceled, or ended by `token_limit` or `in_setup`). If the code was already canceled on the bar (a tap), the bar answers `not_pairing` and nothing more happens. If a request is still on its way when you back out, its answer decides: a code the bar has just shown is taken off at once, and a code the bar has just accepted stays paired. Like a tap on the bar, a canceled code counts as a failed pairing (`api.md` 4.9), so canceling can't be used to get more guesses.
+
+**Show a New Code while this Mac's code is still on the bar** goes back to typing that code, as the mock-up's Simulate box does: the bar shows one code at a time and answers `pairing_busy`, which here isn't someone else. If that code has ended on the bar meanwhile (a tap canceled it), the bar shows a new one. *(Proposed, Mac developer, 2026-10-05.)*
+
 ### 5.5 Messages on the Wi-Fi page
 
 Shown in place of the help line under the field or button they're about, in the system's red text with an `exclamationmark.circle.fill` symbol (never color alone). The field keeps what you typed, except after a code is used up.
@@ -490,15 +502,18 @@ Shown in place of the help line under the field or button they're about, in the 
 | A typed DNS name macOS won't reach over plain HTTP (not `.local`, not an IP address; App Transport Security) *(Proposed, lead developer, 2026-10-04; also under Settings › Connection › Address)* | Use TinyBar's .local name or its IP address. | Field stays |
 | Wrong code, tries left (`wrong_code`) | That code didn't match. 2 tries left. / That code didn't match. 1 try left. | Field cleared and focused |
 | Wrong code, none left | That code didn't match, so TinyBar canceled pairing. Show a new code to try again. | **Show a New Code** |
-| Code expired, canceled on the bar or already used (`not_pairing`) | That code has expired or was canceled on TinyBar. Show a new code to try again. | **Show a New Code** |
-| Someone else is pairing (`pairing_busy`) | Someone else is pairing with this TinyBar. Try again in 45 seconds. | Button enabled again when the time is up |
-| Too many failed pairings (`rate_limited`) | Too many tries. You can try again in 4 minutes. | The same |
-| 10 devices already (`token_limit`) | TinyBar 2A1C already has 10 paired devices. Remove one on its Remote, then try again. | **Open TinyBar Remote…** |
-| The bar is setting up Wi-Fi (`in_setup`) | TinyBar 2A1C is setting up Wi-Fi. Finish setup on the bar, then try again. | |
+| Code expired, canceled on the bar or already used (`not_pairing`); also after the Mac slept with a code on the bar (5.4) | That code has expired or was canceled on TinyBar. Show a new code to try again. | **Show a New Code** |
+| Someone else is pairing (`pairing_busy`, with `retry_after_s`) | Someone else is pairing with this TinyBar. Try again in 45 seconds. | Button enabled again when the time is up. If the code on the bar is this Mac's own, the page goes back to typing it instead (5.4). |
+| Too many failed pairings (`rate_limited` from `pair/start`, with `retry_after_s`) | Too many tries. You can try again in 4 minutes. | The same |
+| The code was sent twice within a second (`rate_limited` from `pair`) *(Proposed, Mac developer, 2026-10-05: what the app already does)* | Too many tries. You can try again in 1 second. | The code is still on the bar, so the field stays, and **Pair** works again when the wait is over |
+| 10 devices already (`token_limit`), from asking for a code or, as a safeguard that ends the code, from sending it (`api.md` 4.3, 4.7) | TinyBar 2A1C already has 10 paired devices. Remove one on its Remote, then try again. | **Open TinyBar Remote…**, and *(Proposed, Mac developer, 2026-10-05)* **Show Code on TinyBar** to try again once a device is removed |
+| The bar is setting up Wi-Fi (`in_setup`, from asking for a code or from sending it; setup ends the code) | TinyBar 2A1C is setting up Wi-Fi. Finish setup on the bar, then try again. | **Show Code on TinyBar** |
 | No reply (time-out) | TinyBar 2A1C didn't answer. Make sure it's on, then try again. | |
 | The bar doesn't use pairing (`auth` is `none`) | TinyBar 2A1C doesn't need pairing, so you're all set. | **Done** |
 
-Waiting times round up: under a minute in seconds ("45 seconds"), otherwise in minutes ("4 minutes").
+Waiting times round up: under a minute in seconds ("45 seconds"), otherwise in minutes ("4 minutes"), as in the mock-up ("74 seconds" reads "2 minutes"). A reply without `retry_after_s` waits a minute.
+
+These are the words the mock-up's Simulate box uses for the Mac app's answers (its Pairing box), with the app's curly apostrophes. The Remote words a few differently ("Another device is pairing…"), as `decisions.md` says.
 
 ### 5.6 What the bar shows (for the mock-up and the firmware)
 
@@ -769,7 +784,7 @@ The product manager's spec should be brought in line with these (none changes wh
 
 ### 10.2 For `docs/api.md`
 
-Nothing needs changing. This design uses: `name` from `info`, `hello` and pairing replies; `wifi` from `info` (to say whether Wi-Fi will work after unplugging); `showing`, `screen`, `call.aside` and `sources.mac` from every `call` reply; and the pairing error codes and `attempts_left` and `retry_after_s`. **One request:** the bar's own Wi-Fi address in `info` (it's in `status.wifi.ip` today), so the app can check whether Wi-Fi reaches the bar (4.3) right after `hello`, without a second request. *Optional; the app can send `status` instead.*
+Nothing needs changing. This design uses: `name` from `info`, `hello` and pairing replies; `wifi` from `info` (to say whether Wi-Fi will work after unplugging); `showing`, `screen`, `call.aside` and `sources.mac` from every `call` reply; and the pairing error codes and `attempts_left` and `retry_after_s`. *(2026-10-05, Mac developer:)* also `pair/cancel` (4.7) when the Wi-Fi page gives up a code (5.4), `token_limit` and `in_setup` from `pair` as well as `pair/start`, and `403 wrong_client` on a call (5.2), read like a `401` (4.3). **One request:** the bar's own Wi-Fi address in `info` (it's in `status.wifi.ip` today), so the app can check whether Wi-Fi reaches the bar (4.3) right after `hello`, without a second request. *Optional; the app can send `status` instead.*
 
 ### 10.3 For the mock-up and the firmware
 
@@ -797,3 +812,5 @@ The Linux container can't build AppKit or SwiftUI, so none of this has been seen
 - **Opening the Settings scene** from an app with no Dock icon and bringing it to the front (`SettingsLink`, or activating the app first).
 - **`applicationShouldHandleReopen`** firing for an app with `LSUIElement` (section 8).
 - **The custom glyphs** at 1x on a non-Retina display (rendered in a browser only).
+- **Taking a code off the bar** (5.4): that Back, the close button, ⌘W and Esc on the Wi-Fi page, and closing the window all send `pair/cancel` without the window pausing; that the request gets out before the app quits (it waits up to 2 seconds) and before the Mac sleeps (about a second); and that the bar then shows "Pairing canceled". Tested on Linux with fakes and a local HTTP server only.
+- **`wrong_client`** (4.3): the menu's "doesn't recognize this Mac" line and **Pair Again…** after a bar refuses a call with it, and that the old token is gone from the Remote's Paired devices afterwards.

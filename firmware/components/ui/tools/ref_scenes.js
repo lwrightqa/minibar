@@ -31,6 +31,7 @@ function qrLib() {
 const HOOK = `window.__tb = { s, pomo, cal, mac, render, toast, showMenu, showTimerSettings, showWifiMenu, showPowerMenu,
   hideMenu, showHold, phaseLen, withTitle, autoTop, screen, lcd, clearUnderToast,
   resetKey() { lastKey = ''; lastShape = ''; }, set autoShown(v) { autoShown = v; },
+  resetToast() { toastHoldUntil = 0; pendingToast = null; },
   get ripenFrames() { return ripenFrames; }, pair, tokens, BAR, showForgetMenu };
   setInterval(loop, 200);`;
 
@@ -61,6 +62,8 @@ const LIB = () => {
       const { s, pomo, cal, mac } = t;
       t.hideMenu();
       el('toast').hidden = true;
+      // A held toast (pairing's endings) would otherwise hold back the next scene's toast: the page clock is fixed.
+      t.resetToast();
       el('holdOv').hidden = true;
       el('holdOv').classList.remove('go', 'done');
       el('holdOv').querySelector('.track i').style.width = '';
@@ -83,6 +86,13 @@ const LIB = () => {
       if (!window.__tok0) window.__tok0 = t.tokens.slice();
       t.tokens.length = 0;
       window.__tok0.forEach(x => t.tokens.push(x));
+      t.BAR.host = 'tinybar.local';
+    },
+    // Ten devices, used one minute apart in this order, so Forget all names them as host/ui_scenes.c's TEN does.
+    ten() {
+      const names = ['iPhone', 'Mac', 'Desk script', 'iPad', 'Android phone', 'Windows browser', 'Hallway sign', 'Shortcuts', 'Chromebook', 'Kitchen iPad'];
+      t.tokens.length = 0;
+      names.forEach((name, i) => t.tokens.push({ id: 'a' + i, name, kind: 'remote', scope: 'full', client: 'c' + i, at: at(-600), via: 'wifi', used: at(-i) }));
     },
     // A code on the bar for who ({ kind, name }), shown 18 s ago: 1:42 left.
     pairing(who) { Object.assign(t.pair, { code: '482913', id: 'x', who, left: 102000, shown: true, shownAt: Date.now(), tries: 3 }); },
@@ -166,8 +176,12 @@ const SCENES = {
   menu_timer_settings: () => { __sc.base('pomodoro'); __sc.pomo('focus', 2, 18 * 60 + 42, true); __sc.draw(); __sc.t.showTimerSettings(); },
   menu_wifi: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.draw(); __sc.t.showWifiMenu(); },
   menu_wifi_none: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.t.tokens.length = 0; __sc.draw(); __sc.t.showWifiMenu(); },
+  menu_wifi_none_renamed: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.t.tokens.length = 0; __sc.t.BAR.host = 'tinybar-2.local'; __sc.draw(); __sc.t.showWifiMenu(); },
+  menu_wifi_none_longip: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.t.tokens.length = 0; __sc.t.BAR.host = 'tinybar-2.local'; __sc.t.s.wifi.ip = '192.168.100.200'; __sc.draw(); __sc.t.showWifiMenu(); },
+  menu_wifi_full: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.ten(); __sc.draw(); __sc.t.showWifiMenu(); },
   menu_wifi_offline: () => { __sc.base('available'); __sc.t.s.wifi.mode = 'offline'; __sc.t.tokens.length = 0; __sc.draw(); __sc.t.showWifiMenu(); },
   menu_forget: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.draw(); __sc.t.showForgetMenu(); },
+  menu_forget_full: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.ten(); __sc.draw(); __sc.t.showForgetMenu(); },
   menu_power: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.draw(); __sc.t.showPowerMenu(); },
   menu_setup: () => { __sc.base('clock', false); __sc.draw(); __sc.t.showMenu(); },
   toast_status: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.draw(); __sc.t.toast('Meeting set aside · hold to show it again'); },
@@ -188,6 +202,12 @@ const SCENES = {
   pairing: () => { __sc.base('busy'); __sc.pairing({ kind: 'mac', name: null }); },
   pairing_phone: () => { __sc.base('busy'); __sc.pairing({ kind: 'remote', name: null }); },
   pairing_named: () => { __sc.base('busy'); __sc.pairing({ kind: 'mac', name: "Alex's MacBook Air" }); },
+  pairing_script: () => { __sc.base('busy'); __sc.pairing({ kind: 'automation', name: null }); },
+  pairing_late: () => { __sc.base('busy'); __sc.pairing({ kind: 'remote', name: null }); __sc.t.pair.left = 5000; },
+  toast_pair_canceled: () => { __sc.base('busy'); __sc.draw(); __sc.t.toast('Pairing canceled', true); },
+  toast_paired: () => { __sc.base('busy'); __sc.draw(); __sc.t.toast('Paired · iPhone', true); },
+  toast_pair_flip: () => { __sc.base('pomodoro'); __sc.pomo('focus', 1, 25 * 60, true); __sc.draw(); __sc.t.toast('Pairing canceled · Focus started', true); },
+  toast_forgot: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.t.tokens.length = 0; __sc.draw(); __sc.t.toast('Forgot 3 devices'); },
   dark: () => { __sc.base('busy'); __sc.draw(); __sc.t.s.off = true; __sc.t.screen.classList.add('off'); __sc.el('bar').style.visibility = 'hidden'; },
   flipped: () => { __sc.base('available'); __sc.calendar(false, __sc.SAMPLE); __sc.t.s.flipped = true; __sc.el('device').classList.add('flipped'); __sc.draw(); __sc.t.toast('Meeting set aside · hold to show it again'); },
 };

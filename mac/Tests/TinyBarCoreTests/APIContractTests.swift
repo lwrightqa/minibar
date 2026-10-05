@@ -29,7 +29,7 @@ final class APIContractTests: XCTestCase {
     // MARK: - Responses
 
     private enum ResponseKind: String, CaseIterable {
-        case error, ready, status, callReply, info, pairStart, pair, revoke, notUsedByTheMacApp
+        case error, ready, status, callReply, info, pairStart, pair, pairCancel, revoke, notUsedByTheMacApp
     }
 
     private func classifyResponse(_ value: JSONValue) -> ResponseKind {
@@ -41,6 +41,8 @@ final class APIContractTests: XCTestCase {
         if value["pairing_id"] != nil { return .pairStart }
         if value["token_id"] != nil, value.objectValue?.keys.contains("token") == true { return .pair }
         if value["revoked"] != nil { return .revoke }
+        // `pair/cancel`'s reply is the only bare `{"ok": true}` (api.md 4.7).
+        if value.keySet == ["ok"] { return .pairCancel }
         // Settings, calendar, paired devices and the setup network are for
         // the Remote and automations; the Mac app's `call` scope can't use them.
         return .notUsedByTheMacApp
@@ -70,6 +72,7 @@ final class APIContractTests: XCTestCase {
                 case .info: encoded = try roundTrip(InfoReply.self, original)
                 case .pairStart: encoded = try roundTrip(PairStartReply.self, original)
                 case .pair: encoded = try roundTrip(PairReply.self, original)
+                case .pairCancel: encoded = try roundTrip(PairCancelReply.self, original)
                 case .revoke: encoded = try roundTrip(RevokeReply.self, original)
                 case .notUsedByTheMacApp: continue
                 }
@@ -88,6 +91,7 @@ final class APIContractTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(counts[.error, default: 0], 10)
         XCTAssertGreaterThanOrEqual(counts[.pair, default: 0], 3)
         XCTAssertGreaterThanOrEqual(counts[.pairStart, default: 0], 1)
+        XCTAssertGreaterThanOrEqual(counts[.pairCancel, default: 0], 1)
         XCTAssertGreaterThanOrEqual(counts[.ready, default: 0], 1)
         XCTAssertGreaterThanOrEqual(counts[.revoke, default: 0], 2)
     }
@@ -97,7 +101,7 @@ final class APIContractTests: XCTestCase {
     func testResponseExamplesHaveExactlyTheModeledFields() throws {
         let callReply: Set = ["ok", "device_id", "showing", "screen", "stale", "call", "sources", "heartbeat_s", "timeout_s", "time"]
         let barCall: Set = ["active", "app", "inputs", "via", "since", "aside"]
-        let info: Set = ["ok", "device", "device_id", "name", "fw", "api", "host", "auth", "pairing", "heartbeat_s",
+        let info: Set = ["ok", "device", "device_id", "name", "fw", "api", "host", "auth", "pairing", "paired", "heartbeat_s",
                          "timeout_s", "time", "time_source", "wifi"]
         let status: Set = ["ok", "device_id", "rev", "time", "time_source", "showing", "screen", "own", "message", "away",
                            "call", "meeting", "pomodoro", "sources", "macs", "calendar", "wifi"]
@@ -135,6 +139,36 @@ final class APIContractTests: XCTestCase {
             }
         }
         XCTAssertEqual(failures, [], failures.joined(separator: "\n"))
+    }
+
+    // MARK: - Error codes
+
+    /// Every code in api.md Appendix B has a name in the app, so a code the
+    /// contract adds (as it added `wrong_client`) can't go by unnoticed.
+    func testEveryErrorCodeInAppendixBIsKnown() throws {
+        _ = try loadExamples()   // skips when docs/api.md isn't there
+        let text = try APIDoc.text()
+        let appendix = try XCTUnwrap(text.range(of: "## Appendix B")).upperBound
+        var documented: Set<String> = []
+        for line in text[appendix...].split(separator: "\n") where line.hasPrefix("|") {
+            let columns = line.split(separator: "|", omittingEmptySubsequences: false)
+            guard columns.count > 2 else { continue }
+            for part in columns[2].split(separator: "`", omittingEmptySubsequences: false).enumerated() where part.offset % 2 == 1 {
+                documented.insert(String(part.element))
+            }
+        }
+        documented.remove("error")   // the table's heading
+        let known: [APIErrorCode] = [
+            .badJSON, .badRequest, .badValue, .unsupportedChars, .notAURL, .httpNotAllowed, .publicAddress, .notICS,
+            .unauthorized, .wrongScope, .badOrigin, .wrongCode, .wrongClient, .notFound, .methodNotAllowed,
+            .pairingBusy, .notPairing, .tokenLimit, .inSetup, .noMessage, .nothingToSetAside, .nothingSetAside,
+            .notRunning, .nothingToExtend, .noCalendar, .tooLarge, .unsupportedMediaType, .wrongHost, .rateLimited,
+            .internalError, .offline, .busy, .unknownCmd, .unsupportedAPI, .calendarRejected, .calendarUnreachable,
+            .notACalendar,
+        ]
+        XCTAssertGreaterThan(documented.count, 35, "the table was read")
+        XCTAssertEqual(documented.subtracting(known.map(\.rawValue)).sorted(), [], "codes in api.md the app has no name for")
+        XCTAssertEqual(Set(known.map(\.rawValue)).subtracting(documented).sorted(), [], "names the contract no longer has")
     }
 
     // MARK: - Requests

@@ -575,7 +575,7 @@ bar → mac  @tb {"id": 3, "ok": true, "device_id": "f412fa3f2a1c", "rev": 1843,
 
 ```text
 mac → bar  @tb {"cmd": "hello", "id": 1, "client": "6F1C2A9E-5B7D-4E0A-9C3B-2D8F1A7E4B60", "app_version": "1.0 (12)", "api": "1.0", "time": "2026-10-04T14:11:58-07:00", "time_zone": "America/Los_Angeles"}
-bar → mac  @tb {"id": 1, "ok": true, "device": "TinyBar", "device_id": "f412fa3f2a1c", "name": "TinyBar 2A1C", "fw": "1.0.0", "api": "1.0", "host": "tinybar.local", "auth": "bearer", "pairing": "idle", "heartbeat_s": 30, "timeout_s": 90, "time": "2026-10-04T14:11:58-07:00", "time_source": "ntp", "wifi": "connected"}
+bar → mac  @tb {"id": 1, "ok": true, "device": "TinyBar", "device_id": "f412fa3f2a1c", "name": "TinyBar 2A1C", "fw": "1.0.0", "api": "1.0", "host": "tinybar.local", "auth": "bearer", "pairing": "idle", "paired": 3, "heartbeat_s": 30, "timeout_s": 90, "time": "2026-10-04T14:11:58-07:00", "time_source": "ntp", "wifi": "connected"}
 ```
 
 The reply is the `info` object (7.1) plus `id`. A `hello` counts as a heartbeat and marks the Mac connected over USB, but doesn't change its call state; the app sends a `call` right after it.
@@ -657,7 +657,7 @@ When the app sees it, it sends `hello` and then its current call state at once, 
 No token needed. Who this bar is, before pairing. The USB `hello` reply is the same object.
 
 ```json
-{"ok": true, "device": "TinyBar", "device_id": "f412fa3f2a1c", "name": "TinyBar 2A1C", "fw": "1.0.0", "api": "1.0", "host": "tinybar.local", "auth": "bearer", "pairing": "idle", "heartbeat_s": 30, "timeout_s": 90, "time": "2026-10-04T14:11:58-07:00", "time_source": "ntp", "wifi": "connected"}
+{"ok": true, "device": "TinyBar", "device_id": "f412fa3f2a1c", "name": "TinyBar 2A1C", "fw": "1.0.0", "api": "1.0", "host": "tinybar.local", "auth": "bearer", "pairing": "idle", "paired": 3, "heartbeat_s": 30, "timeout_s": 90, "time": "2026-10-04T14:11:58-07:00", "time_source": "ntp", "wifi": "connected"}
 ```
 
 | Field | Meaning |
@@ -669,6 +669,7 @@ No token needed. Who this bar is, before pairing. The USB `hello` reply is the s
 | `host` | The mDNS name the bar has now. |
 | `auth` | `"bearer"` (pairing required) or `"none"` (4.1). |
 | `pairing` | `"idle"`, `"showing"` (a code is on screen) or `"locked"` (back-off, 4.9). |
+| `paired` | How many devices are paired, 0 to 10 (4.3). *(Added 2026-10-05 in the firmware's alignment with the mock-up's pairing round, which left this open: a phone that isn't paired can't read the list (12.1), so the Remote's pairing prompt reads this to clear "already has 10 paired devices" as soon as a place is free (counting a code on the screen, which holds one), and after a `401` to say "TinyBar forgot this phone" when it's 0 (Forget all) rather than "This phone isn't paired … anymore". Together with `pairing` and `wifi` (`"setup"` until the Connected screen is over), it lets every refusal on the prompt clear once its cause is over. Clients that don't need it ignore it.)* |
 | `heartbeat_s`, `timeout_s` | 5.3. |
 | `time`, `time_source` | The bar's clock, and where it came from: `"ntp"`, `"rtc"` (the clock chip, kept since the last sync), `"mac"` (set over USB) or `"none"`. |
 | `wifi` | `"connected"`, `"offline"` (skipped or dropped) or `"setup"`. Over USB, this tells the Mac app whether Wi-Fi is worth trying. |
