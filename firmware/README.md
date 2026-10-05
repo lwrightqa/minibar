@@ -193,6 +193,9 @@ refuses new codes for 30 seconds, doubling up to an hour.
 - **The picture is upside down whichever way the bar stands:** set `CONFIG_TINYBAR_LCD_TURN_180` (menuconfig →
   TinyBar board) and rebuild. If it's right one way up but turns the wrong way after a flip, pick the opposite sign of
   the IMU axis instead (`components/board/README.md`, bring-up step 5).
+- **A computer opens msn.com instead of the setup page:** Windows sends its sign-in check out any other connection it
+  has (a network cable or a dock), so the page it opens comes from Microsoft. Type `http://4.3.2.1` in the browser
+  instead; that address always goes through the bar's own Wi-Fi.
 - **No Remote at `tinybar.local`:** the bar may have been set up offline (Skip is remembered): hold, Wi-Fi, Set up.
   Some office networks block mDNS: use the address the Wi-Fi menu shows. Guest networks with a sign-in page aren't
   supported.

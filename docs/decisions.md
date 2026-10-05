@@ -647,4 +647,6 @@ Where the mock-up has no answer, the firmware picked one. The ones marked **Prop
   - Wi-Fi setup works from an Android phone with 1.0.1 (see Automatic status, the setup address).
   - Sound works: the focus ticking is audible through the ES8311 and the amplifier, and the chime at a phase's end sounds right at the current speaker volume (75), so the volume stays. Soft and Medium ticking were both too quiet; both were raised (see Pomodoro, Ticking).
   - Orientation: the user stands the bar with the **buttons on top**. The motion sensor's steady reading is right (the picture rights itself), but the first frame at power-on came up upside down. Fixed in 1.0.2, not yet tested on the bar.
-  - Not yet reported: touch and BOOT, PWR off and on, the clock from the internet, the Remote and pairing.
+  - The Remote opens from a Windows PC on the office Wi-Fi once the bar is set up (2026-10-05).
+  - Windows note: joining TinyBar-Setup from a PC that's also online another way (a cable or a dock) opens msn.com instead of the setup page, because Windows' sign-in check goes out the other connection. Typing `http://4.3.2.1` works, since that address always goes through the bar's Wi-Fi.
+  - Not yet reported: touch and BOOT, PWR off and on, the clock from the internet, pairing.
