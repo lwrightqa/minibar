@@ -1450,7 +1450,13 @@ static void h_setup_wifi(rt_t *r, cJSON *b)
     if (!need_body(r, b)) return;
     net_wifi_info_t w;
     net_port_wifi(&w);
-    if (w.state != NET_WIFI_SETUP || !tb_app_on_wifi_screen(s_app))
+    net_join_status_t js;
+    net_port_setup_status(&js);
+    /* Connected is the end of setup (decisions.md): from the moment a join works (net's status, which core hears a
+     * moment later; then the Connected screen and the 15 s the setup network lingers) nobody on the open network can
+     * point the bar elsewhere, or keep the network up by sending again. setup/state still reads the result. */
+    if (w.state != NET_WIFI_SETUP || !tb_app_on_wifi_screen(s_app) || s_app->wifi_mode == TB_WIFI_CONNECTED ||
+        js.state == NET_JOIN_CONNECTED)
         { fail(r, 404, "not_found", "MiniBar isn't in Wi-Fi setup anymore.", NULL); return; }
     const char *ssid, *pass = NULL, *user = NULL, *cal = NULL, *tz = NULL;
     if (get_str(b, "ssid", &ssid) != F_OK) {

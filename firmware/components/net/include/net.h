@@ -40,6 +40,13 @@ void net_setup_begin(void);     /* TB_FX_WIFI_SETUP: start MiniBar-Setup (open) 
 void net_setup_skip(void);      /* TB_FX_WIFI_SKIP: stop it; stay offline (station off), and remember it */
 void net_setup_done(void);      /* TB_FX_WIFI_DONE: the Connected screen moved on; stop the setup network */
 
+/* The app task, every loop once core's effects have run (none left in core's queue): keeps the setup network in step
+ * with core's screens, so that once the bar is set up it never broadcasts MiniBar-Setup unless setup is started again
+ * (decisions.md, Wi-Fi). If core has left its setup screens and net never heard (a TB_FX_WIFI_DONE or _SKIP lost to
+ * core's full effect queue), net finishes or skips setup itself; and once a second, a setup network that is up
+ * outside setup with no close on its way is closed. A lock and a few reads per call. */
+void net_setup_follow(tb_wifi_mode_t core_mode, tb_ms_t now_ms);
+
 /* settings.device.name changed: update the mDNS instance name. */
 void net_name_changed(const char *name);
 

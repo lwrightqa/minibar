@@ -1,7 +1,8 @@
 /*
  * net_util.h: small pure helpers of the network layer, kept apart from ESP-IDF so they're tested on Linux:
  * the per-address rate limits (api.md 2.5), RFC 3339 times, the Mac's hello time rule (6.6), the setup network's DNS
- * catch-all, what a failed Wi-Fi join is called (13.3), and the USB line reader (6.4).
+ * catch-all, what a failed Wi-Fi join is called (13.3), the rules that close the setup network once setup is over,
+ * and the USB line reader (6.4).
  *
  * Owner: net builder.
  */
@@ -111,6 +112,36 @@ bool net_join_err_retry(net_join_err_t e);
 const char *net_join_err_code(net_join_err_t e);
 const char *net_join_err_message(net_join_err_t e);
 const char *net_join_err_screen(net_join_err_t e);
+
+/* ---------- the setup network once setup is over (decisions.md, Wi-Fi) ---------- */
+/* Once setup is over, MiniBar-Setup closes 15 s after the Connected screen moves on (the page reads the result
+ * meanwhile) and never comes back on its own: only Set up again (the QR code) opens it. These are the rules that keep
+ * that true when a step goes wrong; net_wifi.c does the radio work. */
+
+/* What net does when it's still in setup although core isn't on a setup screen any more: core's TB_FX_WIFI_DONE or
+ * _SKIP never arrived (core's effect queue drops effects when it's full). FINISH is what DONE does (station, and the
+ * setup network closes after its linger), SKIP what SKIP does (radio off). KEEP while core shows setup, or when net
+ * isn't in setup. */
+typedef enum { NET_SETUP_KEEP = 0, NET_SETUP_FINISH, NET_SETUP_SKIP } net_setup_catch_up_t;
+net_setup_catch_up_t net_setup_catch_up(tb_wifi_mode_t core_mode, bool net_in_setup);
+
+/* The setup network is up, or still meant to be, although setup is over and no close is on its way (the linger, a
+ * retry, or a close already in the worker's queue): close it. in_setup: net is in setup (the QR code and the setup
+ * screens), when the network belongs up. */
+bool net_setup_ap_stray(bool in_setup, bool ap_want, bool ap_up, bool close_pending);
+
+/* Closing the setup network failed `failures` times in a row (1, 2, ...): how long until the next try, and whether
+ * that try restarts the radio in station mode (esp_wifi_stop, then start; the office link drops for a second) rather
+ * than only changing its mode. Changing the mode is tried NET_AP_CLOSE_SOFT_TRIES times (after 1 and 2 s); then the
+ * radio restarts after 5 and 10 s, then every 30 s until it works. */
+#define NET_AP_CLOSE_SOFT_TRIES 3
+int32_t net_ap_close_retry_ms(int failures, bool *restart_radio);
+
+/* Saving the network that just worked failed `failures` times (1, 2, ...): how long until the next try (5 s, 30 s,
+ * 2 min, 10 min, 30 min), or 0 to give up after NET_CREDS_SAVE_TRIES tries in all. Without the saved network the next
+ * start would open the setup network again. */
+#define NET_CREDS_SAVE_TRIES 6
+int32_t net_creds_save_retry_ms(int failures);
 
 /* ---------- USB lines (api.md 6.4) ---------- */
 /* Assembles lines from the bytes read off the port. A line ends at LF (a CR before it is dropped). A line over

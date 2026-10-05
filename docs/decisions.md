@@ -59,6 +59,8 @@ The running record of what has been decided, and why. The product manager keeps 
   - **Firmware:** the tour, the "tour seen" flag in NVS, and `web/help.html` under a size budget (**Proposed:** 100 KB or less, compressed).
   - **`docs/api.md`:** the tour's screen value.
   - **The controls guide:** mention the tour and the Help tile.
+- *(2026-10-05, mock-up round 2, lead developer: built in `docs/mockup.html`, still Proposed.)* It follows this entry where the UX designer's spec (`team/help/ux-spec.md`) differs: **seven cards** (Tap, Swipe, BOOT, Touch and hold, Flip, PWR, More help; the spec merged BOOT and PWR into one card that a PWR press doesn't end), and a PWR press ends the tour. From the spec it takes the cards' layout (the Wi-Fi setup screen's QR panel and text column, in the bar's own theme, never a status color), their copy and drawings, the 700 ms pause after a practice result, the finish toast that says how to open it again ("Tour done · hold, then Help to see it again"), and the phone help page. BOOT and PWR are on top (Hardware notes), so the open question above is settled; the tour's arrows point at them upright and turned over. The quick menu fits six tiles with less padding inside them (8 px instead of 12.8 in Bold Signal). Its Wi-Fi tile is a few pixels wider than the spec's even 92 px, so the dropped-Wi-Fi foot "reconnecting" (82.5 px) fits on one line; Power, Help and Done give the room (Bold Signal 92, 92, 100, 89, 90, 89 px; Low Glare Pixel 92, 92, 99, 89, 90, 88 px). "Tour seen" is kept in the browser in the mock-up, and the Simulate panel can forget it. `GET /api/v1/status` reports `"screen": "tour"` while it's up (`docs/api.md` 7.3, Proposed).
+  - **Firmware notes:** a tour struct in core and "tour seen" as one NVS key, written once when the first-run tour appears (one flash write per bar, so no wear concern). The drawings are LVGL primitives (rounded rectangles, lines, arcs, labels) in the 132 × 132 panel the setup QR code uses, so no images in flash. The QR code is a version 3 code of `http://<ip>/help`, made by the same encoder as the setup code. `web/help.html` is static and gzipped like `remote.html`, under the 100 KB budget.
 
 ## Pomodoro
 
@@ -114,6 +116,8 @@ The bar has a small speaker, driven by the ES8311 codec, and no vibration motor.
   - **Firmware (after the mock-up):** a click effect from core, the sound in `board_audio`, the setting in the store and the API, the tile, and the Remote page. Then measure latency and loudness on the user's bar.
   - **The controls guide and the help page:** mention the click.
   - **`docs/api.md`:** 10.4 was written by the product manager; the lead developer reviews it.
+- *(2026-10-05, mock-up round 2, lead developer: built in `docs/mockup.html` with the defaults above, still Proposed.)* The Tap sound tile is in the Display menu after Theme (Light, Theme, Tap sound, Back), the Remote's switch is in its Display section, and the API section lists `sound.tap_sound`. Reviewed api.md 10.4: its "On the bar" row said "A Click tile" and now names the Tap sound tile. The UX designer's spec (`team/click/ux-spec.md`) put the setting in a new Settings tile replacing Power in the quick menu; the decided placement above wins. The sounds follow that spec: the tap is a 2.4 kHz sine of 15 ms (1 ms rise), the hold a 1.6 to 1.0 kHz sweep of 30 ms, synthesized, with no sound files. In the mock-up the tap peaks at about -20 dBFS and the hold at -21 dBFS, which A-weighted come to about 1 dB under Soft ticking for the tap and level with it for the hold, so neither is louder than Soft and the hold is about 1 dB louder than the tap. The Simulate panel's Sounds box plays each sound once, side by side. Tune on the bar.
+  - **Firmware notes:** core decides each click as an effect, as it does for the chime, and `board_audio` mixes it in from a buffer made at start-up (360 samples for the tap and 720 for the hold at the bar's 24 kHz, about 2 KB together). Within the 30 ms latency target the amplifier gate is the risk: either keep the amplifier on while the screen is lit, or measure the gate's 40 ms and accept it.
 
 ## Wi-Fi
 
@@ -667,7 +671,7 @@ Where the mock-up has no answer, the firmware picked one. The ones marked **Prop
 - **Hardware (lead):** if the picture is upside down on the real panel, `CONFIG_TINYBAR_LCD_TURN_180` turns it (the "upright" rotation comes from a path in Waveshare's example that never ran as shipped). The boot no longer tests the whole PSRAM and the bootloader logs only warnings, so the power hold comes on sooner; on a battery, a PWR press still has to last until the power hold (to be timed on the board).
   - *(2026-10-05, firmware 1.0.2, lead developer:)* settled on the bar. With 1.0.1 the user saw the picture upside down when the bar started, and then it righted itself without being turned over. The user stands the bar with its side buttons on top, so that's upright (see Hardware notes). 1.0.2 makes buttons on top "upright" in the firmware (the IMU's up axis −Y and `CONFIG_TINYBAR_LCD_TURN_180` on, which cancel once the IMU has a reading, so steady pictures and flips are unchanged), waits for settled IMU samples before the first frame instead of a fixed 40 ms, and remembers the last steady orientation for a start lying flat. Started lying flat with nothing remembered, the bar draws buttons on top. What the IMU's first samples held on 1.0.1 isn't known (no serial log); 1.0.2's start-up log line reports it.
 
-## Mock-up fixes found by the controls guide (2026-10-05, open)
+## Mock-up fixes found by the controls guide (2026-10-05, built in the mock-up the same day)
 
 QA checked every control on every screen of the mock-up while building `docs/controls-guide.html` (published at https://claude.ai/artifact/RB39woa2tw36BTYhLH3ZnW). These differ from the intended behavior and go into the next mock-up round:
 
@@ -677,6 +681,14 @@ QA checked every control on every screen of the mock-up while building `docs/con
 - **Message on a dark screen:** decide whether Show from the Remote wakes the screen (the mock-up does) or waits (the theme round's Proposed rule).
 - **The device frame:** the mock-up draws BOOT and PWR on the right edge; on the real bar they're on the top long edge.
 - **The guide's menu pictures** show the old Light tile; re-render them once the theme round's Display tile lands.
+
+*(2026-10-05, mock-up round 2, lead developer: the first five are built in `docs/mockup.html`, with its notes, controls table and diagrams.)*
+- **Swipe:** left and right are as the layout faces you, turned over or not.
+- **Power screens:** Keep holding, Powering off and Starting up ignore touches and BOOT, a hold that began before them opens no menu, and a menu is closed when the power goes off. **Proposed, new:** once powering off has begun, a PWR press is ignored too (it used to darken the screen during the second it takes); the next press after it's off starts the bar.
+- **Flip during start-up (and powering off):** the layout turns, since the motion sensor's reading is absolute and the first frame after start-up is drawn the right way up, as firmware 1.0.2 does. Its other jobs (an alarm, a Pomodoro waiting) can't apply then, so nothing else happens.
+- **Dark screen:** it waits. Show from the Remote, and every other Remote change (a status, the Pomodoro, set aside, Show again), no longer wakes a dark screen; the toast shows when it's woken, as the theme round proposed.
+- **Device frame:** BOOT and PWR sit on the top long edge, slightly inset, at the screen x positions the tour's arrows use (placeholders 452 and 541 of 640 px, to be measured on the bar as `TB_BTN_BOOT_X` and `TB_BTN_PWR_X`).
+- **The guide's menu pictures** belong to the guide's own renderer and weren't touched; it needs re-rendering for the six-tile quick menu and the four-tile Display menu.
 
 ## Hardware notes for the firmware (V2)
 

@@ -107,31 +107,27 @@ h1 .dot { color: var(--state); transition: color .3s; }
   transition: transform .6s cubic-bezier(.5,0,.2,1);
 }
 .device.flipped { transform: rotate(180deg); }
+/* BOOT and PWR sit on the bar's top long edge, slightly inset in the case, so the bar can rest on that edge turned
+   over without pressing them (decisions.md, Hardware notes). Turned over, the case's rotation puts them on the bottom
+   edge. Each is centered on its x along the screen (BTN_X in the script, which places them exactly; these percentages
+   are the fallback): placeholders until the two positions are measured on the bar. A little extra hit area sits
+   above each, outside the case, so the 5 px buttons are easy to click. */
 .hwbtn {
   position: absolute;
-  right: -5px;
-  width: 6px;
-  height: 14%;
-  border-radius: 0 3px 3px 0;
+  top: 2px;
+  width: 4.2%;
+  height: 5px;
+  border-radius: 0 0 3px 3px;
   background: var(--chassis-edge);
+  box-shadow: inset 0 1px 0 rgba(0,0,0,.55);
   border: 0;
   padding: 0;
   cursor: pointer;
 }
+.hwbtn::after { content: ""; position: absolute; inset: -8px -3px -1px; }
 .hwbtn:hover, .hwbtn:focus-visible { background: var(--state); outline: none; }
-.hwbtn.boot { top: 22%; }
-.hwbtn.pwr { top: 44%; }
-.hwlabel {
-  position: absolute;
-  right: 6px;
-  font-family: var(--f-mono);
-  font-size: 9px;
-  letter-spacing: .1em;
-  color: #6b7280;
-  pointer-events: none;
-}
-.hwlabel.boot { top: calc(22% + 1px); }
-.hwlabel.pwr { top: calc(44% + 1px); }
+.hwbtn.boot { left: 67.4%; }
+.hwbtn.pwr { left: 80.6%; }
 
 /* .scr is any 640 x 172 screen: the simulator and the Design direction previews. */
 .scr {
@@ -1182,6 +1178,78 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
 .api ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
 .api code { font-family: var(--f-mono); font-size: 12.5px; }
 
+/* ---------- Help: the controls tour on the bar (Proposed, decisions.md "Help and the controls tour") ----------
+   A tour card is the Wi-Fi setup QR screen of each look (.wsetup, so every line keeps that screen's place: Bold Signal's
+   kicker, title, two lines and foot on baselines 30, 82, 110, 130 and 152 beside a 132 px panel at x 24; Low Glare
+   Pixel's on 28, 84, 115, 136 and 157 beside it at x 26), painted on the setup surface, with the drawing panel where
+   the QR code sits and a progress row along the bottom. Nothing fills the screen with a status color: the only status
+   colors are inside the drawing's 108 x 30 miniature of the bar. The drawing's colors come from the look (see
+   tourPalette() in the script); the panel is Bold Signal's setup color darkened like its tints (#162842), or Low Glare
+   Pixel's tile surface and ring. LVGL: the setup screen's objects, a 132 x 132 container of lv_obj, lv_line, lv_arc and
+   label primitives (or lv_qrcode), and seven lv_obj segments. */
+.scr .wsetup .qr.tpanel { padding: 0; background: #162842; }
+.scr[data-mode="dark"] .wsetup .qr.tpanel, .scr[data-mode="light"] .wsetup .qr.tpanel { background: var(--b-tile, color-mix(in srgb, var(--b-text) 6%, var(--b-bg))); box-shadow: inset 0 0 0 .15625cqw var(--b-ring, color-mix(in srgb, var(--b-text) 18%, var(--b-bg))); }
+.wsetup .qr.tpanel svg { overflow: visible; }
+/* The two lines beside the drawing take the setup steps' places and font, unnumbered, each on one line. */
+.scr .wsetup ol.tl { list-style: none; padding-left: 0; }
+.wsetup ol.tl li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The progress row: one segment per card, 4 px apart (left and width set by the script, whole pixels), done and
+   current ones lit. Bold Signal: 6 px at y 166, white on the bar's track rule; Low Glare Pixel: 5 px at y 167, from x 6
+   (right of the edge bar), the setup color on the hold track. */
+.lcd .tseg { position: absolute; left: 0; right: 0; bottom: 0; height: .9375cqw; pointer-events: none; }
+.lcd .tseg i { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--sc) 65%, #000); }
+.lcd .tseg i.on { background: #fff; }
+.scr[data-mode="dark"] .lcd .tseg, .scr[data-mode="light"] .lcd .tseg { height: .78125cqw; }
+.scr[data-mode="dark"] .lcd .tseg i, .scr[data-mode="light"] .lcd .tseg i { background: var(--b-track, color-mix(in srgb, var(--b-text) 12%, var(--b-bg))); }
+.scr[data-mode="dark"] .lcd .tseg i.on, .scr[data-mode="light"] .lcd .tseg i.on { background: var(--sc); }
+/* The arrows at the screen's edge that point at BOOT and PWR (the BOOT and PWR cards only), drawn over the whole
+   screen in its own 640 x 172 coordinates; the labels use the look's label font. */
+.lcd .tedge { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.tdraw text, .lcd .tedge text { font-family: var(--f-body); font-variation-settings: var(--fv-body, normal); font-weight: var(--w-kick, 700); font-kerning: normal; }
+.scr[data-layout="pixel"] :is(.tdraw text, .lcd .tedge text) { font-weight: 400; }
+
+/* The quick menu with its sixth tile, Help: six tiles 10 px apart, with 8 px inside in Bold Signal (so CALENDAR and
+   Sync… fit their 76 px) and 10 px in Low Glare Pixel (whole-pixel columns, as its other menus). The Wi-Fi tile is a
+   few pixels wider, so its foot fits on one line when the Wi-Fi drops ("reconnecting": 82.5 px in Bold Signal, 77 in
+   Low Glare Pixel); Power, Help and Done, whose text is shortest, give the room. Bold Signal: 92, 92, 100, 89, 90 and
+   89 px; Low Glare Pixel: 92, 92, 99, 89, 90 and 88 px. */
+.menu:has(> .tile:nth-child(6):last-child) { gap: 1.5625cqw; }
+.menu:has(> .tile:nth-child(6):last-child) > .tile { padding-left: 1.25cqw; padding-right: 1.25cqw; }
+.scr[data-layout="signal"] .menu:has(> .tile:nth-child(6):last-child) { padding: 3cqw 2.96875cqw; grid-template-columns: 14.375cqw 14.375cqw 15.625cqw 13.90625cqw 14.0625cqw 13.90625cqw; }
+.scr[data-layout="pixel"] .menu:has(> .tile:nth-child(6):last-child) { grid-template-columns: 14.375cqw 14.375cqw 15.46875cqw 13.90625cqw 14.0625cqw 13.75cqw; }
+.scr[data-layout="pixel"] .menu:has(> .tile:nth-child(6):last-child) > .tile { padding-left: 1.5625cqw; padding-right: 1.5625cqw; }
+
+/* ---------- Help on the phone: the page MiniBar serves at minibar.local/help (Proposed) ----------
+   Shown in the phone panel in place of the Remote, in the page's own colors, light and dark. The drawings are the
+   tour's, on Bold Signal's tour panel. */
+.phone-head .help-link { margin-left: auto; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; text-decoration: underline; cursor: pointer; }
+.phone-head .help-link:focus-visible { outline: 2px solid var(--state); outline-offset: 2px; }
+.help-page { display: grid; gap: 14px; min-width: 0; font-size: 15px; }
+.help-page h3 { font-size: 18px; line-height: 1.25; margin: 4px 0 6px; }
+.help-page h4 { font-size: 15px; margin: 0; }
+.help-page p, .help-page li { margin: 0; color: var(--ink); }
+.help-page ul { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 3px; }
+.help-page .lead, .help-page .how { color: var(--muted); }
+.hp-top { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 16px; background: #1D3557; color: #fff; }
+.hp-top .tomato { width: 48px; height: 48px; flex: none; }
+.hp-top b { font-size: 21px; line-height: 1.15; display: block; }
+.hp-top small { display: block; margin-top: 4px; font-size: 13px; color: #DFE5EA; }
+.hp-nav { display: flex; flex-wrap: wrap; gap: 6px; }
+.hp-nav a { font-size: 13px; padding: 3px 10px; border-radius: 99px; border: 1px solid var(--line); color: var(--ink); text-decoration: none; white-space: nowrap; }
+.hp-nav a:focus-visible { outline: 2px solid var(--state); outline-offset: 2px; }
+.hp-ctl { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px; border-radius: 14px; border: 1px solid var(--line); }
+.hp-ctl svg { width: 72px; height: 72px; display: block; border-radius: 8px; }
+.hp-box { padding: 10px 12px; border-radius: 14px; border: 1px solid var(--line); }
+.hp-tiles { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0; }
+.hp-tiles span { font-size: 13px; padding: 2px 8px; border-radius: 7px; border: 1px solid var(--line); }
+.hp-tiles span.done { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.help-page details { padding: 8px 12px; border-radius: 12px; border: 1px solid var(--line); }
+.help-page summary { font-weight: 600; cursor: pointer; }
+.help-page details p { margin-top: 6px; }
+.help-page code { font-family: var(--f-mono); font-size: 12.5px; overflow-wrap: anywhere; }
+/* The Remote's line while the bar shows its tour (criteria F, 46). */
+.tour-note { margin: 0 0 8px; }
+
 @media (prefers-reduced-motion: reduce) {
   .device, .lcd, .bar i { transition: none; }
   .marquee.scroll .word { animation: none; padding-left: 0; }
@@ -1210,11 +1278,11 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
         <div class="toast" id="toast" hidden></div>
         <div class="hold" id="holdOv" hidden><span id="holdTitle">Keep holding</span><div class="track"><i></i></div><small id="holdSub">to power off</small></div>
       </div>
-      <button class="hwbtn boot" id="btnBoot" aria-label="BOOT button: next status"></button>
-      <button class="hwbtn pwr" id="btnPwr" aria-label="PWR button: press for screen on or off, hold 3 seconds to power off"></button>
+      <button class="hwbtn boot" id="btnBoot" aria-label="BOOT button, on top: next status"></button>
+      <button class="hwbtn pwr" id="btnPwr" aria-label="PWR button, on top: press for screen on or off, hold 3 seconds to power off"></button>
     </div>
     <div class="caption">
-      <span id="hint">Tap: next status · Swipe: back or forward · Hold: quick menu · Side buttons: BOOT and PWR</span>
+      <span id="hint">Tap: next status · Swipe: back or forward · Hold: quick menu · Buttons on top: BOOT and PWR</span>
       <span class="gesture-log" id="log" aria-live="polite">Ready</span>
     </div>
   </section>
@@ -1223,7 +1291,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     <div class="style-head">
       <div class="eyebrow">Mock-up only · not on the device</div>
       <h2 id="simTitle">Simulate · mock-up only</h2>
-      <p>These buttons stand in for your calendar and the Mac app, so you can watch automatic status take over and hand back, and try pairing. They send what the real calendar and Mac would send; the switches on the Remote still decide what the bar does with it.</p>
+      <p>These buttons stand in for your calendar and the Mac app, so you can watch automatic status take over and hand back, and try pairing. They send what the real calendar and Mac would send; the switches on the Remote still decide what the bar does with it. The last two boxes stand in for a phone's camera and the office Wi-Fi, and play the bar's sounds.</p>
     </div>
     <div class="sim-grid">
       <div class="sim-box" role="group" aria-labelledby="simCalTitle">
@@ -1292,6 +1360,29 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
         <div class="row"><button class="btn ghost" id="simFill" type="button">Fill to 10 devices</button></div>
         <p class="note-small" style="margin:0">Mac app asks to pair stands in for Pair Over Wi-Fi in the Mac app: the bar shows a code, and you type it here, as you would on the Mac. Plug in over USB sets Link to USB, and a Mac that isn't paired yet pairs at once, with no code. A code lasts 2 minutes and allows 3 tries, and holds one of the bar's 10 places until it ends; Speed (the same as the Remote's Demo speed) runs it 60 times faster. After two failed pairings in a row, the bar waits 30 seconds before it shows another code, then 1, 2, 4 minutes. Phone switches the Remote between paired and its pairing prompt, without codes or toasts.</p>
       </div>
+      <div class="sim-box" role="group" aria-labelledby="simHelpTitle">
+        <span class="field-label" id="simHelpTitle">Help and Wi-Fi</span>
+        <div class="row">
+          <button class="btn" id="simScan" type="button">Scan the More help code</button>
+          <button class="btn ghost" id="simTourReset" type="button">Forget "tour seen"</button>
+        </div>
+        <div class="row">
+          <button class="btn ghost" id="simWifiDrop" type="button">Wi-Fi drops</button>
+          <button class="btn ghost" id="simWifiBack" type="button">Wi-Fi is back</button>
+        </div>
+        <p class="note-small" style="margin:0">Scan the More help code stands in for pointing the phone at the tour's last card: the phone panel opens the help page the code leads to. Forget "tour seen" makes the bar forget it has shown its tour, so it shows it once more after its next start-up (Restart, or power off and on), as a bar that gets the tour in a firmware update does; First-time Wi-Fi setup forgets it too, and then the tour shows when setup ends. The bar remembers it in this browser. Wi-Fi drops cuts the bar off the office Wi-Fi until Wi-Fi is back: it keeps following its saved calendar, and the Remote can't reach it meanwhile.</p>
+      </div>
+      <div class="sim-box" role="group" aria-labelledby="simSoundTitle">
+        <span class="field-label" id="simSoundTitle">Sounds</span>
+        <div class="row">
+          <button class="btn ghost" type="button" data-sound="tap">Tap click</button>
+          <button class="btn ghost" type="button" data-sound="hold">Hold click</button>
+          <button class="btn ghost" type="button" data-sound="soft">Tick (Soft)</button>
+          <button class="btn ghost" type="button" data-sound="medium">Tick (Medium)</button>
+          <button class="btn ghost" type="button" data-sound="chime">Chime</button>
+        </div>
+        <p class="note-small" style="margin:0">Hear the bar's sounds side by side, each once at its own level, whatever the settings say. Your computer's speaker isn't the bar's, so compare them with each other, not with the real thing. The bar aims to click within 30 ms of your finger lifting; your browser adds its own delay here.</p>
+      </div>
     </div>
     <p class="sim-state" id="simState" aria-live="polite"></p>
   </section>
@@ -1345,8 +1436,10 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
       <div class="phone-head">
         <strong id="phoneTitle">Remote</strong>
         <span id="phoneAddr">MiniBar 2A1C · minibar.local</span>
+        <button class="help-link" id="helpLink" type="button">Help</button>
       </div>
       <div class="offnote" id="offNote" hidden></div>
+      <div class="setup-msg" id="helpNote" role="status" hidden></div>
       <span class="sr-only" id="phoneSay" aria-live="polite"></span>
 
       <!-- Until this phone is paired, this prompt replaces the Remote's controls (the bar answers 401). -->
@@ -1358,7 +1451,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
             <p id="pairIntro">MiniBar 2A1C shows a 6-digit code on its screen. Type it here, and this phone becomes its Remote.</p>
             <div><button class="btn" id="pairAsk" type="button" aria-describedby="pairAskErr">Pair this phone</button></div>
             <p class="field-err" id="pairAskErr" hidden></p>
-            <p class="note-small">Only someone who can see the bar can pair, so nobody else on the office Wi-Fi can change your status.</p>
+            <p class="note-small">Only someone who can see the bar can pair, so nobody else on the office Wi-Fi can change your status. <button class="link-btn" id="pairHelp" type="button" style="padding:0;border:0;background:none;cursor:pointer">How pairing works</button></p>
           </div>
           <div class="pair-step" id="pairCode" hidden>
             <label class="pair-label" for="pairInput">Type the code shown on your MiniBar.</label>
@@ -1400,10 +1493,69 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
         <p class="note-small">In the mock-up, any password of 8 or more characters works and shorter ones fail, so you can see the error screen.</p>
       </div>
 
+      <!-- The help page MiniBar serves at minibar.local/help (Proposed): on the office Wi-Fi, open without pairing, since
+           it controls nothing and shows nothing private. Nothing on it comes from outside the bar, and no link leaves it.
+           The tour's drawings are filled in by the script. -->
+      <div class="help-page" id="helpView" hidden>
+        <div class="row"><button class="btn ghost sm" id="helpBack" type="button">Back to the Remote</button></div>
+        <div class="hp-top"><span id="hpTomato"></span><div><b>MiniBar help</b><small>How to use your status bar. This page comes from your MiniBar, so it works without the internet.</small></div></div>
+        <nav class="hp-nav" aria-label="On this page"><a href="#hp-controls">Controls</a><a href="#hp-buttons">Buttons</a><a href="#hp-menus">Menus</a><a href="#hp-good">Good to know</a><a href="#hp-trouble">If something's off</a></nav>
+        <section id="hp-controls">
+          <h3>The controls</h3>
+          <p class="lead">Each control has one main job. The lists say where it does something else. For a 1-minute tour on the bar itself, hold the screen, then tap <b>Help</b>.</p>
+        </section>
+        <div class="hp-ctl"><span data-hp-draw="tap"></span><div><h4>Tap</h4><p class="how">Touch and lift</p><p>Shows your next status.</p><ul><li>On the Pomodoro: starts or pauses the timer.</li><li>On a call or meeting: back to your own status. The call or meeting is set aside until it ends.</li><li>On a menu: runs the tile you tap. A tap off the tiles closes it.</li></ul></div></div>
+        <div class="hp-ctl"><span data-hp-draw="swipe"></span><div><h4>Swipe</h4><p class="how">Slide a finger across the screen</p><p>Left for the next status, right for the one before.</p><ul><li>Left and right follow the screen, even after a flip.</li><li>On a call or meeting: counts from your own status, and sets the call or meeting aside.</li><li>On a menu: does nothing, so it can't hit a tile by mistake.</li></ul></div></div>
+        <div class="hp-ctl"><span data-hp-draw="hold"></span><div><h4>Touch and hold</h4><p class="how">Keep a finger down for half a second</p><p>Opens the menu for the screen you're on.</p><ul><li>On a status, call or meeting: the quick menu.</li><li>On the Pomodoro: the timer menu.</li><li>On Wi-Fi setup: Skip, or Start over.</li></ul></div></div>
+        <div class="hp-ctl"><span data-hp-draw="flip"></span><div><h4>Flip</h4><p class="how">Turn the bar over</p><p>Starts the Pomodoro, or whatever it's waiting for, and quiets any alarm. The screen turns the right way up.</p><ul><li>A running timer is left alone.</li><li>On a call or meeting: shows the Pomodoro, which sets the call or meeting aside.</li></ul></div></div>
+        <div class="hp-ctl"><span data-hp-draw="boot"></span><div><h4>BOOT button</h4><p class="how">Press the BOOT button</p><p>Shows your next status, without looking.</p><ul><li>On the Pomodoro too: next status (a tap starts or pauses instead).</li><li>On a call or meeting: back to your own status, like a tap.</li><li>On a menu: closes it and shows your next status.</li></ul></div></div>
+        <div class="hp-ctl"><span data-hp-draw="pwr"></span><div><h4>PWR button, press</h4><p class="how">Press and let go</p><p>Turns the screen off, or back on.</p><ul><li>Timers, calls and meetings carry on while it's dark.</li><li>A dark screen also wakes on a touch or BOOT.</li></ul></div></div>
+        <div class="hp-ctl"><span data-hp-draw="pwrhold"></span><div><h4>PWR button, hold</h4><p class="how">Keep it down for 3 seconds</p><p>Powers MiniBar off. A PWR press starts it again.</p><ul><li><b>Keep holding</b> shows on the screen, and touches and BOOT wait. Let go early and nothing changes.</li><li>A running Pomodoro stops. Today's tomatoes, your settings and paired devices stay.</li></ul></div></div>
+        <div class="hp-box"><h4>On any screen</h4><ul><li><b>Ringing alarm:</b> any tap, swipe, hold, button or flip answers it. BOOT and PWR only quiet it.</li><li><b>Dark screen:</b> the first tap or button press only wakes it.</li><li><b>A 6-digit code on the bar:</b> a phone or Mac asked to pair. Any touch or button cancels it; a flip cancels it, then flips.</li><li><b>Wi-Fi setup:</b> a tap or BOOT moves on where the screen says so.</li><li><b>The quick tour:</b> tap or BOOT for the next tip, swipe right to go back, hold to leave. Nothing you try in it changes your status.</li><li><b>Tap sound:</b> a soft click means the bar took your tap, swipe or tile, and a lower one that a hold opened the menu. It's quiet during calls and meetings and on a dark screen. Turn it off in the Display menu or on the Remote.</li></ul></div>
+        <section id="hp-buttons">
+          <h3>Where the buttons are</h3>
+          <p>BOOT and PWR are on the bar's top edge, BOOT on the left and PWR on the right (to be confirmed on the bar). Turned over, they're on the bottom edge. Not sure which is which? The tour's BOOT and PWR tips point at each one.</p>
+        </section>
+        <section id="hp-menus">
+          <h3>Menus</h3>
+          <p>Hold the screen to open one. Tap a tile to use it. <b>Done</b> closes the menu, and so does waiting 8 seconds.</p>
+          <h4 style="margin-top:8px">Quick menu (hold a status)</h4>
+          <div class="hp-tiles"><span>Display</span><span>Calendar</span><span>Wi-Fi</span><span>Power</span><span>Help</span><span class="done">Done</span></div>
+          <ul><li><b>Display</b> has Light, Theme and Tap sound.</li><li><b>Calendar</b> syncs now. While you've set a call or meeting aside, it says <b>Show again</b>.</li><li><b>Wi-Fi</b> shows the network, this bar's name and address, and paired devices, and sets up Wi-Fi again.</li><li><b>Power</b> has Restart and Power off.</li><li><b>Help</b> starts the quick tour.</li></ul>
+          <h4 style="margin-top:8px">Timer menu (hold the Pomodoro)</h4>
+          <div class="hp-tiles"><span>Skip</span><span>+5 min</span><span>Stop</span><span>Settings</span><span class="done">Done</span></div>
+          <ul><li><b>Stop</b> ends the run, keeps today's tomatoes and goes back to your last status.</li><li><b>Settings</b> has Auto-start, Ticking and Help. While a call or meeting is set aside, <b>Show again</b> takes its place.</li></ul>
+        </section>
+        <section id="hp-good">
+          <h3>Good to know</h3>
+          <ul>
+            <li><b>The Remote:</b> open <span id="hpHost">minibar.local</span> on a phone on the office Wi-Fi. If it doesn't open, use the IP address: hold the screen, then tap Wi-Fi to see it.</li>
+            <li id="hp-pairing"><b>Pairing:</b> the first time, the Remote asks for the 6-digit code MiniBar shows. It lasts 2 minutes and allows 3 tries, so only someone who can see the bar can pair. The Remote lists every paired device, each with Remove.</li>
+            <li><b>Calls and meetings</b> pause the Pomodoro, and the bar stays silent until they're over. A call beats a meeting; both beat your own status.</li>
+            <li><b>Wi-Fi setup again:</b> hold the screen, tap Wi-Fi, then Set up, and scan the QR code. If no page opens, turn mobile data off and open <code>http://4.3.2.1</code>. Guest networks with a sign-in page don't work.</li>
+            <li><b>Power off on USB</b> is a deep sleep. Your settings, paired devices and today's tomatoes are kept.</li>
+          </ul>
+        </section>
+        <section id="hp-trouble">
+          <h3>If something's off</h3>
+          <div style="display:grid;gap:6px">
+            <details><summary>My status changed by mistake</summary><p>Swipe right to go back one, or pick it on the Remote. A call or meeting you set aside comes back with Show again in the menu.</p></details>
+            <details><summary>The screen is upside down</summary><p>It turns the right way up within a second. If it doesn't: hold the screen, tap Power, then Restart.</p></details>
+            <details><summary>The screen is dark</summary><p>Tap it or press PWR. A dark screen keeps everything running.</p></details>
+            <details><summary>The Remote won't open</summary><p>Make sure your phone is on the office Wi-Fi, not mobile data. Some Android phones need the IP address: hold the screen, then tap Wi-Fi to see it.</p></details>
+            <details><summary>"Another device is pairing"</summary><p>Someone else's code is on the bar. Wait for it to end (2 minutes at most), then try again.</p></details>
+            <details><summary>The Calendar tile says Off</summary><p>Add your calendar's secret iCal address on the Remote, or set up Wi-Fi first.</p></details>
+            <details><summary>More than one MiniBar in the office</summary><p>Each bar has its own name, like MiniBar 2A1C. Hold the screen and tap Wi-Fi to see this bar's name and address.</p></details>
+          </div>
+        </section>
+        <p class="note-small" style="margin:0">The quick tour on the bar: hold the screen, then tap Help. <button class="link-btn" id="helpBack2" type="button" style="padding:0;border:0;background:none;cursor:pointer">Open the Remote</button> · <a href="#hp-controls">Back to top</a></p>
+      </div>
+
       <div id="remoteMain" class="setup">
       <div class="setup-msg ok" id="pairedMsg" role="status" hidden>Paired. This phone is MiniBar 2A1C's Remote now.</div>
       <div>
         <span class="field-label">Status</span>
+        <div class="setup-msg tour-note" id="tourNote" role="status" hidden></div>
         <div class="auto-banner" id="autoBanner" hidden>
           <div><b id="abTitle"></b><small id="abSub"></small></div>
           <button class="btn ghost" id="abBtn" type="button">Set aside</button>
@@ -1484,6 +1636,8 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
             </div>
           </div>
           <p class="note-small" id="themeLine">Bold Signal fills the screen with the status color. Low Glare Pixel is dark, with the color in the words and a thin edge, so it gives off less light.</p>
+          <label class="check" for="tapSound"><input type="checkbox" id="tapSound" checked aria-describedby="tapLine"> Tap sound</label>
+          <p class="note-small" id="tapLine" style="margin:0">A soft click when the bar takes your tap, swipe or hold. It's quiet during calls and meetings and while the screen is dark.</p>
         </div>
       </div>
       <div>
@@ -1569,19 +1723,21 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
       <div>
         <h2>How you'd control it</h2>
         <dl class="kv">
-          <dt>Touch</dt><dd>Tap cycles status, a swipe steps back or forward, and holding opens a quick menu with display (light and theme), calendar, Wi-Fi and power. On the Pomodoro screen, a tap starts or pauses the timer and holding opens timer options. On a call or meeting screen, a tap goes back to your own status; the call or meeting is set aside until it ends. A dark screen wakes on the first tap, and every action shows a short confirmation. On a pairing code, a tap, swipe or hold only cancels it.</dd>
+          <dt>Touch</dt><dd>Tap cycles status, a swipe steps back or forward, and holding opens a quick menu with display (light, theme and Tap sound), calendar, Wi-Fi, power and Help. Left and right are as the screen faces you, so a swipe works the same way on a bar that's turned over. On the Pomodoro screen, a tap starts or pauses the timer and holding opens timer options. On a call or meeting screen, a tap goes back to your own status; the call or meeting is set aside until it ends. A dark screen wakes on the first tap, and every action shows a short confirmation. On a pairing code, a tap, swipe or hold only cancels it. While Keep holding or Powering off shows, touches are ignored. With Tap sound on (the default), a soft click confirms each tap, swipe and menu tile the bar acts on, and a lower one tells you a hold has opened the menu.</dd>
+          <dt>Help</dt><dd>Proposed, from the user's request of 2026-10-05. The bar has a quick tour of its controls, seven tips in a row: Tap, Swipe and BOOT, which you try for real and which only say what they would have done ("Practice only: Busy would become In a meeting"), so nothing changes; Touch and hold, Flip and PWR, which say what they do and end the tour if you try them; and More help, with a QR code for the help page the bar serves at minibar.local/help (at its IP address, so any phone on the office Wi-Fi can open it). A tap, BOOT or a swipe left goes on, a swipe right goes back, and a hold, flip or PWR leaves; it closes on its own after 30 seconds without a touch. It shows by itself once, when a new bar's first setup ends; after that it's under Help in the quick menu, or Settings in the timer menu. It never fills the screen with a status color, makes no sound of its own, and changes nothing: your status, the timer, a call or meeting you set aside and every setting carry on underneath. The Remote says while it's showing, and has a Help link to the same page on every view. Try it with the Simulate panel's Help and Wi-Fi box.</dd>
+          <dt>Tap sound</dt><dd>Proposed (the setting's place, beside Theme, decided by the user on 2026-10-05). The screen can't buzz under your finger, so a short, quiet click confirms a touch the bar acted on: a crisp click for a tap, a swipe or a menu tile, when your finger lifts, and a lower one at the moment a hold opens the menu, while your finger is still down. Touches the bar ignores stay silent, so silence means it didn't count. It's never louder than Soft ticking, and it's silent during a call or calendar meeting (even one you set aside), on a dark screen (the touch that wakes it), while starting up or powering off, and for BOOT, PWR, a flip and anything done from the Remote. It's on by default; turn it off in the Display menu (hold, then Display, then Tap sound) or on the Remote's Display section. In the API it's <code>sound.tap_sound</code>. Hear it beside the ticks and the chime with the Simulate panel's Sounds box.</dd>
           <dt>Themes</dt><dd>Proposed, from the user's request of 2026-10-05. The bar has two looks. Bold Signal, the default, fills the screen with the status color behind big white capitals, the strongest signal across the room. Low Glare Pixel, the alternate, is the Low Glare layout set entirely in the Handjet pixel font: a near-black screen with the status in a colored pixel headline, a thin edge bar and a faint side tint, so it gives off far less light toward the people around you and the monitors nearby. Switch on the bar (hold the screen, then Display, then Theme; the Display menu also has Light) or on the Remote (Display, then Theme). Only the look changes, at once and on whatever screen is up, and a toast confirms it: "Theme · Low Glare Pixel". While the screen isn't free (dark, starting up, in Wi-Fi setup, showing a pairing code, or while PWR is held) the toast waits, as any confirmation from the Remote does; a PWR hold that powers the bar off drops it, and the bar starts in the new theme. Every screen says the same words in both. The bar keeps the theme through Restart and power off and on, and Wi-Fi setup and Forget all leave it alone. In the API it's <code>display.theme</code>.</dd>
           <dt>Pomodoro</dt><dd>25-minute focus sessions, 5-minute breaks and a 15-minute break after every fourth session, all adjustable. Focus shows in orange so people know not to interrupt; breaks turn the bar teal or blue to say it's a good moment. Each finished session earns a red tomato, upcoming sessions show as faded tomatoes, and the one in progress ripens like a real tomato as you focus: color breaks at the bottom and spreads up to the stem, through yellow and orange to red. The timer keeps running when you switch to another status, with a small countdown in the corner, and the bar jumps back to it when a phase ends. A call or calendar meeting pauses it, and the bar makes no sound while one is on. A ringing alarm goes quiet and chimes once when it's over. Ticking during focus is optional and off by default: one gentle tick a second, Soft or Medium, set on the Remote or under Settings in the timer menu. It's silent while the timer is paused, on breaks, while the alarm rings, during calls and meetings, while the screen is dark, and when the bar is powered off.</dd>
-          <dt>Side buttons</dt><dd>BOOT jumps to the next status without looking; on a call or meeting screen it goes back to your own status, like a tap. A press of PWR turns the screen off and on, holding it for 3 seconds powers the bar off, and a press turns it back on. If the screen is dark or an alarm is ringing, the first press of either button only wakes the screen or silences the alarm. On a pairing code, BOOT cancels it, and a PWR press cancels it and turns the screen off.</dd>
+          <dt>BOOT and PWR</dt><dd>Both buttons sit on the bar's top long edge, slightly inset, so the bar can rest on that edge turned over without pressing them (turned over, they're on the bottom edge). BOOT jumps to the next status without looking; on a call or meeting screen it goes back to your own status, like a tap. A press of PWR turns the screen off and on, holding it for 3 seconds powers the bar off, and a press turns it back on. If the screen is dark or an alarm is ringing, the first press of either button only wakes the screen or silences the alarm. On a pairing code, BOOT cancels it, and a PWR press cancels it and turns the screen off. While Keep holding or Powering off shows, BOOT does nothing. Neither button makes the Tap sound click; they click on their own.</dd>
           <dt>Power</dt><dd>On battery, the software is what keeps the bar switched on, so it also handles switching off: hold PWR for 3 seconds, or use Power in the quick menu, which also has Restart. A watchdog restarts the bar if the software ever freezes, so it can't get stuck on, and it shuts itself down before the battery runs flat. On USB the bar always has power, so powering off puts it into a deep sleep until you press PWR. While it's off, the Remote page can't reach it and says so.</dd>
-          <dt>Wi-Fi setup</dt><dd>On first start the bar shows a QR code. Scanning it joins your phone to the bar's own network, where a page lets you choose the office Wi-Fi, enter the password and paste your calendar's secret iCal address (optional). You can also skip Wi-Fi; statuses and the Pomodoro work without it, but the calendar and the Remote don't. Once it's on the Wi-Fi, the bar shows its name and address (MiniBar 2A1C at minibar.local) on the Connected screen and in the Wi-Fi menu. A second MiniBar on the same network takes the next free address (minibar-2.local) and shows that instead, so you can tell them apart. The default name, MiniBar plus the last four characters of the bar's ID, is proposed.</dd>
-          <dt>Phone remote</dt><dd>The device serves a small page at minibar.local on your Wi-Fi, like the Remote panel on this page, with the bar's name at the top. The first time, it asks you to pair: MiniBar shows a code, and you type it on the phone. Its Display section switches the bar's theme, Bold Signal or Low Glare Pixel, at once. Its Automatic status section has a switch for each source, holds your calendar's secret address, and shows what the bar is showing and why. Paired devices lists every phone, Mac and script that can control the bar, each with Remove. A message with characters the bar can't draw, such as an emoji, says which ones before you send it. Characters nobody can see (an odd-width space, a zero-width space, a direction mark) are tidied away rather than refused, and accents typed as a separate mark are joined to their letter.</dd>
+          <dt>Wi-Fi setup</dt><dd>On first start the bar shows a QR code. Scanning it joins your phone to the bar's own network, where a page lets you choose the office Wi-Fi, enter the password and paste your calendar's secret iCal address (optional). You can also skip Wi-Fi; statuses and the Pomodoro work without it, but the calendar and the Remote don't. Once it's on the Wi-Fi, the bar shows its name and address (MiniBar 2A1C at minibar.local) on the Connected screen and in the Wi-Fi menu. A second MiniBar on the same network takes the next free address (minibar-2.local) and shows that instead, so you can tell them apart. The default name, MiniBar plus the last four characters of the bar's ID, is proposed. When a new bar's first setup ends, with Connected or with Skip, its quick tour of the controls follows once. If the office Wi-Fi drops later, the bar keeps following its saved calendar and reconnects on its own; the Calendar tile says Offline meanwhile.</dd>
+          <dt>Phone remote</dt><dd>The device serves a small page at minibar.local on your Wi-Fi, like the Remote panel on this page, with the bar's name at the top. The first time, it asks you to pair: MiniBar shows a code, and you type it on the phone. Its Display section switches the bar's theme, Bold Signal or Low Glare Pixel, at once, and turns Tap sound on or off. A change made on the Remote while the bar's screen is dark happens underneath and shows, with its confirmation, when the screen is woken. The Help link at the top opens the help page the bar serves, which needs no pairing. Its Automatic status section has a switch for each source, holds your calendar's secret address, and shows what the bar is showing and why. Paired devices lists every phone, Mac and script that can control the bar, each with Remove. A message with characters the bar can't draw, such as an emoji, says which ones before you send it. Characters nobody can see (an odd-width space, a zero-width space, a direction mark) are tidied away rather than refused, and accents typed as a separate mark are joined to their letter.</dd>
           <dt>Calendar</dt><dd>Paste your calendar's secret iCal address on the Remote, or during Wi-Fi setup (Google Calendar › Settings › your calendar › Integrate calendar › "Secret address in iCal format"). Meetings then show as In a meeting on their own and fill in Next up. Once saved, the address is never shown again; the Remote shows a short masked form with Replace and Remove. Show meeting titles is off by default, so the bar shows times only, and events marked Private never show a title. The bar syncs about every 10 minutes, or when you choose Sync now, and switches at each meeting's exact start and end time. Skipping Wi-Fi turns the calendar off; if Wi-Fi drops, the bar follows its last synced copy.</dd>
           <dt>Automatic status</dt><dd>Two sources, each with its own switch on the Remote: meetings from your calendar, and calls from your Mac. On a call wins over In a meeting, which wins over your own status. A tap, swipe, BOOT, flip or a choice on the Remote sets the call or meeting aside until it ends, and a small headset or calendar glyph stays in the corner. Show again, in the quick menu, the timer menu or on the Remote, brings it back, and the next call or meeting always takes over again. A call or meeting that takes over pauses the Pomodoro, and the bar makes no sound while one is on.</dd>
           <dt>Mac app</dt><dd>A small menu-bar app sets On a call whenever your Mac's mic or camera is in use, over USB when the bar is powered from the Mac and otherwise over Wi-Fi. Only whether you're on a call, and optionally the app's name, leaves the Mac. To use Wi-Fi it pairs once: plugged into the Mac with USB it pairs on its own, or in its menu you choose Connect…, then Pair Over Wi-Fi, and type the code the bar shows. <a href="#api">How the Mac app talks to MiniBar</a></dd>
           <dt>Local API</dt><dd>The bar answers on your Wi-Fi at minibar.local, under <code>/api/v1/</code>: <code>POST /api/v1/call</code> sets or ends On a call, and <code>GET /api/v1/status</code> says what the bar is showing and which sources are on. With pairing, every Wi-Fi request carries the token the device got when it paired. The same JSON works over USB serial, one line at a time marked <code>@tb</code>, with no token. It never returns the calendar address. <code>docs/api.md</code> is the full contract.</dd>
           <dt>Pairing</dt><dd>Approved on 2026-10-04 (details in <code>docs/api.md</code> section 4). So that nobody else on the office Wi-Fi can change your bar, a phone, Mac or script pairs once with a 6-digit code that MiniBar shows only on its own screen: the code lasts 2 minutes and allows 3 tries, only the device that asked can use it, and only someone who can see the bar can read it. One code shows at a time, and Cancel on the device that asked takes it off the bar at once. After two failed pairings in a row (timed out, canceled or out of tries), the bar waits 30 seconds before it shows another, then 1, 2, 4 minutes and so on, up to an hour. A bar keeps up to 10 devices, and a code on its screen holds one of those places until it ends, so the code it shows always works. Plugged in with USB, your Mac pairs on its own, with no code. The Remote lists paired devices with Remove; the Wi-Fi menu's Devices tile forgets them all at once, and with nothing paired it says where to pair (minibar.local). Try it with Pairing in the Simulate panel.</dd>
-          <dt>Flip</dt><dd>Turning the bar over always does three things: the layout turns the right way up, any alarm goes quiet, and the Pomodoro starts whatever it's waiting for (the next session or break, or a paused timer). A timer that's already running is left alone, so a flip never skips anything. On a call or meeting screen it also shows the Pomodoro, which sets the call or meeting aside. On a pairing code, it cancels pairing first, then does the same three things.</dd>
+          <dt>Flip</dt><dd>Turning the bar over always does three things: the layout turns the right way up, any alarm goes quiet, and the Pomodoro starts whatever it's waiting for (the next session or break, or a paused timer). A timer that's already running is left alone, so a flip never skips anything. On a call or meeting screen it also shows the Pomodoro, which sets the call or meeting aside. On a pairing code, or the quick tour, it ends that first, then does the same three things. While the bar is starting up or powering off, the layout still turns with it, and its other jobs wait until it's on.</dd>
           <dt>Alarm</dt><dd>When a session or break ends, the bar flashes and chimes every few seconds until you tap, press a button or flip it, and gives up after a minute. With auto-start on, it chimes once and carries on. During a call or meeting it flashes without the chime. While a pairing code shows, the alarm waits, and it rings once when pairing ends. The mock-up plays the chime in your browser.</dd>
         </dl>
       </div>
@@ -1603,12 +1759,13 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
 
   <section class="flows" aria-labelledby="flowsTitle">
     <h2 id="flowsTitle">How the controls work</h2>
-    <p>Every control does something in every state, and every screen has a way back. The table covers gestures and buttons, in both themes alike; the diagrams show the Pomodoro cycle, the menus (with the Display menu, where the theme is switched), power, Wi-Fi setup, how automatic status decides between a call, a meeting and your own status, and pairing. In the Pairing code column, any control cancels the code, a flip then does its usual job, and a code that arrives on a dark screen wakes it.</p>
+    <p>Every control does something in every state, and every screen has a way back. The table covers gestures and buttons, in both themes alike; the diagrams show the Pomodoro cycle, the menus (with the Display menu, where the theme and Tap sound are switched, and Help), power, Wi-Fi setup and the quick tour after it, how automatic status decides between a call, a meeting and your own status, and pairing. In the Pairing code column, any control cancels the code, a flip then does its usual job, and a code that arrives on a dark screen wakes it. In the Quick tour column, tap, swipe and BOOT move through the tips, and hold, flip and PWR leave the tour and do their usual job. Left and right are as the screen faces you, turned over or not.</p>
+    <p>With Tap sound on (the default), each tap, swipe and menu tile that acts makes a soft click, and a hold that opens a menu a lower one. Nothing clicks on a dark screen, during a call or meeting, while starting up or powering off, or when a touch is ignored; BOOT, PWR and a flip never click. With Tap sound off, every outcome in the table is the same, only silent.</p>
     <p class="scroll-hint">Scroll the table sideways to see every column →</p>
     <div class="table-wrap">
       <table class="controls">
-        <thead><tr><th scope="col">Control</th><th scope="col">Status screen</th><th scope="col">Pomodoro screen</th><th scope="col">Call or meeting (automatic)</th><th scope="col">Menu open<span class="th-note">quick, Display, Wi-Fi, Power or timer menu; closes on its own after 8 s</span></th><th scope="col">Pairing code<span class="th-note">also ends on its own when paired, after 2 min, after 3 wrong codes, or when the device that asked cancels</span></th><th scope="col">Alarm ringing<span class="th-note">no chime during a call or meeting, flash only</span></th><th scope="col">Screen dark</th><th scope="col">Powered off</th></tr></thead>
-        <tbody><tr><th scope="row">Tap</th><td>Next status</td><td>Start or pause</td><td>Back to your status (sets it aside)</td><td>Runs the tile (Display opens Light, Theme and Back); off the tiles, closes the menu</td><td>Cancels pairing</td><td>Silences it (on the Pomodoro screen, also starts the next phase)</td><td>Wakes the screen</td><td class="none">Nothing</td></tr><tr><th scope="row">Swipe</th><td>Previous or next status</td><td>Changes status</td><td>Previous or next status, counted from yours (sets it aside)</td><td>Ignored, so it can't run a tile</td><td>Cancels pairing (the status stays)</td><td>Silences it and changes status</td><td>Wakes the screen</td><td class="none">Nothing</td></tr><tr><th scope="row">Hold</th><td>Quick menu: Display, Calendar, Wi-Fi, Power, Done</td><td>Timer menu (Show again replaces Settings while a call or meeting is set aside)</td><td>Quick menu, even when your status is the Pomodoro</td><td>Opens the screen's quick or timer menu again, from the start</td><td>Cancels pairing (no menu opens)</td><td>Silences it and opens the menu</td><td>Wakes the screen</td><td class="none">Nothing</td></tr><tr><th scope="row">Flip</th><td>Turns the layout; starts what the Pomodoro is waiting for</td><td>Same; a running timer is left alone</td><td>Turns the layout; starts or resumes the Pomodoro and shows it (sets it aside)</td><td>Closes the menu, then flips as usual</td><td>Cancels pairing, then flips as usual: turns the layout and starts what the Pomodoro is waiting for</td><td>Silences it and starts the next phase</td><td>Wakes the screen, then same</td><td class="none">Nothing</td></tr><tr><th scope="row">BOOT</th><td>Next status</td><td>Next status</td><td>Back to your status (sets it aside)</td><td>Closes the menu and does what it does on the screen underneath</td><td>Cancels pairing</td><td>Silences it</td><td>Wakes the screen</td><td class="none">Nothing</td></tr><tr><th scope="row">PWR press</th><td>Screen off</td><td>Screen off</td><td>Screen off</td><td>Closes the menu, screen off</td><td>Cancels pairing, screen off</td><td>Silences it</td><td>Screen on</td><td>Starts up</td></tr><tr><th scope="row">PWR hold 3 s</th><td>Power off</td><td>Power off</td><td>Power off</td><td>Power off</td><td>Power off, which ends pairing (let go early and the code is back)</td><td>Power off</td><td>Power off</td><td class="none">—</td></tr></tbody>
+        <thead><tr><th scope="col">Control</th><th scope="col">Status screen</th><th scope="col">Pomodoro screen</th><th scope="col">Call or meeting (automatic)</th><th scope="col">Menu open<span class="th-note">quick, Display, Wi-Fi, Power, timer or Settings menu; closes on its own after 8 s</span></th><th scope="col">Pairing code<span class="th-note">also ends on its own when paired, after 2 min, after 3 wrong codes, or when the device that asked cancels</span></th><th scope="col">Quick tour<span class="th-note">7 tips, once after first setup or from Help; nothing real changes in it; closes on its own after 30 s untouched</span></th><th scope="col">Alarm ringing<span class="th-note">no chime during a call or meeting, flash only</span></th><th scope="col">Screen dark</th><th scope="col">Starting up or powering off<span class="th-note">and Keep holding, while PWR is held down</span></th><th scope="col">Powered off</th></tr></thead>
+        <tbody><tr><th scope="row">Tap</th><td>Next status</td><td>Start or pause</td><td>Back to your status (sets it aside)</td><td>Runs the tile (Display opens Light, Theme, Tap sound and Back; Help starts the quick tour); off the tiles, closes the menu</td><td>Cancels pairing</td><td>Next tip; on the Tap tip, the first tap is practice: it says what it would do; on More help, finishes the tour</td><td>Silences it (on the Pomodoro screen, also starts the next phase)</td><td>Wakes the screen</td><td>Ignored</td><td class="none">Nothing</td></tr><tr><th scope="row">Swipe</th><td>Previous or next status</td><td>Changes status</td><td>Previous or next status, counted from yours (sets it aside)</td><td>Ignored, so it can't run a tile</td><td>Cancels pairing (the status stays)</td><td>Left: next tip, right: back; on the Swipe tip, the first swipe is practice; right on the first tip stays there</td><td>Silences it and changes status</td><td>Wakes the screen</td><td>Ignored</td><td class="none">Nothing</td></tr><tr><th scope="row">Hold</th><td>Quick menu: Display, Calendar, Wi-Fi, Power, Help, Done</td><td>Timer menu (Show again replaces Settings while a call or meeting is set aside)</td><td>Quick menu, even when your status is the Pomodoro</td><td>Opens the screen's quick or timer menu again, from the start</td><td>Cancels pairing (no menu opens)</td><td>Closes the tour and opens the menu for the screen underneath</td><td>Silences it and opens the menu</td><td>Wakes the screen</td><td>Ignored, and a hold that began before opens no menu</td><td class="none">Nothing</td></tr><tr><th scope="row">Flip</th><td>Turns the layout; starts what the Pomodoro is waiting for</td><td>Same; a running timer is left alone</td><td>Turns the layout; starts or resumes the Pomodoro and shows it (sets it aside)</td><td>Closes the menu, then flips as usual</td><td>Cancels pairing, then flips as usual: turns the layout and starts what the Pomodoro is waiting for</td><td>Closes the tour, then flips as usual ("Tour closed · Focus started")</td><td>Silences it and starts the next phase</td><td>Wakes the screen, then same</td><td>Turns the layout only</td><td class="none">Nothing</td></tr><tr><th scope="row">BOOT</th><td>Next status</td><td>Next status</td><td>Back to your status (sets it aside)</td><td>Closes the menu and does what it does on the screen underneath</td><td>Cancels pairing</td><td>Next tip; on the BOOT tip, the first press is practice</td><td>Silences it</td><td>Wakes the screen</td><td>Ignored</td><td class="none">Nothing</td></tr><tr><th scope="row">PWR press</th><td>Screen off</td><td>Screen off</td><td>Screen off</td><td>Closes the menu, screen off</td><td>Cancels pairing, screen off</td><td>Closes the tour, screen off; waking shows the screen underneath</td><td>Silences it</td><td>Screen on</td><td>Ignored; once it's off, a press starts it</td><td>Starts up</td></tr><tr><th scope="row">PWR hold 3 s</th><td>Power off</td><td>Power off</td><td>Power off</td><td>Power off</td><td>Power off, which ends pairing (let go early and the code is back)</td><td>Power off, which ends the tour (let go early and it stays on the same tip)</td><td>Power off</td><td>Power off</td><td>Ignored</td><td class="none">—</td></tr></tbody>
       </table>
     </div>
     <figure class="fig">
@@ -1618,18 +1775,23 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     </figure>
     <figure class="fig">
       <p class="scroll-hint">Scroll sideways to see the whole diagram →</p>
-      <div class="fig-scroll"><svg viewBox="0 0 990 500" role="img" aria-label="Menu tree: holding a status screen, or a call or meeting screen, opens Display, Calendar, Wi-Fi, Power and Done; Display opens Light, Theme and Back, where Theme switches between Bold Signal and Low Glare Pixel and Back returns to the quick menu; the Calendar tile reads Sync, Off or Show again; Wi-Fi and Power open sub-menus; the Wi-Fi menu shows the network, this bar's name and address, and Devices, which opens Forget devices (Paired, Forget all, Keep) when anything is paired; holding the Pomodoro screen opens Skip, plus 5 minutes, Stop, Settings and Done; Settings opens Auto-start, Ticking and Back, which returns to the timer menu; while a call or meeting is set aside, Show again replaces Settings."><defs><marker id="ah-menu" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z"/></marker></defs><rect class="dg-box " x="20" y="40" width="180" height="40" rx="8"/><text class="dg-t" x="110.0" y="64.5" text-anchor="middle">Hold on a status screen</text><rect class="dg-group" x="222" y="32" width="626" height="56" rx="12"/><text class="dg-g" x="230" y="25">QUICK MENU</text><rect class="dg-box " x="230" y="40" width="110" height="40" rx="8"/><text class="dg-t" x="285.0" y="64.5" text-anchor="middle">Display</text><rect class="dg-box " x="355" y="40" width="110" height="40" rx="8"/><text class="dg-t" x="410.0" y="64.5" text-anchor="middle">Calendar</text><rect class="dg-box " x="480" y="40" width="110" height="40" rx="8"/><text class="dg-t" x="535.0" y="64.5" text-anchor="middle">Wi-Fi</text><rect class="dg-box " x="605" y="40" width="110" height="40" rx="8"/><text class="dg-t" x="660.0" y="64.5" text-anchor="middle">Power</text><rect class="dg-box done" x="730" y="40" width="110" height="40" rx="8"/><text class="dg-t inv" x="785.0" y="64.5" text-anchor="middle">Done</text><path class="dg-e" d="M200 60 L220 60" marker-end="url(#ah-menu)"/><text class="dg-l" x="410" y="104" text-anchor="middle">Sync, Off or Show again</text><rect class="dg-group" x="20" y="132" width="194" height="56" rx="12"/><text class="dg-g" x="28" y="125">DISPLAY</text><rect class="dg-box " x="28" y="140" width="52" height="40" rx="8"/><text class="dg-t" x="54.0" y="164.5" text-anchor="middle">Light</text><rect class="dg-box " x="86" y="140" width="62" height="40" rx="8"/><text class="dg-t" x="117.0" y="164.5" text-anchor="middle">Theme</text><rect class="dg-box done" x="154" y="140" width="52" height="40" rx="8"/><text class="dg-t inv" x="180.0" y="164.5" text-anchor="middle">Back</text><path class="dg-e" d="M285 80 L285 106 L117 106 L117 130" marker-end="url(#ah-menu)"/><text class="dg-l" x="223" y="100" text-anchor="end">tap</text><text class="dg-l" x="117" y="206" text-anchor="middle">Bold Signal or Low Glare Pixel</text><text class="dg-l" x="117" y="222" text-anchor="middle">Back: to the quick menu</text><rect class="dg-group" x="222" y="132" width="396" height="56" rx="12"/><text class="dg-g" x="230" y="125">WI-FI</text><rect class="dg-box info" x="230" y="140" width="105" height="40" rx="8"/><text class="dg-t" x="282.5" y="164.5" text-anchor="middle">Network</text><rect class="dg-box " x="345" y="140" width="80" height="40" rx="8"/><text class="dg-t" x="385.0" y="164.5" text-anchor="middle">Devices</text><rect class="dg-box " x="435" y="140" width="95" height="40" rx="8"/><text class="dg-t" x="482.5" y="164.5" text-anchor="middle">Set up again</text><rect class="dg-box done" x="540" y="140" width="70" height="40" rx="8"/><text class="dg-t inv" x="575.0" y="164.5" text-anchor="middle">Back</text><rect class="dg-group" x="222" y="222" width="305" height="56" rx="12"/><text class="dg-g" x="230" y="215">FORGET DEVICES</text><rect class="dg-box info" x="230" y="230" width="90" height="40" rx="8"/><text class="dg-t" x="275.0" y="254.5" text-anchor="middle">Paired</text><rect class="dg-box danger" x="330" y="230" width="95" height="40" rx="8"/><text class="dg-t" x="377.5" y="254.5" text-anchor="middle">Forget all</text><rect class="dg-box done" x="435" y="230" width="80" height="40" rx="8"/><text class="dg-t inv" x="475.0" y="254.5" text-anchor="middle">Keep</text><path class="dg-e" d="M385 180 L385 228" marker-end="url(#ah-menu)"/><text class="dg-l" x="377" y="205" text-anchor="end">tap</text><path class="dg-e" d="M475 230 L475 206 L430 206 L430 190" marker-end="url(#ah-menu)"/><text class="dg-l" x="483" y="212" text-anchor="start">back to Wi-Fi</text><path class="dg-e" d="M535 80 L535 130" marker-end="url(#ah-menu)"/><text class="dg-l" x="543" y="110" text-anchor="start">tap</text><rect class="dg-group" x="592" y="222" width="376" height="56" rx="12"/><text class="dg-g" x="600" y="215">POWER</text><rect class="dg-box " x="600" y="230" width="110" height="40" rx="8"/><text class="dg-t" x="655.0" y="254.5" text-anchor="middle">Restart</text><rect class="dg-box " x="725" y="230" width="110" height="40" rx="8"/><text class="dg-t" x="780.0" y="254.5" text-anchor="middle">Power off</text><rect class="dg-box done" x="850" y="230" width="110" height="40" rx="8"/><text class="dg-t inv" x="905.0" y="254.5" text-anchor="middle">Back</text><path class="dg-e" d="M660 80 L660 220" marker-end="url(#ah-menu)"/><text class="dg-l" x="668" y="110" text-anchor="start">tap</text><rect class="dg-box " x="20" y="320" width="180" height="40" rx="8"/><text class="dg-t" x="110.0" y="344.5" text-anchor="middle">Hold on Pomodoro</text><rect class="dg-group" x="222" y="312" width="626" height="56" rx="12"/><text class="dg-g" x="230" y="305">TIMER MENU</text><rect class="dg-box " x="230" y="320" width="110" height="40" rx="8"/><text class="dg-t" x="285.0" y="344.5" text-anchor="middle">Skip</text><rect class="dg-box " x="355" y="320" width="110" height="40" rx="8"/><text class="dg-t" x="410.0" y="344.5" text-anchor="middle">+5 min</text><rect class="dg-box " x="480" y="320" width="110" height="40" rx="8"/><text class="dg-t" x="535.0" y="344.5" text-anchor="middle">Stop</text><rect class="dg-box " x="605" y="320" width="110" height="40" rx="8"/><text class="dg-t" x="660.0" y="344.5" text-anchor="middle">Settings</text><rect class="dg-box done" x="730" y="320" width="110" height="40" rx="8"/><text class="dg-t inv" x="785.0" y="344.5" text-anchor="middle">Done</text><path class="dg-e" d="M200 340 L220 340" marker-end="url(#ah-menu)"/><text class="dg-l" x="230" y="388" text-anchor="start">Show again replaces Settings while a call or meeting is set aside</text><path class="dg-e" d="M684 360 L684 410" marker-end="url(#ah-menu)"/><text class="dg-l" x="692" y="390" text-anchor="start">tap</text><rect class="dg-group" x="592" y="412" width="376" height="56" rx="12"/><text class="dg-g" x="600" y="405">SETTINGS</text><rect class="dg-box " x="600" y="420" width="110" height="40" rx="8"/><text class="dg-t" x="655.0" y="444.5" text-anchor="middle">Auto-start</text><rect class="dg-box " x="725" y="420" width="110" height="40" rx="8"/><text class="dg-t" x="780.0" y="444.5" text-anchor="middle">Ticking</text><rect class="dg-box done" x="850" y="420" width="110" height="40" rx="8"/><text class="dg-t inv" x="905.0" y="444.5" text-anchor="middle">Back</text><text class="dg-l" x="780" y="484" text-anchor="middle">Off, Soft or Medium</text><path class="dg-e" d="M905 420 L905 340 L850 340" marker-end="url(#ah-menu)"/><text class="dg-l" x="897" y="385" text-anchor="end">to the timer menu</text></svg></div>
-      <figcaption><b>Menus.</b> Holding the screen opens a row of tiles. Bordered tiles act when tapped, dotted tiles are read-only, and the filled tile closes the menu, which also closes itself after 8 seconds; in Display and Settings, the filled Back tile returns to the quick or timer menu. Display shows the light level and opens Light (40, 70 or 100%) and Theme, which names the bar's theme and switches to the other one at once: the menu stays open, redrawn in the new look, and a toast confirms it ("Theme · Low Glare Pixel"). A tap there again switches back. The theme is switched from any screen but the Pomodoro, where holding opens the timer menu. The Calendar tile syncs, says Off when no calendar is added or there's no Wi-Fi, and becomes Show again while a call or meeting is set aside. Set up again shows the Wi-Fi QR code. The Wi-Fi menu's Network tile shows the office network with this bar's name and real address under it, so you can tell bars apart. Devices says how many phones, Macs and scripts are paired; a tap opens Forget devices, and a second tap, on the red Forget all, forgets every one of them and closes the menu (Keep, a tap off the tiles or the 8 seconds forget nothing). With nothing paired, Devices says None, with where to pair (minibar.local, or the bar's own address), and is read-only. On the Pomodoro screen, +5 min only appears while a session or break is running, and Settings holds Auto-start and Ticking (Off, Soft, Medium); while a call or meeting is set aside, Show again takes its place. On a call or meeting screen, holding always opens the quick menu. Only taps act on a menu; a swipe across it is ignored.</figcaption>
+      <div class="fig-scroll"><svg viewBox="0 0 990 520" role="img" aria-label="Menu tree: holding a status screen, or a call or meeting screen, opens Display, Calendar, Wi-Fi, Power, Help and Done; Display opens Light, Theme, Tap sound and Back, where Theme switches between Bold Signal and Low Glare Pixel, Tap sound turns the touch click on or off, and Back returns to the quick menu; the Calendar tile reads Sync, Off or Show again; Wi-Fi and Power open sub-menus; the Wi-Fi menu shows the network, this bar's name and address, and Devices, which opens Forget devices (Paired, Forget all, Keep) when anything is paired; Help starts the quick tour of the controls, 7 tips, where a tap, swipe or BOOT goes to the next tip and a hold, flip or PWR leaves it; holding the Pomodoro screen opens Skip, plus 5 minutes, Stop, Settings and Done; Settings opens Auto-start, Ticking, Help and Back, which returns to the timer menu; while a call or meeting is set aside, Show again replaces Settings."><defs><marker id="ah-menu" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z"/></marker></defs><rect class="dg-box " x="20" y="40" width="180" height="40" rx="8"/><text class="dg-t" x="110.0" y="64.5" text-anchor="middle">Hold on a status screen</text><rect class="dg-group" x="222" y="32" width="741" height="56" rx="12"/><text class="dg-g" x="230" y="25">QUICK MENU</text><rect class="dg-box " x="230" y="40" width="110" height="40" rx="8"/><text class="dg-t" x="285.0" y="64.5" text-anchor="middle">Display</text><rect class="dg-box " x="353" y="40" width="110" height="40" rx="8"/><text class="dg-t" x="408.0" y="64.5" text-anchor="middle">Calendar</text><rect class="dg-box " x="476" y="40" width="110" height="40" rx="8"/><text class="dg-t" x="531.0" y="64.5" text-anchor="middle">Wi-Fi</text><rect class="dg-box " x="599" y="40" width="110" height="40" rx="8"/><text class="dg-t" x="654.0" y="64.5" text-anchor="middle">Power</text><rect class="dg-box " x="722" y="40" width="110" height="40" rx="8"/><text class="dg-t" x="777.0" y="64.5" text-anchor="middle">Help</text><rect class="dg-box done" x="845" y="40" width="110" height="40" rx="8"/><text class="dg-t inv" x="900.0" y="64.5" text-anchor="middle">Done</text><path class="dg-e" d="M200 60 L220 60" marker-end="url(#ah-menu)"/><text class="dg-l" x="408" y="104" text-anchor="middle">Sync, Off or Show again</text><rect class="dg-group" x="20" y="132" width="280" height="56" rx="12"/><text class="dg-g" x="28" y="125">DISPLAY</text><rect class="dg-box " x="28" y="140" width="52" height="40" rx="8"/><text class="dg-t" x="54.0" y="164.5" text-anchor="middle">Light</text><rect class="dg-box " x="86" y="140" width="62" height="40" rx="8"/><text class="dg-t" x="117.0" y="164.5" text-anchor="middle">Theme</text><rect class="dg-box " x="154" y="140" width="84" height="40" rx="8"/><text class="dg-t" x="196.0" y="164.5" text-anchor="middle">Tap sound</text><rect class="dg-box done" x="244" y="140" width="48" height="40" rx="8"/><text class="dg-t inv" x="268.0" y="164.5" text-anchor="middle">Back</text><path class="dg-e" d="M285 80 L285 130" marker-end="url(#ah-menu)"/><text class="dg-l" x="277" y="112" text-anchor="end">tap</text><text class="dg-l" x="160" y="206" text-anchor="middle">Theme: Bold Signal or Low Glare Pixel</text><text class="dg-l" x="160" y="219" text-anchor="middle">Tap sound: On or Off</text><text class="dg-l" x="160" y="232" text-anchor="middle">Back: to the quick menu</text><rect class="dg-group" x="330" y="132" width="396" height="56" rx="12"/><text class="dg-g" x="338" y="125">WI-FI</text><rect class="dg-box info" x="338" y="140" width="105" height="40" rx="8"/><text class="dg-t" x="390.5" y="164.5" text-anchor="middle">Network</text><rect class="dg-box " x="453" y="140" width="80" height="40" rx="8"/><text class="dg-t" x="493.0" y="164.5" text-anchor="middle">Devices</text><rect class="dg-box " x="543" y="140" width="95" height="40" rx="8"/><text class="dg-t" x="590.5" y="164.5" text-anchor="middle">Set up again</text><rect class="dg-box done" x="648" y="140" width="70" height="40" rx="8"/><text class="dg-t inv" x="683.0" y="164.5" text-anchor="middle">Back</text><path class="dg-e" d="M531 80 L531 130" marker-end="url(#ah-menu)"/><text class="dg-l" x="539" y="112" text-anchor="start">tap</text><rect class="dg-group" x="330" y="222" width="305" height="56" rx="12"/><text class="dg-g" x="338" y="215">FORGET DEVICES</text><rect class="dg-box info" x="338" y="230" width="90" height="40" rx="8"/><text class="dg-t" x="383.0" y="254.5" text-anchor="middle">Paired</text><rect class="dg-box danger" x="438" y="230" width="95" height="40" rx="8"/><text class="dg-t" x="485.5" y="254.5" text-anchor="middle">Forget all</text><rect class="dg-box done" x="543" y="230" width="80" height="40" rx="8"/><text class="dg-t inv" x="583.0" y="254.5" text-anchor="middle">Keep</text><path class="dg-e" d="M493.0 180 L493.0 228" marker-end="url(#ah-menu)"/><text class="dg-l" x="485.0" y="205" text-anchor="end">tap</text><path class="dg-e" d="M583.0 230 L583.0 206 L580.5 206 L580.5 190" marker-end="url(#ah-menu)"/><text class="dg-l" x="591.0" y="212" text-anchor="start">back to Wi-Fi</text><rect class="dg-box " x="760" y="132" width="200" height="56" rx="8"/><text class="dg-k" x="860.0" y="150" text-anchor="middle">QUICK TOUR</text><text class="dg-t" x="860.0" y="167" text-anchor="middle">7 tips</text><path class="dg-e" d="M777 80 L777 130" marker-end="url(#ah-menu)"/><text class="dg-l" x="785" y="112" text-anchor="start">tap</text><text class="dg-l" x="860" y="206" text-anchor="middle">tap, swipe or BOOT: next tip</text><text class="dg-l" x="860" y="219" text-anchor="middle">hold, flip or PWR: leave it</text><rect class="dg-group" x="662" y="242" width="302" height="56" rx="12"/><text class="dg-g" x="670" y="235">POWER</text><rect class="dg-box " x="670" y="250" width="100" height="40" rx="8"/><text class="dg-t" x="720.0" y="274.5" text-anchor="middle">Restart</text><rect class="dg-box " x="778" y="250" width="100" height="40" rx="8"/><text class="dg-t" x="828.0" y="274.5" text-anchor="middle">Power off</text><rect class="dg-box done" x="886" y="250" width="70" height="40" rx="8"/><text class="dg-t inv" x="921.0" y="274.5" text-anchor="middle">Back</text><path class="dg-e" d="M654 80 L654 100 L743 100 L743 240" marker-end="url(#ah-menu)"/><text class="dg-l" x="662" y="112" text-anchor="start">tap</text><rect class="dg-box " x="20" y="340" width="180" height="40" rx="8"/><text class="dg-t" x="110.0" y="364.5" text-anchor="middle">Hold on Pomodoro</text><rect class="dg-group" x="222" y="332" width="626" height="56" rx="12"/><text class="dg-g" x="230" y="325">TIMER MENU</text><rect class="dg-box " x="230" y="340" width="110" height="40" rx="8"/><text class="dg-t" x="285.0" y="364.5" text-anchor="middle">Skip</text><rect class="dg-box " x="355" y="340" width="110" height="40" rx="8"/><text class="dg-t" x="410.0" y="364.5" text-anchor="middle">+5 min</text><rect class="dg-box " x="480" y="340" width="110" height="40" rx="8"/><text class="dg-t" x="535.0" y="364.5" text-anchor="middle">Stop</text><rect class="dg-box " x="605" y="340" width="110" height="40" rx="8"/><text class="dg-t" x="660.0" y="364.5" text-anchor="middle">Settings</text><rect class="dg-box done" x="730" y="340" width="110" height="40" rx="8"/><text class="dg-t inv" x="785.0" y="364.5" text-anchor="middle">Done</text><path class="dg-e" d="M200 360 L220 360" marker-end="url(#ah-menu)"/><text class="dg-l" x="230" y="408" text-anchor="start">Show again replaces Settings while a call or meeting is set aside</text><path class="dg-e" d="M684 380 L684 430" marker-end="url(#ah-menu)"/><text class="dg-l" x="692" y="410" text-anchor="start">tap</text><rect class="dg-group" x="578" y="432" width="390" height="56" rx="12"/><text class="dg-g" x="586" y="425">SETTINGS</text><rect class="dg-box " x="586" y="440" width="100" height="40" rx="8"/><text class="dg-t" x="636.0" y="464.5" text-anchor="middle">Auto-start</text><rect class="dg-box " x="694" y="440" width="90" height="40" rx="8"/><text class="dg-t" x="739.0" y="464.5" text-anchor="middle">Ticking</text><rect class="dg-box " x="792" y="440" width="80" height="40" rx="8"/><text class="dg-t" x="832.0" y="464.5" text-anchor="middle">Help</text><rect class="dg-box done" x="880" y="440" width="78" height="40" rx="8"/><text class="dg-t inv" x="919.0" y="464.5" text-anchor="middle">Back</text><text class="dg-l" x="739.0" y="506" text-anchor="middle">Off, Soft or Medium</text><text class="dg-l" x="832.0" y="506" text-anchor="middle">the quick tour</text><path class="dg-e" d="M919.0 440 L919.0 360 L850 360" marker-end="url(#ah-menu)"/><text class="dg-l" x="911.0" y="405" text-anchor="end">to the timer menu</text></svg></div>
+      <figcaption><b>Menus.</b> Holding the screen opens a row of tiles. Bordered tiles act when tapped, dotted tiles are read-only, and the filled tile closes the menu, which also closes itself after 8 seconds; in Display and Settings, the filled Back tile returns to the quick or timer menu. Display shows the light level and opens Light (40, 70 or 100%), Theme and Tap sound. Theme names the bar's theme and switches to the other one at once: the menu stays open, redrawn in the new look, and a toast confirms it ("Theme · Low Glare Pixel"). A tap there again switches back. Tap sound turns the touch click on or off in the same way, with a toast ("Tap sound off"); turning it on plays one click, and turning it off makes none. Help, in the quick menu and in the timer menu's Settings, starts the quick tour of the controls at its first tip. The theme is switched from any screen but the Pomodoro, where holding opens the timer menu. The Calendar tile syncs, says Off when no calendar is added or there's no Wi-Fi, and becomes Show again while a call or meeting is set aside. Set up again shows the Wi-Fi QR code. The Wi-Fi menu's Network tile shows the office network with this bar's name and real address under it, so you can tell bars apart. Devices says how many phones, Macs and scripts are paired; a tap opens Forget devices, and a second tap, on the red Forget all, forgets every one of them and closes the menu (Keep, a tap off the tiles or the 8 seconds forget nothing). With nothing paired, Devices says None, with where to pair (minibar.local, or the bar's own address), and is read-only. On the Pomodoro screen, +5 min only appears while a session or break is running, and Settings holds Auto-start, Ticking (Off, Soft, Medium) and Help; while a call or meeting is set aside, Show again takes its place. On a call or meeting screen, holding always opens the quick menu. Only taps act on a menu; a swipe across it is ignored. With Tap sound on, a tile that acts clicks; the hold that opens a menu makes the lower click; Forget all's first 600 ms and a swipe across the menu make none.</figcaption>
     </figure>
     <figure class="fig">
       <p class="scroll-hint">Scroll sideways to see the whole diagram →</p>
       <div class="fig-scroll"><svg viewBox="0 0 990 200" role="img" aria-label="Power states: a PWR press turns the screen off; holding PWR for 3 seconds powers off; a PWR press starts the bar again."><defs><marker id="ah-power" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z"/></marker></defs><rect class="dg-box " x="30" y="40" width="140" height="44" rx="8"/><text class="dg-t" x="100.0" y="66.5" text-anchor="middle">Screen off</text><rect class="dg-box " x="300" y="40" width="140" height="44" rx="8"/><text class="dg-t" x="370.0" y="66.5" text-anchor="middle">On</text><rect class="dg-box " x="570" y="40" width="140" height="44" rx="8"/><text class="dg-t" x="640.0" y="66.5" text-anchor="middle">Powering off</text><rect class="dg-box " x="830" y="40" width="130" height="44" rx="8"/><text class="dg-t" x="895.0" y="66.5" text-anchor="middle">Off</text><rect class="dg-box " x="570" y="140" width="140" height="44" rx="8"/><text class="dg-t" x="640.0" y="166.5" text-anchor="middle">Starting up</text><path class="dg-e" d="M300 54 L172 54" marker-end="url(#ah-power)"/><text class="dg-l" x="235" y="46" text-anchor="middle">PWR press</text><path class="dg-e" d="M170 72 L298 72" marker-end="url(#ah-power)"/><text class="dg-l" x="235" y="96" text-anchor="middle">tap or any button</text><path class="dg-e" d="M440 62 L568 62" marker-end="url(#ah-power)"/><text class="dg-l" x="505" y="54" text-anchor="middle">hold PWR 3 s</text><path class="dg-e" d="M710 62 L828 62" marker-end="url(#ah-power)"/><text class="dg-l" x="770" y="54" text-anchor="middle">about 1 s</text><path class="dg-e" d="M895 84 L895 162 L712 162" marker-end="url(#ah-power)"/><text class="dg-l" x="903" y="125" text-anchor="start">PWR press</text><path class="dg-e" d="M570 162 L370 162 L370 86" marker-end="url(#ah-power)"/><text class="dg-l" x="470" y="156" text-anchor="middle">about 1.5 s</text></svg></div>
-      <figcaption><b>Power.</b> A press of PWR only turns the screen off. Holding it for 3 seconds, or Power off in the menu, cuts the power, and a press starts the bar again. Restart goes straight to Starting up. On USB, Off is a deep sleep, because the board can't cut its own USB power.</figcaption>
+      <figcaption><b>Power.</b> A press of PWR only turns the screen off. Holding it for 3 seconds, or Power off in the menu, cuts the power, and a press starts the bar again. Restart goes straight to Starting up. On USB, Off is a deep sleep, because the board can't cut its own USB power. While Keep holding, Powering off or Starting up shows, touches and BOOT are ignored and a hold opens no menu; once powering off has begun, a PWR press is ignored too. A flip there only turns the layout. When the power goes off, any menu is closed, so the bar starts on its screen.</figcaption>
     </figure>
     <figure class="fig">
       <p class="scroll-hint">Scroll sideways to see the whole diagram →</p>
-      <div class="fig-scroll"><svg viewBox="0 0 990 210" role="img" aria-label="Wi-Fi setup: the QR screen leads to connecting, then connected, which shows the bar's name and address, and your status; a failed connection goes to an error screen and a tap returns to the QR code; Skip goes offline."><defs><marker id="ah-wifi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z"/></marker></defs><rect class="dg-box " x="30" y="30" width="140" height="48" rx="8"/><text class="dg-k" x="100.0" y="48" text-anchor="middle">QR CODE</text><text class="dg-t" x="100.0" y="65" text-anchor="middle">Set up Wi-Fi</text><rect class="dg-box " x="300" y="30" width="140" height="48" rx="8"/><text class="dg-k" x="370.0" y="48" text-anchor="middle">WI-FI</text><text class="dg-t" x="370.0" y="65" text-anchor="middle">Connecting</text><rect class="dg-box " x="570" y="23" width="140" height="62" rx="8"/><text class="dg-k" x="640.0" y="41" text-anchor="middle">CONNECTED</text><text class="dg-t" x="640.0" y="58" text-anchor="middle">MiniBar 2A1C</text><text class="dg-t" x="640.0" y="75" text-anchor="middle">minibar.local</text><rect class="dg-box " x="830" y="30" width="130" height="48" rx="8"/><text class="dg-t" x="895.0" y="58.5" text-anchor="middle">Your status</text><rect class="dg-box " x="30" y="150" width="140" height="48" rx="8"/><text class="dg-k" x="100.0" y="168" text-anchor="middle">NO WI-FI</text><text class="dg-t" x="100.0" y="185" text-anchor="middle">Offline</text><rect class="dg-box " x="300" y="150" width="140" height="48" rx="8"/><text class="dg-k" x="370.0" y="168" text-anchor="middle">ERROR</text><text class="dg-t" x="370.0" y="185" text-anchor="middle">Couldn't connect</text><path class="dg-e" d="M170 54 L298 54" marker-end="url(#ah-wifi)"/><text class="dg-l" x="235" y="46" text-anchor="middle">Connect on phone</text><path class="dg-e" d="M440 54 L568 54" marker-end="url(#ah-wifi)"/><text class="dg-l" x="505" y="46" text-anchor="middle">joins</text><path class="dg-e" d="M710 54 L828 54" marker-end="url(#ah-wifi)"/><text class="dg-l" x="770" y="46" text-anchor="middle">after 3 s or tap</text><path class="dg-e" d="M370 78 L370 148" marker-end="url(#ah-wifi)"/><text class="dg-l" x="378" y="118" text-anchor="start">wrong password or no signal</text><path class="dg-e" d="M300 174 L235 174 L235 68 L172 68" marker-end="url(#ah-wifi)"/><text class="dg-l" x="243" y="128" text-anchor="start">tap</text><path class="dg-e" d="M65 78 L65 148" marker-end="url(#ah-wifi)"/><text class="dg-l" x="57" y="118" text-anchor="end">Skip</text><path class="dg-e" d="M135 150 L135 80" marker-end="url(#ah-wifi)"/><text class="dg-l" x="143" y="118" text-anchor="start">Wi-Fi menu</text></svg></div>
-      <figcaption><b>Wi-Fi setup.</b> On first start, or after Set up again, the bar shows a QR code that joins your phone to its own MiniBar-Setup network, where a page lets you pick the office network and enter the password, plus a work username if the network needs one. If it can't connect, the bar says why and a tap returns to the QR code. Once it says Connected, setup is done: a tap moves on and holding opens the quick menu. Connected shows the bar's name (MiniBar 2A1C), its address (minibar.local) and its IP address, so you can tell bars apart in an office with several; the Wi-Fi menu's Network tile shows them again later. Skip, in the hold menu, uses the bar without Wi-Fi: statuses and the Pomodoro still work, but the calendar and Remote don't. The setup page also takes your calendar's secret iCal address, if you've copied it already.</figcaption>
+      <div class="fig-scroll"><svg viewBox="0 0 990 240" role="img" aria-label="Wi-Fi setup: the QR screen leads to connecting, then connected, which shows the bar's name and address, and your status; a failed connection goes to an error screen and a tap returns to the QR code; Skip goes offline. The first time a bar is set up, the quick tour of the controls shows once when setup ends, after Connected or after Skip, and your status shows when it ends."><defs><marker id="ah-wifi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z"/></marker></defs><rect class="dg-box " x="30" y="30" width="140" height="48" rx="8"/><text class="dg-k" x="100.0" y="48" text-anchor="middle">QR CODE</text><text class="dg-t" x="100.0" y="65" text-anchor="middle">Set up Wi-Fi</text><rect class="dg-box " x="300" y="30" width="140" height="48" rx="8"/><text class="dg-k" x="370.0" y="48" text-anchor="middle">WI-FI</text><text class="dg-t" x="370.0" y="65" text-anchor="middle">Connecting</text><rect class="dg-box " x="570" y="23" width="140" height="62" rx="8"/><text class="dg-k" x="640.0" y="41" text-anchor="middle">CONNECTED</text><text class="dg-t" x="640.0" y="58" text-anchor="middle">MiniBar 2A1C</text><text class="dg-t" x="640.0" y="75" text-anchor="middle">minibar.local</text><rect class="dg-box " x="830" y="30" width="130" height="48" rx="8"/><text class="dg-t" x="895.0" y="58.5" text-anchor="middle">Your status</text><rect class="dg-box " x="30" y="150" width="140" height="48" rx="8"/><text class="dg-k" x="100.0" y="168" text-anchor="middle">NO WI-FI</text><text class="dg-t" x="100.0" y="185" text-anchor="middle">Offline</text><rect class="dg-box " x="300" y="150" width="140" height="48" rx="8"/><text class="dg-k" x="370.0" y="168" text-anchor="middle">ERROR</text><text class="dg-t" x="370.0" y="185" text-anchor="middle">Couldn't connect</text><rect class="dg-box " x="830" y="150" width="130" height="48" rx="8"/><text class="dg-k" x="895.0" y="168" text-anchor="middle">QUICK TOUR</text><text class="dg-t" x="895.0" y="185" text-anchor="middle">7 tips</text><path class="dg-e" d="M170 54 L298 54" marker-end="url(#ah-wifi)"/><text class="dg-l" x="235" y="46" text-anchor="middle">Connect on phone</text><path class="dg-e" d="M440 54 L568 54" marker-end="url(#ah-wifi)"/><text class="dg-l" x="505" y="46" text-anchor="middle">joins</text><path class="dg-e" d="M710 54 L828 54" marker-end="url(#ah-wifi)"/><text class="dg-l" x="770" y="46" text-anchor="middle">after 3 s or tap</text><path class="dg-e" d="M370 78 L370 148" marker-end="url(#ah-wifi)"/><text class="dg-l" x="378" y="118" text-anchor="start">wrong password or no signal</text><path class="dg-e" d="M300 174 L235 174 L235 68 L172 68" marker-end="url(#ah-wifi)"/><text class="dg-l" x="243" y="128" text-anchor="start">tap</text><path class="dg-e" d="M65 78 L65 148" marker-end="url(#ah-wifi)"/><text class="dg-l" x="57" y="118" text-anchor="end">Skip</text><path class="dg-e" d="M135 150 L135 80" marker-end="url(#ah-wifi)"/><text class="dg-l" x="143" y="118" text-anchor="start">Wi-Fi menu</text><path class="dg-e" d="M640 85 L640 174 L828 174" marker-end="url(#ah-wifi)"/><text class="dg-l" x="735" y="146" text-anchor="middle">first setup only: the tour</text><text class="dg-l" x="735" y="159" text-anchor="middle">shows once, over your status</text><path class="dg-e" d="M910 150 L910 80" marker-end="url(#ah-wifi)"/><text class="dg-l" x="902" y="112" text-anchor="end">last tip, or hold, flip,</text><text class="dg-l" x="902" y="125" text-anchor="end">PWR or 30 s untouched</text><path class="dg-e dash" d="M100 198 L100 226 L880 226 L880 200" marker-end="url(#ah-wifi)"/><text class="dg-l" x="490" y="220" text-anchor="middle">after Skip too, the first time</text></svg></div>
+      <figcaption><b>Wi-Fi setup.</b> On first start, or after Set up again, the bar shows a QR code that joins your phone to its own MiniBar-Setup network, where a page lets you pick the office network and enter the password, plus a work username if the network needs one. If it can't connect, the bar says why and a tap returns to the QR code. Once it says Connected, setup is done: a tap moves on and holding opens the quick menu. Connected shows the bar's name (MiniBar 2A1C), its address (minibar.local) and its IP address, so you can tell bars apart in an office with several; the Wi-Fi menu's Network tile shows them again later. Skip, in the hold menu, uses the bar without Wi-Fi: statuses and the Pomodoro still work, but the calendar and Remote don't. The setup page also takes your calendar's secret iCal address, if you've copied it already. Shortly after Connected moves on, the bar closes MiniBar-Setup and stops broadcasting it, and your phone goes back to its usual Wi-Fi. The setup network opens again only for Set up again; a restart rejoins the saved network without it, and a skipped setup stays offline with the radio off. The first time a bar is set up, the quick tour of the controls shows once when setup ends, after Connected or after Skip; ending Connected with a hold opens the quick menu first, and the tour follows when it closes.</figcaption>
+    </figure>
+    <figure class="fig">
+      <p class="scroll-hint">Scroll sideways to see the whole diagram →</p>
+      <div class="fig-scroll"><svg viewBox="0 0 990 312" role="img" aria-label="Quick tour: it opens once by itself when a new bar's setup ends, and from the Help tile in the quick menu or the timer menu's Settings. Seven tips: Tap, Swipe, BOOT, Touch and hold, Flip, PWR and More help. A tap, a swipe left or BOOT goes to the next tip and a swipe right goes back; on the first three tips the first try is practice and nothing real changes. A hold closes it and opens the menu, a flip closes it and flips as usual, PWR closes it and darkens the screen, 30 seconds untouched closes it, and a pairing code or an alarm closes it. A tap on More help finishes it. Each way back shows your screen as it was, and hold, then Help, starts it again from the first tip."><defs><marker id="ah-tour" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z"/></marker></defs><rect class="dg-box " x="40" y="20" width="190" height="48" rx="8"/><text class="dg-k" x="135.0" y="38" text-anchor="middle">SETUP ENDS</text><text class="dg-t" x="135.0" y="55" text-anchor="middle">First setup, once</text><rect class="dg-box " x="270" y="20" width="210" height="48" rx="8"/><text class="dg-k" x="375.0" y="38" text-anchor="middle">HELP TILE</text><text class="dg-t" x="375.0" y="55" text-anchor="middle">Quick menu or Settings</text><text class="dg-l" x="520" y="40" text-anchor="start">tap, swipe left or BOOT: next tip · swipe right: back</text><text class="dg-l" x="520" y="53" text-anchor="start">tips 1 to 3: the first try is practice, and nothing real changes</text><rect class="dg-group" x="8" y="100" width="974" height="64" rx="12"/><text class="dg-g" x="16" y="93">QUICK TOUR</text><rect class="dg-box " x="16" y="108" width="118" height="48" rx="8"/><text class="dg-k" x="75.0" y="126" text-anchor="middle">TIP 1 · TRY IT</text><text class="dg-t" x="75.0" y="143" text-anchor="middle">Tap</text><path class="dg-e" d="M134 132 L154 132" marker-end="url(#ah-tour)"/><rect class="dg-box " x="156" y="108" width="118" height="48" rx="8"/><text class="dg-k" x="215.0" y="126" text-anchor="middle">TIP 2 · TRY IT</text><text class="dg-t" x="215.0" y="143" text-anchor="middle">Swipe</text><path class="dg-e" d="M274 132 L294 132" marker-end="url(#ah-tour)"/><rect class="dg-box " x="296" y="108" width="118" height="48" rx="8"/><text class="dg-k" x="355.0" y="126" text-anchor="middle">TIP 3 · TRY IT</text><text class="dg-t" x="355.0" y="143" text-anchor="middle">BOOT</text><path class="dg-e" d="M414 132 L434 132" marker-end="url(#ah-tour)"/><rect class="dg-box " x="436" y="108" width="118" height="48" rx="8"/><text class="dg-k" x="495.0" y="126" text-anchor="middle">TIP 4</text><text class="dg-t" x="495.0" y="143" text-anchor="middle">Touch and hold</text><path class="dg-e" d="M554 132 L574 132" marker-end="url(#ah-tour)"/><rect class="dg-box " x="576" y="108" width="118" height="48" rx="8"/><text class="dg-k" x="635.0" y="126" text-anchor="middle">TIP 5</text><text class="dg-t" x="635.0" y="143" text-anchor="middle">Flip</text><path class="dg-e" d="M694 132 L714 132" marker-end="url(#ah-tour)"/><rect class="dg-box " x="716" y="108" width="118" height="48" rx="8"/><text class="dg-k" x="775.0" y="126" text-anchor="middle">TIP 6</text><text class="dg-t" x="775.0" y="143" text-anchor="middle">PWR</text><path class="dg-e" d="M834 132 L854 132" marker-end="url(#ah-tour)"/><rect class="dg-box " x="856" y="108" width="118" height="48" rx="8"/><text class="dg-k" x="915.0" y="126" text-anchor="middle">TIP 7</text><text class="dg-t" x="915.0" y="143" text-anchor="middle">More help</text><path class="dg-e" d="M135 68 L135 98" marker-end="url(#ah-tour)"/><path class="dg-e" d="M375 68 L375 98" marker-end="url(#ah-tour)"/><rect class="dg-box " x="400" y="250" width="190" height="48" rx="8"/><text class="dg-k" x="495.0" y="268" text-anchor="middle">YOUR SCREEN</text><text class="dg-t" x="495.0" y="285" text-anchor="middle">As it was</text><path class="dg-e" d="M240 164 L240 274 L398 274" marker-end="url(#ah-tour)"/><text class="dg-l" x="232" y="190" text-anchor="end">hold: closes it, the menu opens</text><text class="dg-l" x="232" y="203" text-anchor="end">flip: closes it, then flips as usual</text><text class="dg-l" x="232" y="216" text-anchor="end">PWR: closes it, the screen goes dark</text><text class="dg-l" x="232" y="229" text-anchor="end">30 s untouched: &quot;Tour closed&quot;</text><text class="dg-l" x="232" y="242" text-anchor="end">pairing code or alarm: closes it</text><path class="dg-e" d="M915 156 L915 274 L592 274" marker-end="url(#ah-tour)"/><text class="dg-l" x="907" y="222" text-anchor="end">tap on More help: &quot;Tour done&quot;,</text><text class="dg-l" x="907" y="235" text-anchor="end">with how to open it again</text><path class="dg-e dash" d="M495 250 L495 166" marker-end="url(#ah-tour)"/><text class="dg-l" x="503" y="212" text-anchor="start">hold, then Help: from tip 1</text></svg></div>
+      <figcaption><b>Quick tour.</b> Seven tips, one per control, drawn on the bar in its own theme: Tap, Swipe, BOOT, Touch and hold, Flip, PWR and More help, whose QR code opens the help page on your phone (minibar.local/help; without Wi-Fi, the tip says how to set it up). It shows by itself only once, when a new bar's setup ends, or at the next start-up of a bar that has never shown it; "tour seen" is saved as soon as it appears. Help opens it again at any time. Nothing real changes during it: the practice on the first three tips only says what the control would have done. A tap, swipe or BOOT is ignored for 700 ms after a practice result, so a double tap can't skip it. A call or meeting that starts meanwhile shows when the tour ends, with its toast, and Remote changes close the tour. Flipping the bar over turns the tips with it, and the BOOT and PWR tips' arrows point at the buttons either way.</figcaption>
     </figure>
     <figure class="fig">
       <p class="scroll-hint">Scroll sideways to see the whole diagram →</p>
@@ -1694,11 +1856,13 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
       <li><code>active</code> and <code>client</code> are required. <code>client</code> is a random install ID the app makes once, not a hardware ID or the computer's name; with <code>session</code> and <code>seq</code> it keeps Macs and links apart and drops a late message (sending them is proposed). <code>app</code> is optional: the bar shows up to 24 characters of it.</li>
       <li>Tokens: every Wi-Fi request carries one. The Mac app's has the <code>call</code> scope (report calls, read the status); the Remote's and scripts' have <code>full</code>. The Remote keeps its token in a cookie the bar sets. Remove one on the Remote's Paired devices, or all of them on the bar.</li>
       <li>The app sends its state on every change and repeats it every 30 seconds. After 90 seconds without a message, the bar ends On a call on its own, so it can't get stuck.</li>
-      <li><code>showing</code> is <code>call</code>, <code>meeting</code>, <code>own</code> (your own status, including a call or meeting you set aside) or <code>setup</code>. A dark screen is <code>"screen": "dark"</code>; a powered-off bar doesn't answer.</li>
+      <li><code>showing</code> is <code>call</code>, <code>meeting</code>, <code>own</code> (your own status, including a call or meeting you set aside) or <code>setup</code>. A dark screen is <code>"screen": "dark"</code>, and, Proposed, the quick tour of the controls is <code>"screen": "tour"</code>, with everything else still real; a powered-off bar doesn't answer.</li>
       <li>Every error is <code>{"ok": false, "error": "…", "message": "…", "field": …}</code>: <code>error</code> is a stable code to act on, <code>message</code> is for logs, and <code>field</code> names the field at fault.</li>
       <li>No reply ever contains the calendar's secret address. Meeting titles are left out when Show meeting titles is off.</li>
       <li>If both links work, the app prefers USB, with the same <code>client</code> and the next <code>seq</code>.</li>
       <li>Proposed: the bar's theme is a setting, <code>display.theme</code>: <code>"bold_signal"</code> (the default) or <code>"low_glare_pixel"</code>. The Remote reads and changes it with <code>GET</code> and <code>PATCH /api/v1/settings</code> (scope <code>full</code>), as <code>{"display": {"theme": "low_glare_pixel"}}</code>; any other value is <code>400 bad_value</code>. A change bumps <code>rev</code> in the status, so a switch made on the bar reaches the Remote within about 2 seconds. The Mac app doesn't use it. See <code>docs/api.md</code> 10.3.</li>
+      <li>Proposed: Tap sound is a setting too, <code>sound.tap_sound</code>: <code>true</code> (the default) or <code>false</code>, read as <code>settings.sound.tap_sound</code> and changed with <code>PATCH /api/v1/settings</code> (scope <code>full</code>), as <code>{"sound": {"tap_sound": false}}</code>; anything but <code>true</code> or <code>false</code> is <code>400 bad_value</code> with <code>"field": "sound.tap_sound"</code>. The bar shows "Tap sound on" or "Tap sound off"; a change through the API never makes it click, since only touches on the bar do. See <code>docs/api.md</code> 10.4.</li>
+      <li>Proposed: the help page is a plain page at <code>/help</code> on the office network, outside the API. The bar serves it as it serves the Remote's page, and it needs no pairing, since it holds nothing private. The quick tour's last tip links to it by the bar's IP address, and the Remote's Help link and "How pairing works" open it.</li>
     </ul>
     <p><code>docs/api.md</code> is the full contract between the bar and everything that talks to it (every endpoint and error code, the USB details, pairing's limits), and it wins wherever this summary differs.</p>
   </section>
@@ -1946,7 +2110,7 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
   // The Remote on this phone: token is the cookie it holds (null: not paired, so the pairing prompt shows). step is
   // the prompt's page ('start' or 'code'); pid the pairing_id of the code it asked for; askErr and err the replies
   // shown under the button and the field; note the line above the prompt; confirm the device whose Remove is open.
-  const phone = { token: '27110499', step: 'start', pid: null, askErr: null, err: null, note: '', lostNote: '', confirm: null, okUntil: 0 };
+  const phone = { token: '27110499', step: 'start', pid: null, askErr: null, err: null, note: '', lostNote: '', confirm: null, okUntil: 0, view: 'remote' };
   // The simulated Mac app's side of a Wi-Fi pairing: the pairing_id it holds, and what it says.
   const macPair = { pid: null, msg: '' };
 
@@ -1954,7 +2118,10 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
   const currentEvent = () => { const n = now(); return cal.events.filter(e => e.start <= n && n < e.end).sort((a, b) => b.start - a.start)[0] || null; };
   const nextEvent = () => { const n = now(); return todays().filter(e => e.start > n).sort((a, b) => a.start - b.start)[0] || null; };
   const leftText = () => { const k = todays().length; return k ? `${k} meeting${k === 1 ? '' : 's'} left today` : 'no more meetings today'; };
-  const wifiUp = () => s.wifi.mode === 'ok' || s.wifi.mode === 'connected';
+  // A bar that's set up can still lose the office Wi-Fi for a while (Simulate, Wi-Fi drops): it keeps its settings and
+  // reconnects on its own, and nothing on the network reaches it meanwhile.
+  const linkDown = () => s.wifi.mode === 'ok' && s.wifi.link === false;
+  const wifiUp = () => (s.wifi.mode === 'ok' && !linkDown()) || s.wifi.mode === 'connected';
   // Meeting data shows only with a saved address, the Calendar meetings switch on, and Wi-Fi set up. If Wi-Fi
   // drops, the bar keeps following its last synced copy; skipping Wi-Fi turns the calendar off.
   const calData = () => cal.state === 'ok' && cal.on && s.wifi.mode !== 'offline';
@@ -1996,16 +2163,34 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     // like every other setting, across Restart and power off and on; the mock-up keeps it in the browser, standing in
     // for the bar's flash (see the Style panel section, which also holds the looks).
     theme: 'bold_signal',
+    // Tap sound (sound.tap_sound, api.md 10.4, Proposed): a short click when the bar takes a touch, on by default. Kept
+    // like every other setting; the mock-up keeps it in the browser (see the Tap sound section).
+    tapSound: true,
     powered: true,
     booting: false,
     poweringOff: false,
-    wifi: { mode: 'ok', ssid: 'Office-WiFi', ip: '10.0.4.42', error: '' },
+    wifi: { mode: 'ok', ssid: 'Office-WiFi', ip: '10.0.4.42', error: '', link: true },
     since: addMin(t0, -12),              // when you picked your own status (In a meeting by hand counts from here)
     aside: { call: null, meeting: null }, // ids of the call and meeting you set aside
     rev: 0,                               // bumped on every automatic-status change so loop() redraws
   };
   const WIFI_SCREENS = ['setup', 'connecting', 'connected', 'failed'];
   const onWifiScreen = () => WIFI_SCREENS.includes(s.wifi.mode);
+  // The controls tour (see the Help section). on: a card is up; card: which (0 to 6); done: each practice card's
+  // result once its control has been tried there; note: the first card's "first tip" line after a swipe right; at: the
+  // last touch, button or flip, for the 30 s idle end; began: when it appeared (a touch that began earlier is ignored);
+  // guardUntil: 700 ms after a practice result, when a tap, swipe or BOOT is ignored so the result can be read.
+  const tour = { on: false, card: 0, done: {}, note: null, at: 0, began: 0, guardUntil: 0 };
+  // "Tour seen", kept like a setting (the bar's flash; this browser in the mock-up). 'seen' (the mock-up starts as a bar
+  // that has seen it), 'unseen' (forgotten: the next setup's end or start-up makes it due) or 'due' (it shows as soon as
+  // the screen is free, and is 'seen' from the moment it appears).
+  const TOUR_STORE = 'minibar-tour';
+  let tourState = 'seen';
+  try { const v = localStorage.getItem(TOUR_STORE); if (v === 'due' || v === 'unseen') tourState = v; } catch (e) {}
+  function saveTour(v) {
+    tourState = v;
+    try { if (v === 'seen') localStorage.removeItem(TOUR_STORE); else localStorage.setItem(TOUR_STORE, v); } catch (e) {}
+  }
   let autoShown = null;    // the call or meeting on screen, so changes can be announced once
   let pendingToast = null; // an automatic change announced while the screen was busy
   let rendering = 'clock'; // which screen view() is building, for the corner pill
@@ -2023,8 +2208,16 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
   };
   document.addEventListener('pointerdown', unlockAudio);
   document.addEventListener('keydown', unlockAudio);
+  // A testing aid (mock-up only): every sound the bar would play, so checks can count clicks, ticks and chimes without
+  // listening. played says whether the browser could play it (it can't before the page has had a touch or a key).
+  const mbSounds = window.mbSounds = [];
+  const heard = kind => { const played = !!ac && ac.state === 'running'; mbSounds.push({ kind, at: Date.now(), played }); if (mbSounds.length > 300) mbSounds.shift(); return played; };
   function chime(toBreak) {
     if (!pomo.sound || !ac || quiet()) return;
+    chimeNotes(toBreak);
+  }
+  function chimeNotes(toBreak) {
+    if (!heard('chime') || !ac) return;
     try {
       const notes = toBreak ? [784, 988, 1175] : [1175, 988, 784];
       notes.forEach((f, i) => {
@@ -2047,8 +2240,8 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
   // tick sounds far quieter than its peak suggests. Raised twice on 2026-10-05 after tests on the real bar. The device would play a tiny PCM click through
   // the ES8311 at a similarly low level.
   let tickBuf = null, tickAlt = false;
-  function tickSound() {
-    if (!ac || ac.state !== 'running') return;
+  function tickSound(vol = pomo.tickVol) {
+    if (!heard('tick-' + vol)) return;
     try {
       if (!tickBuf) {
         tickBuf = ac.createBuffer(1, Math.round(ac.sampleRate * 0.025), ac.sampleRate);
@@ -2060,10 +2253,51 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
       f.type = 'bandpass';
       f.frequency.value = (tickAlt = !tickAlt) ? 2000 : 1700;
       f.Q.value = 1.6;
-      g.gain.value = pomo.tickVol === 'medium' ? 1.1 : 0.55;
+      g.gain.value = vol === 'medium' ? 1.1 : 0.55;
       src.connect(f).connect(g).connect(ac.destination);
       src.start();
     } catch (e) {}
+  }
+
+  // Tap sound (Proposed, decisions.md "Sound, Tap sound"): with no haptics, a short click confirms a touch the bar acts
+  // on. 'tap' for taps, swipes and menu tiles, at the finger's lift; 'hold' when a hold opens a menu, at 550 ms while the
+  // finger is still down. Both are sines with Web Audio's own envelope shapes, so the firmware can render the same
+  // samples (brd_sound.c's note_gain(), with the frequency's exponential ramp, about 2.3 KB for both at 24 kHz): the
+  // tap a crisp 2,400 Hz "tik" over 16 ms, the hold a lower "tok" falling from 1,600 to 1,000 Hz over 32 ms. Their level
+  // is set against the Soft tick that the user judged "a sensible volume" on the bar with 1.0.2 (peak -16 dBFS):
+  // decisions.md caps the click at no louder than Soft ticking, so the hold matches the Soft tick's A-weighted loudness
+  // and the tap sits 1 dB under it (peaks 0.092 and 0.112, about -21 and -20 dBFS, 7 to 8 dB under the chime). The UX
+  // spec's 0.025 and 0.03 were set against the Soft tick before it was raised 15 dB. Mixed on top of a tick or the
+  // chime, never cutting either. The rules for when it plays are the callers' (see clickDue() and touchAct()).
+  function clickSound(kind) {
+    if (!heard(kind === 'hold' ? 'click-hold' : 'click-tap') || !ac) return;
+    try {
+      const hold = kind === 'hold', t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+      const peak = hold ? 0.092 : 0.112, attack = hold ? 0.002 : 0.001, end = hold ? 0.03 : 0.015;
+      o.type = 'sine';
+      o.frequency.setValueAtTime(hold ? 1600 : 2400, t);
+      if (hold) o.frequency.exponentialRampToValueAtTime(1000, t + 0.03);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(peak, t + attack);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + end);
+      o.connect(g).connect(ac.destination);
+      o.start(t);
+      o.stop(t + end + 0.001);
+    } catch (e) {}
+  }
+  // Whether a touch clicks is decided when its gesture is recognized, before its action runs: Tap sound on, the screen
+  // lit, the bar up, and no call or calendar meeting in progress (even one set aside: a mic may be live). So the
+  // Restart and Power off tiles click, the touch that wakes a dark screen doesn't, and a touch made while silent never
+  // clicks later. BOOT, PWR and a flip never click, nor does anything done from the Remote, the API or the Mac.
+  const clickDue = () => s.tapSound && s.powered && !s.booting && !s.poweringOff && !s.off && !quiet();
+  // Run a touch's action with its click (kind 'tap' or 'hold'): the sound starts first, in the handler that recognized
+  // the gesture, then the screen changes. The log line ends with "· click" when it clicked (a testing aid).
+  function touchAct(kind, fn) {
+    const ck = clickDue();
+    if (ck) clickSound(kind);
+    fn();
+    if (ck) log.textContent += ' · click';
+    return ck;
   }
   // Ticks only while a focus session is actually running: not paused, not on a break, not while the alarm rings,
   // not during a call or calendar meeting (it picks up again afterwards), and not while the screen is dark or the
@@ -2113,6 +2347,8 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
       return;
     }
     const muted = pomo.sound && quiet() ? ` · chime muted during the ${quietWhy()}` : '';
+    // A phase that ends closes the controls tour, as it closes a menu, and the alarm shows as always.
+    tour.on = false;
     if (!pairing) chime(ended === 'focus');
     if (pomo.auto) { pomo.running = true; pomo.waiting = false; pomo.justEnded = null; }
     else {
@@ -2171,7 +2407,9 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
   }
 
   let toastTimer = null, toastHoldUntil = 0;
-  function toast(text, hold) {
+  // ms: how long it stays (1.6 s; the tour's closing toasts, which say how to open it again, stay 4 s). A touch still
+  // acts at once, and its own toast replaces this one.
+  function toast(text, hold, ms = 1600) {
     // A dark screen stays dark: a confirmation for something changed from the Remote (or this page) waits until the
     // screen is woken, unless an automatic change is already waiting. Powered off, there's nothing to show it on.
     if (!s.powered) return;
@@ -2185,8 +2423,8 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     el.hidden = false;
     clearUnderToast();
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { el.hidden = true; clearUnderToast(); }, 1600);
-    toastHoldUntil = hold ? Date.now() + 1600 : 0;
+    toastTimer = setTimeout(() => { el.hidden = true; clearUnderToast(); }, ms);
+    toastHoldUntil = hold ? Date.now() + ms : 0;
   }
   // While a toast is up, the small text it crosses is hidden (the sub line, a side foot, a menu tile's foot, the setup
   // screen's lines), so no fragments of it show around the pill. Only text whose ink comes within 8 px of the pill
@@ -2229,18 +2467,21 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     } catch (e) {}
     return make(cut(n));
   }
-  // Toasts for automatic changes wait until the screen is free: not dark, no menu, no setup or power screen.
-  const screenFree = () => s.powered && !s.booting && !s.off && menu.hidden && !onWifiScreen() && $('holdOv').hidden && !pairShowing();
+  // Toasts for automatic changes wait until the screen is free: not dark, no menu, no setup or power screen, and not
+  // the controls tour (a call or meeting that starts during it shows, with its toast, when it ends).
+  const screenFree = () => s.powered && !s.booting && !s.off && menu.hidden && !onWifiScreen() && $('holdOv').hidden && !pairShowing() && !tour.on;
   function notify(text, hold) { if (screenFree()) toast(text, hold); else pendingToast = text; }
   const hiddenNote = () => s.booting ? ' · shows once MiniBar has started'
     : onWifiScreen() ? ' · shows when setup is done'
     : pairShowing() ? ' · shows when pairing ends'
     : !menu.hidden ? ' · shows when the menu closes'
-    : s.off ? ' · the screen is dark, it shows when woken' : '';
+    : s.off ? ' · the screen is dark, it shows when woken'
+    : tour.on ? ' · shows when the tour ends' : '';
 
   // Each icon has a class so a look can choose among them (see the status row icons in the CSS).
   const battery = `<svg class="ic-batt" viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="2" y="6" width="21" height="12" rx="2.5"/><rect x="5" y="9" width="12" height="6" rx="1" fill="currentColor" stroke="none"/><path d="M25.5 10v4" stroke-linecap="round"/></svg>`;
-  const wifiIcon = () => s.wifi.mode === 'offline'
+  // Crossed out when Wi-Fi was skipped, and (Proposed, as the firmware draws it) while a dropped link reconnects.
+  const wifiIcon = () => s.wifi.mode === 'offline' || linkDown()
     ? `<svg class="ic-wifi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><g opacity=".4"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5.5 12.5a10 10 0 0 1 13 0"/><path d="M9 16a5 5 0 0 1 6 0"/></g><path d="M4 3l16 18"/></svg>`
     : `<svg class="ic-wifi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5.5 12.5a10 10 0 0 1 13 0"/><path d="M9 16a5 5 0 0 1 6 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/></svg>`;
   // A call or meeting you set aside leaves a small glyph in the corner: a headset or a calendar.
@@ -2481,8 +2722,11 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     // Starting Wi-Fi setup ends a pairing, which counts as canceled; no code shows during setup.
     const pairing = !!pair.code;
     if (pairing) pairEnd('setup');
+    // Setup ends the controls tour too, and shows at once.
+    tourEnd('setup');
     s.wifi.mode = 'setup';
     s.wifi.error = '';
+    s.wifi.link = true;
     hideMenu();
     setupMsg('');
     wCalErr('');
@@ -2503,6 +2747,346 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     // Without Wi-Fi the calendar is off, so a meeting on screen ends here.
     if (!syncAuto('Offline, calendar off')) toast('Offline · statuses still work');
     say(`${how}: skipped Wi-Fi`);
+    // Skip ends setup: on a new bar the controls tour follows, with the confirmation above it.
+    setupEnded();
+  }
+
+  // ---------- Help: the controls tour (Proposed, decisions.md "Help and the controls tour") ----------
+  // Seven cards, in decisions.md's order: Tap, Swipe and BOOT, where the first use of that card's own control shows
+  // what it would have done ("Practice only: Busy would become In a meeting.") and changes nothing real; Hold, Flip and
+  // PWR, which explain their control and do their real job when it's tried, which ends the tour; then More help, with a
+  // QR code for the help page the bar serves. A tap, BOOT or a swipe left goes on, a swipe right goes back, and on More
+  // help a tap, BOOT or swipe left finishes. It shows by itself once per bar, as soon as the screen is free after its
+  // first setup ends, and otherwise from the Help tile. 30 s without a touch, button or flip closes it. The copy and
+  // drawings are the UX designer's (team/help/ux-spec.md, v2), split into decisions.md's seven cards (the spec merged
+  // BOOT and PWR, and kept the tour on a PWR press). The tour adds no sounds of its own; the Tap sound confirms touches
+  // in it as it does everywhere. Firmware: a screen of core's own (a tour struct like this one, and "tour seen" in NVS),
+  // drawn by ui from the setup screen's objects; each practice line comes from the same rule as the real action.
+  const TOUR_N = 7;
+  // Where BOOT and PWR are along the top edge, in screen pixels from the left, upright: placeholders until they're
+  // measured on the bar (the board constants TB_BTN_BOOT_X and TB_BTN_PWR_X). The tour's drawings, its edge arrows and
+  // the case on this page all use them.
+  const BTN_X = { boot: 452, pwr: 541 };
+  const TOUR_NEXT = 'Tap for the next tip · hold to leave';
+  // Each card's title, lines and foot as it first shows (after: the foot once its practice result is up). The Hold,
+  // Flip and More help lines depend on what's underneath (tourCopy()).
+  const TOUR_CARDS = [
+    { id: 'tap', title: 'Tap', l1: 'Shows your next status. On the Pomodoro: start or pause.', l2: 'Try it: tap the screen. Nothing real changes.',
+      foot: 'Tap to try it · swipe left for the next tip · hold to leave', after: TOUR_NEXT },
+    { id: 'swipe', title: 'Swipe', l1: 'Left for the next status, right for the one before.', l2: 'Try it: slide a finger across the screen.',
+      foot: TOUR_NEXT, after: 'Swipe left or tap for the next tip · hold to leave' },
+    { id: 'boot', title: 'BOOT', l1: 'Press it for your next status, without looking.', l2: 'Try it: press BOOT. Nothing real changes.',
+      foot: 'Press BOOT to try it · tap for the next tip · hold to leave', after: 'Tap or press BOOT for the next tip · hold to leave' },
+    { id: 'hold', title: 'Touch and hold', l1: 'Keep a finger down to open the menu.', foot: TOUR_NEXT },
+    { id: 'flip', title: 'Flip', l1: 'Turn the bar over to start the Pomodoro or quiet an alarm.', foot: TOUR_NEXT },
+    { id: 'pwr', title: 'PWR', l1: 'A press: screen off or on. Hold 3 seconds: power off.', l2: 'Trying it ends the tour. A press starts the bar again.', foot: TOUR_NEXT },
+    { id: 'more', title: 'More help', foot: 'Tap to finish · swipe right to go back' },
+  ];
+  // What's underneath the tour: a call or meeting on screen (a), your own status, and the miniature's color key.
+  function tourUnder() {
+    const a = autoTop(), own = STATES[s.idx].id, pomoUnder = !a && own === 'pomodoro';
+    return { a, pomoUnder, aside: asideKind(), key: a ? a.kind : own === 'pomodoro' ? pomo.phase : own };
+  }
+  const keyOfIdx = i => { const id = STATES[(i + STATES.length) % STATES.length].id; return id === 'pomodoro' ? pomo.phase : id; };
+  const nameOfIdx = i => STATES[(i + STATES.length) % STATES.length].name;
+  // What the control would have done on the screen underneath, in words (Barlow has no "→"). kind: 'tap', 'boot',
+  // 'left' (next) or 'right' (previous). A tap or BOOT on a call or meeting goes back to your own status; a swipe counts
+  // from it. On the Pomodoro a tap starts, pauses or resumes, and BOOT gives the next status.
+  function practiceResult(kind) {
+    const u = tourUnder(), back = kind === 'right';
+    if (u.a) {
+      const i = kind === 'tap' || kind === 'boot' ? s.idx : s.idx + (back ? -1 : 1);
+      return { text: `Practice only: the ${u.a.kind} would be set aside for ${nameOfIdx(i)}.`, to: keyOfIdx(i) };
+    }
+    if (u.pomoUnder && kind === 'tap') {
+      const what = pomo.waiting ? (pomo.phase === 'focus' ? 'start Focus' : `start the ${pomo.phase === 'long' ? 'long' : 'short'} break`)
+        : pomo.running ? 'pause the timer' : isReady() ? 'start Focus' : 'resume the timer';
+      return { text: `Practice only: this would ${what}.`, to: pomo.phase };
+    }
+    const j = s.idx + (back ? -1 : 1);
+    return { text: `Practice only: ${STATES[s.idx].name} would ${back ? 'go back to' : 'become'} ${nameOfIdx(j)}.`, to: keyOfIdx(j) };
+  }
+  // The Flip card says what a flip would do now: it always turns the layout, quiets an alarm and starts what the
+  // Pomodoro is waiting for, so over a call or meeting it would also set that aside.
+  function flipLine(u) {
+    if (u.a) return `Not now: turning it over would set your ${u.a.kind} aside.`;
+    if (pomo.running) return 'Trying it ends the tour. Your running timer is left alone.';
+    if (pomo.waiting && pomo.phase !== 'focus') return `Trying it ends the tour and starts the ${pomo.phase === 'long' ? 'long' : 'short'} break.`;
+    if (pomo.waiting || isReady()) return 'Trying it ends the tour and starts the Pomodoro.';
+    return 'Trying it ends the tour and resumes the Pomodoro.';
+  }
+  function tourCopy(c) {
+    const card = TOUR_CARDS[c], u = tourUnder(), d = tour.done[c];
+    let { title, l1, l2, foot } = card, draw = card.id;
+    // A menu path from the screen underneath: on the Pomodoro, holding opens the timer menu, whose Settings has Help,
+    // except while a call or meeting is set aside (Show again takes Settings' place there).
+    if (card.id === 'hold') l2 = !u.pomoUnder ? 'Trying it ends the tour. Tap Help in the menu to come back.'
+      : u.aside ? 'Trying it ends the tour and opens the timer menu.' : 'Trying it ends the tour. Tap Settings, then Help, to come back.';
+    if (card.id === 'flip') l2 = flipLine(u);
+    if (card.id === 'more') {
+      if (s.wifi.mode === 'offline') {
+        draw = 'nowifi';
+        l1 = 'The full guide is a page on MiniBar, so it needs Wi-Fi.';
+        l2 = u.pomoUnder ? 'To set up Wi-Fi: swipe to a status, hold, then tap Wi-Fi.' : 'To set up Wi-Fi: hold, then tap Wi-Fi, then Set up.';
+      } else if (!wifiUp()) {
+        draw = 'wifi';
+        l1 = 'MiniBar is reconnecting to Wi-Fi.';
+        l2 = "The QR code for the full guide comes back once it's on.";
+      } else {
+        draw = 'qr';
+        l1 = 'Scan for the full guide. Your phone needs the office Wi-Fi.';
+        l2 = `Or type ${BAR.host}/help into your phone's browser.`;
+      }
+    }
+    if (c === 0 && tour.note === 'first' && !d) l2 = 'This is the first tip. Swipe left for the next one.';
+    if (d) { l2 = d.text; foot = card.after; }
+    return { title, l1, l2, foot, draw };
+  }
+
+  // The drawings, in the 132 x 132 panel's coordinates. Every shape is one LVGL 9 primitive: a rectangle with a radius
+  // (lv_obj), a polyline with round ends (lv_line), an arc (lv_arc's indicator), a circle, a label, or the QR code.
+  // Colors come from a palette P (tourPalette()): the look's own surfaces as CSS variables on the bar, Bold Signal's on
+  // the help page. Fills and strokes are inline styles, so the setup QR code's own rules can't recolor them.
+  const r2 = n => Math.round(n * 100) / 100;
+  const dRect = (x, y, w, h, fill, rx = 0, stroke = null, sw = 0) => `<rect x="${r2(x)}" y="${r2(y)}" width="${r2(w)}" height="${r2(h)}" rx="${rx}" style="fill:${fill}${stroke ? `;stroke:${stroke};stroke-width:${sw}` : ''}"/>`;
+  const dLine = (pts, color, w = 3) => `<polyline points="${pts.map(p => p.map(r2).join(',')).join(' ')}" style="fill:none;stroke:${color};stroke-width:${w};stroke-linecap:round;stroke-linejoin:round"/>`;
+  const dCircle = (cx, cy, r, fill, stroke = null, sw = 0) => `<circle cx="${cx}" cy="${cy}" r="${r}" style="fill:${fill || 'none'}${stroke ? `;stroke:${stroke};stroke-width:${sw}` : ''}"/>`;
+  // An arc in degrees, clockwise from +x (LVGL's convention).
+  function dArc(cx, cy, r, a0, a1, color, w) {
+    const pt = a => [r2(cx + r * Math.cos(a * Math.PI / 180)), r2(cy + r * Math.sin(a * Math.PI / 180))];
+    const [x0, y0] = pt(a0), [x1, y1] = pt(a1), large = ((a1 - a0) % 360 + 360) % 360 > 180 ? 1 : 0;
+    return `<path d="M${x0},${y0} A${r},${r} 0 ${large} 1 ${x1},${y1}" style="fill:none;stroke:${color};stroke-width:${w};stroke-linecap:round"/>`;
+  }
+  // An arrowhead with its tip at (x, y), pointing along angle.
+  function dChevron(x, y, angle, len, color, w) {
+    const a = angle * Math.PI / 180, sp = 0.6;
+    return dLine([[x - len * Math.cos(a - sp), y - len * Math.sin(a - sp)], [x, y], [x - len * Math.cos(a + sp), y - len * Math.sin(a + sp)]], color, w);
+  }
+  // A finger: an 18 px pill with its tip at (tx, ty) and a nail near the tip.
+  function dFinger(P, tx, ty, len = 80) {
+    const ny = ty + 7;
+    return dRect(tx - 9, ty, 18, len, P.fing, 9, P.pan, 2)
+      + `<path d="M${tx - 5},${ny + 8} V${ny + 4} a5,5 0 0 1 10,0 V${ny + 8}" style="fill:none;stroke:${P.nail};stroke-width:2;stroke-linecap:round"/>`;
+  }
+  // The bar in small: its case, a 108 x 30 miniature of the screen in one status's colors, and BOOT and PWR on its top
+  // edge (on the bottom edge, mirrored, when the bar is turned over). on: the button that's lit.
+  function dBar(P, o) {
+    const { x = 8, y = 30, w = 116, h = 38, key = 'busy', buttons = 'top', on = null } = o;
+    const k = w / 116, sx = x + 4 * k, sy = y + 4, sw = w - 8 * k, sh = h - 8, m = P.mini(key), infoX = sx + sw * 0.7;
+    let out = dRect(x, y, w, h, P.chas, r2(7 * k), P.chl, 2) + dRect(sx, sy, sw, sh, m.field, 2);
+    out += dRect(infoX, sy, sx + sw - infoX, sh, m.side);
+    if (m.edge) out += dRect(sx, sy, 2, sh, m.edge);
+    out += dRect(sx + 5 * k, sy + 4, 12 * k, 2, m.edge ? m.sub : m.ink) + dRect(sx + 5 * k, sy + 8, 40 * k, 12 * (h / 38), m.head, 1)
+      + dRect(sx + 5 * k, sy + sh - 6, 38 * k, 2, m.ink) + dRect(infoX + 4 * k, sy + 11, 14 * k, 2, m.sub) + dRect(infoX + 4 * k, sy + 15, 20 * k, 7, m.ink, 1);
+    for (const b of ['boot', 'pwr']) {
+      const cx = buttons === 'bottom' ? x + w - (BTN_X[b] / 640) * w : x + (BTN_X[b] / 640) * w, lit = on === b;
+      const bw = lit ? 16 : 12, bh = lit ? 5 : 3;
+      out += dRect(cx - bw / 2, buttons === 'top' ? y - bh : y + h, bw, bh, lit ? P.btnOn : P.btn, 1);
+    }
+    return out;
+  }
+  // The practice mark: a ring and a check in the text color on a panel-colored disc. No status color, so it can't read
+  // as Available from across the room.
+  const dMark = (P, cx = 113, cy = 19) => dCircle(cx, cy, 15, P.pan) + dCircle(cx, cy, 12, null, P.ink, 2)
+    + dLine([[cx - 6, cy], [cx - 2, cy + 4], [cx + 6, cy - 4]], P.ink, 3);
+  // The BOOT and PWR drawing: the bar with its buttons, one lit, and a label for each with a leader to its button (no
+  // finger, which read as a cable plug). Labels sit apart, inside the panel; turned over they go below the bar.
+  function dButtons(P, st, lit) {
+    const top = !st.flipped, x = 8, w = 116, h = 38, y = top ? 74 : 20;
+    let out = dBar(P, { x, y, w, h, key: st.done ? st.to : st.from, buttons: top ? 'top' : 'bottom', on: lit });
+    const cx = b => r2(top ? x + (BTN_X[b] / 640) * w : x + w - (BTN_X[b] / 640) * w);
+    const left = cx('boot') < cx('pwr') ? 'boot' : 'pwr', right = left === 'boot' ? 'pwr' : 'boot';
+    const LW = P.labW;
+    let cl = cx(left) - 14, cr = cx(right) + 10;
+    cr = Math.min(cr, 124 - LW[right] / 2); cl = Math.min(cl, cr - LW[right] / 2 - 8 - LW[left] / 2);
+    cl = Math.max(cl, 8 + LW[left] / 2); cr = Math.max(cr, cl + LW[left] / 2 + 8 + LW[right] / 2);
+    const centers = { [left]: r2(cl), [right]: r2(cr) }, rowY = top ? 30 : 108;
+    for (const b of ['boot', 'pwr']) {
+      const on = b === lit, c = cx(b), color = on ? P.ink : P.mut, wl = on ? 3 : 2;
+      const tipY = top ? y - (on ? 5 : 3) - 4 : y + h + (on ? 5 : 3) + 4, tail = [centers[b], top ? rowY + 6 : rowY - 16];
+      out += dLine([tail, [c, tipY]], color, wl) + dChevron(c, tipY, Math.atan2(tipY - tail[1], c - tail[0]) * 180 / Math.PI, 7, color, wl);
+      out += `<text x="${centers[b]}" y="${rowY}" text-anchor="middle" style="fill:${on ? P.lab : P.mut};font-size:${P.labSize}px;letter-spacing:${P.labLs}px">${b.toUpperCase()}</text>`;
+    }
+    return out + (st.done ? dMark(P, top ? 19 : 113, top ? 19 : 113) : '');
+  }
+  const TOUR_DRAW = {
+    tap: (P, st) => dBar(P, { key: st.done ? st.to : st.from, buttons: st.flipped ? 'bottom' : 'top' }) + dFinger(P, 70, 52)
+      + dArc(70, 52, 10, 215, 325, P.ink, 2) + dArc(70, 52, 16, 220, 320, P.ink, 2) + (st.done ? dMark(P) : ''),
+    swipe: (P, st) => {
+      const right = st.dir === 'right';
+      const arrow = right ? dLine([[58, 104], [114, 104]], P.ink, 3) + dChevron(114, 104, 0, 8, P.ink, 3)
+        : dLine([[74, 104], [18, 104]], P.ink, 3) + dChevron(18, 104, 180, 8, P.ink, 3);
+      return dBar(P, { key: st.done ? st.to : st.from, buttons: st.flipped ? 'bottom' : 'top' }) + dFinger(P, right ? 40 : 92, 52) + arrow + (st.done ? dMark(P) : '');
+    },
+    boot: (P, st) => dButtons(P, st, 'boot'),
+    hold: (P, st) => dBar(P, { key: st.from, buttons: st.flipped ? 'bottom' : 'top' }) + dFinger(P, 70, 52)
+      + dCircle(70, 52, 17, null, P.trk, 4) + dArc(70, 52, 17, -90, 150, P.ink, 4),
+    flip: (P, st) => {
+      const pt = a => [66 + 56 * Math.cos(a * Math.PI / 180), 66 + 56 * Math.sin(a * Math.PI / 180)];
+      return dBar(P, { x: 18, y: 50, w: 96, h: 32, key: st.from, buttons: st.flipped ? 'bottom' : 'top' })
+        + dArc(66, 66, 56, 205, 330, P.ink, 3) + dChevron(...pt(330), 420, 9, P.ink, 3)
+        + dArc(66, 66, 56, 25, 150, P.ink, 3) + dChevron(...pt(150), 240, 9, P.ink, 3);
+    },
+    pwr: (P, st) => dButtons(P, st, 'pwr'),
+    // Offline: the Wi-Fi glyph with a slash on a panel-colored underlay. Reconnecting: the glyph with its outer arcs dim.
+    nowifi: P => dCircle(66, 88, 6, P.ink) + [22, 38, 54].map(r => dArc(66, 88, r, 225, 315, P.ink, 6)).join('')
+      + dLine([[30, 28], [102, 100]], P.pan, 10) + dLine([[30, 28], [102, 100]], P.ink, 4),
+    wifi: P => dCircle(66, 88, 6, P.ink) + dArc(66, 88, 22, 225, 315, P.ink, 6) + dArc(66, 88, 38, 225, 315, P.trk, 6) + dArc(66, 88, 54, 225, 315, P.trk, 6),
+  };
+  // Palettes. On a status-color look (Bold Signal) the tour sits on the setup navy: white ink, its muted color, a panel
+  // of the navy darkened like the look's tints, and the Done tile's colors for the finger. On a dark look (Low Glare
+  // Pixel) everything comes from the look: text, muted, the tile surface and ring, and the setup color as the accent.
+  const TILE = 'var(--b-tile, color-mix(in srgb, var(--b-text) 6%, var(--b-bg)))', RING = 'var(--b-ring, color-mix(in srgb, var(--b-text) 18%, var(--b-bg)))';
+  const PAL_SOLID = {
+    bg: 'var(--sc)', ink: '#FFFFFF', mut: '#DFE5EA', pan: '#162842', acc: '#FFFFFF', trk: '#4A515C', chas: '#0E1013', chl: '#DFE5EA',
+    btn: '#DFE5EA', btnOn: '#FFFFFF', fing: '#E8EBEE', nail: '#4A525C', lab: '#FFFFFF', labSize: 12, labLs: 1.2, labW: { boot: 34, pwr: 28 },
+    mini: k => ({ field: `var(--s-${k})`, side: `var(--ts-${k}, var(--s-${k}))`, head: '#FFFFFF', edge: null, ink: '#FFFFFF', sub: '#DFE5EA' }),
+  };
+  const PAL_DARK = {
+    bg: 'var(--b-bg)', ink: 'var(--b-text)', mut: 'var(--b-muted)', pan: TILE, acc: 'var(--sc)', trk: RING, chas: TILE, chl: 'var(--b-muted)',
+    btn: 'var(--b-muted)', btnOn: 'var(--sc)', fing: 'var(--b-text)', nail: 'var(--b-muted)', lab: 'var(--sc)', labSize: 17, labLs: 1, labW: { boot: 30, pwr: 27 },
+    mini: k => ({ field: 'var(--b-bg)', side: `var(--ts-${k}, ${TILE})`, head: k === 'clock' ? 'var(--b-text)' : `var(--s-${k})`, edge: k === 'clock' ? 'var(--b-muted)' : `var(--s-${k})`, ink: 'var(--b-text)', sub: 'var(--b-muted)' }),
+  };
+  const tourPalette = () => screen.dataset.mode === 'solid' ? PAL_SOLID : PAL_DARK;
+  // The More help card's QR code: http://<the bar's IP address>/help, which works on phones that can't look up .local
+  // names. Version 3 at ECC M (29 modules, 4 px each in the 116 px inside the setup QR's tile, like the setup code);
+  // longer addresses than "http://192.168.100.200/help" fall back to the size that fits.
+  const qrHelp = {};
+  function qrHelpSvg(url) {
+    if (qrHelp[url]) return qrHelp[url];
+    try {
+      let q;
+      try { q = qrcode(3, 'M'); q.addData(url); q.make(); } catch (e) { q = qrcode(0, 'M'); q.addData(url); q.make(); }
+      const n = q.getModuleCount();
+      let d = '';
+      for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) d += `M${c} ${r}h1v1h-1z`;
+      qrHelp[url] = `<svg viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges" role="img" aria-label="QR code for MiniBar's help page"><path d="${d}" fill="#000"/></svg>`;
+    } catch (e) {
+      qrHelp[url] = `<svg viewBox="0 0 10 10" role="img" aria-label="QR code placeholder"><rect width="10" height="10" fill="#000" opacity=".15"/></svg>`;
+    }
+    return qrHelp[url];
+  }
+  // The progress row: one segment per card, 4 px apart, on whole pixels, from the edge bar's right side in looks that
+  // have one. Done and current segments are lit.
+  function tourSegs() {
+    const x0 = screen.dataset.accent === '1' ? (style.accentWidth || 6) : 0, g = 4, w = (640 - x0 - (TOUR_N - 1) * g) / TOUR_N;
+    let out = '';
+    for (let i = 0; i < TOUR_N; i++) {
+      const a = Math.round(x0 + i * (w + g)), b = Math.round(x0 + i * (w + g) + w);
+      out += `<i${i <= tour.card ? ' class="on"' : ''} style="left:${(a / 6.4).toFixed(5)}cqw;width:${((b - a) / 6.4).toFixed(5)}cqw"></i>`;
+    }
+    return `<div class="tseg" aria-hidden="true">${out}</div>`;
+  }
+  // The BOOT and PWR cards point at the real buttons from the screen's edge: a 28 x 14 arrow for each, centered on its
+  // x, BOOT filled and PWR a 2 px outline (so they differ where the two colors look alike), each labeled on the side away
+  // from the other. Turned over the buttons are on the bottom edge, mirrored: 28 x 10 arrows there, without labels,
+  // each with a gap cut into the progress row.
+  function tourEdge(P, flipped) {
+    const xs = { boot: flipped ? 640 - BTN_X.boot : BTN_X.boot, pwr: flipped ? 640 - BTN_X.pwr : BTN_X.pwr };
+    const left = xs.boot < xs.pwr ? 'boot' : 'pwr', rowH = screen.dataset.mode === 'solid' ? 6 : 5;
+    let out = '';
+    for (const b of ['boot', 'pwr']) {
+      const x = xs[b], col = b === 'boot' ? P.acc : P.mut;
+      if (flipped) {
+        out += dRect(x - 16, 172 - rowH, 32, rowH, P.bg);
+        out += b === 'boot' ? `<polygon points="${x - 14},162 ${x + 14},162 ${x},172" style="fill:${col}"/>`
+          : `<polygon points="${x - 12.5},163 ${x + 12.5},163 ${x},170" style="fill:none;stroke:${col};stroke-width:2;stroke-linejoin:round"/>`;
+      } else {
+        out += b === 'boot' ? `<polygon points="${x - 14},14 ${x + 14},14 ${x},0" style="fill:${col}"/>`
+          : `<polygon points="${x - 12.5},13 ${x + 12.5},13 ${x},2" style="fill:none;stroke:${col};stroke-width:2;stroke-linejoin:round"/>`;
+        const out1 = b === left ? -1 : 1;
+        out += `<text x="${x + out1 * 18}" y="12" text-anchor="${out1 < 0 ? 'end' : 'start'}" style="fill:${col};font-size:${P.labSize}px;letter-spacing:${P.labLs}px">${b.toUpperCase()}</text>`;
+      }
+    }
+    return `<svg class="tedge" viewBox="0 0 640 172" preserveAspectRatio="none" aria-hidden="true">${out}</svg>`;
+  }
+  // One card: the setup QR screen's layout with the drawing (or the help page's QR code) where the QR code sits.
+  function tourView() {
+    const c = tour.card, cp = tourCopy(c), u = tourUnder(), d = tour.done[c], P = tourPalette();
+    const st = { from: u.key, to: d ? d.to : u.key, done: !!d, dir: d && d.kind === 'right' ? 'right' : 'left', flipped: s.flipped };
+    const panel = cp.draw === 'qr' ? `<div class="qr">${qrHelpSvg(`http://${s.wifi.ip}/help`)}</div>`
+      : `<div class="qr tpanel"><svg class="tdraw" viewBox="0 0 132 132" aria-hidden="true">${TOUR_DRAW[cp.draw](P, st)}</svg></div>`;
+    const kick = c === 0 ? `Quick tour of the controls · 1 of ${TOUR_N}` : `Quick tour · ${c + 1} of ${TOUR_N}`;
+    return `<div class="wsetup tour">${panel}<div class="wtext">`
+      + `<div class="kicker">${kick}</div>`
+      + `<div class="word title" style="--fs:7.5" data-fit="qr">${esc(cp.title)}</div>`
+      + `<ol class="tl" role="presentation"><li>${esc(cp.l1)}</li><li>${esc(cp.l2)}</li></ol>`
+      + `<div class="wfoot">${esc(cp.foot)}</div></div></div>`
+      + tourSegs() + (['boot', 'pwr'].includes(TOUR_CARDS[c].id) ? tourEdge(P, s.flipped) : '');
+  }
+
+  // When the tour can open by itself: nothing else holds the screen (a menu, a ringing alarm, a pairing code, the
+  // power screens, the splash, Wi-Fi setup or a dark screen). A call or meeting doesn't stop it: the person who has just
+  // set the bar up is standing at it, and the call or meeting shows, with its toast, when the tour ends.
+  const tourFree = () => s.powered && !s.booting && !s.poweringOff && !s.off && menu.hidden && $('holdOv').hidden
+    && !onWifiScreen() && !pairShowing() && !s.ringing && !tour.on;
+  function tourDueCheck() { if (tourState === 'due' && tourFree()) tourOpen('first'); }
+  // Setup has ended (Connected moved on, or Skip): a bar that hasn't shown its tour makes it due, and it shows as soon
+  // as the screen is free. open false: only mark it due (ending Connected with a hold opens the quick menu first).
+  function setupEnded(open = true) {
+    if (tourState === 'unseen') saveTour('due');
+    if (open) tourDueCheck();
+  }
+  // how: 'first' (by itself, once) or 'help' (the Help tile). "Tour seen" is saved as soon as a tour appears while
+  // it's due, so an interrupted first-run tour never comes back by itself; Help always starts at the first card.
+  function tourOpen(how) {
+    const t = Date.now();
+    Object.assign(tour, { on: true, card: 0, done: {}, note: null, at: t, began: t, guardUntil: 0 });
+    if (tourState === 'due') saveTour('seen');
+    hideMenu();
+    bump();
+    lastKey = '';
+    render();
+    say(how === 'help' ? 'menu: Help, the quick tour starts (nothing real changes in it)' : 'tour: the first-run quick tour, now that setup has ended');
+  }
+  const renderTour = () => { bump(); lastKey = ''; render(); };
+  // The toast that ends a finished or idle tour says how to open it again from the screen underneath, for 4 s.
+  function tourExitToast(how) {
+    const u = tourUnder();
+    const path = !u.pomoUnder ? 'hold, then Help' : u.aside ? 'hold on a status, then Help' : 'hold, Settings, then Help';
+    return `${how === 'done' ? 'Tour done' : 'Tour closed'} · ${path} to see it again`;
+  }
+  // how: 'done' (finished), 'idle' (30 s), 'hold', 'flip', 'pwr', 'pairing', 'phase', 'remote', 'setup' or 'off'.
+  // Afterward nothing of it is left, and the screen underneath shows as it is now.
+  function tourEnd(how) {
+    if (!tour.on) return false;
+    Object.assign(tour, { on: false, done: {}, note: null, guardUntil: 0 });
+    renderTour();
+    if (how === 'done' || how === 'idle') toast(tourExitToast(how), false, 4000);
+    return true;
+  }
+  function tourGo(n, how, dir) {
+    tour.card = n;
+    tour.note = null;
+    renderTour();
+    say(`${how}: tour ${dir}, ${n + 1} of ${TOUR_N} · ${TOUR_CARDS[n].title}`);
+  }
+  function tourPractice(card, kind, how) {
+    const r = practiceResult(kind);
+    tour.done[card] = { ...r, kind };
+    tour.note = null;
+    tour.guardUntil = Date.now() + 700;
+    renderTour();
+    say(`${how}: practice only, nothing changed · ${r.text.replace(/^Practice only: /, '')}`);
+  }
+  // For 700 ms after a practice result a tap, swipe or BOOT is ignored (and doesn't click), so a double tap can't skip
+  // the result before it's read. Hold, flip and PWR still act.
+  const tourGuarded = () => Date.now() < tour.guardUntil;
+  // A tap, swipe or BOOT on the tour. kind: 'tap', 'boot', 'left' (a swipe left: next) or 'right' (a swipe right: back).
+  function tourInput(kind, how) {
+    tour.at = Date.now();
+    const c = tour.card;
+    if (kind === 'right') {
+      if (c === 0) { tour.note = 'first'; renderTour(); say(`${how}: this is the first tip, so the tour stays on it`); return; }
+      if (c === 1 && !tour.done[1]) { tourPractice(1, 'right', how); return; }
+      tourGo(c - 1, how, 'back');
+      return;
+    }
+    if (c === TOUR_N - 1) { tourEnd('done'); say(`${how}: tour done`); return; }
+    if (c === 0 && kind === 'tap' && !tour.done[0]) { tourPractice(0, 'tap', how); return; }
+    if (c === 1 && kind === 'left' && !tour.done[1]) { tourPractice(1, 'left', how); return; }
+    if (c === 2 && kind === 'boot' && !tour.done[2]) { tourPractice(2, 'boot', how); return; }
+    tourGo(c + 1, how, 'next');
   }
 
   // Paint a screen (the simulator or a preview) in one status color. --sc is the color; --tc and --tsc pick up a
@@ -2531,6 +3115,11 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
       html = `<div class="main">${v.main}</div>${v.side}`;
       barPct = v.bar;
       document.documentElement.style.setProperty('--state', 'var(--s-meeting)');
+    } else if (tour.on) {
+      // The controls tour covers the screen; your status, a call or meeting and the timer carry on underneath.
+      key = 'setup';
+      html = tourView();
+      document.documentElement.style.setProperty('--state', 'var(--s-setup)');
     } else {
       // A call or meeting shows over your own status; your status is still there underneath, unchanged.
       const a = autoTop(), st = STATES[s.idx];
@@ -2765,29 +3354,45 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     // Connected is the end of setup: a tap moves on and holding opens the quick menu.
     const connected = s.wifi.mode === 'connected';
     const pairing = s.powered && !s.booting && pairShowing();
-    $('hint').textContent = !s.powered ? 'Powered off · Press PWR on the side to turn it on'
-      : s.booting ? 'Starting up'
+    const touring = s.powered && !s.booting && !pairing && tour.on;
+    // The tour: where you are, how to go on and how to leave, by card.
+    let tourHint = '';
+    if (touring) {
+      const c = tour.card, d = tour.done[c], last = c === TOUR_N - 1;
+      const tryIt = !d && c === 0 ? 'Tap: try it · ' : !d && c === 1 ? 'Swipe: try it · ' : !d && c === 2 ? 'BOOT: try it · ' : '';
+      const go = last ? 'Tap, BOOT or swipe left: finish' : c === 0 && !d ? 'Swipe left or BOOT: next' : c === 1 && !d ? 'Tap or BOOT: next' : c === 2 && !d ? 'Tap or swipe left: next' : 'Tap, BOOT or swipe left: next';
+      tourHint = `Tour ${c + 1} of ${TOUR_N} · ${tryIt}${go} · Swipe right: ${c === 0 ? 'stays on the first tip' : 'back'} · Hold, flip or PWR: leave the tour`;
+    }
+    // Whether touches click right now (Tap sound): its setting, and quiet during a call or meeting.
+    const tapNote = !s.powered || s.booting || pairing || onWifiScreen() ? '' : !s.tapSound ? ' · Tap sound off' : quiet() ? ` · Tap sound quiet during the ${quietWhy()}` : ' · Touches click';
+    $('hint').textContent = !s.powered ? 'Powered off · Press PWR on top to turn it on'
+      : s.booting ? 'Starting up · Touches and BOOT wait until it has started; a flip turns the layout'
       : pairing ? 'Pairing · Tap, swipe, hold or BOOT: cancel · Flip: cancel, then flip as usual · PWR: cancel and screen off'
+      : touring ? tourHint + tapNote
       : connected ? 'Connected · Tap: continue · Hold: quick menu'
       : onWifiScreen() ? 'Wi-Fi setup · Tap: continue · Hold: skip setup · Use the phone panel to connect'
-      : a ? 'Automatic status · Tap: back to your status · Swipe: change status · Hold: quick menu · BOOT: back to your status'
+      : (a ? 'Automatic status · Tap: back to your status · Swipe: change status · Hold: quick menu · BOOT: back to your status'
       : (STATES[s.idx].id === 'pomodoro'
         ? 'Tap: start or pause · Flip: start next phase · Swipe: change status · Hold: timer options'
         : 'Tap: next status · Swipe: back or forward · Hold: quick menu · PWR: hold 3 s to power off')
-        + (k ? ` · The ${k} is set aside: Show again is in the ${STATES[s.idx].id === 'pomodoro' ? 'timer' : 'quick'} menu` : '');
+        + (k ? ` · The ${k} is set aside: Show again is in the ${STATES[s.idx].id === 'pomodoro' ? 'timer' : 'quick'} menu` : ''))
+        + (tourState === 'due' ? ' · The quick tour shows once the screen is free' : '') + tapNote;
     // The accessible names follow the screen too.
     const pomoScr = STATES[s.idx].id === 'pomodoro';
+    const tc = touring && tourCopy(tour.card);
     screen.setAttribute('aria-label', !s.powered ? 'MiniBar screen, powered off. Press PWR to turn it on.'
       : s.booting ? 'MiniBar screen, starting up.'
       : s.off ? 'MiniBar screen, dark. Tap to wake it.'
       // The bar's screen is the one place the code shows, so a screen reader hears it here, digit by digit.
       : pairing ? `MiniBar screen, pairing code ${pair.code.split('').join(' ')} for ${pairLabel(pair.who)}, expires in ${spokenTime(pair.left)}. Tap to cancel.`
+      : touring ? `MiniBar screen, quick tour of the controls, ${tour.card + 1} of ${TOUR_N}: ${tc.title}. ${tc.l1} ${tc.l2} ${tc.foot}.`
       : connected ? 'MiniBar screen, connected to Wi-Fi. Tap to continue, long-press for the quick menu.'
       : onWifiScreen() ? 'MiniBar screen, Wi-Fi setup. Tap to continue, long-press for setup options.'
       : a ? `MiniBar screen, ${a.kind === 'call' ? 'On a call, from your Mac' : 'In a meeting, from your calendar'}. Tap to go back to your status, swipe to change status, long-press for the quick menu.`
       : pomoScr ? 'MiniBar screen, Pomodoro. Tap to start or pause, swipe to change status, long-press for timer options.'
       : 'MiniBar screen. Tap for next status, swipe to change status, long-press for the quick menu.');
-    $('btnBoot').setAttribute('aria-label', pairing ? 'BOOT button: cancel pairing' : a ? 'BOOT button: back to your status' : 'BOOT button: next status');
+    $('btnBoot').setAttribute('aria-label', pairing ? 'BOOT button, on top: cancel pairing' : touring ? 'BOOT button, on top: next tip of the tour'
+      : a ? 'BOOT button, on top: back to your status' : 'BOOT button, on top: next status');
   }
 
   const colorOf = key => (style && style.colors[key]) || BASE[key];
@@ -2813,16 +3418,27 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     const setupMode = s.powered && ['setup', 'connecting', 'failed'].includes(s.wifi.mode);
     // Until this phone is paired, the pairing prompt takes the place of every control (the bar answers
     // 401 to anything else). The header names the bar in every state, so you can tell which one a phone talks to.
+    // The help page (phone.view 'help') takes the panel while it's open; on the setup network there's none.
+    const help = phone.view === 'help' && !setupMode;
     $('setupView').hidden = !setupMode;
-    $('remoteMain').hidden = setupMode || !phone.token;
-    $('pairView').hidden = setupMode || !!phone.token;
-    $('phoneTitle').textContent = setupMode ? 'Wi-Fi setup' : 'Remote';
-    $('phoneAddr').textContent = setupMode ? 'MiniBar-Setup · 4.3.2.1' : `${BAR.name} · ${BAR.host}`;
-    const note = !s.powered ? "MiniBar is powered off, so this page can't reach it. Press PWR on the side of the bar to turn it on."
+    $('remoteMain').hidden = setupMode || help || !phone.token;
+    $('pairView').hidden = setupMode || help || !!phone.token;
+    $('helpView').hidden = !help;
+    $('helpLink').hidden = setupMode || help;
+    if (setupMode) $('helpNote').hidden = true;
+    $('phoneTitle').textContent = setupMode ? 'Wi-Fi setup' : help ? 'Help' : 'Remote';
+    $('phoneAddr').textContent = setupMode ? 'MiniBar-Setup · 4.3.2.1' : `${BAR.name} · ${BAR.host}${help ? '/help' : ''}`;
+    const note = help ? '' : !s.powered ? "MiniBar is powered off, so this page can't reach it. Press PWR on top of the bar to turn it on."
       : s.wifi.mode === 'offline' ? "MiniBar isn't on Wi-Fi, so this page can't reach it. Hold its screen, then choose Wi-Fi to set it up."
+      : linkDown() ? "MiniBar has dropped off the office Wi-Fi, so this page can't reach it. It reconnects on its own."
       : '';
     $('offNote').textContent = note;
     $('offNote').hidden = !note;
+    // While the bar shows its controls tour, the Remote says so, and the status buttons still show your status.
+    const under = autoTop() ? (autoTop().kind === 'call' ? 'On a call' : 'In a meeting') : STATES[s.idx].name;
+    setText($('tourNote'), tour.on ? `MiniBar is showing its quick tour of the controls. ${under} shows again when the tour ends.` : '');
+    $('tourNote').hidden = !(tour.on && s.powered);
+    $('tapSound').checked = s.tapSound;
     updateAutoRemote();
     updatePhonePair();
     renderDevices();
@@ -2952,6 +3568,10 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
       if (pomo.phase === 'focus') pomo.focusedMs += Math.min(d, d + pomo.remaining);
       if (pomo.remaining <= 0) { endPhase(); lastKey = ''; return; }
     }
+    // The controls tour: a first-run tour that's due shows as soon as the screen is free; one that's up closes after
+    // 30 s without a touch, button or flip.
+    if (tour.on && t - tour.at > 30000) { tourEnd('idle'); say('tour: closed after 30 s without a touch or a button'); }
+    tourDueCheck();
     if (pendingToast && screenFree() && $('toast').hidden) { const next = pendingToast; pendingToast = null; toast(next); }
     if (!$('toast').hidden) clearUnderToast();
     const quietSec = mac.quiet ? Math.floor(mac.quietMs / 1000) : 0;
@@ -2961,7 +3581,7 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     if (key === lastKey) return;
     lastKey = key;
     const shape = [s.idx, s.rev, s.wifi.mode, pairShowing()].join('|');
-    if (STATES[s.idx].id === 'message' && !autoTop() && !pairShowing() && shape === lastShape) {
+    if (STATES[s.idx].id === 'message' && !autoTop() && !pairShowing() && !tour.on && shape === lastShape) {
       rendering = 'message';
       const sys = lcd.querySelector('.sys');
       if (sys) { sys.outerHTML = sysRow(); alignInk(screen); }
@@ -2978,7 +3598,7 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     silence();
     const m = s.wifi.mode;
     if (m === 'failed') { s.wifi.mode = 'setup'; render(); say(`${how}: back to the QR code`); }
-    else if (m === 'connected') { clearTimeout(connectedTimer); s.wifi.mode = 'ok'; render(); say(`${how}: done`); }
+    else if (m === 'connected') { clearTimeout(connectedTimer); s.wifi.mode = 'ok'; render(); say(`${how}: done`); setupEnded(); }
     else if (m === 'connecting') toast('Still connecting');
     else toast('Scan the code with your phone');
   }
@@ -2993,7 +3613,7 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     s.since = now();
     hideMenu();
     render();
-    if (how) say(`${how}: ${STATES[s.idx].name}${asideLog(aside)}`);
+    if (how) say(`${how}: ${STATES[s.idx].name}${asideLog(aside)}${s.off ? ' · the screen is dark, it shows when woken' : ''}`);
     if (aside) toast(`${cap(aside)} set aside · ${STATES[s.idx].name}`);
   }
 
@@ -3228,9 +3848,11 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     if (!pair.code || pair.shown || !s.powered || s.booting || s.poweringOff || !$('holdOv').hidden || onWifiScreen()) return;
     pair.shown = true;
     pair.shownAt = Date.now();
-    const woke = s.off, closed = !menu.hidden;
+    const woke = s.off, closed = !menu.hidden, toured = tour.on;
     if (s.off) togglePower();
     hideMenu();
+    // A code ends the controls tour at once; when pairing ends, the screen underneath shows, not the tour.
+    if (toured) tour.on = false;
     $('toast').hidden = true;
     toastHoldUntil = 0;
     if (s.ringing) { s.ringing = false; pomo.heldAlarm = 'pairing'; }
@@ -3239,7 +3861,7 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     bump();
     lastKey = '';
     render();
-    say(`pairing: ${pairLabel(pair.who)} asked, the code is on the bar${woke ? ' (it woke the screen)' : closed ? ' (the menu closed)' : ''}`);
+    say(`pairing: ${pairLabel(pair.who)} asked, the code is on the bar${woke ? ' (it woke the screen)' : closed ? ' (the menu closed)' : toured ? ' (the tour closed)' : ''}`);
   }
 
   // POST /api/v1/pair: the code typed on the device that asked (the pairing_id ties it to that device).
@@ -3570,7 +4192,9 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     b.type = 'button';
     b.dataset.id = st.id;
     b.innerHTML = `<i></i>${st.name}`;
-    b.addEventListener('click', () => { if (s.off) togglePower(); go(i, 'remote'); });
+    // A change from the Remote doesn't wake a dark screen: it happens underneath and shows, with any toast, when the
+    // screen is woken (decided 2026-10-05, the theme round's rule for every change from the Remote). It ends the tour.
+    b.addEventListener('click', () => { tourEnd('remote'); go(i, 'remote'); });
     grid.appendChild(b);
   });
 
@@ -3590,8 +4214,8 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
         // Changing the length of the current phase restarts it at the new length.
         pomo.remaining = phaseLen(k);
       }
-      if (s.off) togglePower();
-      // During a call or meeting a length change doesn't pull the bar off the automatic screen.
+      // During a call or meeting a length change doesn't pull the bar off the automatic screen. On a dark screen, or
+      // under the controls tour, it happens underneath.
       if (!autoTop()) s.idx = POMO;
       render();
       say(`remote: ${k === 'every' ? `long break after ${v} sessions` : `${PHASE_NAME[k].toLowerCase()} set to ${v} min`}`);
@@ -3611,10 +4235,11 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     if (b) setSpeed(+b.dataset.v);
   }));
 
-  const toPomo = fn => () => { wake(); s.idx = POMO; fn('remote'); };
+  // The Pomodoro's controls end the controls tour, and on a dark screen they act underneath (the toast waits).
+  const toPomo = fn => () => { tourEnd('remote'); s.idx = POMO; fn('remote'); };
   $('pStart').addEventListener('click', toPomo(startPause));
   $('pSkip').addEventListener('click', toPomo(skip));
-  $('pStop').addEventListener('click', () => { wake(); stop('remote'); });
+  $('pStop').addEventListener('click', () => { tourEnd('remote'); stop('remote'); });
   $('pAuto').addEventListener('change', e => { pomo.auto = e.target.checked; say(`remote: auto-start ${pomo.auto ? 'on' : 'off'}`); });
   $('pSound').addEventListener('change', e => { pomo.sound = e.target.checked; say(`remote: chime ${pomo.sound ? 'on' : 'off'}`); });
   // Ticking: off by default, Soft or Medium. The bar's timer menu has the same switch under Settings.
@@ -3650,6 +4275,31 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     if (!b || !setTheme(b.dataset.v, 'remote')) return;
     phoneSay(`Theme: ${THEMES[s.theme].name}`);
   });
+  // Tap sound (sound.tap_sound, api.md 10.4, Proposed; its place beside Theme decided 2026-10-05): on or off, on by
+  // default, kept like every other setting (the browser stands in for the bar's flash). Each change shows a toast;
+  // during a call or meeting it says the click is quiet for now, so silence isn't read as "it didn't work". The tap on
+  // the bar's tile that turns it on clicks, as a sample; turning it off doesn't, and a change from the Remote or the
+  // API never makes the bar click. The value it already has changes nothing.
+  const TAP_STORE = 'minibar-tap-sound';
+  try { if (localStorage.getItem(TAP_STORE) === 'off') s.tapSound = false; } catch (e) {}
+  function setTapSound(on, how) {
+    if (on === s.tapSound) return false;
+    s.tapSound = on;
+    try { localStorage.setItem(TAP_STORE, on ? 'on' : 'off'); } catch (e) {}
+    $('tapSound').checked = on;
+    bump();
+    const q = on && quiet() ? ` · quiet until the ${quietWhy()} ends` : '';
+    toast(`Tap sound ${on ? 'on' : 'off'}${q}`);
+    const ck = how === 'menu' && on && clickDue();
+    if (ck) clickSound('tap');
+    say(`${how}: tap sound ${on ? 'on' : 'off'}${q ? `, quiet until the ${quietWhy()} ends` : ''}${s.off ? ' · the screen is dark, the toast shows when woken' : ''}${ck ? ' · click' : ''}`);
+    updateHint();
+    return true;
+  }
+  $('tapSound').checked = s.tapSound;
+  $('tapSound').addEventListener('change', e => {
+    if (setTapSound(e.target.checked, 'remote')) phoneSay(`Tap sound ${s.tapSound ? 'on' : 'off'}`);
+  });
 
   // Characters the bar can't show (api.md 8.2) are named under the field as you type, before anything is sent, and
   // Show waits until they're gone. The check is the firmware's own (drawable(), after the mapping), so curly quotes,
@@ -3680,6 +4330,8 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     // The bar keeps the text as it will draw it (api.md 2.3): straight quotes, a hyphen for a dash, three dots.
     s.message = cleanText($('msgInput').value).trim() || 'Hello';
     s.messageAt = now();
+    // On a dark screen the message waits for the screen to wake, like every change from the Remote.
+    tourEnd('remote');
     go(STATES.findIndex(x => x.id === 'message'), 'remote');
   });
 
@@ -3743,8 +4395,13 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     if (s.wifi.mode === 'offline') return `<div class="tile" data-action="sync"><b>Calendar</b><span>Off</span><small>needs Wi-Fi</small></div>`;
     if (cal.state !== 'ok') return `<div class="tile" data-action="sync"><b>Calendar</b><span>Off</span><small>add it on the Remote</small></div>`;
     if (cal.checking) return `<div class="tile" data-action="sync"><b>Calendar</b><span>Sync…</span><small>syncing now</small></div>`;
+    // With the office Wi-Fi dropped it can't sync, but it keeps following its last copy (the firmware's Proposed copy).
+    if (linkDown()) return `<div class="tile" data-action="sync"><b>Calendar</b><span>Offline</span><small>synced ${ago(cal.lastSync, true)}</small></div>`;
     return `<div class="tile" data-action="sync"><b>Calendar</b><span>Sync</span><small>synced ${ago(cal.lastSync, true)}</small></div>`;
   }
+  // Help (Proposed): the tour of the controls, from the quick menu (its sixth tile, before Done) and the timer menu's
+  // Settings (before Back). Not in the setup options.
+  const helpTile = `<div class="tile" data-action="help"><b>Help</b><span>Tour</span><small>7 quick tips</small></div>`;
   // Put a menu's tiles up and start its 8-second close. five: the Wi-Fi menu's grid of five columns.
   function fillMenu(html, five) {
     menu.innerHTML = html;
@@ -3758,8 +4415,9 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     if (pairShowing()) return;
     menu.classList.remove('five');
     const done = `<div class="tile done" data-action="close"><b>Close</b><span>Done</span><small>or wait 8 s</small></div>`;
-    // Connected is the end of setup: holding there finishes it and opens the usual menu, so Skip can't undo it.
-    if (s.wifi.mode === 'connected') { clearTimeout(connectedTimer); s.wifi.mode = 'ok'; render(); }
+    // Connected is the end of setup: holding there finishes it and opens the usual menu, so Skip can't undo it. A new
+    // bar's controls tour follows once that menu closes.
+    if (s.wifi.mode === 'connected') { clearTimeout(connectedTimer); s.wifi.mode = 'ok'; render(); setupEnded(false); }
     if (onWifiScreen()) {
       menu.innerHTML = `
         <div class="tile" data-action="wifiskip"><b>Skip</b><span>Skip</span><small>use without Wi-Fi</small></div>
@@ -3786,12 +4444,14 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
           : `<div class="tile" data-action="tset"><b>Settings</b><span>More</span><small>auto-start, ticking</small></div>`}
         ${done}`;
     } else {
-      // Display (Proposed, decisions.md): the light level, with the light and the theme a tap further in.
+      // Display (Proposed, decisions.md): the light level, with the light, the theme and Tap sound a tap further in.
+      // Help is the sixth tile (Proposed), so the quick menu's tiles are narrower (see the six-tile CSS).
       menu.innerHTML = `
         <div class="tile" data-action="display"><b>Display</b><span>${Math.round(s.bright * 100)}%</span><small>light and theme</small></div>
         ${calTile()}
-        <div class="tile" data-action="wifi"><b>Wi-Fi</b><span>${s.wifi.mode === 'offline' ? 'Off' : 'On'}</span><small>${s.wifi.mode === 'offline' ? 'tap to set up' : esc(s.wifi.ssid)}</small></div>
+        <div class="tile" data-action="wifi"><b>Wi-Fi</b><span>${s.wifi.mode === 'offline' ? 'Off' : 'On'}</span><small>${s.wifi.mode === 'offline' ? 'tap to set up' : linkDown() ? 'reconnecting' : esc(s.wifi.ssid)}</small></div>
         <div class="tile" data-action="power"><b>Power</b><span>${style.power === 'usb' ? 'USB' : '82%'}</span><small>off or restart</small></div>
+        ${helpTile}
         ${done}`;
     }
     menu.hidden = false;
@@ -3799,12 +4459,13 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     armMenuTimer();
     say(timer ? 'hold: timer options' : 'hold: quick menu');
   }
-  // Timer settings: auto-start and ticking, with Back to the timer menu. The menu stays open so ticking can be
+  // Timer settings: auto-start, ticking and Help, with Back to the timer menu. The menu stays open so ticking can be
   // stepped through Off, Soft and Medium.
   function showTimerSettings() {
     fillMenu(`
       <div class="tile" data-action="auto"><b>Auto-start</b><span>${pomo.auto ? 'On' : 'Off'}</span><small>next phase</small></div>
       <div class="tile" data-action="tick"><b>Ticking</b><span>${tickLabel()}</span><small>during focus</small></div>
+      ${helpTile}
       <div class="tile done" data-action="timermenu"><b>Settings</b><span>Back</span><small>to the timer menu</small></div>`);
   }
   // The Wi-Fi menu: Network (read-only, two columns wide) shows the office network as its value, and under it this
@@ -3818,7 +4479,7 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
   // the tile's content width; both themes take Bold Signal's choice). Each foot breaks where the markup does (LVGL: "\n").
   function showWifiMenu() {
     const off = s.wifi.mode === 'offline', n = tokens.length;
-    const foot = `<span>${esc(BAR.name)}</span><span>${off ? 'not connected' : `${esc(BAR.host)} · ${esc(s.wifi.ip)}`}</span>`;
+    const foot = `<span>${esc(BAR.name)}</span><span>${off || linkDown() ? 'not connected' : `${esc(BAR.host)} · ${esc(s.wifi.ip)}`}</span>`;
     const dev = n ? `<div class="tile" data-action="devices"><b>Devices</b><span>${n >= MAX_TOKENS ? 'Full' : `${n} paired`}</span><small>tap to<br>forget all</small></div>`
       : `<div class="tile info"><b>Devices</b><span>None</span><small${off ? '>set up Wi-Fi<br>to pair' : ` data-where>pair at<br>${esc(BAR.host)}`}</small></div>`;
     fillMenu(`
@@ -3844,13 +4505,14 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     say('menu: Wi-Fi');
   }
   // The Display menu (Proposed, decisions.md): Light steps 40, 70 and 100% as the quick menu's Light tile did, Theme
-  // names the bar's theme and switches to the other one, and Back returns to the quick menu. It stays open after a
-  // change, so you see the new look at once and can switch back; each tap restarts its 8-second close. The firmware
-  // keeps it at three tiles (four with the Tap sound tile the user placed beside Theme, built in its own round).
+  // names the bar's theme and switches to the other one, Tap sound (decided 2026-10-05: beside Theme) turns the click
+  // on or off, and Back returns to the quick menu. It stays open after a change, so you see or hear the new setting at
+  // once and can switch back; each tap restarts its 8-second close. With four tiles the theme's name takes two lines.
   function showDisplayMenu() {
     fillMenu(`
       <div class="tile" data-action="bright"><b>Light</b><span>${Math.round(s.bright * 100)}%</span><small>tap to change</small></div>
-      <div class="tile" data-action="theme"><b>Theme</b><span>${THEMES[s.theme].name}</span><small>tap to switch</small></div>
+      <div class="tile" data-action="theme"><b>Theme</b><span class="two">${THEMES[s.theme].name}</span><small>tap to switch</small></div>
+      <div class="tile" data-action="tapsound"><b>Tap sound</b><span>${s.tapSound ? 'On' : 'Off'}</span><small>a click per touch</small></div>
       <div class="tile done" data-action="quickmenu"><b>Display</b><span>Back</span><small>to the quick menu</small></div>`);
   }
   function showPowerMenu() {
@@ -3883,6 +4545,9 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
       showDisplayMenu();
       return;
     }
+    // Tap sound: the tap that turns it on clicks, as a sample of the sound; the tap that turns it off doesn't.
+    if (a === 'tapsound') { setTapSound(!s.tapSound, 'menu'); showDisplayMenu(); return; }
+    if (a === 'help') { tourOpen('help'); return; }
     if (a === 'power') { showPowerMenu(); return; }
     if (a === 'wifi') { showWifiMenu(); return; }
     if (a === 'wifisetup') { startSetup('menu'); return; }
@@ -3920,7 +4585,7 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     else if (a === 'restart') restart('menu');
     else if (a === 'poweroff') powerOff('menu');
     else if (a === 'sync') {
-      if (s.wifi.mode === 'offline') { toast("No Wi-Fi, can't sync"); say('menu: calendar needs Wi-Fi'); }
+      if (s.wifi.mode === 'offline' || (linkDown() && cal.state === 'ok')) { toast("No Wi-Fi, can't sync"); say(linkDown() ? 'menu: the Wi-Fi has dropped, so the calendar can\'t sync; the bar keeps following its saved copy' : 'menu: calendar needs Wi-Fi'); }
       else if (cal.state !== 'ok') { toast('Add your calendar on the Remote'); say('menu: no calendar yet, add its secret address on the Remote'); }
       else if (cal.checking) { toast('Still syncing'); say('menu: calendar still syncing'); }
       else { cal.lastSync = now(); bump(); toast('Calendar synced'); say(`menu: calendar synced, ${leftText()}`); }
@@ -3931,14 +4596,32 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
   }
 
   // Touch gestures on the screen
+  // The power screens (Keep holding, while PWR is held, and Powering off) take no touches and no BOOT, and a hold that
+  // began before them opens no menu: only PWR (and a flip, which turns the layout) does anything there.
+  const powerScreen = () => s.poweringOff || !$('holdOv').hidden;
+  // A hold that opens a menu: the hold click at 550 ms, while the finger is still down. Over the controls tour it ends
+  // the tour first and opens the menu for the screen underneath.
+  function holdOpens(how) {
+    touchAct('hold', () => {
+      silence();
+      if (tour.on) { tourEnd('hold'); say(`${how}: tour closed`); }
+      showMenu();
+    });
+  }
   let p = null, held = false, holdTimer = null;
   screen.addEventListener('pointerdown', e => {
-    if (s.off || !s.powered || s.booting) { p = null; return; }
+    if (s.off || !s.powered || s.booting || powerScreen()) { p = null; return; }
     p = { x: e.clientX, y: e.clientY, t: Date.now() };
     held = false;
     clearTimeout(holdTimer);
     // On a pairing code a hold opens no menu: like every gesture there, it counts when the finger lifts, and cancels.
-    holdTimer = setTimeout(() => { held = true; if (pairShowing()) return; silence(); showMenu(); }, 550);
+    holdTimer = setTimeout(() => {
+      held = true;
+      if (pairShowing() || powerScreen() || !s.powered || s.booting) return;
+      // A touch that began before the tour appeared doesn't act on it.
+      if (tour.on && p && p.t < tour.began) return;
+      holdOpens('hold');
+    }, 550);
   });
   screen.addEventListener('pointermove', e => {
     if (!p) return;
@@ -3947,57 +4630,95 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
   screen.addEventListener('pointerup', e => {
     clearTimeout(holdTimer);
     if (!s.powered || s.booting) { p = null; return; }
+    if (powerScreen()) { if (p) say(`touch: ignored, MiniBar is ${s.poweringOff ? 'powering off' : 'waiting for PWR to be held or let go'}`); p = null; return; }
+    // The touch that wakes a dark screen only wakes it, and never clicks (the screen lighting up confirms it).
     if (s.off) { wake('tap'); p = null; return; }
     if (!p) return;
-    let dx = e.clientX - p.x;
+    // Left and right are as the layout faces you, so a turned-over bar swipes the same way (the firmware maps the
+    // touch panel's axes to the layout).
+    const dx = e.clientX - p.x;
     const moved = Math.abs(dx) >= 10 || Math.abs(e.clientY - p.y) >= 10;
-    if (s.flipped) dx = -dx;
     const began = p.t;
     p = null;
+    const kind = dx < -40 ? 'left' : dx > 40 ? 'right' : 'tap';
     if (pairShowing()) {
       // A touch that began before the code appeared is ignored, so a tap meant for the screen underneath can't cancel it.
       if (began < pair.shownAt) { say('touch: ignored, it began before the code appeared'); return; }
-      pairCancel(Math.abs(dx) > 40 ? 'swipe' : held ? 'hold' : 'tap');
+      touchAct('tap', () => pairCancel(Math.abs(dx) > 40 ? 'swipe' : held ? 'hold' : 'tap'));
       return;
     }
     if (held) return;
     if (!menu.hidden) {
       // Only a tap acts on a menu. A swipe is ignored, so it can't run whichever tile the finger lifts on.
       if (moved) { say('swipe: ignored on the menu, tap a tile'); return; }
-      const t = e.target.closest('[data-action]');
-      if (t) menuAction(t.dataset.action);
-      else { hideMenu(); say('tap: menu closed'); }
+      const t = e.target.closest('[data-action]'), a = t && t.dataset.action;
+      // Forget all ignores taps for 600 ms (see menuAction()), silently; the Tap sound tile clicks only as it turns on.
+      if (a === 'forgetall' && Date.now() - forgetAt < 600) { menuAction(a); return; }
+      if (a === 'tapsound') { menuAction(a); return; }
+      touchAct('tap', () => { if (a) menuAction(a); else { hideMenu(); say('tap: menu closed'); } });
       return;
     }
-    if (onWifiScreen()) { wifiTap('tap'); return; }
-    if (dx < -40) go(s.idx + 1, 'swipe');
-    else if (dx > 40) go(s.idx - 1, 'swipe');
-    else if (autoTop()) backToOwn('tap');
-    else if (STATES[s.idx].id === 'pomodoro') startPause('tap');
-    else if (silence()) { toast('Alarm off'); say('tap: alarm off'); render(); }
-    else go(s.idx + 1, 'tap');
+    if (tour.on) { tourTouch(kind, kind === 'tap' ? 'tap' : 'swipe', began); return; }
+    if (onWifiScreen()) { touchAct('tap', () => wifiTap('tap')); return; }
+    touchAct('tap', () => {
+      if (kind === 'left') go(s.idx + 1, 'swipe');
+      else if (kind === 'right') go(s.idx - 1, 'swipe');
+      else if (autoTop()) backToOwn('tap');
+      else if (STATES[s.idx].id === 'pomodoro') startPause('tap');
+      else if (silence()) { toast('Alarm off'); say('tap: alarm off'); render(); }
+      else go(s.idx + 1, 'tap');
+    });
   });
+  // A tap or swipe on the controls tour. One that began before the tour appeared is ignored, and so is one in the
+  // 700 ms after a practice result; neither clicks. Each one starts the 30 s again.
+  function tourTouch(kind, how, began) {
+    tour.at = Date.now();
+    if (began < tour.began) { say(`${how}: ignored, it began before the tour appeared`); return; }
+    if (tourGuarded()) { say(`${how}: ignored for a moment, so the practice result can be read`); return; }
+    touchAct('tap', () => tourInput(kind, how));
+  }
   screen.addEventListener('pointercancel', () => { clearTimeout(holdTimer); p = null; });
+  // The keyboard on the focused screen stands in for touches: Enter or Space taps, the arrows swipe (Right is the next
+  // status, as a swipe left is), and m holds. They click as the touches do.
   screen.addEventListener('keydown', e => {
-    if (!s.powered || s.booting) return;
+    if (!s.powered || s.booting || powerScreen()) return;
     if (pairShowing() && ['ArrowRight', 'ArrowLeft', 'Enter', ' ', 'm'].includes(e.key)) {
       e.preventDefault();
-      pairCancel(e.key.startsWith('Arrow') ? 'swipe' : e.key === 'm' ? 'hold' : 'tap');
+      touchAct('tap', () => pairCancel(e.key.startsWith('Arrow') ? 'swipe' : e.key === 'm' ? 'hold' : 'tap'));
       return;
     }
-    if (e.key === 'ArrowRight') { e.preventDefault(); go(s.idx + 1, 'swipe'); }
-    else if (e.key === 'ArrowLeft') { e.preventDefault(); go(s.idx - 1, 'swipe'); }
+    if (s.off && ['ArrowRight', 'ArrowLeft', 'Enter', ' ', 'm'].includes(e.key)) { e.preventDefault(); wake('tap'); return; }
+    if (tour.on && ['ArrowRight', 'ArrowLeft', 'Enter', ' '].includes(e.key)) {
+      e.preventDefault();
+      tourTouch(e.key === 'ArrowRight' ? 'left' : e.key === 'ArrowLeft' ? 'right' : 'tap', e.key.startsWith('Arrow') ? 'swipe' : 'tap', tour.began);
+      return;
+    }
+    if (e.key === 'ArrowRight') { e.preventDefault(); touchAct('tap', () => go(s.idx + 1, 'swipe')); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); touchAct('tap', () => go(s.idx - 1, 'swipe')); }
     else if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      if (s.off) wake('tap');
-      else if (onWifiScreen()) wifiTap('tap');
-      else if (autoTop()) backToOwn('tap');
-      else if (STATES[s.idx].id === 'pomodoro') startPause('tap'); else go(s.idx + 1, 'tap');
+      touchAct('tap', () => {
+        if (onWifiScreen()) wifiTap('tap');
+        else if (autoTop()) backToOwn('tap');
+        else if (STATES[s.idx].id === 'pomodoro') startPause('tap'); else go(s.idx + 1, 'tap');
+      });
     }
-    else if (e.key === 'm') { menu.hidden ? showMenu() : hideMenu(); }
+    else if (e.key === 'm') { if (menu.hidden) holdOpens('hold'); else touchAct('tap', () => { hideMenu(); say('m: menu closed'); }); }
   });
 
   // Hardware buttons. Any button first answers a ringing alarm or wakes a dark screen.
+  // On the case they sit on the top edge, each centered on its x along the screen (BTN_X, the same places the tour's
+  // arrows point at), about 36 screen pixels wide, and they follow the screen as the page resizes.
+  function placeButtons() {
+    const w = screen.offsetWidth, l = screen.offsetLeft;
+    if (!w) return;
+    for (const b of ['boot', 'pwr']) {
+      const el = $(b === 'boot' ? 'btnBoot' : 'btnPwr'), bw = w * 36 / 640;
+      el.style.width = bw.toFixed(1) + 'px';
+      el.style.left = (l + w * BTN_X[b] / 640 - bw / 2).toFixed(1) + 'px';
+    }
+  }
+  if ('ResizeObserver' in window) new ResizeObserver(placeButtons).observe(screen);
   function togglePower() {
     s.off = !s.off;
     screen.classList.toggle('off', s.off);
@@ -4014,10 +4735,19 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     if (how) say(`${how}: screen on`);
     return true;
   }
+  // BOOT is a physical button, so it never makes the bar click (it clicks on its own).
   $('btnBoot').addEventListener('click', () => {
-    if (!s.powered || s.booting) { say('BOOT: MiniBar is off, press PWR to turn it on'); return; }
+    if (!s.powered) { say('BOOT: MiniBar is off, press PWR to turn it on'); return; }
+    if (s.booting) { say('BOOT: ignored, MiniBar is starting up'); return; }
+    if (powerScreen()) { say(`BOOT: ignored, MiniBar is ${s.poweringOff ? 'powering off' : 'waiting for PWR to be held or let go'}`); return; }
     if (wake('BOOT')) return;
     if (pairShowing()) { pairCancel('BOOT'); return; }
+    if (tour.on) {
+      tour.at = Date.now();
+      if (tourGuarded()) { say('BOOT: ignored for a moment, so the practice result can be read'); return; }
+      tourInput('boot', 'BOOT');
+      return;
+    }
     if (onWifiScreen()) { wifiTap('BOOT'); return; }
     if (silence()) { say('BOOT: alarm off'); toast('Alarm off'); render(); return; }
     if (autoTop()) { backToOwn('BOOT'); return; }
@@ -4030,6 +4760,8 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     // On a pairing code, a press cancels it and turns the screen off as usual; the dark screen is the confirmation.
     if (pairShowing()) { pairEnd('pwr'); togglePower(); say('PWR: pairing canceled, screen off'); return; }
     if (silence()) { say('PWR: alarm off'); toast('Alarm off'); render(); return; }
+    // On the controls tour a press ends it and the screen goes dark; waking shows the screen underneath.
+    if (tour.on) { tourEnd('pwr'); togglePower(); say('PWR: tour closed, screen off'); return; }
     togglePower();
   }
   function showHold() {
@@ -4055,9 +4787,13 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     el.classList.remove('go');
     el.classList.add('done');
     el.hidden = false;
+    // The controls tour ends with the power; "tour seen" was saved when it first appeared.
+    tourEnd('off');
     say(`${how}: powering off`);
     setTimeout(() => {
       hideHold();
+      // Nothing opened meanwhile survives the power going off: a menu is closed (the bar starts on its screen).
+      hideMenu();
       $('holdTitle').textContent = 'Keep holding';
       $('holdSub').textContent = 'to power off';
       s.powered = false;
@@ -4092,6 +4828,9 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
       lastKey = '';
       render();
       toast(autoShown ? `Ready · ${autoShown.kind === 'call' ? 'On a call' : 'In a meeting'}` : 'Ready');
+      // A bar that's set up but hasn't shown its tour (it forgot, or got the tour in an update) shows it once now.
+      if (tourState === 'unseen' && !onWifiScreen()) saveTour('due');
+      tourDueCheck();
     }, 1500);
   }
   function restart(how) {
@@ -4108,8 +4847,12 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
   function pwrCancel() { clearTimeout(pwrTimer); clearTimeout(pwrShowTimer); hideHold(); }
   btnPwr.addEventListener('pointerdown', e => {
     e.preventDefault();
+    // Once powering off has begun it can't be stopped: a press then is ignored, and the next one starts the bar.
+    if (s.poweringOff) { pwrDownAt = 0; say('PWR: ignored, MiniBar is powering off'); return; }
     pwrDownAt = Date.now();
     if (!s.powered || s.booting) return;
+    // PWR counts as a button press for the tour's 30 s; let go early and the tour carries on, on the same card.
+    if (tour.on) tour.at = Date.now();
     pwrShowTimer = setTimeout(showHold, 400);
     pwrTimer = setTimeout(() => { pwrDownAt = 0; powerOff('PWR held'); }, 3000);
   });
@@ -4128,6 +4871,7 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     if (e.key !== 'Enter' && e.key !== ' ') return;
     e.preventDefault();
     if (s.booting) return;
+    if (s.poweringOff) { say('PWR: ignored, MiniBar is powering off'); return; }
     if (!s.powered) powerOn('PWR'); else pwrShort();
   });
 
@@ -4143,10 +4887,12 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
   // While the bar is off its web page is unreachable, so the remote's controls do nothing but explain why.
   const phoneEl = document.querySelector('.phone');
   phoneEl.addEventListener('click', e => {
-    if (s.powered && s.wifi.mode === 'offline' && e.target.closest('#remoteMain button, #remoteMain input, #pairView button, #pairView input')) {
+    // The help links say for themselves when the bar can't be reached (openHelp()).
+    if (e.target.closest('#helpLink, #pairHelp, #helpBack, #helpBack2')) return;
+    if (s.powered && (s.wifi.mode === 'offline' || linkDown()) && e.target.closest('#remoteMain button, #remoteMain input, #pairView button, #pairView input')) {
       e.preventDefault();
       e.stopPropagation();
-      say("remote: MiniBar isn't on Wi-Fi");
+      say(linkDown() ? 'remote: MiniBar has dropped off the Wi-Fi, so it can\'t be reached until it reconnects' : "remote: MiniBar isn't on Wi-Fi");
       return;
     }
     // The PWR stand-in and Flip are the bar itself, not the Remote, so they still work.
@@ -4160,15 +4906,19 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
   // Flipping the bar over always does three things: turns the layout the right way up,
   // silences any alarm, and starts whatever the Pomodoro is waiting for. A running timer is left alone.
   // On a call or meeting screen it also shows the Pomodoro, which sets the call or meeting aside.
+  // A flip never clicks: you feel it, and the layout turns.
   $('flipBtn').addEventListener('click', () => {
-    if (s.booting) return;
     s.flipped = !s.flipped;
     device.classList.toggle('flipped', s.flipped);
     if (!s.powered) { say('flip: MiniBar is off, nothing happens until you press PWR'); return; }
+    // While starting up or powering off the layout still follows the bar (the motion sensor's reading is absolute, and
+    // the first frame after start-up is the right way up); a flip's other jobs wait for a bar that's on.
+    if (s.booting || s.poweringOff) { say(`flip: layout turned (${s.booting ? 'starting up' : 'powering off'})`); return; }
     // Proposed: on a pairing code, a flip cancels it first, then does all three things as usual. A held alarm is
-    // answered by the flip starting the next phase.
+    // answered by the flip starting the next phase. On the controls tour it ends the tour first, the same way.
     const pairing = pairShowing();
     if (pairing) pairEnd('flip');
+    const touring = tourEnd('flip');
     wake();
     hideMenu();
     const quieted = silence();
@@ -4182,13 +4932,17 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
       return;
     }
     const msg = started || `${PHASE_NAME[pomo.phase]} already running`;
-    toast(quieted ? `Alarm off · ${msg}` : msg);
-    say(`flip: layout turned${quieted ? ', alarm off' : ''}, ${msg.toLowerCase()}${asideLog(aside)}`);
+    toast(touring ? `Tour closed · ${aside ? `${aside} set aside · ` : ''}${msg}` : quieted ? `Alarm off · ${msg}` : msg);
+    say(`flip: ${touring ? 'tour closed, ' : ''}layout turned${quieted ? ', alarm off' : ''}, ${msg.toLowerCase()}${asideLog(aside)}`);
   });
-  // The quick-menu stand-in acts like a hold: on a pairing code it cancels it.
+  // The quick-menu stand-in acts like a hold (and clicks like one): on a pairing code it cancels it, on a dark screen it
+  // only wakes it, and over the controls tour it ends the tour and opens the menu underneath.
   $('menuBtn').addEventListener('click', () => {
-    if (s.powered && !s.booting && pairShowing()) { pairCancel('hold'); return; }
-    wake(); menu.hidden ? showMenu() : hideMenu();
+    if (!s.powered || s.booting) { say('menu: MiniBar is off, press PWR to turn it on'); return; }
+    if (powerScreen()) { say(`hold: ignored, MiniBar is ${s.poweringOff ? 'powering off' : 'waiting for PWR to be held or let go'}`); return; }
+    if (pairShowing()) { touchAct('tap', () => pairCancel('hold')); return; }
+    if (wake('hold')) return;
+    if (menu.hidden) holdOpens('hold'); else touchAct('tap', () => { hideMenu(); say('menu: closed'); });
   });
 
   // ---------- Phone setup page ----------
@@ -4236,17 +4990,19 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
         say(`Wi-Fi: ${s.wifi.error.toLowerCase()}`);
       } else {
         s.wifi.mode = 'connected';
+        s.wifi.link = true;
         setupMsg('');
         $('wPass').value = '';
         say(`Wi-Fi: connected to ${n}`);
-        connectedTimer = setTimeout(() => { if (s.wifi.mode === 'connected') { s.wifi.mode = 'ok'; render(); } }, 3000);
+        connectedTimer = setTimeout(() => { if (s.wifi.mode === 'connected') { s.wifi.mode = 'ok'; render(); setupEnded(); } }, 3000);
         if (calChk) { $('wCal').value = ''; maskWCal(); saveCalendar(calChk, 'setup'); }
       }
       syncSetupForm();
       render();
     }, 2500);
   });
-  $('wifiSetupBtn').addEventListener('click', () => { wake(); startSetup('demo'); syncSetupForm(); });
+  // The first-time setup demo is a new bar: it hasn't shown its controls tour, which follows when this setup ends.
+  $('wifiSetupBtn').addEventListener('click', () => { wake(); saveTour('unseen'); startSetup('demo'); syncSetupForm(); });
   // The setup page's calendar field is masked like the Remote's, with its own Show button and its own error line.
   function wCalErr(text) {
     $('wCalErr').textContent = text;
@@ -4400,8 +5156,8 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     say(`remote: calls from your Mac ${mac.on ? 'on' : 'off'}`);
     render();
   });
-  $('abBtn').addEventListener('click', () => { wake(); if (autoTop()) backToOwn('remote'); else showAgain('remote'); });
-  $('autoShowAgain').addEventListener('click', () => { wake(); showAgain('remote'); });
+  $('abBtn').addEventListener('click', () => { tourEnd('remote'); if (autoTop()) backToOwn('remote'); else showAgain('remote'); });
+  $('autoShowAgain').addEventListener('click', () => { tourEnd('remote'); showAgain('remote'); });
 
   // ---------- Simulate (mock-up only) ----------
   // These stand in for the calendar and the Mac app. Every button answers in every state: when it can't take
@@ -4656,6 +5412,105 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
     bump();
     updateRemote();
     say(`simulate: ${k} sample device${k === 1 ? '' : 's'} paired, ${tokens.length} of 10`);
+  });
+
+  // ---------- Help on the phone (Proposed): the page the bar serves at minibar.local/help ----------
+  // It opens from the Remote's Help link (every view: the controls, the pairing prompt, the bar-off view) and from the
+  // tour's QR code. It needs no pairing, since it controls nothing and shows nothing private, but it's on the bar, so a
+  // bar that's off, offline or reconnecting can't serve it, and the phone says so instead of showing a broken page.
+  // anchor: a place on the page to show (the pairing prompt's "How pairing works" opens it at Pairing).
+  function openHelp(how, anchor) {
+    const why = !s.powered ? "MiniBar didn't answer. Turn it on to open help." : s.wifi.mode === 'offline'
+      ? "MiniBar isn't on Wi-Fi, so it can't show its help page. Hold its screen, then choose Wi-Fi to set it up."
+      : linkDown() ? 'MiniBar has dropped off the office Wi-Fi. Its help page opens again once it reconnects.' : '';
+    $('helpNote').textContent = why;
+    $('helpNote').hidden = !why;
+    if (why) { phoneSay(why); say(`${how}: the help page can't open, ${!s.powered ? 'MiniBar is off' : 'MiniBar is off the Wi-Fi'}`); return; }
+    phone.view = 'help';
+    updateRemote();
+    const at = anchor ? $(anchor) : $('helpView');
+    if (at) at.scrollIntoView({ block: 'nearest' });
+    $('helpBack').focus({ preventScroll: true });
+    phoneSay('MiniBar help');
+    say(`${how}: the phone opened ${BAR.host}/help`);
+  }
+  function closeHelp() {
+    phone.view = 'remote';
+    $('helpNote').hidden = true;
+    updateRemote();
+    $('helpLink').focus({ preventScroll: true });
+    say('help page: back to the Remote');
+  }
+  $('helpLink').addEventListener('click', () => openHelp('remote: Help'));
+  $('pairHelp').addEventListener('click', () => openHelp('remote: How pairing works', 'hp-pairing'));
+  $('helpBack').addEventListener('click', closeHelp);
+  $('helpBack2').addEventListener('click', closeHelp);
+  // The help page's drawings are the tour's, on Bold Signal's tour panel and in its colors, whatever the bar's theme.
+  // Its PWR hold drawing adds a filling bar. Drawn once at start-up (it needs the looks, defined below).
+  function buildHelpPage() {
+    const PAL_HELP = { ...PAL_SOLID, labSize: 10, labLs: .5, labW: { boot: 28, pwr: 22 },
+      mini: k => ({ field: BOLD_SIGNAL.colors[k], side: (BOLD_SIGNAL.tints[k] || [])[1] || BOLD_SIGNAL.colors[k], head: '#FFFFFF', edge: null, ink: '#FFFFFF', sub: '#DFE5EA' }) };
+    const draws = {
+      tap: ['tap', 'A finger taps the screen.'], swipe: ['swipe', 'A finger slides left across the screen.'],
+      hold: ['hold', 'A finger rests on the screen while a ring fills.'], flip: ['flip', 'The bar turns over.'],
+      boot: ['boot', 'Arrows point at the two buttons on the top edge; BOOT is lit.'], pwr: ['pwr', 'Arrows point at the two buttons on the top edge; PWR is lit.'],
+      pwrhold: ['pwr', 'PWR held down for 3 seconds.'],
+    };
+    document.querySelectorAll('[data-hp-draw]').forEach(el => {
+      const [d, label] = draws[el.dataset.hpDraw];
+      let inner = dRect(0, 0, 132, 132, PAL_HELP.pan, 10) + TOUR_DRAW[d](PAL_HELP, { from: 'busy', to: 'busy', done: false, dir: 'left', flipped: false });
+      if (el.dataset.hpDraw === 'pwrhold') inner += dRect(14, 118, 104, 4, PAL_HELP.trk, 2) + dRect(14, 118, 66, 4, '#FFFFFF', 2);
+      el.outerHTML = `<svg class="tdraw" viewBox="0 0 132 132" role="img" aria-label="${label}">${inner}</svg>`;
+    });
+    $('hpTomato').outerHTML = tomato('ripe');
+    $('hpHost').textContent = BAR.host;
+  }
+
+  // ---------- Simulate: help, the office Wi-Fi and the sounds (mock-up only) ----------
+  // The phone scanning the More help card's code: it opens the help page, at the bar's IP address (the code's
+  // http://10.0.4.42/help). Only while that card shows its code.
+  $('simScan').addEventListener('click', () => {
+    const onCard = s.powered && !s.off && tour.on && tour.card === TOUR_N - 1 && !pairShowing();
+    if (!onCard) { say('simulate: no QR code to scan; open the tour (hold, then Help) and go to its last card, More help'); return; }
+    if (!wifiUp()) { say("simulate: the More help card has no QR code while MiniBar is off the Wi-Fi"); return; }
+    openHelp(`simulate: the phone scanned http://${s.wifi.ip}/help`);
+  });
+  // Forget "tour seen": the bar shows its tour once more, after its next start-up (or when a setup ends), as a bar does
+  // that's already set up when it gets the tour in a firmware update.
+  $('simTourReset').addEventListener('click', () => {
+    if (tourState !== 'seen') { say(`simulate: MiniBar hasn't shown its tour yet; it shows ${tourState === 'due' ? 'as soon as the screen is free' : 'after its next start-up, or when a setup ends'}`); return; }
+    saveTour('unseen');
+    say('simulate: MiniBar forgot that it showed its tour; it shows it once after its next start-up (Restart, or power off and on)');
+  });
+  // The office Wi-Fi dropping and coming back: the bar stays set up and reconnects on its own. Meanwhile the Calendar
+  // tile says Offline (it keeps following its saved copy), the Wi-Fi tile says reconnecting, nothing on the network
+  // reaches the bar, and the tour's More help card swaps its code for a line saying so.
+  $('simWifiDrop').addEventListener('click', () => {
+    if (!s.powered) { say('simulate: MiniBar is off'); return; }
+    if (s.wifi.mode !== 'ok') { say(`simulate: MiniBar isn't on the office Wi-Fi to lose it (${s.wifi.mode === 'offline' ? 'Wi-Fi was skipped' : 'it is setting up Wi-Fi'})`); return; }
+    if (linkDown()) { say('simulate: the Wi-Fi has already dropped'); return; }
+    s.wifi.link = false;
+    bump();
+    lastKey = '';
+    render();
+    say('simulate: the office Wi-Fi dropped; MiniBar keeps following its saved calendar and reconnects on its own');
+  });
+  $('simWifiBack').addEventListener('click', () => {
+    if (!linkDown()) { say("simulate: the Wi-Fi hasn't dropped"); return; }
+    s.wifi.link = true;
+    bump();
+    lastKey = '';
+    render();
+    say('simulate: the office Wi-Fi is back, and MiniBar reconnected');
+  });
+  // Each of the bar's sounds once, at its own level, whatever the settings say.
+  document.querySelector('[aria-labelledby="simSoundTitle"]').addEventListener('click', e => {
+    const b = e.target.closest('[data-sound]');
+    if (!b) return;
+    unlockAudio();
+    const k = b.dataset.sound;
+    if (k === 'tap' || k === 'hold') clickSound(k); else if (k === 'chime') chimeNotes(true); else tickSound(k);
+    say(`simulate: ${b.textContent.toLowerCase()} (mock-up only)`);
   });
 
   // ---------- Style panel ----------
@@ -5435,8 +6290,10 @@ USB serial: one JSON object per line, each line starting "@tb ", with an "id" th
 
   syncSetupForm();
   buildDirections();
+  buildHelpPage();
   applyStyle();
   renderRipenPreview();
+  placeButtons();
   setInterval(loop, 200);
   setInterval(() => { if (ticking()) tickSound(); }, 1000);
 })();

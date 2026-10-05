@@ -20,6 +20,16 @@
  * The log says when the setup network opens (channel and address), and each phone that joins, gets an address and
  * leaves (INFO, at most 40 lines a minute).
  *
+ * Closing it once setup is over (decisions.md, Wi-Fi: once the bar is set up it never broadcasts MiniBar-Setup unless
+ * a person starts setup again). The Connected screen moving on (TB_FX_WIFI_DONE) arms the linger (AP_LINGER_US, so
+ * the page can read the result); its J_STOP_AP sets the radio to station mode and counts the network closed only once
+ * esp_wifi_get_mode() has no access point. A close that fails is tried again (the mode change after 1 and 2 s, then a
+ * restart of the radio in station mode; net_ap_close_retry_ms), a J_STOP_AP the full queue dropped is queued again
+ * after 1 s, and net_wifi_follow() (the app task, every loop) finishes setup if core left its setup screens without
+ * net hearing it, and once a second closes a setup network that is up outside setup with no close on its way. A save
+ * of the network that worked is tried again too (net_creds_save_retry_ms), since without it the next start would open
+ * the setup network again. The rules are in net_util.c, where the host tests reach them.
+ *
  * Threads: the Wi-Fi and IP event handlers run in the default event loop's task; net_port.h's functions run on the
  * app task; timers run in the esp_timer task. Shared state is behind s_lock, and anything slow or that writes flash
  * (saving credentials, starting mDNS and SNTP, handing a calendar address over, scans) runs on a small worker task.
@@ -68,6 +78,8 @@ static const char *TAG = "net.wifi";
 #define JOIN_TIMEOUT_US   (30 * 1000000LL)  /* a join that hasn't worked in 30 s has failed */
 #define NO_ADDRESS_US     (15 * 1000000LL)  /* joined but no address in 15 s: often a sign-in-page network */
 #define AP_LINGER_US      (15 * 1000000LL)  /* the setup network stays up a little after Connected, for the page */
+#define AP_GUARD_MS       1000              /* net_wifi_follow() looks for a setup network up outside setup this often */
+#define REQUEUE_US        (1 * 1000000LL)   /* a close or a save the full job queue dropped is queued again after 1 s */
 #define SCAN_STALE_US     (15 * 1000000LL)  /* with no phone on the setup network, an older list is scanned again */
 #define SCAN_EMPTY_US     (30 * 1000000LL)  /* with a phone on it, only an empty list, at most this often */
 #define SCAN_WAIT_MS      5000              /* the first scan takes 1 to 2 s */
@@ -102,8 +114,12 @@ static SemaphoreHandle_t s_scan_done;   /* given by WIFI_EVENT_SCAN_DONE, for se
 static QueueHandle_t s_jobs;
 static esp_netif_t *s_sta, *s_ap;
 static bool s_inited, s_running, s_creds_loaded, s_have_creds;
-static bool s_ap_want;          /* the setup network should be up (the setup screens, and the linger after Connected) */
-static bool s_ap_open;          /* its access point is up: WIFI_EVENT_AP_START, until AP_STOP */
+static bool s_ap_want;          /* the setup network should be up (the setup screens, and the linger after Connected);
+                                 * J_STOP_AP clears it once the driver has no access point */
+static bool s_ap_open;          /* its access point is up: WIFI_EVENT_AP_START, until AP_STOP (or a close that checked) */
+static bool s_close_queued;     /* J_STOP_AP is queued or running (at most one at a time) */
+static int s_close_failures;    /* closes that failed in a row (net_ap_close_retry_ms) */
+static int s_save_failures;     /* saves of the network that failed in a row (net_creds_save_retry_ms) */
 static int s_ap_clients;        /* phones on it */
 static net_log_quota_t s_ap_quota;      /* the event task's setup network lines */
 static bool s_skipped;          /* Skip was the last Wi-Fi choice (saved as "skipped") */
@@ -114,7 +130,8 @@ static char s_ip[TB_IP_BYTES], s_ssid[TB_SSID_BYTES];
 static int8_t s_rssi;
 static int64_t s_rssi_at;
 static int s_retry;
-static esp_timer_handle_t s_retry_timer, s_join_timer, s_addr_timer, s_linger_timer;
+static esp_timer_handle_t s_retry_timer, s_join_timer, s_addr_timer, s_linger_timer, s_save_timer;
+static int64_t s_next_guard_ms;  /* net_wifi_follow()'s next look for a stray setup network (the app task's) */
 
 /* the join started by the setup page */
 static bool s_joining;
@@ -177,6 +194,13 @@ static void post_wifi(tb_wifi_ev_t what, const char *ssid, const char *ip, const
     if (!tb_bus_post(&ev)) ESP_LOGW(TAG, "bus full: Wi-Fi event %d dropped", (int)what);
 }
 
+/* J_SAVE_CREDS in us (on_save_timer), for a save that failed or a job the full queue dropped. */
+static void save_later(int64_t us)
+{
+    esp_timer_stop(s_save_timer);
+    esp_timer_start_once(s_save_timer, (uint64_t)us);
+}
+
 /* ======================================================================================================== */
 /* Credentials                                                                                              */
 /* ======================================================================================================== */
@@ -201,21 +225,23 @@ static void creds_load(void)
     nvs_close(h);
 }
 
-static void creds_save(const creds_t *c)
+/* clear_skip: a join that worked ends "offline", unless Skip came after it (a later J_SAVE_SKIP has the last word). */
+static esp_err_t creds_save(const creds_t *c, bool clear_skip)
 {
     nvs_handle_t h;
-    if (nvs_open("wifi", NVS_READWRITE, &h) != ESP_OK) return;
-    esp_err_t err = nvs_set_str(h, "ssid", c->ssid);
+    esp_err_t err = nvs_open("wifi", NVS_READWRITE, &h);
+    if (err != ESP_OK) return err;
+    err = nvs_set_str(h, "ssid", c->ssid);
     if (err == ESP_OK) err = nvs_set_str(h, "user", c->user);
     if (err == ESP_OK) err = nvs_set_str(h, "pass", c->pass);
     if (err == ESP_OK) err = nvs_set_u8(h, "sec", c->sec);
-    if (err == ESP_OK) {
-        esp_err_t e2 = nvs_erase_key(h, "skipped");     /* a join that worked ends "offline" */
+    if (err == ESP_OK && clear_skip) {
+        esp_err_t e2 = nvs_erase_key(h, "skipped");
         if (e2 != ESP_OK && e2 != ESP_ERR_NVS_NOT_FOUND) err = e2;
     }
     if (err == ESP_OK) err = nvs_commit(h);
     nvs_close(h);
-    if (err != ESP_OK) ESP_LOGE(TAG, "saving the Wi-Fi network failed: %s", esp_err_to_name(err));
+    return err;
 }
 
 /* Remember Skip (true), or forget it (false). Runs on the worker: it writes flash. */
@@ -496,6 +522,7 @@ static void on_ip(void *arg, esp_event_base_t base, int32_t id, void *data)
             s_joining = false;
             s_creds = s_join;
             s_have_creds = true;
+            s_save_failures = 0;        /* a new network to save: its own tries */
             s_skipped = false;          /* creds_save() erases the saved skip too */
             s_js.state = NET_JOIN_CONNECTED;
             s_js.error = s_js.message = NULL;
@@ -511,7 +538,7 @@ static void on_ip(void *arg, esp_event_base_t base, int32_t id, void *data)
         esp_timer_stop(s_addr_timer);
         ESP_LOGI(TAG, "joined \"%s\", address %s", ssid, ip);
         if (joined) {
-            job(J_SAVE_CREDS);
+            if (!job(J_SAVE_CREDS)) save_later(REQUEUE_US);     /* not saved, the next start would open setup */
             post_wifi(TB_WIFI_EV_CONNECTED, ssid, ip, host, NULL);
         } else if (mode != M_SETUP) {
             post_wifi(TB_WIFI_EV_LINK_UP, ssid, ip, host, NULL);
@@ -555,10 +582,31 @@ static void on_addr_timer(void *arg)
     join_failed(NET_JOIN_NO_ADDRESS);
 }
 
+/* Queue J_STOP_AP once: a request while one is queued or running adds nothing. False if the queue was full. */
+static bool queue_close(void)
+{
+    LOCK();
+    bool queued = s_close_queued;
+    s_close_queued = true;
+    UNLOCK();
+    if (queued || job(J_STOP_AP)) return true;
+    LOCK();
+    s_close_queued = false;
+    UNLOCK();
+    return false;
+}
+
+/* The linger ran out (or a failed close's wait did): close the setup network. A full queue only delays it. */
 static void on_linger_timer(void *arg)
 {
     (void)arg;
-    job(J_STOP_AP);
+    if (!queue_close()) esp_timer_start_once(s_linger_timer, REQUEUE_US);
+}
+
+static void on_save_timer(void *arg)
+{
+    (void)arg;
+    if (!job(J_SAVE_CREDS)) esp_timer_start_once(s_save_timer, REQUEUE_US);
 }
 
 /* ======================================================================================================== */
@@ -670,10 +718,14 @@ static bool scan_start(void)
     return true;
 }
 
+/* setup_open() goes on. If setup is over before its network opened (a USB join and Connected during the first scan),
+ * nothing will open it now, so "wanted" goes too, under the same lock: a Set up again after this opens it afresh
+ * (setup_begin() queues J_SETUP_OPEN), and one before it is seen here and the network opens for it. */
 static bool setup_wanted(void)
 {
     LOCK();
     bool want = s_ap_want && s_mode == M_SETUP;
+    if (s_mode != M_SETUP) s_ap_want = false;
     UNLOCK();
     return want;
 }
@@ -788,6 +840,119 @@ static void setup_open(void)
     RADIO_UNLOCK();
 }
 
+/* J_SAVE_CREDS: the network that just worked, so the next start joins it. Without it the next start would open the
+ * setup network again, so a save that fails is tried again (net_creds_save_retry_ms: 6 tries over about 43 minutes;
+ * a write that fails before NVS writes anything wears nothing). */
+static void save_creds(void)
+{
+    creds_t c;
+    LOCK();
+    c = s_creds;
+    bool have = s_have_creds, clear_skip = !s_skipped;
+    UNLOCK();
+    if (!have) return;
+    esp_err_t err = creds_save(&c, clear_skip);
+    memset(&c, 0, sizeof c);
+    LOCK();
+    int before = s_save_failures;
+    s_save_failures = err == ESP_OK ? 0 : before + 1;
+    int failures = s_save_failures;
+    UNLOCK();
+    if (err == ESP_OK) {
+        if (before) ESP_LOGI(TAG, "the Wi-Fi network is saved now (try %d)", before + 1);
+        return;
+    }
+    int32_t ms = net_creds_save_retry_ms(failures);
+    if (ms) {
+        ESP_LOGE(TAG, "saving the Wi-Fi network failed (%s): trying again in %d s", esp_err_to_name(err), (int)(ms / 1000));
+        save_later((int64_t)ms * 1000);
+    } else {
+        ESP_LOGE(TAG, "saving the Wi-Fi network failed %d times (%s): MiniBar stays on it, but after a restart it "
+                      "shows the QR code and opens its setup network again", failures, esp_err_to_name(err));
+    }
+}
+
+/* The driver has an access point up: started, in AP or APSTA mode. The caller holds the radio lock. */
+static bool driver_ap_on(void)
+{
+    wifi_mode_t m = WIFI_MODE_NULL;
+    return s_running && (esp_wifi_get_mode(&m) != ESP_OK || (m & WIFI_MODE_AP));
+}
+
+/* J_STOP_AP: close the setup network, unless setup has begun again (that setup's own Connected closes it). It's
+ * closed once the driver's own mode has no access point (or the radio is off); until then it's tried again
+ * (net_ap_close_retry_ms): changing the mode twice more, then restarting the radio in station mode, which drops the
+ * office link for about a second (STA_START joins it again). Before 1.0.4 a failed esp_wifi_set_mode() was ignored and
+ * the network stayed up until a restart. */
+static void ap_close(void)
+{
+    RADIO_LOCK();
+    LOCK();
+    bool in_setup = s_mode == M_SETUP;
+    wmode_t mode = s_mode;
+    int failures = s_close_failures;
+    UNLOCK();
+    esp_err_t err = ESP_OK;
+    bool closed = false;        /* this call took the access point down */
+    if (!in_setup) {
+        net_dns_stop();
+        if (driver_ap_on()) {
+            bool restart = false;
+            if (failures) net_ap_close_retry_ms(failures, &restart);
+            if (mode == M_OFF) {
+                err = esp_wifi_stop();      /* offline: the radio goes off, as Skip does */
+                if (err == ESP_OK) s_running = false;
+            } else if (restart) {
+                ESP_LOGW(TAG, "restarting the radio in station mode to close the setup network");
+                err = esp_wifi_stop();
+                if (err == ESP_OK) {
+                    s_running = false;      /* the access point is gone with it, whatever follows */
+                    esp_err_t e2 = esp_wifi_set_mode(WIFI_MODE_STA);
+                    if (e2 == ESP_OK) e2 = esp_wifi_start();
+                    if (e2 == ESP_OK) s_running = true;
+                    else ESP_LOGE(TAG, "the radio didn't start again: %s (offline until MiniBar restarts)", esp_err_to_name(e2));
+                }
+            } else {
+                err = esp_wifi_set_mode(WIFI_MODE_STA);
+            }
+            /* The driver's word, not set_mode's: a mode change that fails inside the driver puts the old mode back. */
+            if (err == ESP_OK && driver_ap_on()) err = ESP_ERR_INVALID_STATE;
+            closed = err == ESP_OK;
+        }
+    }
+    LOCK();
+    /* Set up again (the app task) may have come in meanwhile: the network is then that setup's, and this close is
+     * void. Checked here, under the lock its setup_begin() takes, so neither misses the other. */
+    bool began = s_mode == M_SETUP;
+    if (!began && err == ESP_OK) {
+        s_ap_want = false;
+        s_ap_open = false;      /* AP_STOP says so too; this covers one that never comes */
+        s_close_failures = 0;
+    } else if (!began) {
+        failures = ++s_close_failures;
+    }
+    UNLOCK();
+    if (began) {
+        if (closed) {           /* it took the new setup's network down: open it again */
+            ESP_LOGI(TAG, "setup began again while the setup network was closing: opening it again");
+            job(J_SETUP_OPEN);
+        }
+    } else if (err == ESP_OK) {
+        if (closed) ESP_LOGI(TAG, "setup network closed");
+    } else {
+        bool restart;
+        int32_t ms = net_ap_close_retry_ms(failures, &restart);
+        ESP_LOGE(TAG, "closing the setup network failed (%s, try %d): trying again in %d s%s", esp_err_to_name(err),
+                 failures, (int)(ms / 1000), restart ? " with a restart of the radio" : "");
+        esp_timer_stop(s_linger_timer);
+        esp_timer_start_once(s_linger_timer, (uint64_t)ms * 1000);
+    }
+    LOCK();
+    s_close_queued = false;     /* only now: until here a close was on its way (the retry's wait is armed by now) */
+    UNLOCK();
+    RADIO_UNLOCK();
+}
+
 static void worker(void *arg)
 {
     (void)arg;
@@ -795,15 +960,7 @@ static void worker(void *arg)
         job_t j;
         if (xQueueReceive(s_jobs, &j, portMAX_DELAY) != pdTRUE) continue;
         switch (j) {
-        case J_SAVE_CREDS: {
-            creds_t c;
-            LOCK();
-            c = s_creds;
-            UNLOCK();
-            creds_save(&c);
-            memset(&c, 0, sizeof c);
-            break;
-        }
+        case J_SAVE_CREDS: save_creds(); break;
         case J_ONLINE: {
             mdns_start();
             sntp_start();
@@ -833,21 +990,7 @@ static void worker(void *arg)
         case J_SETUP_OPEN: setup_open(); break;
         case J_SAVE_SKIP: skip_save(true); break;
         case J_CLEAR_SKIP: skip_save(false); break;
-        case J_STOP_AP: {
-            RADIO_LOCK();
-            LOCK();
-            bool stop = s_mode != M_SETUP && s_ap_want;
-            if (stop) s_ap_want = false;
-            wmode_t mode = s_mode;
-            UNLOCK();
-            if (stop) {
-                net_dns_stop();
-                if (s_running) esp_wifi_set_mode(mode == M_OFF ? WIFI_MODE_NULL : WIFI_MODE_STA);
-                ESP_LOGI(TAG, "setup network closed");
-            }
-            RADIO_UNLOCK();
-            break;
-        }
+        case J_STOP_AP: ap_close(); break;
         case J_CONNECT: {
             static creds_t c;
             LOCK();
@@ -899,10 +1042,12 @@ esp_err_t net_wifi_init(void)
     const esp_timer_create_args_t t2 = {.callback = on_join_timer, .name = "wifi_join"};
     const esp_timer_create_args_t t3 = {.callback = on_addr_timer, .name = "wifi_addr"};
     const esp_timer_create_args_t t4 = {.callback = on_linger_timer, .name = "wifi_linger"};
+    const esp_timer_create_args_t t5 = {.callback = on_save_timer, .name = "wifi_save"};
     esp_timer_create(&t1, &s_retry_timer);
     esp_timer_create(&t2, &s_join_timer);
     esp_timer_create(&t3, &s_addr_timer);
     esp_timer_create(&t4, &s_linger_timer);
+    esp_timer_create(&t5, &s_save_timer);
     /* writes NVS: the stack stays in internal RAM */
     if (xTaskCreatePinnedToCore(worker, "net", 4096, NULL, 4, NULL, 0) != pdPASS) return ESP_ERR_NO_MEM;
     s_inited = true;
@@ -954,8 +1099,9 @@ void net_wifi_setup_begin(void)
     s_joining = false;
     memset(&s_js, 0, sizeof s_js);
     drop_pending_cal_locked();
-    bool already = s_ap_want;       /* up or opening (or lingering after Connected) */
+    bool already = s_ap_want;       /* up or opening (or lingering after Connected, or a close that failed) */
     s_ap_want = true;
+    s_close_failures = 0;           /* a close later on starts with the mode change again */
     bool open = s_ap_open, idle = s_ap_open && s_ap_clients == 0;
     UNLOCK();
     if (was_skipped) job(J_CLEAR_SKIP);
@@ -999,6 +1145,7 @@ void net_wifi_setup_skip(void)
     s_joining = false;
     s_sta_up = false;
     s_ap_want = false;
+    s_close_failures = 0;
     s_scanning = false;
     drop_pending_cal_locked();
     UNLOCK();
@@ -1022,10 +1169,42 @@ void net_wifi_setup_done(void)
     LOCK();
     bool was_setup = s_mode == M_SETUP;
     if (was_setup) s_mode = M_STA;
+    s_close_failures = 0;
     UNLOCK();
     esp_timer_stop(s_linger_timer);
     esp_timer_start_once(s_linger_timer, AP_LINGER_US);
     if (was_setup) catch_up_after_setup();
+}
+
+/* net.h net_setup_follow(): the app task, every loop once core's effects have run. */
+void net_wifi_follow(tb_wifi_mode_t core_mode, int64_t now_ms)
+{
+    if (!s_inited) return;
+    LOCK();
+    bool in_setup = s_mode == M_SETUP;
+    UNLOCK();
+    /* core left its setup screens but net never heard (core's effect queue was full): finish the same way */
+    switch (net_setup_catch_up(core_mode, in_setup)) {
+    case NET_SETUP_FINISH:
+        ESP_LOGW(TAG, "setup ended on the screen but net didn't hear it: closing the setup network after its linger");
+        net_wifi_setup_done();
+        break;
+    case NET_SETUP_SKIP:
+        ESP_LOGW(TAG, "Wi-Fi was skipped on the screen but net didn't hear it: radio off");
+        cal_sync_set_online(false);     /* as main does for TB_FX_WIFI_SKIP */
+        net_wifi_setup_skip();
+        break;
+    case NET_SETUP_KEEP: break;
+    }
+    if (now_ms < s_next_guard_ms) return;
+    s_next_guard_ms = now_ms + AP_GUARD_MS;
+    bool lingering = esp_timer_is_active(s_linger_timer);     /* the linger, or a failed close's wait */
+    LOCK();
+    bool stray = net_setup_ap_stray(s_mode == M_SETUP, s_ap_want, s_ap_open, s_close_queued || lingering);
+    UNLOCK();
+    if (!stray) return;
+    ESP_LOGW(TAG, "the setup network is up outside setup with no close on its way: closing it");
+    queue_close();      /* a full queue: the next look tries again */
 }
 
 bool net_wifi_rf_on(void)

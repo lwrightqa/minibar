@@ -8,7 +8,8 @@
  *   2. let a held finger fire the hold, run core's timers (tb_app_tick) and the protocol's (net_api_tick)
  *   3. under the display lock: carry out core's effects (sound, backlight, rotation, power, Wi-Fi setup, calendar
  *      sync, saving), redraw what changed (ui_update), run LVGL (lv_timer_handler: renders, flushes, reads the touch
- *      panel, whose samples reach core through ui's pointer callback), then the effects those touches caused
+ *      panel, whose samples reach core through ui's pointer callback), then the effects those touches caused, then
+ *      let net check the setup network against core's screens (net_setup_follow)
  *   4. write the settings and state that are due (debounced NVS), feed the task watchdog
  *
  * LVGL locking: LVGL is built without an OS layer (CONFIG_LV_OS_NONE) and only this task calls it. The task holds
@@ -357,6 +358,9 @@ static void app_task(void *arg)
             next = lv_timer_handler();
             note_frame_time(esp_timer_get_time() / 1000 - h0, frames_before);
             run_effects();      /* what this frame's touch samples asked for (a wake, a chime), without a loop's delay */
+            /* Core's effects are all out now, so net can compare: a setup network core no longer shows is closed
+             * even if its TB_FX_WIFI_DONE was lost (net.h). */
+            if (s_net_ready && !s_n_deferred) net_setup_follow(g_app.wifi_mode, now.mono);
             board_display_unlock();
         } else {
             ESP_LOGW(TAG, "display lock busy; effects and the frame wait for the next loop");

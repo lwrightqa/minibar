@@ -363,6 +363,47 @@ const char *net_join_err_screen(net_join_err_t e)
 }
 
 /* ======================================================================================================== */
+/* The setup network once setup is over                                                                     */
+/* ======================================================================================================== */
+
+net_setup_catch_up_t net_setup_catch_up(tb_wifi_mode_t core_mode, bool net_in_setup)
+{
+    if (!net_in_setup) return NET_SETUP_KEEP;
+    switch (core_mode) {
+    case TB_WIFI_SETUP:
+    case TB_WIFI_CONNECTING:
+    case TB_WIFI_CONNECTED:
+    case TB_WIFI_FAILED: return NET_SETUP_KEEP;     /* the setup screens: the network belongs up */
+    case TB_WIFI_OFFLINE: return NET_SETUP_SKIP;
+    default: return NET_SETUP_FINISH;               /* TB_WIFI_OK: the Connected screen moved on */
+    }
+}
+
+bool net_setup_ap_stray(bool in_setup, bool ap_want, bool ap_up, bool close_pending)
+{
+    return !in_setup && (ap_want || ap_up) && !close_pending;
+}
+
+int32_t net_ap_close_retry_ms(int failures, bool *restart_radio)
+{
+    static const int32_t soft_ms[] = {1000, 2000};
+    static const int32_t hard_ms[] = {5000, 10000, 30000};
+    if (failures < 1) failures = 1;
+    bool hard = failures >= NET_AP_CLOSE_SOFT_TRIES;
+    if (restart_radio) *restart_radio = hard;
+    if (!hard) return soft_ms[failures - 1];
+    int k = failures - NET_AP_CLOSE_SOFT_TRIES;
+    return hard_ms[k < 2 ? k : 2];
+}
+
+int32_t net_creds_save_retry_ms(int failures)
+{
+    static const int32_t ms[NET_CREDS_SAVE_TRIES - 1] = {5000, 30000, 120000, 600000, 1800000};
+    if (failures < 1) failures = 1;
+    return failures < NET_CREDS_SAVE_TRIES ? ms[failures - 1] : 0;
+}
+
+/* ======================================================================================================== */
 /* USB lines                                                                                                */
 /* ======================================================================================================== */
 

@@ -724,7 +724,7 @@ Scope `call` or `full`. Over USB: `"cmd": "status"`. Everything the Remote shows
 | `rev` | Goes up whenever anything in this object changes, except `time` and the countdowns. Also the `ETag`. |
 | `time`, `time_source` | As in `info`. Clients work out "heard from it just now" and countdowns against this, not their own clock. |
 | `showing` | *Open.* What the bar shows, by the rules in `decisions.md`: `"call"` (On a call), `"meeting"` (In a meeting from the calendar), `"own"` (your own status, including while a call or meeting is set aside), or `"setup"` (the Wi-Fi setup screens). Menus, toasts, the pairing screen and the power screens are passing overlays and don't change it. Clients treat an unknown value like `"own"`. |
-| `screen` | `"on"`, or `"dark"` after a PWR press. A dark bar keeps following calls, meetings and the timer, and shows the right screen when woken. A powered-off bar doesn't answer at all. |
+| `screen` | `"on"`, or `"dark"` after a PWR press. A dark bar keeps following calls, meetings and the timer, and shows the right screen when woken. A powered-off bar doesn't answer at all. **Proposed (2026-10-05, with the controls tour in `decisions.md`, Help and the controls tour):** `"tour"` while the bar shows its quick tour of the controls. Everything else in this object stays real (`showing`, `own`, the call, the meeting, the timer), since nothing real changes during the tour; the screen underneath shows when it ends. Clients treat an unknown `screen` value like `"on"`. |
 | `own.status` | Your own status: `"available"`, `"busy"`, `"meeting"` (In a meeting **picked by hand**), `"pomodoro"`, `"away"`, `"message"` or `"clock"`. *Open:* clients show an unknown value by name only. |
 | `own.since` | When you picked it. |
 | `own.previous` | The status Stop on the Pomodoro returns to (the last one that isn't Pomodoro or Clock). |
@@ -991,7 +991,7 @@ bar → mac  @tb {"id": 9, "http_status": 200, "ok": true, "settings": {"pomodor
 | Default | `true` (**Proposed**; the other choice is `false`, like ticking). It applies on a new bar and on a bar updated from firmware that had no touch click. |
 | Read | `GET /api/v1/settings` (10.1): `settings.sound.tap_sound`, always present. |
 | Change | `PATCH /api/v1/settings` (10.2), scope `full`. Over USB, `request` (6.6) with no token, like every other setting. |
-| On the bar | A Click tile, On or Off (**Proposed:** in the quick menu's Display menu, `decisions.md`). |
+| On the bar | A Tap sound tile, On or Off, in the quick menu's Display menu beside Theme (placement decided 2026-10-05, `decisions.md`, Sound). |
 | On the Remote | A Tap sound switch in its Display section, next to Theme (placement decided 2026-10-05). |
 
 ```json

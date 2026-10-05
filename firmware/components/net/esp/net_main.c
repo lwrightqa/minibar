@@ -95,6 +95,7 @@ esp_err_t net_start(void)
 void net_setup_begin(void) { net_wifi_setup_begin(); }
 void net_setup_skip(void) { net_wifi_setup_skip(); }
 void net_setup_done(void) { net_wifi_setup_done(); }
+void net_setup_follow(tb_wifi_mode_t core_mode, tb_ms_t now_ms) { net_wifi_follow(core_mode, now_ms); }
 
 void net_name_changed(const char *name)
 {

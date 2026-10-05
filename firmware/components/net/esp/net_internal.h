@@ -25,6 +25,8 @@ tb_wifi_mode_t net_wifi_start_mode(void);
 void net_wifi_setup_begin(void);
 void net_wifi_setup_skip(void);
 void net_wifi_setup_done(void);
+/* net.h net_setup_follow(): core's Wi-Fi mode, and the app task's monotonic clock in ms. */
+void net_wifi_follow(tb_wifi_mode_t core_mode, int64_t now_ms);
 /* The radio is on (esp_fill_random gives true random numbers then). */
 bool net_wifi_rf_on(void);
 /* MiniBar-Setup's access point is up (between WIFI_EVENT_AP_START and AP_STOP), for net_http.c's fallback when a
