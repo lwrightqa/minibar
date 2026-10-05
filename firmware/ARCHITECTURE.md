@@ -481,11 +481,12 @@ an hour per token.
 
 **Waiting for the user or the product manager:**
 
-1. **Pairing** (api.md 4 and decisions.md "Pairing", Proposed): built, default on (`TINYBAR_API_AUTH_BEARER`), and
-   since the review round it follows the mock-up's pairing round: the pairing screen ("Code expires in", the bar's
-   name, the device-specific sub line, the progress bar), a flip cancels and flips, a code holds a ringing alarm and a
-   phase that ends under it, the 2 minutes count from when the code shows, the Wi-Fi menu (Network, Devices, Set up,
-   Back on five columns) and Forget all's own confirmation.
+1. **Pairing** (api.md 4 and decisions.md "Pairing"; approved by the user on 2026-10-04, and working on the bar as
+   of 2026-10-05 in its 1.0.1 form): built, default on (`TINYBAR_API_AUTH_BEARER`). It follows the mock-up's pairing
+   round and, since 2026-10-05, its fix round: the held place, `pair/cancel`, the back-off cleared only by a code typed
+   right, Power off or Restart, a code stopping a flash under way, the Devices tile's measured "pair at" foot, and the
+   Remote's prompt as the mock-up draws it. One contract detail the mock-up left open is the firmware's: `info.paired`
+   (api.md 7.1), which the Remote reads to clear its 10-device refusal and to say "TinyBar forgot this phone".
 2. **Stored secrets** (section 10): readable over the USB-C port with esptool in about a minute. NVS encryption alone
    stops only a passive dump; full protection (flash encryption with secure boot, or USB download mode off) is
    irreversible. Off until the user decides, which should be before the bar joins an office network with a work login.
@@ -576,4 +577,16 @@ they changed):
   token-named feed's mask) and the setup page (20) against the fake bar (`host/fakebar.c`: the real router and core
   on Linux, with simulated Wi-Fi and calendar, masking addresses with the real `cal_url_check`) pass at 390 px. The ui
   host tools weren't run again in the security round (ui didn't change).
+- **The pairing alignment (2026-10-05):** a fresh `build-lead-align/` from `sdkconfig.defaults`: no warnings; app
+  2,134,352 bytes (0x209150), 66% of the slot free; DIRAM 141,287 bytes used statically, 200,473 free; the merged
+  image `dist/tinybar-1.0.0.bin` checked as above (it reports `fw` 1.0.1). 434 host tests (core 158, calendar 67, net 144, ui 30, board 35) under
+  ASan and UBSan with no warnings: 8 new in core (`test_pairing_fix.c`: the text mapping of api.md 2.3, the Devices
+  tile's feet, Power off and Restart as a reset, the cancel endings, a code stopping a flash), 16 in net
+  (`test_pairing_fix.c`: the held place against USB, the safeguard, `pair/cancel` by id with its limit, validation,
+  methods and setup, the back-off and what clears it, `info.paired`, Appendix A and B) and 1 in ui (the pairing
+  round's scenes). The ui's layout test checks the three "pair at" feet drawn on one line each inside the tile, and
+  Forget all's ten names cut after two lines; 89 scenes, 86 compared with the mock-up with every text line on its
+  baseline. The Remote's Playwright suite is 149 checks (the prompt's every refusal clearing with its cause, Cancel
+  with `pair/cancel`, the code gone within 2 s, the focus and error ring, the list and foot, the Mac line, the hidden
+  characters, Forget all, Remove this phone, removed on another phone, no answer); the setup page's 20 pass.
 - **Not yet:** anything on the board. Then an end-to-end run of the controls table on the bar (QA).

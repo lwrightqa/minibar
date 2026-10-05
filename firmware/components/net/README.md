@@ -16,7 +16,7 @@ Owner: net builder. The contract is `docs/api.md`; where this file and it disagr
 | `esp/net_http.c` | no | esp_http_server: `/api/*` (every method) to the router on the app task (`tb_bus_exec`, 900 ms), the gzipped pages with the Host check (421), the captive-portal 302 (check paths and other hosts), which network a request came in on (the socket's own address and the peer's subnet; the peer's alone as a fallback), every setup-network request logged without its query (40 a minute for the checks and the setup page, 40 for the rest), a 3 s deadline per request (a receive override on each socket), and closing rather than draining a body it didn't read. |
 | `esp/net_usb.c` | no | The USB Serial/JTAG driver, one non-blocking writer for logs, stdout and protocol lines (no log line starts with the marker), and the line reader. |
 | `esp/net_port_esp.c` | no | `net_port.h` on the device: identity, time, randomness, SHA-256, the token table in `nvs_sec/tokens`, the calendar service. |
-| `web/remote.html`, `web/setup.html` | — | The Remote and the setup page (ports of the mock-up's), embedded gzipped (17 KB and 4 KB). No external resources. |
+| `web/remote.html`, `web/setup.html` | — | The Remote and the setup page (ports of the mock-up's), embedded gzipped (24 KB and 5 KB since the pairing round's prompt and Paired devices list; served from flash, never copied to RAM). No external resources. |
 | `host/fakebar.c` | yes | A bar on Linux (the real router and core, simulated Wi-Fi and calendar) for testing the pages in a browser. Not part of the firmware. |
 | `host/pages_*.test.js` | — | Playwright checks of both pages against the fake bar. |
 

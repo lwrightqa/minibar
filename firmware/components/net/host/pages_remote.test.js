@@ -134,8 +134,8 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   await sleep(300);
   check(await text('#pairAskErr') === 'Too many tries. You can try again in 30 seconds.', 'back-off: ' + await text('#pairAskErr'));
   check(await p.getAttribute('#pairAsk', 'aria-disabled') === 'true' && await active() === 'pairAsk', 'dimmed while waiting, focus kept');
-  await sleep(1100);
-  check(/^Too many tries\. You can try again in 2[89] seconds\.$/.test(await text('#pairAskErr')), 'the wait counts down: ' + await text('#pairAskErr'));
+  await sleep(2000);
+  check(/^Too many tries\. You can try again in 2[78] seconds\.$/.test(await text('#pairAskErr')), 'the wait counts down: ' + await text('#pairAskErr'));
   await sim('/_sim/restart', '');           // a restart clears the back-off
   await sleep(2500);
   check(!(await vis('#pairAskErr')) && await p.getAttribute('#pairAsk', 'aria-disabled') === 'false', 'the wait message goes once the back-off is over');
@@ -257,7 +257,8 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
     await p.fill('#msgInput', t);
     await sleep(80);
     const err = await vis('#msgErr') ? await text('#msgErr') : '';
-    check(what.startsWith('a variation') ? err === "TinyBar can't show ✓. Remove it to show this message." : !err, `${what}: ${err || 'fine'}`);
+    // the mock-up names what you see as one character, as typed: the check mark with its selector
+    check(what.startsWith('a variation') ? err === "TinyBar can't show ✓" + ch(0xFE0E) + '. Remove it to show this message.' : !err, `${what}: ${err || 'fine'}`);
   }
   await p.fill('#msgInput', 'Cafe' + ch(0x301) + ' at noon');
   await sleep(100);

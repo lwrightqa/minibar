@@ -13,10 +13,12 @@ How the code is organized, and why, is in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 > **Status: integrated and reviewed; first run on the board under way.** Every module is built and wired together,
 > and the 2026-10-04 review round's findings are fixed (or answered in decisions.md), as are the defensive security
-> review's (ARCHITECTURE.md sections 10 and 14). The firmware compiles with no warnings, 409 host tests pass, and every
-> screen the mock-up can show matches it line for line. 1.0.0 was flashed once: it boots, holds power and draws the
-> QR screen, and an Android phone couldn't get to the setup page, which 1.0.1 is meant to fix (the cause isn't
-> confirmed yet; see "What's verified").
+> review's (ARCHITECTURE.md sections 10 and 14). On 2026-10-05 pairing was brought in line with the mock-up's pairing
+> fix round (the held place, `pair/cancel`, the back-off rules, the Devices tile's "pair at" foot, and the Remote's
+> prompt and Paired devices as the mock-up draws them). The firmware compiles with no warnings, 434 host tests pass,
+> and every screen the mock-up can show matches it line for line. 1.0.0 was flashed once: it boots, holds power and
+> draws the QR screen, and an Android phone couldn't get to the setup page; with 1.0.1 the phone sets up Wi-Fi and
+> the Remote pairs with the code on the bar (see "What's verified").
 > Everything else that touches the hardware or the radio is unverified until it runs on the bar. See "What's
 > verified" at the end, and the bring-up checklists in `components/board/README.md`, `components/net/README.md` and
 > `components/calendar/README.md`.
@@ -92,7 +94,7 @@ with the mock-up without hardware (needs `managed_components/` from any idf.py b
 ```sh
 cmake -S components/ui/host -B build-host-ui-<name>
 cmake --build build-host-ui-<name> -j
-build-host-ui-<name>/tinybar_snapshot <output-dir>        # 79 scenes; --list names them
+build-host-ui-<name>/tinybar_snapshot <output-dir>        # 89 scenes; --list names them
 ctest --test-dir build-host-ui-<name>                       # the touch test (straight and flipped) and the layout test
 ```
 
@@ -111,7 +113,8 @@ Flash **one merged image at address 0x0, at 115200 baud**. A faster write once l
    ```
 
    The version is `PROJECT_VER` in `CMakeLists.txt` (also what `GET /api/v1/info` reports as `fw`). The image in
-   `dist/` today is the 2026-10-04 security review's release build (2.31 MB; the app 2.02 MB).
+   `dist/` today is the 2026-10-05 pairing alignment's build, `dist/tinybar-1.0.0.bin` (2.33 MB; the app 2.04 MB; it
+   reports `fw` 1.0.1, this tree's `PROJECT_VER`).
 2. Plug the bar into the computer with a USB-C **data** cable (a charge-only cable shows no port). If the Mac app is
    running, choose **Pause USB** in its menu first, so it lets go of the serial port.
 3. Open the Espressif web flasher in Chrome or Edge (<https://espressif.github.io/esptool-js/>), set the baud rate to
@@ -159,25 +162,34 @@ With the command line instead: `idf.py -p <port> -b 115200 flash` (keeps NVS too
 
 ## Pairing the Mac app and a phone
 
-Pairing is **Proposed** (api.md section 4, decisions.md "Pairing") and on in this build: nothing controls the bar over
-Wi-Fi until it has paired once with a 6-digit code that only the bar's screen shows. The code lasts 2 minutes from
-when it appears, allows 3 tries, and only one code shows at a time. After two failed pairings in a row the bar
-refuses new codes for 30 seconds, doubling up to an hour.
+Pairing (api.md section 4, decisions.md "Pairing"; approved by the user on 2026-10-04) is on in this build: nothing
+controls the bar over Wi-Fi until it has paired once with a 6-digit code that only the bar's screen shows. The code
+lasts 2 minutes from when it appears, allows 3 tries, and only one code shows at a time. After two failed pairings in
+a row (timed out, canceled on the bar or by the device that asked, or out of tries) the bar refuses new codes for 30
+seconds, doubling up to an hour; a code typed right, Power off or Restart clears that. A bar keeps 10 paired devices,
+and a code on its screen for a new device holds one of the 10 places until it ends.
 
 - **The Mac app, over USB:** plug the bar into the Mac once. The app pairs over the cable with no code (the cable is
   the proof), and the bar says "Paired · Mac · over USB". If another device's code is on the bar at that moment, the
-  code stays up and the confirmation follows once that pairing ends.
+  code stays up and the confirmation follows once that pairing ends; if that code holds the bar's last place, the Mac
+  gets no Wi-Fi token yet (`token_limit`) but the cable keeps working.
 - **The Mac app, over Wi-Fi:** in the TinyBar menu on the Mac, choose **Connect…**, then **Pair Over Wi-Fi**. The bar
   shows "PAIRING · MAC" with the code and "Type it on your Mac · tap to cancel"; type it in the app. The Mac's token
   can only report calls.
-- **A phone (the Remote):** open `http://tinybar.local`, name the phone if you like, and choose **Show a code on
-  TinyBar**. The bar shows the code ("Type it on your phone · tap to cancel"); type it on the phone. The phone gets
-  full control, and the Remote lists every paired device, each with Remove.
+- **A phone (the Remote):** open `http://tinybar.local` and choose **Pair this phone**. The bar shows the code
+  ("PAIRING · IPHONE", "Type it on your phone · tap to cancel"; the Remote names itself iPhone, iPad or Android phone
+  when the browser says, otherwise the bar says Phone); type it on the phone, which pairs at the sixth digit. Cancel
+  on the phone takes the code off the bar (`pair/cancel`). The phone gets full control, and the Remote lists every
+  paired device, each with Remove (asked first, in place). While the bar is busy with another code or waiting after
+  failed pairings, Pair this phone is dimmed and says how long; each such message goes as soon as its cause is over.
 - **On the bar:** a tap, swipe, hold or BOOT cancels a code ("Pairing canceled"); a PWR press cancels it and darkens
   the screen; flipping the bar cancels it and does what a flip does. The info column counts down "Code expires in"
   over the bar's name, so in an office with several bars you can check it's the one you meant.
-- **Forget them all:** hold, Wi-Fi, Devices ("3 paired"), then **Forget all** (a second, deliberate tap; Keep goes
-  back). Every device needs a new code; USB keeps working.
+- **Forget them all:** hold, Wi-Fi, Devices ("3 paired", "Full" at 10), then **Forget all** (a second, deliberate
+  tap: one in its first 600 ms is ignored; Keep goes back to the Wi-Fi menu). The bar says "Forgot 3 devices"; every
+  device needs a new code, and a phone's Remote says "TinyBar forgot this phone". USB keeps working. With nothing
+  paired the tile reads "None" and says where to pair: "pair at" over the bar's address (`tinybar.local`, or its IP
+  address when a renamed host is too long for the tile).
 - **Without pairing:** build with `CONFIG_TINYBAR_API_AUTH_NONE` (menuconfig → TinyBar) and the bar answers anyone
   on the office Wi-Fi, as the API's `"auth": "none"` (api.md 4.1).
 
@@ -200,7 +212,10 @@ refuses new codes for 30 seconds, doubling up to an hour.
   Some office networks block mDNS: use the address the Wi-Fi menu shows. Guest networks with a sign-in page aren't
   supported.
 - **"Another device is pairing with this TinyBar":** a code for another device is on the bar; wait for it to run out
-  (2 minutes at most) or cancel it with a tap on the bar.
+  (2 minutes at most), cancel it with a tap on the bar, or Cancel on the device that asked. The phone's message goes
+  by itself once the code is gone.
+- **"TinyBar 2A1C already has 10 paired devices":** remove one on a paired phone, or forget them all on the bar (hold,
+  Wi-Fi, Devices). The message goes by itself once a place is free.
 - **The phone joins TinyBar-Setup but says "Connected, no internet" and no sign-in sheet opens:** pull down the
   notifications and tap "Sign in to Wi-Fi network" if it's there. If not, open `http://4.3.2.1` in its browser with
   mobile data turned off (with mobile data on, Android sends the browser over it on a network it judged to have no
@@ -215,6 +230,26 @@ powers off (on USB, a deep sleep), and a press turns it back on; flip the bar ov
 alarm and start what the Pomodoro is waiting for.
 
 ## What's verified
+
+**2026-10-05, pairing aligned with the mock-up's pairing fix round** (details in ARCHITECTURE.md sections 10 and 14):
+
+- **Compiled:** a fresh `build-lead-align/` from `sdkconfig.defaults` alone, with **no warnings**. App 2,134,352
+  bytes (0x209150, 2.04 MB; 66% of the 6 MB slot free). Internal RAM: 141,287 bytes used statically (DIRAM), 200,473
+  free for the heap (was 141,159 and 200,601). The Remote page is 24 KB gzipped in flash (was 17 KB). The merged
+  image `dist/tinybar-1.0.0.bin` (2,330,960 bytes; the round asked for this file name, and it reports `fw` "1.0.1",
+  the `PROJECT_VER` of this tree) was made with `esptool.py merge_bin @flash_args` and checked: the bootloader,
+  partition table, OTA data and app byte for byte at 0x0, 0x8000, 0xF000 and 0x30000 with 0xFF in the gaps, the
+  partition table decoded, and the app's and bootloader's checksums and SHA-256 valid. It doesn't have the 1.0.2
+  orientation change, which is on the `orient-fix` branch.
+- **Tested on the host:** 434 tests in 5 runners under AddressSanitizer and UBSan, no warnings (core 158, calendar 67,
+  net 144, ui 30, board 35; 25 new). The ui's layout test (the three "pair at" feet each on one line inside the tile,
+  Forget all's ten names cut after two lines) and touch test; 89 screen snapshots, 86 compared with the mock-up with
+  every text line on its baseline (the worst scene 7.9% of pixels, all glyph edges and the QR pattern). The Remote's
+  Playwright suite (149 checks) and the setup page's (20) against the fake bar.
+- **Unverified until it runs on the bar:** this round's pairing on the device (the held place against the Mac's USB
+  pairing, `pair/cancel` from the phone, the back-off after Power off and Restart, a code arriving during the alarm's
+  flash), the "pair at" foot as the panel draws it, the Remote's prompt on a real phone's browser (iPhone and Android
+  naming, Safari's focus rings), and the Mac app's Back calling `pair/cancel` (the Mac app's own round).
 
 As of 2026-10-04, after the review round and the security review (details in ARCHITECTURE.md section 14):
 

@@ -1182,11 +1182,10 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
   // pairing prompt follows the bar every 2 s through GET /info.
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { poll(); pairPoll(); } });
   setInterval(() => { poll(); pairPoll(); if (paired && !document.hidden && Date.now() - devAt > 30000) loadDevices(); }, 2000);
-  setInterval(() => {
-    if (document.hidden) return;
-    if (st && paired) { render(); renderDevices(); }
-    else updatePhonePair();             // the busy and back-off waits and the code's countdown, live
-  }, 1000);
+  setInterval(() => { if (st && paired && !document.hidden) { render(); renderDevices(); } }, 1000);
+  // The busy and back-off waits and the code's countdown, live (as the mock-up's 200 ms loop draws them); setText()
+  // writes only what changed.
+  setInterval(() => { if (!paired && !document.hidden) updatePhonePair(); }, 250);
   async function start() {
     head();
     await loadInfo();
