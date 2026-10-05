@@ -94,7 +94,9 @@ public enum PairingProblem: Hashable, Sendable {
 /// Pair Over Wi-Fi, step by step (mac-app-ux.md 5.4; api.md 4.6, 4.7). The
 /// Connect window shows `step` and calls the methods; the flow does the
 /// network work and, on success, stores the token and hands the bar to the
-/// connection.
+/// connection. A code it asked for and then gave up (Back, the window closed,
+/// quitting, sleep, another bar) comes off the bar at once with
+/// `pair/cancel`, in the background and best effort.
 @MainActor
 @Observable
 public final class WiFiPairingFlow {
@@ -153,10 +155,25 @@ public final class WiFiPairingFlow {
     private let tokens: any TokenStore
     private let onPaired: @MainActor (KnownBar) -> Void
 
+    /// A code this flow asked for: the bar, its `pairing_id` and when it expires.
+    typealias Code = (bar: DiscoveredBar, id: String, expiresAt: Date)
+
     /// The bars found so far (or the one at a typed address).
     @ObservationIgnored private var bars: [DiscoveredBar] = []
-    /// The code the chosen bar is showing: its `pairing_id` and when it expires.
-    @ObservationIgnored private var pairing: (bar: DiscoveredBar, id: String, expiresAt: Date)?
+    /// The code the chosen bar is showing, as far as this flow knows. `nil`
+    /// once it's been used, has ended (expired, used up, canceled on the bar)
+    /// or was given up (`releaseCode`).
+    @ObservationIgnored private var pairing: Code?
+    /// Counts the codes given up (Back, the window closed, quitting, sleep,
+    /// another bar), so a `pair/start` or `pair` answer that arrives after its
+    /// code was given up takes that code off the bar instead of showing it.
+    @ObservationIgnored private var codeGeneration = 0
+    /// A `pair` request is on its way. A code given up meanwhile waits for its
+    /// answer: a success keeps the pairing, and a code still on the bar after
+    /// any other answer is canceled then.
+    @ObservationIgnored private var isSendingCode = false
+    /// Back, the window closed, or quitting: no more codes are asked for.
+    @ObservationIgnored private var isClosed = false
     @ObservationIgnored private var isBrowsing = false
     @ObservationIgnored private var lookingTimer: Task<Void, Never>?
     /// Ignores results from an earlier round of browsing.
@@ -165,9 +182,16 @@ public final class WiFiPairingFlow {
     /// How long to look before saying none was found (mac-app-ux.md 5.5).
     public static let lookingTimeout: TimeInterval = 10
 
+    /// How long taking a code off the bar (`pair/cancel`) may take, with one
+    /// more try after `rate_limited`. Quitting and sleep wait at most this long.
+    public nonisolated static let cancelTimeout: TimeInterval = 2
+
     /// Continue after the explanation: starts browsing (which brings up the
-    /// macOS prompt). Gives up with `.noneFound` after 10 seconds.
+    /// macOS prompt). Gives up with `.noneFound` after 10 seconds. A code
+    /// already on a bar (Didn't see a code? Choose another TinyBar.) is taken
+    /// off it.
     public func startLooking() {
+        releaseCode()
         stopBrowsing()
         generation += 1
         let generation = self.generation
@@ -259,14 +283,15 @@ public final class WiFiPairingFlow {
         return clock.now() >= retryAt
     }
 
-    /// Choose among several bars.
+    /// Choose among several bars. A code on the bar chosen before is taken off it.
     public func choose(_ bar: DiscoveredBar) {
-        pairing = nil
+        releaseCode()
         step = .choose(bars.isEmpty ? [bar] : bars, chosen: bar)
     }
 
     /// Enter Address…: checks the address with `GET /api/v1/info`.
     public func useAddress(_ text: String) async {
+        releaseCode()
         let typed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let endpoint = BarEndpoint(userInput: typed) else {
             step = .failed(.nothingAt(typed), bar: nil, retryAt: nil)
@@ -286,7 +311,6 @@ public final class WiFiPairingFlow {
             let bar = DiscoveredBar(name: info.name, deviceID: info.deviceID, api: info.api, fw: info.fw,
                                     path: TinyBarAPI.basePath, auth: info.auth, endpoint: endpoint)
             bars = [bar]
-            pairing = nil
             step = .choose([bar], chosen: bar)
         } catch {
             let problem: PairingProblem
@@ -301,9 +325,18 @@ public final class WiFiPairingFlow {
 
     /// Show Code on TinyBar / Show a New Code: `POST /api/v1/pair/start` with
     /// kind `mac`, scope `call`, this install's `client`, and the Mac's name if set.
+    ///
+    /// While this flow's own code is still on the bar, the bar answers
+    /// `pairing_busy` (one code at a time), and the page goes back to typing
+    /// that code instead of saying someone else is pairing, as the mock-up's
+    /// Mac app does ("Asking again while its own code is still on the bar just
+    /// goes back to typing it"). If that code has ended on the bar meanwhile
+    /// (a tap canceled it), the bar shows a new one.
     public func requestCode() async {
-        guard var bar = chosenBar else { return }
-        pairing = nil
+        guard !isClosed, var bar = chosenBar else { return }
+        let ownCode = pairing.flatMap { clock.now() < $0.expiresAt ? $0 : nil }
+        pairing = ownCode
+        let generation = codeGeneration
         step = .requestingCode(bar)
         let transport = transports.makeWiFi(endpoint: bar.endpoint, token: nil)
         defer { Task { await transport.close() } }
@@ -312,6 +345,8 @@ public final class WiFiPairingFlow {
             if bar.auth == nil || bar.deviceID == nil {
                 let info = try await transport.hello(HelloRequest(client: clientID, name: macName))
                 guard info.isTinyBar else { throw BarError.notATinyBar }
+                // Given up meanwhile (Back, the window closed, sleep): ask for nothing.
+                guard generation == codeGeneration, !isClosed else { return }
                 bar.auth = info.auth
                 bar.deviceID = info.deviceID
                 bar.name = info.name
@@ -325,17 +360,31 @@ public final class WiFiPairingFlow {
             }
             let reply = try await transport.pairStart(PairStartRequest(name: macName, client: clientID))
             let expiresAt = clock.now().addingTimeInterval(TimeInterval(reply.expiresInS))
+            guard generation == codeGeneration else {
+                // Given up while the bar was being asked: the code it just
+                // showed comes off again at once.
+                sendCancel(for: (bar, reply.pairingID, expiresAt))
+                return
+            }
             pairing = (bar, reply.pairingID, expiresAt)
             step = .enterCode(bar, pairingID: reply.pairingID, expiresAt: expiresAt)
         } catch {
-            fail(error, bar: bar)
+            // Given up meanwhile: the page has moved on.
+            guard generation == codeGeneration else { return }
+            if let ownCode, (error as? BarError)?.apiCode == .pairingBusy, clock.now() < ownCode.expiresAt {
+                // Busy with this flow's own code: back to typing it.
+                pairing = ownCode
+                step = .enterCode(ownCode.bar, pairingID: ownCode.id, expiresAt: ownCode.expiresAt)
+                return
+            }
+            fail(error, bar: bar, keepCode: ownCode != nil)
         }
     }
 
     /// Pair: `POST /api/v1/pair` with the digits. Called by the Pair button and
     /// as soon as the sixth digit is typed or pasted.
     public func submit(code: String) async {
-        guard let digits = PairingCode.normalize(code), let pairing else { return }
+        guard !isClosed, let digits = PairingCode.normalize(code), let pairing else { return }
         switch step {
         case .enterCode, .failed(.wrongCode, _, _): break
         case .failed(.rateLimited, _, _), .failed(.noAnswer, _, _):
@@ -350,6 +399,9 @@ public final class WiFiPairingFlow {
             return
         }
         step = .pairing(bar)
+        let generation = codeGeneration
+        isSendingCode = true
+        defer { isSendingCode = false }
         let transport = transports.makeWiFi(endpoint: bar.endpoint, token: nil)
         defer { Task { await transport.close() } }
         do {
@@ -368,18 +420,114 @@ public final class WiFiPairingFlow {
             }
             let known = KnownBar(deviceID: reply.deviceID, name: reply.name, host: reply.host,
                                  lastEndpoint: bar.endpoint, auth: .bearer, tokenID: reply.tokenID)
+            // Paired, even if the code was given up while it was being sent:
+            // the bar has the token now, so it's kept and nothing is canceled.
             self.pairing = nil
             finish(.paired(known), known)
         } catch {
+            guard generation == codeGeneration else {
+                // Given up while the code was being sent (Back, the window
+                // closed, quitting, sleep). Unless this answer ended it, the
+                // code is still on the bar: take it off now.
+                if WiFiPairingFlow.codeOutlives(WiFiPairingFlow.problem(for: error)) {
+                    sendCancel(for: pairing)
+                }
+                return
+            }
             fail(error, bar: bar, keepCode: true)
         }
     }
 
-    /// Back, or the window closed: stops browsing. A code on the bar simply
-    /// expires (there's no cancel endpoint).
-    public func cancel() {
+    /// Back, the window closed, or quitting: stops browsing, asks for no more
+    /// codes, and takes this flow's code off the bar if it's still there
+    /// (`POST /api/v1/pair/cancel`, api.md 4.7), so it doesn't hold up other
+    /// devices for the rest of its 2 minutes. Nothing is sent after a success
+    /// or once the code has ended.
+    ///
+    /// - Returns: the `pair/cancel` request, which quitting waits for (it
+    ///   gives up after `cancelTimeout`), or `nil` when there was nothing to
+    ///   cancel. The window never waits for it.
+    @discardableResult
+    public func cancel() -> Task<Void, Never>? {
         stopBrowsing()
+        isClosed = true
+        return releaseCode()
+    }
+
+    /// The Mac is going to sleep or shutting down: nobody will type the code
+    /// now, so it's taken off the bar as Back does, and the page says so
+    /// ("That code has expired or was canceled on TinyBar", with Show a New
+    /// Code). Browsing carries on.
+    ///
+    /// - Returns: the `pair/cancel` request, which sleep waits for briefly,
+    ///   or `nil` when no code was on the bar.
+    @discardableResult
+    public func macWillSleep() -> Task<Void, Never>? {
+        let codeBar: DiscoveredBar?
+        switch step {
+        case .requestingCode(let bar), .pairing(let bar):
+            codeBar = bar
+        default:
+            codeBar = pairing.flatMap { clock.now() < $0.expiresAt ? $0.bar : nil }
+        }
+        guard let codeBar else { return nil }
+        let request = releaseCode()
+        if !isClosed {
+            step = .failed(.expired, bar: codeBar, retryAt: nil)
+        }
+        return request
+    }
+
+    /// Gives up the code this flow asked for, and takes it off the bar if it's
+    /// still there as far as the flow knows. Nothing is sent once it has ended
+    /// (used, expired, used up, canceled on the bar), nor while it's being sent
+    /// (`pair`): that answer decides then (`submit`). A `pair/start` still on
+    /// its way is canceled when its answer comes (`requestCode`).
+    @discardableResult
+    private func releaseCode() -> Task<Void, Never>? {
+        codeGeneration += 1
+        guard let code = pairing else { return nil }
         pairing = nil
+        guard !isSendingCode, clock.now() < code.expiresAt else { return nil }
+        return sendCancel(for: code)
+    }
+
+    /// Sends `pair/cancel` for `code` in the background, so the window never waits.
+    @discardableResult
+    private func sendCancel(for code: Code) -> Task<Void, Never> {
+        let transports = self.transports
+        let clock = self.clock
+        let pairingID = code.id
+        let endpoint = code.bar.endpoint
+        return Task.detached {
+            await WiFiPairingFlow.cancelCode(pairingID: pairingID, at: endpoint, transports: transports, clock: clock)
+        }
+    }
+
+    /// `POST /api/v1/pair/cancel` (api.md 4.7). Best effort: never throws and
+    /// gives up after `cancelTimeout`. It shares `pair`'s limit of one request
+    /// a second, so `rate_limited` (a wrong code typed just before Back) is
+    /// tried once more a second later. `not_pairing` means the code had ended
+    /// already; after anything else the code simply runs out on the bar.
+    nonisolated static func cancelCode(
+        pairingID: String,
+        at endpoint: BarEndpoint,
+        transports: any TransportFactory,
+        clock: any TinyClock
+    ) async {
+        let transport = transports.makeWiFi(endpoint: endpoint, token: nil)
+        let request = PairCancelRequest(pairingID: pairingID)
+        await BarConnection.withTimeout(cancelTimeout, clock: clock) {
+            do {
+                _ = try await transport.pairCancel(request)
+            } catch let error as BarError where error.apiCode == .rateLimited {
+                do { try await clock.sleep(seconds: 1) } catch { return }
+                _ = try? await transport.pairCancel(request)
+            } catch {
+                // `not_pairing`, no answer: nothing more to do.
+            }
+        }
+        await transport.close()
     }
 
     /// Paired (or nothing to pair). The engine's own browsing starts in
@@ -402,19 +550,18 @@ public final class WiFiPairingFlow {
 
     /// Shows what went wrong (mac-app-ux.md 5.5).
     ///
-    /// - Parameter keepCode: the error came from sending the code. A wrong
-    ///   code with tries left, `rate_limited` (one `pair` a second, api.md
-    ///   4.9) and no reply leave the code on the bar, so it's kept until it
-    ///   expires and can be sent again.
+    /// - Parameter keepCode: a code of this flow's may still be on the bar
+    ///   (the error came from sending it, or from Show a New Code while it
+    ///   showed). A wrong code with tries left, `rate_limited` (one `pair` a
+    ///   second, api.md 4.9) and no reply leave it there, so it's kept until
+    ///   it expires and can be sent again (or canceled). Every other answer
+    ///   means it has ended on the bar: `not_pairing`, `wrong_code` with no
+    ///   tries left, `token_limit` (from `pair` a safeguard that ends the
+    ///   pairing, api.md 4.7), `in_setup` (setup ends any pairing, api.md 13).
     private func fail(_ error: any Error, bar: DiscoveredBar, keepCode: Bool = false) {
         let problem = WiFiPairingFlow.problem(for: error)
         let codeStillShown = keepCode && pairing.map { clock.now() < $0.expiresAt } == true
-        switch problem {
-        case .wrongCode:
-            break  // the same code is still on the bar: try again
-        case .rateLimited, .noAnswer:
-            if !codeStillShown { pairing = nil }
-        default:
+        if !(codeStillShown && WiFiPairingFlow.codeOutlives(problem)) {
             pairing = nil
         }
         var retryAt: Date?
@@ -427,7 +574,18 @@ public final class WiFiPairingFlow {
         step = .failed(problem, bar: bar, retryAt: retryAt)
     }
 
-    /// The problem for a pairing request's error.
+    /// Whether the code is still on the bar after `pair` failed with `problem`:
+    /// a wrong code with tries left, `rate_limited`, or no answer.
+    nonisolated static func codeOutlives(_ problem: PairingProblem) -> Bool {
+        switch problem {
+        case .wrongCode, .rateLimited, .noAnswer: return true
+        default: return false
+        }
+    }
+
+    /// The problem for a pairing request's error (api.md 4.6, 4.7, Appendix B).
+    /// `token_limit` comes from `pair/start` and, as a safeguard, from `pair`;
+    /// `in_setup` from both.
     nonisolated static func problem(for error: any Error) -> PairingProblem {
         guard let error = error as? BarError else { return .noAnswer }
         switch error {

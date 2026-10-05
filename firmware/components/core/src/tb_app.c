@@ -890,8 +890,10 @@ static void power_off(tb_app_t *a, const tb_clock_t *now)
 {
     silence(a);
     hide_menu(a);
-    /* Powering off ends a pairing; paired devices stay paired (the back-off lives in RAM and goes with it). */
+    /* Powering off ends a pairing (and drops one still waiting to show) without counting it as failed, and clears the
+     * back-off, as a restart clears the bar's RAM. Paired devices stay paired. */
     end_pairing_here(a, PE_OFF, now);
+    tb_fx(a, TB_FX_PAIRING_RESET, 0);
     a->pwr_down_at = 0;
     a->hold = TB_HOLD_POWERING_OFF;
     a->powering_off = true;
@@ -914,6 +916,7 @@ static void restart(tb_app_t *a, const tb_clock_t *now)
     silence(a);
     hide_menu(a);
     end_pairing_here(a, PE_OFF, now);
+    tb_fx(a, TB_FX_PAIRING_RESET, 0);
     tb_pomo_reset_run(&a->pomo, &a->set);
     tb_fx(a, TB_FX_RESTART, 0);
     power_on(a, now);
@@ -937,15 +940,16 @@ static void boot_done(tb_app_t *a, const tb_clock_t *now)
     else toast(a, "Ready", now);
 }
 
-/* pairEnd() for the endings core decides (net's own endings come through tb_app_pairing_end). Every one tells net
- * (TB_FX_PAIRING_CANCELED), which counts it as a failed pairing for the back-off. The screen stays on afterwards. */
+/* pairEnd() for the endings core decides (net's own endings come through tb_app_pairing_end). Each but powering off
+ * and restarting tells net (TB_FX_PAIRING_CANCELED), which counts it as a failed pairing for the back-off; those two
+ * send TB_FX_PAIRING_RESET instead (power_off(), restart()). The screen stays on afterwards. */
 static void end_pairing_here(tb_app_t *a, int how, const tb_clock_t *now)
 {
     if (!a->pairing.active) return;
     bool was_shown = a->pairing.shown_at != 0;
     a->pairing.active = false;
     a->pairing.shown_at = 0;
-    tb_fx(a, TB_FX_PAIRING_CANCELED, 0);
+    if (how != PE_OFF) tb_fx(a, TB_FX_PAIRING_CANCELED, 0);
     /* A PWR press drops a held alarm's chime: the waiting screen shows, silently, when the screen is woken. */
     if (how == PE_PWR && a->alarm_held_by_pairing) {
         a->alarm_held_by_pairing = false;

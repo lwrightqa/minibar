@@ -97,9 +97,13 @@ typedef enum {
     TB_FX_CAL_SYNC,         /* Sync now from the quick menu */
     TB_FX_SAVE_SETTINGS,    /* settings changed: persist (main debounces NVS writes) */
     TB_FX_SAVE_STATE,       /* own status, last status, message, today's tomatoes or the timer's run/pause changed */
-    TB_FX_PAIRING_CANCELED, /* a tap, swipe, hold, BOOT, PWR, flip, Wi-Fi setup, power off or restart ended the pairing
-                             * (net ends it; it must not call tb_app_pairing_end() for it, core already said so) */
+    TB_FX_PAIRING_CANCELED, /* a tap, swipe, hold, BOOT, PWR, flip or Wi-Fi setup ended the pairing: net ends it and
+                             * counts a failed pairing (it must not call tb_app_pairing_end() for it, core already said
+                             * so) */
     TB_FX_FORGET_DEVICES,   /* Forget all was confirmed: revoke every token (core already toasted) */
+    TB_FX_PAIRING_RESET,    /* Power off or Restart (PWR held 3 s included): net ends any code without counting a failed
+                             * pairing and clears the back-off (api.md 4.9: it lives in RAM, so the device's reboot or
+                             * deep sleep clears it anyway; this says so for the 1.2 s of "Powering off" and the host) */
 } tb_effect_kind_t;
 
 typedef struct {
@@ -326,11 +330,12 @@ void tb_app_wifi_failed(tb_app_t *a, const char *ssid, const char *error_text, c
 /* Outside setup: the link came up or dropped (the bar keeps following its last calendar copy). */
 void tb_app_wifi_link(tb_app_t *a, bool up, const char *ip, const char *host, const tb_clock_t *now);
 
-/* ---------- Pairing screen (net; api.md 4.8 and decisions.md "Pairing", proposed) ---------- */
+/* ---------- Pairing screen (net; api.md 4.8 and decisions.md "Pairing", approved 2026-10-04) ---------- */
 /* A code is out. The screen shows it once the power screens are gone (never on the Wi-Fi setup screens), waking a
  * dark screen, closing an open menu and the toast, and holding a ringing alarm (it rings once when pairing ends). The
  * 2 minutes count from then (pairing.expires). A tap, swipe, hold or BOOT cancels it ("Pairing canceled"); a PWR press
  * cancels it and darkens the screen; a flip cancels it and does what a flip does; each sends TB_FX_PAIRING_CANCELED.
+ * Power off and Restart end it with TB_FX_PAIRING_RESET (not a failed pairing).
  * who: the label ("iPhone"), or NULL / "" for the kind's word ("Mac", "Phone", "Script", "Device"). */
 void tb_app_pairing_show(tb_app_t *a, const char *code, const char *who, tb_pair_kind_t kind, const tb_clock_t *now);
 /* The pairing ended for a reason net knows. who: the client's label for "Paired · Mac" (NULL: the one shown). */

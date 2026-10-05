@@ -348,13 +348,15 @@ TB_TEST(pairing_ignores_a_touch_that_began_before_it)
     TB_FALSE(b->a.pairing.active);
 }
 
-/* Power off or Restart ends the pairing (net is told before the power goes). */
+/* Power off or Restart ends the pairing (net is told before the power goes). Since the pairing fix round it isn't a
+ * failed pairing: net hears TB_FX_PAIRING_RESET, which also clears the back-off (api.md 4.9). */
 TB_TEST(pairing_ends_with_power_off_and_restart)
 {
     bench_t *b = pairing_on(bench_new(), "Mac", TB_PAIR_KIND_MAC);
     pwr_hold(b, 3100);
     TB_FALSE(b->a.pairing.active);
-    TB_EQ_INT(fx_count(b, TB_FX_PAIRING_CANCELED), 1);
+    TB_EQ_INT(fx_count(b, TB_FX_PAIRING_CANCELED), 0);
+    TB_EQ_INT(fx_count(b, TB_FX_PAIRING_RESET), 1);
     bench_run(b, TB_POWERING_OFF_MS + 100);
     TB_EQ_INT(fx_count(b, TB_FX_POWER_OFF), 1);
     /* PWR released early returns to the code */

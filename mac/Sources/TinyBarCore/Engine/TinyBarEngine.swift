@@ -19,8 +19,9 @@ import Observation
 /// - Starts Bonjour only when Wi-Fi is on and a bar is set up, or while the
 ///   Connect window's Wi-Fi page is browsing.
 /// - On sleep and power-off: `sendLeaving()` (after a power-off, carrying on
-///   if the app is still running 10 seconds later). On wake: a fresh start
-///   (`didWake`, a new grace period, and the state at once).
+///   if the app is still running 10 seconds later), and a pairing code the
+///   Connect window asked for comes off the bar (`pair/cancel`), as on quit.
+///   On wake: a fresh start (`didWake`, a new grace period, and the state at once).
 /// - Keeps "Count … Again" available while the app or camera is still in use.
 @MainActor
 @Observable
@@ -108,6 +109,9 @@ public final class TinyBarEngine {
     @ObservationIgnored private var stopped = false
     /// Tries monitors that failed to start again (`monitorRetryInterval`).
     @ObservationIgnored private var monitorRetryTask: Task<Void, Never>?
+    /// The Connect window's Pair Over Wi-Fi flow, while the window keeps it,
+    /// so quitting and sleep can take its code off the bar.
+    @ObservationIgnored private weak var pairingFlow: WiFiPairingFlow?
 
     /// How long to wait before trying a monitor that failed to start again.
     public static let monitorRetryInterval: TimeInterval = 60
@@ -224,13 +228,17 @@ public final class TinyBarEngine {
         send(.report(currentReport()))
     }
 
-    /// Quitting: sends `leaving` (best effort, about a second at most), then
-    /// stops everything. Call from `applicationShouldTerminate` and reply
-    /// `.terminateLater` until it returns.
+    /// Quitting: sends `leaving` (best effort, about a second at most) and,
+    /// while the Connect window has asked a bar for a code, takes that code
+    /// off the bar (`pair/cancel`, at the same time, `WiFiPairingFlow.cancelTimeout`
+    /// at most), then stops everything. Call from `applicationShouldTerminate`
+    /// and reply `.terminateLater` until it returns.
     public func shutdown() async {
         guard !stopped else { return }
         stopped = true
+        let codeCanceled = pairingFlow?.cancel()
         await connection.sendLeaving()
+        await codeCanceled?.value
         await connection.stop()
         dependencies.mic.stop()
         dependencies.camera.stop()
@@ -365,9 +373,11 @@ public final class TinyBarEngine {
         save()
     }
 
-    /// A new Pair Over Wi-Fi flow for the Connect window.
+    /// A new Pair Over Wi-Fi flow for the Connect window. The engine keeps a
+    /// weak reference to the latest one, so quitting and sleep can take its
+    /// code off the bar.
     public func makeWiFiPairingFlow() -> WiFiPairingFlow {
-        WiFiPairingFlow(
+        let flow = WiFiPairingFlow(
             clientID: state.settings.installID,
             macName: state.settings.macNameToSend,
             clock: dependencies.clock,
@@ -377,6 +387,8 @@ public final class TinyBarEngine {
             needsLocalNetworkExplanation: dependencies.hasLocalNetworkPrivacy && !state.settings.didExplainLocalNetwork,
             onPaired: { [weak self] bar in self?.adopt(bar) }
         )
+        pairingFlow = flow
+        return flow
     }
 
     private func adopt(_ bar: KnownBar) {
@@ -491,11 +503,17 @@ public final class TinyBarEngine {
         switch event {
         case .willSleep:
             // A wake always follows (kIOMessageSystemWillSleep can't be refused).
+            // A pairing code nobody will type now comes off the bar, while
+            // `leaving` goes out.
+            let codeCanceled = pairingFlow?.macWillSleep()
             await connection.sendLeaving()
+            await codeCanceled?.value
         case .willPowerOff:
             // A logout or shutdown can still be canceled by another app, and
             // then no wake follows: carry on if still running 10 s later.
+            let codeCanceled = pairingFlow?.macWillSleep()
             await connection.sendLeaving(resumeAfter: BarConnection.powerOffResumeAfter)
+            await codeCanceled?.value
         case .didWake:
             // Start fresh: the bar was told `leaving` before the sleep.
             detector.reset()

@@ -24,6 +24,9 @@ final class FakeBar: @unchecked Sendable {
         var aside = false
         /// Tokens the bar accepts over Wi-Fi.
         var tokens: Set<String> = []
+        /// Tokens the bar knows but that were paired for another `client`:
+        /// a call with one gets `403 wrong_client` (api.md 5.2).
+        var foreignTokens: Set<String> = []
         var tokenLimit = false
         /// Make the next requests over a link fail with this.
         var usbFailure: BarError?
@@ -74,6 +77,11 @@ final class FakeBar: @unchecked Sendable {
             throw failure
         }
         let result: Result<CallReply, BarError> = state.withLock { s in
+            if kind == .wifi, s.auth == .bearer, let token, s.foreignTokens.contains(token) {
+                s.log.append("wifi call wrong_client")
+                return .failure(.api(APIErrorBody(error: .wrongClient, message: "This token can't report calls for that client.",
+                                                  field: "client"), httpStatus: 403))
+            }
             if kind == .wifi, s.auth == .bearer, !(token.map(s.tokens.contains) ?? false) {
                 s.log.append("wifi call refused")
                 return .failure(.api(APIErrorBody(error: .unauthorized, message: "Pair with this TinyBar first."), httpStatus: 401))
@@ -243,13 +251,21 @@ final class FakeWiFiTransport: WiFiLinkTransport, @unchecked Sendable {
     }
 
     func pairStart(_ request: PairStartRequest) async throws -> PairStartReply {
-        _ = try await live()
+        let bar = try await live()
+        bar.record("wifi pair/start")
         return PairStartReply(pairingID: "d407580a9215e992")
     }
 
     func pair(_ request: PairRequest) async throws -> PairReply {
         let bar = try await live()
+        bar.record("wifi pair")
         return try bar.pairOverUSB(USBPairRequest(client: "x"))
+    }
+
+    func pairCancel(_ request: PairCancelRequest) async throws -> PairCancelReply {
+        let bar = try await live()
+        bar.record("wifi pair/cancel \(request.pairingID)")
+        return PairCancelReply()
     }
 
     func unpairSelf() async throws -> RevokeReply {

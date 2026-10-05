@@ -1,14 +1,16 @@
 /*
- * net_pair.h: pairing codes, tokens, scopes and back-off (api.md section 4, Proposed). Pure C; randomness, SHA-256
+ * net_pair.h: pairing codes, tokens, scopes and back-off (api.md section 4, approved 2026-10-04). Pure C; randomness, SHA-256
  * and storage come through net_port.h.
  *
  * Owner: net builder.
  *
  * Tokens: "tb1_" + 43 base64url characters (32 random bytes). Only SHA-256 hashes are kept, with a public 8-hex-digit
  * token_id; compared in constant time. At most 10. A new pairing with the same `client` replaces the old token.
- * Codes: 6 digits, shown on the bar for 2 minutes, one at a time, 3 tries. Back-off: after two failed pairings in a
- * row, pair/start is refused for 30 s, then 1, 2, 4 minutes... up to 1 hour; success resets it; kept in RAM only.
- * POST /api/v1/pair is limited to one request a second in total.
+ * Codes: 6 digits, shown on the bar for 2 minutes, one at a time, 3 tries. A code for a device that isn't paired yet
+ * holds one of the 10 places until it ends (api.md 4.3), so a USB pairing of another new device meanwhile gets
+ * token_limit. Back-off: after two failed pairings in a row (timed out, canceled on the bar or with pair/cancel, out of
+ * tries), pair/start is refused for 30 s, then 1, 2, 4 minutes... up to 1 hour; success, Power off and Restart reset
+ * it; kept in RAM only. POST /api/v1/pair and /pair/cancel are limited to one request a second in total.
  * Storage: the table is saved through net_port_tokens_save() as a versioned blob on every pairing, revoke and forget,
  * and when a token's last_used moves on by an hour or more (flash wear: at most once an hour per token).
  */
@@ -99,6 +101,13 @@ void net_pair_forget_all(net_pair_t *p);
 int net_pair_count(const net_pair_t *p);
 /* Cancel the code on screen (a tap on the pairing screen). Counts as a failed pairing. */
 void net_pair_cancel(net_pair_t *p, const tb_clock_t *now);
+/* POST /api/v1/pair/cancel (api.md 4.7): the device that asked takes its code off the bar. Only its pairing_id works.
+ * Counts as a failed pairing, like a tap, so canceling and asking again can't be used to get more guesses. Shares
+ * pair's limit of one request a second (RATE_LIMITED); NOT_PAIRING when no code is up for that pairing_id. */
+net_pair_err_t net_pair_cancel_id(net_pair_t *p, const char *pairing_id, const tb_clock_t *now);
+/* Power off or Restart (api.md 4.9): any code ends without counting as a failed pairing, and the back-off is cleared,
+ * as a restart clears the bar's RAM. Tokens stay. */
+void net_pair_reset(net_pair_t *p);
 /* Expire the code after 2 minutes. Returns true if it just expired (the "Pairing timed out" toast). */
 bool net_pair_tick(net_pair_t *p, const tb_clock_t *now);
 /* "idle", "showing" or "locked" (api.md 7.1 pairing). */

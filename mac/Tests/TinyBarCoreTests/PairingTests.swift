@@ -49,6 +49,12 @@ final class ScriptedWiFiFactory: TransportFactory, @unchecked Sendable {
         var pairStart: Result<PairStartReply, BarError> = .success(PairStartReply(pairingID: "d407580a9215e992"))
         /// Answers for each `pair`, in turn; the last repeats.
         var pair: [Result<PairReply, BarError>] = [.success(ScriptedWiFiFactory.paired)]
+        /// Answers for each `pair/cancel`, in turn; the last repeats.
+        var pairCancel: [Result<PairCancelReply, BarError>] = [.success(PairCancelReply())]
+        /// `pair/start`, `pair` or `pair/cancel` wait for the test to open the gate.
+        var pairStartGate: Gate?
+        var pairGate: Gate?
+        var pairCancelGate: Gate?
     }
 
     static let token = "tb1_w1rV1lN4jm2ohruSAozMZxVlcceAL7yS8r45__-ref4"
@@ -91,13 +97,23 @@ final class ScriptedWiFiFactory: TransportFactory, @unchecked Sendable {
 
         func pairStart(_ request: PairStartRequest) async throws -> PairStartReply {
             factory.log.withLock { $0.append("pair/start " + ((try? WireJSON.encodeString(request)) ?? "")) }
+            await factory.script.withLock { $0.pairStartGate }?.wait()
             return try factory.script.withLock { $0.pairStart }.get()
         }
 
         func pair(_ request: PairRequest) async throws -> PairReply {
             factory.log.withLock { $0.append("pair " + ((try? WireJSON.encodeString(request)) ?? "")) }
+            await factory.script.withLock { $0.pairGate }?.wait()
             return try factory.script.withLock { script in
                 script.pair.count > 1 ? script.pair.removeFirst() : script.pair[0]
+            }.get()
+        }
+
+        func pairCancel(_ request: PairCancelRequest) async throws -> PairCancelReply {
+            factory.log.withLock { $0.append("pair/cancel " + ((try? WireJSON.encodeString(request)) ?? "")) }
+            await factory.script.withLock { $0.pairCancelGate }?.wait()
+            return try factory.script.withLock { script in
+                script.pairCancel.count > 1 ? script.pairCancel.removeFirst() : script.pairCancel[0]
             }.get()
         }
 

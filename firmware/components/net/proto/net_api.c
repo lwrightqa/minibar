@@ -1191,6 +1191,9 @@ static void h_pair_start(rt_t *r, cJSON *b)
 {
     if (!need_body(r, b)) return;
     if (in_setup(r)) return;
+    /* "Powering off" is up: the power goes in a moment and takes any code with it, so none is shown (the mock-up's bar
+     * doesn't answer then). The splash is different: a code waits for it and shows once the bar has started. */
+    if (s_app->powering_off || s_app->powered_off) { core_failed(r, TB_E_POWERED_OFF, NULL); return; }
     const char *kind_s, *scope_s, *name = NULL, *client = NULL;
     if (get_str(b, "kind", &kind_s) != F_OK) {
         bad_request(r, "kind", "\"kind\" is required: mac, remote or automation.");
@@ -1300,6 +1303,24 @@ static void h_pair(rt_t *r, cJSON *b)
                  "tb_token=%s; HttpOnly; SameSite=Strict; Path=/api/; Max-Age=31536000", token);
     add_pair_reply(r, set_cookie ? NULL : token, t);
     memset(token, 0, sizeof token);
+}
+
+/* POST /api/v1/pair/cancel (api.md 4.7): the device that asked takes its code off the bar (the Remote's Cancel, the
+ * Mac app's Back), so it doesn't hold up every other device for 2 minutes. Only its pairing_id works. The bar ends the
+ * pairing as a tap would ("Pairing canceled"), and it counts as a failed pairing, so canceling can't buy more guesses.
+ * No in_setup check: starting setup ends any pairing, so during setup this answers not_pairing (api.md 13). */
+static void h_pair_cancel(rt_t *r, cJSON *b)
+{
+    if (!need_body(r, b)) return;
+    const char *pid;
+    if (get_str(b, "pairing_id", &pid) != F_OK) { bad_request(r, "pairing_id", "\"pairing_id\" is required."); return; }
+    switch (net_pair_cancel_id(&s_pair, pid, &r->now)) {
+    case NET_PAIR_OK: break;
+    case NET_PAIR_RATE_LIMITED: { fail_retry(r, 429, "rate_limited", "One pairing request a second, please.", NULL, 1); return; }
+    default: { fail(r, 409, "not_pairing", "No code is on the bar for this pairing. Nothing to cancel.", "pairing_id"); return; }
+    }
+    tb_app_pairing_end(s_app, TB_PAIR_END_CANCELED, NULL, &r->now);
+    ok(r, 200);
 }
 
 /* ---------- section 12: paired devices ---------- */
@@ -1518,6 +1539,7 @@ static const route_t ROUTES[] = {
     {"GET", "/api/v1/info", NEED_NONE, h_info},
     {"POST", "/api/v1/pair/start", NEED_NONE, h_pair_start},
     {"POST", "/api/v1/pair", NEED_NONE, h_pair},
+    {"POST", "/api/v1/pair/cancel", NEED_NONE, h_pair_cancel},
     {"GET", "/api/v1/status", NEED_CALL, h_status_get},
     {"POST", "/api/v1/status", NEED_FULL, h_status_post},
     {"POST", "/api/v1/call", NEED_CALL, h_call},
@@ -1907,6 +1929,12 @@ void net_api_tick(const tb_clock_t *now)
 void net_api_pairing_canceled(const tb_clock_t *now)
 {
     net_pair_cancel(&s_pair, now);   /* core already said "Pairing canceled" */
+}
+
+void net_api_pairing_reset(const tb_clock_t *now)
+{
+    (void)now;
+    net_pair_reset(&s_pair);        /* Power off or Restart: no failed pairing, no back-off; tokens stay */
 }
 
 void net_api_forget_devices(const tb_clock_t *now)

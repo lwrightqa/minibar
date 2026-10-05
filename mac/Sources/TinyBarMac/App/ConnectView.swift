@@ -294,10 +294,18 @@ private struct WiFiPage: View {
             Button("Show a New Code") { model.requestCode() }
 
         case .tokenLimit:
+            // From asking for a code, or from sending it (a safeguard that
+            // ends the pairing, api.md 4.7). Once a device is removed on the
+            // Remote, Show Code on TinyBar tries again.
             if let bar { barName(bar) }
             ErrorLine(message: message)
-            if let url = bar?.endpoint.remotePageURL {
-                Button("Open TinyBar Remote…") { _ = NSWorkspace.shared.open(url) }
+            HStack {
+                if let url = bar?.endpoint.remotePageURL {
+                    Button("Open TinyBar Remote…") { _ = NSWorkspace.shared.open(url) }
+                }
+                if bar != nil {
+                    showCodeButton(enabled: true, isDefault: false)
+                }
             }
 
         case .rateLimited, .noAnswer:

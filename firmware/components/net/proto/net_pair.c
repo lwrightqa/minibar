@@ -1,5 +1,5 @@
 /*
- * net_pair.c: pairing codes and tokens (api.md section 4, Proposed). Owner: net builder. Pure C; see net_pair.h.
+ * net_pair.c: pairing codes and tokens (api.md section 4, approved 2026-10-04). Owner: net builder. Pure C; see net_pair.h.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -174,10 +174,15 @@ static net_token_t *by_client(net_pair_t *p, const char *client)
     return NULL;
 }
 
-/* Room for one more token, counting the one this client would replace. */
+/* Room for one more token, counting the one this client would replace (a device that's paired already always has
+ * room). A code on the screen for a device that isn't paired yet holds a place until the pairing ends, so the code it
+ * shows can always work (api.md 4.3): meanwhile another new device (the Mac over USB) is refused when it would take
+ * that place. The code's own device (the same client) isn't kept out by its own place. */
 static bool has_room(net_pair_t *p, const char *client)
 {
-    return net_pair_count(p) < NET_TOKENS_MAX || by_client(p, client);
+    if (by_client(p, client)) return true;
+    bool held = p->showing && !(client && client[0] && !strcmp(client, p->client)) && !by_client(p, p->client);
+    return net_pair_count(p) + (held ? 1 : 0) < NET_TOKENS_MAX;
 }
 
 /* Make a token, keep only its hash, and replace an older one with the same client. */
@@ -297,11 +302,10 @@ net_pair_err_t net_pair_finish(net_pair_t *p, const char *pairing_id, const char
         }
         return NET_PAIR_WRONG_CODE;
     }
-    if (!has_room(p, p->client)) {     /* filled up over USB while the code showed */
-        p->showing = false;
-        return NET_PAIR_TOKEN_LIMIT;
-    }
+    /* The code is used up: it no longer holds a place, it takes one. No room is a safeguard only, since the code held
+     * its place (api.md 4.7): the pairing ends without counting as a failed pairing. */
     p->showing = false;
+    if (!has_room(p, p->client)) return NET_PAIR_TOKEN_LIMIT;
     const net_token_t *t = issue(p, p->name, p->kind, p->scope, p->client, TB_LINK_WIFI, peer_ip, now, token_out);
     if (rec) *rec = t;
     return t ? NET_PAIR_OK : NET_PAIR_TOKEN_LIMIT;
@@ -385,6 +389,23 @@ void net_pair_cancel(net_pair_t *p, const tb_clock_t *now)
     if (!p->showing) return;
     p->showing = false;
     lock_after_failure(p, now);
+}
+
+net_pair_err_t net_pair_cancel_id(net_pair_t *p, const char *pairing_id, const tb_clock_t *now)
+{
+    if (p->last_pair_call >= 0 && now->mono - p->last_pair_call < 1000) return NET_PAIR_RATE_LIMITED;
+    p->last_pair_call = now->mono;
+    if (!p->showing || now->mono >= p->expires || !pairing_id || strcmp(pairing_id, p->pairing_id))
+        return NET_PAIR_NOT_PAIRING;
+    net_pair_cancel(p, now);
+    return NET_PAIR_OK;
+}
+
+void net_pair_reset(net_pair_t *p)
+{
+    p->showing = false;
+    p->failures_in_row = 0;
+    p->locked_until = 0;
 }
 
 bool net_pair_tick(net_pair_t *p, const tb_clock_t *now)

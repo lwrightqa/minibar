@@ -274,6 +274,7 @@ static void run_effects(const tb_clock_t *now)
         case TB_FX_WIFI_SKIP: s_wifi.state = NET_WIFI_OFFLINE; s_wifi.sta_up = false; break;
         case TB_FX_WIFI_DONE: s_wifi.state = NET_WIFI_CONNECTED; break;
         case TB_FX_PAIRING_CANCELED: net_api_pairing_canceled(now); break;
+        case TB_FX_PAIRING_RESET: net_api_pairing_reset(now); break;
         case TB_FX_FORGET_DEVICES: net_api_forget_devices(now); break;
         case TB_FX_CAL_SYNC: net_port_cal_sync_now(); break;
         default: break;

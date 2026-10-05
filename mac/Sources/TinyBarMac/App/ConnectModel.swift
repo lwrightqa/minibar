@@ -64,7 +64,9 @@ final class ConnectModel {
     }
 
     /// The close button, ⌘W or Esc: Back on the Wi-Fi page (unless pairing is
-    /// done), else Not Now. Returns whether the window may close.
+    /// done), else Not Now. Returns whether the window may close. (Quitting
+    /// and sleep take a code off the bar through the engine, which keeps a
+    /// reference to the flow.)
     func closeRequested() -> Bool {
         if page == .wifi && !isPairingDone {
             back()
@@ -73,7 +75,8 @@ final class ConnectModel {
         return applyLoginChoice()
     }
 
-    /// The window closed, however it happened.
+    /// The window closed, however it happened: a code the Wi-Fi page asked
+    /// for comes off the bar (`WiFiPairingFlow.cancel`, in the background).
     func windowClosed() {
         flow?.cancel()
         flow = nil
@@ -171,6 +174,9 @@ final class ConnectModel {
         }
     }
 
+    /// Back (or Esc, ⌘W, the close button on the Wi-Fi page): stops browsing,
+    /// and a code this page asked for comes off the bar at once
+    /// (`pair/cancel`, in the background, never holding up the window).
     func back() {
         flow?.cancel()
         flow = nil

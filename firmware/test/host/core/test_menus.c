@@ -204,7 +204,10 @@ TB_TEST(menu_wifi_layout)
     TB_EQ_INT(t[0].action, TB_ACT_NONE);
     TB_EQ_STR(t[1].label, "Devices");
     TB_EQ_STR(t[1].value, "None");                       /* nothing paired: the tile stays, read-only */
-    TB_EQ_STR(t[1].foot, "pair a phone\nor a Mac");
+    TB_EQ_STR(t[1].foot, "pair at\ntinybar.local");          /* where to pair; ui falls back when it doesn't fit */
+    TB_EQ_INT(t[1].n_foot_alt, 2);
+    TB_EQ_STR(t[1].foot_alt[0], "pair at\n10.0.4.42");
+    TB_EQ_STR(t[1].foot_alt[1], "pair at its\nIP address");
     TB_EQ_INT(t[1].action, TB_ACT_NONE);
     TB_EQ_INT(t[1].style, TB_TILE_INFO);
     TB_EQ_STR(t[2].label, "Change");
