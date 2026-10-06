@@ -35,6 +35,9 @@ How the code is organized, and why, is in [ARCHITECTURE.md](ARCHITECTURE.md).
 > checked and tried again, a lost "setup is done" is caught up, a stray setup network is closed within a second, a
 > failed save of the network is tried again), and the setup page can't send a second network once a join has worked.
 > No screen changes. 474 host tests and both page suites pass; update with the app alone at 0x30000 (see Flash).
+> **1.0.5** (2026-10-06) is the cut-down "five saved Wi-Fi networks" (decisions.md, Wi-Fi): the bar keeps up to 5
+> networks, adds one each time a join works, and tries them in order of last use, so one bar works at home and at
+> work. 485 host tests and both page suites pass; update with the app alone at 0x30000, which keeps the saved network.
 > Everything else that touches the hardware or the radio is unverified until it runs on the bar. See "What's
 > verified" at the end, and the bring-up checklists in `components/board/README.md`, `components/net/README.md` and
 > `components/calendar/README.md`.
@@ -121,10 +124,13 @@ ctest --test-dir build-host-ui-<name>                       # the touch test (st
 
 ## Flash
 
-**Updating a bar that's already set up? Flash the app alone, `dist/minibar-1.0.4-app.bin`, at 0x30000** (steps 2 to
+**Updating a bar that's already set up? Flash the app alone, `dist/minibar-1.0.5-app.bin`, at 0x30000** (steps 2 to
 5 below, with that file and address). It keeps the saved Wi-Fi, settings, paired devices and calendar address, so the
-bar comes back on its statuses with no setup network. The merged image is for a new bar: it wipes all of that, and the
-bar starts on the QR code with MiniBar-Setup open until it's set up again.
+bar comes back on its statuses with no setup network. **On 1.0.5 that app-only update also moves the one saved
+network into the new list of five** (the user's bar keeps its Wi-Fi). The merged image is for a new bar: it wipes all
+of that, the saved network too, and the bar starts on the QR code with MiniBar-Setup open until it's set up again.
+Going back to 1.0.4 or older after 1.0.5 has moved the network loses it: the old firmware doesn't know the list, so
+it opens the setup network.
 
 For a new bar, flash **one merged image at address 0x0, at 115200 baud**. A faster write once left the screen showing
 noise (decisions.md, hardware notes).
@@ -133,12 +139,13 @@ noise (decisions.md, hardware notes).
 
    ```sh
    cd build-<name> && mkdir -p ../dist
-   esptool.py --chip esp32s3 merge_bin -o ../dist/minibar-1.0.4.bin @flash_args
-   cp minibar.bin ../dist/minibar-1.0.4-app.bin       # the app alone, for updates
+   esptool.py --chip esp32s3 merge_bin -o ../dist/minibar-1.0.5.bin @flash_args
+   cp minibar.bin ../dist/minibar-1.0.5-app.bin       # the app alone, for updates
    ```
 
-   The version is `PROJECT_VER` in `CMakeLists.txt` (also what `GET /api/v1/info` reports as `fw`). The images in
-   `dist/` today are `dist/minibar-1.0.4.bin` (merged, for 0x0) and `dist/minibar-1.0.4-app.bin` (the app, for
+   The version is `PROJECT_VER` in `CMakeLists.txt` (also what `GET /api/v1/info` reports as `fw`). The 1.0.5 images
+   (`minibar-1.0.5.bin` merged, `minibar-1.0.5-app.bin` the app) were built on 2026-10-06 and handed over outside
+   `dist/`, which still holds 1.0.4. The images in `dist/` today are `dist/minibar-1.0.4.bin` (merged, for 0x0) and `dist/minibar-1.0.4-app.bin` (the app, for
    0x30000), built on 2026-10-05 from this tree (the app 2.04 MB; it reports `fw` 1.0.4; see "What's verified").
    The older files keep their names: `dist/minibar-1.0.3.bin` is the rename to MiniBar, `dist/tinybar-1.0.3.bin`
    the pairing alignment's review before the rename, `dist/tinybar-1.0.0.bin` the same image under the name the
@@ -236,6 +243,14 @@ and a code on its screen for a new device holds one of the 10 places until it en
   (or hold BOOT, press and release reset, then release BOOT), and connect again. After flashing, unplug and plug it
   back in to start normally.
 - **The screen shows noise after flashing:** flash again at **115200** baud.
+- **Joining is slower at the "other" place (1.0.5):** the bar saves up to 5 networks and tries them in order of last
+  use, so at work after a week at home it first tries home (about 5 to 15 s: "not found" comes fast, a network that
+  joins but gives no address takes 15 s) before it reaches work. Once work joins it is the first the bar tries.
+  Between full rounds it still waits 1, 2, 5, 10, 30 s. A bar with saved networks, none of them in range,
+  keeps trying quietly; it doesn't open MiniBar-Setup by itself (hold, Wi-Fi, Set up adds this place).
+- **A network you removed came back, or a sixth network replaced one:** there is no remove yet (the Remote's list and
+  Remove button are designed, not built). A sixth network replaces the one used longest ago, only once the new one
+  joined. To start over, flash the merged image at 0x0.
 - **The bar came up on the Wi-Fi QR code and your settings are gone:** flashing the merged image at 0x0 wipes the
   settings, Wi-Fi, paired devices and the calendar address (see Flash). Flash only the app at 0x30000 to keep them.
 - **The first frame is upside down, then the bar rights itself half a second later** (1.0.1 with the side buttons on
@@ -296,6 +311,38 @@ powers off (on USB, a deep sleep), and a press turns it back on; flip the bar ov
 alarm and start what the Pomodoro is waiting for.
 
 ## What's verified
+
+**2026-10-06, 1.0.5: up to 5 saved Wi-Fi networks** (the user's request: home and work; decisions.md, Wi-Fi; details in
+ARCHITECTURE.md sections 10 and 12). Only the first cut shipped: the scan-and-choose join, the Remote's list, the API
+and the screens are not built.
+
+- **What changed:** `net_nets.c` (pure, host-tested) keeps up to 5 networks (SSID, login, password, security, a use
+  counter), adds or updates by exact SSID, evicts the least recently used on a sixth, orders by last use, and picks
+  which to try next. `net_wifi.c` saves the list as one blob (`nvs/wifi`, key `nets`, 100 to 300 bytes typically, 1480
+  at most). A join that works (setup page or USB) adds the network as the newest; a failed join changes nothing. A
+  reconnect to a saved network marks it newest, and writes flash only when that changes the order. At start and after a
+  link loss the bar tries the saved networks newest first; one that gives no address in 15 s (or fails sooner) hands
+  over to the next, wrapping around, with the 1, 2, 5, 10, 30 s wait only between full rounds. While setup is open, or
+  a phone is on the lingering setup network, the station stays where it is. The bar name shown for the connected
+  network is the one that came up (a one-line fix in `app_task.c`: before, the boot-time link-up never set it). The setup
+  page says "This adds a network. MiniBar keeps up to 5."
+- **Migration:** the old keys (`ssid`, `user`, `pass`, `sec`) move in as entry one at the first start: write the list,
+  read it back, compare, then erase the old keys. A power cut at any step repeats it; if the write fails, the network
+  is used from RAM and written after start-up. `skipped` stays where it was.
+- **Host tests:** core 163, calendar 67, net 172 (11 new in `test_nets.c`: add, update, exact SSID, eviction, order,
+  touch, round trip, the largest list, every truncation and corruption of the saved form, migration, try-next), ui 30,
+  board 53, all with ASan and UBSan in a fresh build directory, no warnings. Setup page suite 23 checks and Remote suite
+  163 checks, with node against `tb_fakebar`.
+- **Compiled:** a fresh build from `sdkconfig.defaults`, no warnings; the app reports `fw` 1.0.5.
+- **Not verified, needs the bar:** the NVS migration on a real bar (the code is ESP-only, so no host test), the
+  radio switching between networks, and the 15 s no-address hand-over. First check on the bar: flash the app alone on
+  the bar that has the work network saved and watch for `moved the saved Wi-Fi network` in the log, then join home on
+  the setup page and restart in each place. The NVS `nvs` partition has 5 usable pages and the calendar copy takes up
+  to 4.7 KB while it is rewritten; the list adds at most 1.5 KB, so measure `nvs_get_stats` on the bar. If it is tight,
+  move the list to `nvs_sec` (a one-line namespace change).
+- **Firmware notes:** the list is 1.5 KB of `.bss` (never on a task stack; the encode buffer is zeroed after use). The
+  saved form is parsed with bounds on every string, and a list that doesn't decode is ignored, not erased. Flash wear
+  is bounded: a join that doesn't change the order writes nothing, and failures never write.
 
 **2026-10-05, 1.0.4: the setup network stays closed once the bar is set up** (the user's request; decisions.md, Wi-Fi;
 details in ARCHITECTURE.md sections 10 and 14):

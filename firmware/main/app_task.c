@@ -38,6 +38,7 @@
 #include "net_api.h"
 #include "settings_store.h"
 #include "tb_bus.h"
+#include "tb_text.h"
 #include "ui.h"
 
 static const char *TAG = "app";
@@ -136,6 +137,8 @@ static void handle_event(const tb_event_t *ev)
             tb_app_wifi_failed(&g_app, ev->u.wifi.ssid, ev->u.wifi.error, &now);
             break;
         case TB_WIFI_EV_LINK_UP:
+            /* with several saved networks the one that came up isn't always the one setup joined */
+            if (ev->u.wifi.ssid[0]) tb_strlcpy(g_app.wifi_ssid, ev->u.wifi.ssid, sizeof g_app.wifi_ssid);
             tb_app_wifi_link(&g_app, true, ev->u.wifi.ip, ev->u.wifi.host, &now);
             cal_sync_set_online(true);
             break;

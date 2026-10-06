@@ -4,6 +4,7 @@
 set(TB_NET_PROTO_SRCS
     proto/net_api.c
     proto/net_macs.c
+    proto/net_nets.c
     proto/net_pair.c
     proto/net_util.c
 )

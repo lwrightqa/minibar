@@ -67,6 +67,7 @@
 
 #include "net_api.h"
 #include "net_internal.h"
+#include "net_nets.h"
 #include "net_util.h"
 #include "tb_bus.h"
 #include "tb_text.h"
@@ -123,7 +124,10 @@ static int s_save_failures;     /* saves of the network that failed in a row (ne
 static int s_ap_clients;        /* phones on it */
 static net_log_quota_t s_ap_quota;      /* the event task's setup network lines */
 static bool s_skipped;          /* Skip was the last Wi-Fi choice (saved as "skipped") */
-static creds_t s_creds;
+static creds_t s_creds;         /* the network the station is set to: the last one tried or joined */
+static net_nets_t s_nets;       /* the saved networks (up to 5); s_have_creds is s_nets.count > 0 */
+static int s_try_pos;           /* where in the order of last use the next attempt starts (net_nets_try_next) */
+static bool s_nets_unsaved;     /* the list is only in RAM: a migration whose write failed (saved after the first start) */
 static wmode_t s_mode;
 static bool s_sta_up;
 static char s_ip[TB_IP_BYTES], s_ssid[TB_SSID_BYTES];
@@ -205,36 +209,98 @@ static void save_later(int64_t us)
 /* Credentials                                                                                              */
 /* ======================================================================================================== */
 
+/* The list as bytes for NVS. Used by the worker and, before it exists, by creds_load(): never on a task stack (1.5 KB
+ * at most), and zeroed after every use: it holds passwords. */
+static uint8_t s_blob[NET_NETS_BLOB_MAX];
+
+static void creds_from_saved(creds_t *c, const net_saved_t *n)
+{
+    memset(c, 0, sizeof *c);
+    tb_strlcpy(c->ssid, n->ssid, sizeof c->ssid);
+    tb_strlcpy(c->user, n->user, sizeof c->user);
+    tb_strlcpy(c->pass, n->pass, sizeof c->pass);
+    c->sec = n->sec;
+}
+
+/* The single network of firmware before 1.0.5 (keys ssid, user, pass, sec in "wifi"). False if there isn't one. */
+static bool legacy_read(nvs_handle_t h, net_nets_t *out)
+{
+    char ssid[33], user[129] = "", pass[129] = "";
+    size_t n = sizeof ssid;
+    if (nvs_get_str(h, "ssid", ssid, &n) != ESP_OK || !ssid[0]) return false;
+    n = sizeof user;
+    if (nvs_get_str(h, "user", user, &n) != ESP_OK) user[0] = '\0';
+    n = sizeof pass;
+    if (nvs_get_str(h, "pass", pass, &n) != ESP_OK) pass[0] = '\0';
+    uint8_t sec;
+    bool ok = net_nets_from_legacy(out, ssid, user, pass, nvs_get_u8(h, "sec", &sec) == ESP_OK ? sec : -1);
+    memset(pass, 0, sizeof pass);
+    return ok;
+}
+
+static esp_err_t legacy_erase(nvs_handle_t h)
+{
+    static const char *const keys[] = {"ssid", "user", "pass", "sec"};
+    esp_err_t err = ESP_OK;
+    for (int i = 0; i < 4; i++) {
+        esp_err_t e = nvs_erase_key(h, keys[i]);
+        if (e != ESP_OK && e != ESP_ERR_NVS_NOT_FOUND) err = e;
+    }
+    return err == ESP_OK ? nvs_commit(h) : err;
+}
+
+/* Reads the saved networks, and moves the single network of firmware before 1.0.5 into the list: write the list, read
+ * it back, and only then erase the old keys, so a power cut at any step just repeats the move at the next start
+ * (the list wins once it's there). */
 static void creds_load(void)
 {
     if (s_creds_loaded) return;
     s_creds_loaded = true;
+    net_nets_init(&s_nets);
     nvs_handle_t h;
-    if (nvs_open("wifi", NVS_READONLY, &h) != ESP_OK) return;
+    bool rw = true;
+    if (nvs_open("wifi", NVS_READWRITE, &h) != ESP_OK) {
+        rw = false;
+        if (nvs_open("wifi", NVS_READONLY, &h) != ESP_OK) return;
+    }
     uint8_t skipped = 0;
     s_skipped = nvs_get_u8(h, "skipped", &skipped) == ESP_OK && skipped;
-    size_t n = sizeof s_creds.ssid;
-    if (nvs_get_str(h, "ssid", s_creds.ssid, &n) == ESP_OK && s_creds.ssid[0]) {
-        n = sizeof s_creds.user;
-        if (nvs_get_str(h, "user", s_creds.user, &n) != ESP_OK) s_creds.user[0] = '\0';
-        n = sizeof s_creds.pass;
-        if (nvs_get_str(h, "pass", s_creds.pass, &n) != ESP_OK) s_creds.pass[0] = '\0';
-        if (nvs_get_u8(h, "sec", &s_creds.sec) != ESP_OK) s_creds.sec = s_creds.pass[0] ? NET_SEC_PASSWORD : NET_SEC_OPEN;
+    size_t n = sizeof s_blob;
+    esp_err_t e = nvs_get_blob(h, "nets", s_blob, &n);
+    if (e == ESP_OK) {
+        if (!net_nets_decode(&s_nets, s_blob, n)) ESP_LOGE(TAG, "the saved Wi-Fi list isn't readable: ignored, not erased");
+        else if (rw) legacy_erase(h);       /* a cut between the list's write and the old keys' erase */
+    } else if (legacy_read(h, &s_nets)) {
+        n = net_nets_encode(&s_nets, s_blob, sizeof s_blob);
+        static uint8_t back[NET_NETS_BLOB_MAX];
+        size_t bn = sizeof back;
+        bool ok = rw && n && nvs_set_blob(h, "nets", s_blob, n) == ESP_OK && nvs_commit(h) == ESP_OK &&
+                  nvs_get_blob(h, "nets", back, &bn) == ESP_OK && bn == n && !memcmp(back, s_blob, n);
+        memset(back, 0, sizeof back);
+        if (ok && legacy_erase(h) == ESP_OK) {
+            ESP_LOGI(TAG, "moved the saved Wi-Fi network \"%s\" into the list of %d", s_nets.n[0].ssid, NET_NETS_MAX);
+        } else if (!ok) {
+            ESP_LOGE(TAG, "moving the saved Wi-Fi network into the list failed: using it from RAM, trying again later");
+            s_nets_unsaved = true;      /* the old keys stay: nothing is lost */
+        }
+    }
+    memset(s_blob, 0, sizeof s_blob);
+    nvs_close(h);
+    int order[NET_NETS_MAX];
+    if (net_nets_order(&s_nets, order)) {
+        creds_from_saved(&s_creds, &s_nets.n[order[0]]);
         s_have_creds = true;
     }
-    nvs_close(h);
 }
 
-/* clear_skip: a join that worked ends "offline", unless Skip came after it (a later J_SAVE_SKIP has the last word). */
-static esp_err_t creds_save(const creds_t *c, bool clear_skip)
+/* Writes the list in s_blob (the worker's). clear_skip: a join that worked ends "offline", unless Skip came after it
+ * (a later J_SAVE_SKIP has the last word). NVS skips a write whose bytes haven't changed. */
+static esp_err_t creds_save(size_t len, bool clear_skip)
 {
     nvs_handle_t h;
     esp_err_t err = nvs_open("wifi", NVS_READWRITE, &h);
     if (err != ESP_OK) return err;
-    err = nvs_set_str(h, "ssid", c->ssid);
-    if (err == ESP_OK) err = nvs_set_str(h, "user", c->user);
-    if (err == ESP_OK) err = nvs_set_str(h, "pass", c->pass);
-    if (err == ESP_OK) err = nvs_set_u8(h, "sec", c->sec);
+    err = nvs_set_blob(h, "nets", s_blob, len);
     if (err == ESP_OK && clear_skip) {
         esp_err_t e2 = nvs_erase_key(h, "skipped");
         if (e2 != ESP_OK && e2 != ESP_ERR_NVS_NOT_FOUND) err = e2;
@@ -343,6 +409,19 @@ static void reconnect_later(void)
     esp_timer_start_once(s_retry_timer, (uint64_t)d * 1000000ULL);
 }
 
+/* An attempt at a saved network failed (no signal, refused, no address): the next saved network at once, and the
+ * backoff only after a whole round. With a phone on the setup network that's lingering, the station stays on its
+ * network, as the setup network's channel follows it. */
+static void try_next_network(void)
+{
+    LOCK();
+    bool hold = s_ap_open && s_ap_clients > 0;
+    bool round_done = hold || net_nets_try_next(s_nets.count, &s_try_pos);
+    UNLOCK();
+    if (round_done) reconnect_later();
+    else job(J_CONNECT);
+}
+
 static void on_wifi(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
     (void)arg;
@@ -357,9 +436,9 @@ static void on_wifi(void *arg, esp_event_base_t base, int32_t id, void *data)
     }
     case WIFI_EVENT_STA_CONNECTED: {
         LOCK();
-        bool joining = s_joining;
+        bool watch = s_joining || s_mode == M_STA;     /* a saved network gets its address in time too */
         UNLOCK();
-        if (joining) esp_timer_start_once(s_addr_timer, NO_ADDRESS_US);
+        if (watch) esp_timer_start_once(s_addr_timer, NO_ADDRESS_US);
         break;
     }
     case WIFI_EVENT_STA_DISCONNECTED: {
@@ -387,10 +466,21 @@ static void on_wifi(void *arg, esp_event_base_t base, int32_t id, void *data)
              * calendar is, so it doesn't sync through a link that's gone. */
             if (mode != M_SETUP) post_wifi(TB_WIFI_EV_LINK_DOWN, NULL, NULL, NULL, NULL);
             else cal_sync_set_online(false);
+        } else if (d->reason == WIFI_REASON_ASSOC_LEAVE) {
+            break;      /* we left a network that gave no address ourselves (on_addr_timer) */
         }
         /* On the setup screens the station waits for the page's choice: reconnecting to the old network could move
          * the setup network to another channel under the phone. */
-        if (mode == M_STA && s_have_creds) reconnect_later();
+        if (mode == M_STA && s_have_creds) {
+            if (was_up) {       /* a link loss: the most recently used network first, after the usual 1 s */
+                LOCK();
+                s_try_pos = 0;
+                UNLOCK();
+                reconnect_later();
+            } else {
+                try_next_network();
+            }
+        }
         break;
     }
     case WIFI_EVENT_SCAN_DONE: {
@@ -517,11 +607,15 @@ static void on_ip(void *arg, esp_event_base_t base, int32_t id, void *data)
             s_rssi = ap.rssi;
             s_rssi_at = esp_timer_get_time();
         }
-        bool joined = s_joining;
+        bool joined = s_joining, touched = false;
+        char replaced[33] = "";
         if (joined) {
             s_joining = false;
             s_creds = s_join;
+            /* Added only now that it worked: the newest, and with 5 saved the least recently used goes. */
+            net_nets_add(&s_nets, s_join.ssid, s_join.user, s_join.pass, s_join.sec, NULL, replaced);
             s_have_creds = true;
+            s_try_pos = 0;
             s_save_failures = 0;        /* a new network to save: its own tries */
             s_skipped = false;          /* creds_save() erases the saved skip too */
             s_js.state = NET_JOIN_CONNECTED;
@@ -529,6 +623,11 @@ static void on_ip(void *arg, esp_event_base_t base, int32_t id, void *data)
             tb_strlcpy(s_js.ip, ip, sizeof s_js.ip);
             tb_strlcpy(s_js.host, s_host, sizeof s_js.host);
             tb_strlcpy(s_ssid, s_join.ssid, sizeof s_ssid);
+        } else if (s_have_creds) {
+            /* A saved network joined again: the newest from now on (written only if that changes the order). */
+            touched = net_nets_touch(&s_nets, net_nets_find(&s_nets, s_creds.ssid));
+            s_try_pos = 0;
+            if (touched) s_save_failures = 0;
         }
         tb_strlcpy(host, s_host, sizeof host);
         tb_strlcpy(ssid, s_ssid, sizeof ssid);
@@ -537,6 +636,8 @@ static void on_ip(void *arg, esp_event_base_t base, int32_t id, void *data)
         esp_timer_stop(s_join_timer);
         esp_timer_stop(s_addr_timer);
         ESP_LOGI(TAG, "joined \"%s\", address %s", ssid, ip);
+        if (replaced[0]) ESP_LOGI(TAG, "%d networks were saved: \"%s\" (used longest ago) is gone", NET_NETS_MAX, replaced);
+        if (touched && !job(J_SAVE_CREDS)) save_later(REQUEUE_US);
         if (joined) {
             if (!job(J_SAVE_CREDS)) save_later(REQUEUE_US);     /* not saved, the next start would open setup */
             post_wifi(TB_WIFI_EV_CONNECTED, ssid, ip, host, NULL);
@@ -579,7 +680,17 @@ static void on_join_timer(void *arg)
 static void on_addr_timer(void *arg)
 {
     (void)arg;
-    join_failed(NET_JOIN_NO_ADDRESS);
+    LOCK();
+    bool joining = s_joining, saved = s_mode == M_STA && s_have_creds && !s_sta_up;
+    UNLOCK();
+    if (joining) {
+        join_failed(NET_JOIN_NO_ADDRESS);
+    } else if (saved) {
+        ESP_LOGW(TAG, "no address from \"%s\" in %d s: trying the next saved network", s_creds.ssid,
+                 (int)(NO_ADDRESS_US / 1000000));
+        esp_wifi_disconnect();      /* its DISCONNECTED (ASSOC_LEAVE) is ignored */
+        try_next_network();
+    }
 }
 
 /* Queue J_STOP_AP once: a request while one is queued or running adds nothing. False if the queue was full. */
@@ -840,25 +951,25 @@ static void setup_open(void)
     RADIO_UNLOCK();
 }
 
-/* J_SAVE_CREDS: the network that just worked, so the next start joins it. Without it the next start would open the
+/* J_SAVE_CREDS: the list of saved networks (a network that just worked, or a changed order), so the next start joins it. Without it the next start would open the
  * setup network again, so a save that fails is tried again (net_creds_save_retry_ms: 6 tries over about 43 minutes;
  * a write that fails before NVS writes anything wears nothing). */
 static void save_creds(void)
 {
-    creds_t c;
     LOCK();
-    c = s_creds;
-    bool have = s_have_creds, clear_skip = !s_skipped;
+    size_t len = net_nets_encode(&s_nets, s_blob, sizeof s_blob);
+    bool have = s_nets.count > 0, clear_skip = !s_skipped;
     UNLOCK();
-    if (!have) return;
-    esp_err_t err = creds_save(&c, clear_skip);
-    memset(&c, 0, sizeof c);
+    if (!have || !len) return;
+    esp_err_t err = creds_save(len, clear_skip);
+    memset(s_blob, 0, sizeof s_blob);
     LOCK();
     int before = s_save_failures;
     s_save_failures = err == ESP_OK ? 0 : before + 1;
     int failures = s_save_failures;
     UNLOCK();
     if (err == ESP_OK) {
+        s_nets_unsaved = false;
         if (before) ESP_LOGI(TAG, "the Wi-Fi network is saved now (try %d)", before + 1);
         return;
     }
@@ -997,10 +1108,23 @@ static void worker(void *arg)
             /* On the setup screens only the page's join connects: a reconnect to the saved network would move the
              * setup network to that network's channel under the phone. */
             bool joining = s_joining, go = s_mode != M_OFF && (s_joining || (s_mode == M_STA && s_have_creds));
-            if (joining) c = s_join;
+            if (joining) {
+                c = s_join;
+            } else if (go) {        /* the saved network at this place in the order of last use */
+                int order[NET_NETS_MAX];
+                int n = net_nets_order(&s_nets, order);
+                if (s_try_pos >= n) s_try_pos = 0;
+                if (n) {
+                    creds_from_saved(&c, &s_nets.n[order[s_try_pos]]);
+                    s_creds = c;
+                    if (n > 1) ESP_LOGI(TAG, "trying the saved network \"%s\" (%d of %d)", c.ssid, s_try_pos + 1, n);
+                } else {
+                    go = false;
+                }
+            }
             UNLOCK();
             if (go) {
-                if (joining) sta_apply(&c);
+                sta_apply(&c);
                 esp_wifi_connect();
             }
             memset(&c, 0, sizeof c);
@@ -1048,6 +1172,7 @@ esp_err_t net_wifi_init(void)
     esp_timer_create(&t3, &s_addr_timer);
     esp_timer_create(&t4, &s_linger_timer);
     esp_timer_create(&t5, &s_save_timer);
+    if (s_nets_unsaved) save_later(REQUEUE_US);     /* a move into the list that couldn't be written at start-up */
     /* writes NVS: the stack stays in internal RAM */
     if (xTaskCreatePinnedToCore(worker, "net", 4096, NULL, 4, NULL, 0) != pdPASS) return ESP_ERR_NO_MEM;
     s_inited = true;
@@ -1082,7 +1207,7 @@ void net_wifi_start(void)
         UNLOCK();
         sta_apply(&s_creds);
         wifi_run(WIFI_MODE_STA);    /* STA_START connects */
-        ESP_LOGI(TAG, "joining the saved network");
+        ESP_LOGI(TAG, "joining the saved network (%d saved, most recent first)", s_nets.count);
     } else {
         net_wifi_setup_begin();
     }
@@ -1102,6 +1227,7 @@ void net_wifi_setup_begin(void)
     bool already = s_ap_want;       /* up or opening (or lingering after Connected, or a close that failed) */
     s_ap_want = true;
     s_close_failures = 0;           /* a close later on starts with the mode change again */
+    s_try_pos = 0;
     bool open = s_ap_open, idle = s_ap_open && s_ap_clients == 0;
     UNLOCK();
     if (was_skipped) job(J_CLEAR_SKIP);

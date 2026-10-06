@@ -345,6 +345,13 @@ rendered at 640 × 172 in headless Chromium per `docs/testing.md`):
   beyond the save's retries (a write that fails before NVS writes anything wears nothing). What still opens it
   without a person: a start with no saved network (a merged image flashed at 0x0, an NVS partition that had to be
   erased at start-up, or a save that failed six times).
+- **Saved networks (1.0.5):** `net_nets.c` (pure) holds up to 5 networks ordered by a use counter, not a clock. A join
+  that works adds or updates one as the newest (the least recently used goes on a sixth); a failed join changes nothing.
+  `net_wifi.c` tries them in that order at start and after a link loss; an attempt that fails, or has no address after
+  15 s (`NO_ADDRESS_US`), goes on to the next (`try_next_network`), and `reconnect_later()`'s 1, 2, 5, 10, 30 s wait
+  comes only after a whole round (or a link loss). It never changes the station's network in setup or while a phone is
+  on the lingering setup network, and never opens the setup network by itself. Migration of the single network of 1.0.4
+  is in `creds_load()`: write the list, read it back, then erase the old keys.
 - **Why 4.3.2.1 (since 1.0.1):** what made the first Android test say "Connected, no internet" at 192.168.4.1 is
   **not confirmed**. The most likely cause: Android's captive-portal check (AOSP NetworkMonitor) has a rule, "a
   private IP DNS response means no internet" (flag `dns_probe_private_ip_no_internet`), that's off in stock AOSP but
@@ -418,7 +425,7 @@ rendered at 640 × 172 in headless Chromium per `docs/testing.md`):
 ### Secrets
 
 The calendar address and the token hashes live in the `nvs_sec` partition, apart from ordinary settings; the Wi-Fi
-password and a work login's username and password are in `nvs/wifi`. **All of it is plain text in flash today, and
+passwords and work logins of the (up to 5) saved Wi-Fi networks are in `nvs/wifi`. **All of it is plain text in flash today, and
 anyone with a laptop and a USB-C cable can read it in about a minute:** esptool resets the ESP32-S3 into download
 mode through the same USB Serial/JTAG port (RTS and DTR), with no button press and without opening the case, then
 reads the flash. A work login is often the person's company sign-in.
@@ -504,7 +511,7 @@ that do I2C (the ISR is IRAM-safe and may read their buffers while the cache is 
 |---|---|---|---|
 | `nvs` / `tinybar` | `settings` (version + `tb_settings_t`) | main | 2 s after the last settings change |
 | `nvs` / `tinybar` | `state` (own status, last status, message, today's tomatoes, focused time, date) | main | 2 s after a change; and before power off and restart, always (with `settings`), so the focus minutes since the session started aren't lost (NVS skips an unchanged blob, so this costs no wear) |
-| `nvs` / `wifi` | ssid, security, username, password (plain until NVS encryption is agreed) | net | on a successful join; a save that fails is tried again after 5 s, 30 s, 2, 10 and 30 min (1.0.4), since without it the next start opens the setup network |
+| `nvs` / `wifi` | `nets`: up to 5 saved networks (ssid, security, username, password, use counter; plain until NVS encryption is agreed), one blob of 100 to 300 bytes (1480 at most). Replaces the keys `ssid`, `user`, `pass`, `sec` of 1.0.4, which move into it at the first start of 1.0.5 | net | on a join that works (adds the network as the newest) and when a reconnect changes the order; a save that fails is tried again after 5 s, 30 s, 2, 10 and 30 min (1.0.4), since without it the next start opens the setup network |
 | `nvs` / `wifi` | `skipped`: Skip was the last Wi-Fi choice | net | on Skip; erased by Set up and a working join |
 | `nvs` / `cal` | `list`: the last good meetings list and its sync time, packed (`cal_store.h`; a few hundred bytes, at most 4.7 KB) | calendar | when the list changes |
 | `nvs` / `board` | `pose`: the IMU axis that pointed up when the bar last stood still (a `brd_up_axis_t`; 1.0.2) | board (imu task) | once the bar has stood still for 10 s in an orientation other than the stored one |

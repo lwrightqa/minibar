@@ -26,6 +26,7 @@ const check = (c, what) => { if (!c) { fails++; console.log('FAIL', what); } els
   await p.goto(base + '/');
   await sleep(2000);   // past the splash, so the bar takes the join
   check(await p.$$eval('label.net', e => e.length) === 4, 'four networks');
+  check((await p.textContent('#setupView > p')).endsWith('This adds a network. MiniBar keeps up to 5.'), 'says it adds a network and the limit of 5');
   check((await p.textContent('label.net:nth-of-type(1)')).includes('Office-WiFi'), 'strongest first');
   check((await p.textContent('label.net:last-of-type small')) === 'weak signal', 'weak signal label');
   check(await p.isChecked('input[value="Office-WiFi"]'), 'first network picked');
