@@ -954,6 +954,7 @@ Scope `full`.
 | `pomodoro.tick_volume` | `"soft"` or `"medium"` | `"soft"` | Kept while ticking is off, as on the Remote. |
 | `display.brightness` | 10 to 100 (percent) | 70 | The bar's Light tile steps through 40, 70 and 100; from any other value its next tap goes to the next of those above it (from 100, to 40). |
 | `display.time_format` | `"12h"` or `"24h"` | `"12h"` | **Accepted, firmware 1.0.9, see 10.5.** 12-hour (3:30 PM) or 24-hour (15:30) for every time the bar and the Remote show. |
+| `display.clock_color` | a status: `"available"`, `"busy"`, `"meeting"`, `"pomodoro"`, `"away"`, `"message"` or `"clock"` | `"clock"` | **Added after firmware 1.0.11, see 10.7.** The color of the Clock screen on the bar. |
 | `display.theme` | `"bold_signal"` or `"low_glare_pixel"` (*open*) | `"bold_signal"` | **Proposed (2026-10-05), see 10.3.** The bar's look: Bold Signal, or Low Glare Pixel (the Low Glare layout set in Handjet). Not in the example above until it's approved. |
 | `sound.meeting_chime` | boolean | `true` | **Accepted, firmware 1.0.9, see 10.6.** Meeting chime: a soft chime and one flash when a calendar meeting starts. Off turns both off. |
 | `sound.tap_sound` | boolean | `true` (**Proposed**) | **Proposed (2026-10-05), see 10.4.** Tap sound: a short, quiet click when the bar acts on a tap, swipe or hold on its screen. It's always silent during a call or meeting. Not in the example above until it's approved. |
@@ -1129,6 +1130,20 @@ bar → mac  @tb {"id": 9, "http_status": 200, "ok": true, "settings": {"pomodor
 - **The setup network (section 13) doesn't offer it.**
 
 ---
+
+### 10.7 `display.clock_color`, the Clock screen's color
+
+**Added after firmware 1.0.11** (the Remote's Display section, a row of swatches). The Clock screen's field and its side column take the color of the status chosen; the other statuses keep their own colors. The Remote's own status pill keeps the Clock color.
+
+| | |
+|---|---|
+| Name | `display.clock_color` |
+| Values | `"available"`, `"busy"`, `"meeting"`, `"pomodoro"`, `"away"`, `"message"` or `"clock"`: the list `GET /api/v1/status-options` gives. Pomodoro shows as its focus orange. `"jira"` isn't a choice. |
+| Default | `"clock"`, the Clock's own dark surface, as before. |
+| Change | `PATCH /api/v1/settings` (10.2), scope `full`. A change shows a toast on the bar: "Clock color · Busy". The value it already has changes nothing. |
+
+- **Checks:** a string from the list above. Anything else is `400 bad_value` with `"field": "display.clock_color"`, and nothing else in the request applies (10.2).
+- **Storage:** saved with the other settings. A bar updated from firmware 1.0.9 to 1.0.11 keeps every setting and starts on `"clock"`.
 
 ## 11. Calendar
 

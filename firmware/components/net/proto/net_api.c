@@ -687,6 +687,7 @@ static void add_settings(rt_t *r)
     cJSON *d = cJSON_AddObjectToObject(so, "display");
     cJSON_AddNumberToObject(d, "brightness", s->display.brightness);
     cJSON_AddStringToObject(d, "time_format", s->more.time_24h ? "24h" : "12h");
+    cJSON_AddStringToObject(d, "clock_color", STATUS_IDS[s->clock_color < TB_ST_COUNT ? s->clock_color : TB_ST_CLOCK]);
     cJSON *snd = cJSON_AddObjectToObject(so, "sound");
     cJSON_AddBoolToObject(snd, "meeting_chime", s->more.meeting_chime);
     cJSON *au = cJSON_AddObjectToObject(so, "automatic");
@@ -1138,6 +1139,19 @@ static void h_settings_patch(rt_t *r, cJSON *b)
         else if (cJSON_IsString(tf) && !strcmp(tf->valuestring, "24h")) p.v.more.time_24h = true;
         else { bad_value(r, "display.time_format", "display.time_format must be \"12h\" or \"24h\"."); return; }
         p.has_time_24h = true;
+    }
+    const cJSON *cc = item(di, "clock_color");
+    if (cc) {
+        /* The palette is the statuses from "available" to "clock" (status-options); Jira isn't one. */
+        int id = -1;
+        for (int i = 0; cJSON_IsString(cc) && i < TB_ST_JIRA; i++)
+            if (!strcmp(cc->valuestring, STATUS_IDS[i])) id = i;
+        if (id < 0) {
+            bad_value(r, "display.clock_color", "display.clock_color must be available, busy, meeting, pomodoro, away, message or clock.");
+            return;
+        }
+        p.v.clock_color = (uint8_t)id;
+        p.has_clock_color = true;
     }
     const cJSON *nm = item(de, "name");
     if (nm) {

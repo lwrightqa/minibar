@@ -543,6 +543,33 @@ TB_TEST(settings_time_format)
     TB_FALSE(nf_app.set.more.time_24h);
 }
 
+/* Clock color (api.md 10.7): display.clock_color, one of the statuses "available" to "clock"; "clock" by default. */
+TB_TEST(settings_clock_color)
+{
+    setup_paired();
+    nf_resp_t r = nf_http("GET", "/api/v1/settings", NULL, T);
+    TB_EQ_STR(nf_str(r.j, "settings.display.clock_color"), "clock");       /* default: today's color */
+    nf_free(&r);
+    r = nf_http("PATCH", "/api/v1/settings", "{\"display\": {\"clock_color\": \"busy\"}}", T);
+    TB_EQ_INT(r.status, 200);
+    TB_EQ_STR(nf_str(r.j, "settings.display.clock_color"), "busy");
+    nf_free(&r);
+    TB_EQ_INT(nf_app.set.clock_color, TB_ST_BUSY);
+    TB_TRUE(toast_has("Clock color \xC2\xB7 Busy"));
+    /* Jira isn't a choice, and neither is anything that isn't a status: bad_value, nothing else applies */
+    const char *bad[] = {"\"jira\"", "\"Busy\"", "\"\"", "3", "null", "[\"busy\"]"};
+    for (size_t i = 0; i < sizeof bad / sizeof bad[0]; i++) {
+        char body[128];
+        snprintf(body, sizeof body, "{\"display\": {\"brightness\": 100, \"clock_color\": %s}}", bad[i]);
+        r = nf_http("PATCH", "/api/v1/settings", body, T);
+        TB_EQ_INT(r.status, 400);
+        TB_EQ_STR(nf_str(r.j, "field"), "display.clock_color");
+        nf_free(&r);
+    }
+    TB_EQ_INT(nf_app.set.clock_color, TB_ST_BUSY);
+    TB_EQ_INT(nf_app.set.display.brightness, 70);
+}
+
 /* Meeting chime (decisions.md "Meeting-start sound (2026-10-07)"): sound.meeting_chime, on by default. */
 TB_TEST(settings_meeting_chime)
 {

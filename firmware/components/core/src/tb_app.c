@@ -288,6 +288,20 @@ bool tb_app_screen_free(const tb_app_t *a)
            a->hold == TB_HOLD_NONE && !a->powering_off && !a->pairing.active;
 }
 
+/* display.clock_color: the Clock screen takes the color of the status chosen (Pomodoro: its focus orange). */
+static tb_color_key_t clock_key(uint8_t st)
+{
+    switch (st) {
+    case TB_ST_AVAILABLE: return TB_KEY_AVAILABLE;
+    case TB_ST_BUSY: return TB_KEY_BUSY;
+    case TB_ST_MEETING: return TB_KEY_MEETING;
+    case TB_ST_POMODORO: return TB_KEY_FOCUS;
+    case TB_ST_AWAY: return TB_KEY_AWAY;
+    case TB_ST_MESSAGE: return TB_KEY_MESSAGE;
+    default: return TB_KEY_CLOCK;
+    }
+}
+
 tb_color_key_t tb_app_color_key(const tb_app_t *a, const tb_clock_t *now)
 {
     if (a->booting) return TB_KEY_CLOCK;
@@ -304,7 +318,7 @@ tb_color_key_t tb_app_color_key(const tb_app_t *a, const tb_clock_t *now)
     case TB_ST_AWAY: return TB_KEY_AWAY;
     case TB_ST_MESSAGE: return TB_KEY_MESSAGE;
     case TB_ST_JIRA: return tb_jira_over(&a->jira, now->wall, now->valid) ? TB_KEY_FOCUS : TB_KEY_JIRA;   /* over the limit: Focus's orange */
-    default: return TB_KEY_CLOCK;
+    default: return clock_key(a->set.clock_color);
     }
 }
 
@@ -1186,6 +1200,7 @@ static uint32_t visible_sig(const tb_app_t *a)
                   (int64_t)st->automatic.calendar << 48 | (int64_t)st->automatic.mac << 49 |
                   (int64_t)st->automatic.meeting_titles << 50 | (int64_t)st->more.time_24h << 51 |
                   (int64_t)st->more.meeting_chime << 52);
+    h_i64(&s, st->clock_color);
     h_str(&s, st->device.name);
     h_str(&s, st->device.time_zone);
     h_i64(&s, a->jira.configured | a->jira.state << 1 | (int64_t)a->jira_known << 8);
@@ -1815,6 +1830,11 @@ tb_err_t tb_app_remote_settings(tb_app_t *a, const tb_settings_patch_t *p, const
         a->set.more.meeting_chime = want.more.meeting_chime;
         tb_bump(a);
         toastf(a, now, "Meeting chime %s", a->set.more.meeting_chime ? "on" : "off");
+    }
+    if (p->has_clock_color && want.clock_color != a->set.clock_color) {
+        a->set.clock_color = want.clock_color;
+        tb_bump(a);
+        toastf(a, now, "Clock color \xC2\xB7 %s", tb_status_name(a->set.clock_color));
     }
     if (p->has_name) tb_strlcpy(a->set.device.name, want.device.name, sizeof(a->set.device.name));
     if (p->has_time_zone) tb_strlcpy(a->set.device.time_zone, want.device.time_zone, sizeof(a->set.device.time_zone));

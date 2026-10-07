@@ -47,6 +47,8 @@ typedef struct {
         bool time_24h;          /* display.time_format "24h": 15:30, no AM or PM; default false = "12h" (3:30 PM) */
         bool meeting_chime;     /* sound.meeting_chime: a chime and one flash at a meeting's start; default true */
     } more;
+    /* Added after 1.0.11, after `more`: a 1.0.9 to 1.0.11 blob is a prefix of this struct and keeps the default. */
+    uint8_t clock_color;        /* display.clock_color: a tb_status_t, TB_ST_AVAILABLE to TB_ST_CLOCK; default TB_ST_CLOCK */
 } tb_settings_t;
 
 /* A PATCH: only the fields with has_* set change (api.md 10.2). net fills it from the JSON body. */
@@ -56,7 +58,7 @@ typedef struct {
     bool has_brightness;
     bool has_calendar, has_mac, has_meeting_titles;
     bool has_name, has_time_zone;
-    bool has_time_24h, has_meeting_chime;
+    bool has_time_24h, has_meeting_chime, has_clock_color;
     tb_settings_t v;    /* the new values, read only where has_* is set */
 } tb_settings_patch_t;
 

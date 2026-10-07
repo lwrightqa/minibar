@@ -206,3 +206,43 @@ TB_TEST(settings_unpack_current_blob_and_refusals)
     TB_FALSE(tb_settings_unpack(&out, blob, sizeof blob));
     TB_EQ_INT(out.pomodoro.focus_min, 33);
 }
+
+/* display.clock_color (added after 1.0.11): the default is the Clock's own surface; a 1.0.9 to 1.0.11 blob, a prefix of
+ * the struct, keeps everything it had and the default for it; a stored value that isn't a palette status is sanitized. */
+TB_TEST(settings_clock_color_default_patch_and_1_0_11_blob)
+{
+    tb_settings_t s, saved, out;
+    tb_settings_defaults(&s, "f412fa3f2a1c");
+    TB_EQ_INT(s.clock_color, TB_ST_CLOCK);
+    tb_settings_patch_t p;
+    memset(&p, 0, sizeof p);
+    p.has_clock_color = true;
+    p.v.clock_color = TB_ST_BUSY;
+    TB_EQ_INT(tb_settings_check(&p, false, NULL), TB_OK);
+    tb_settings_apply(&s, &p);
+    TB_EQ_INT(s.clock_color, TB_ST_BUSY);
+    p.v.clock_color = TB_ST_JIRA;                   /* not a palette status */
+    const char *field = NULL;
+    TB_EQ_INT(tb_settings_check(&p, false, &field), TB_E_BAD_VALUE);
+    TB_EQ_STR(field, "display.clock_color");
+
+    /* a 1.0.11 blob: the struct up to clock_color, with more.time_24h set */
+    saved = s;
+    saved.more.time_24h = true;
+    saved.display.brightness = 40;
+    unsigned char blob[4 + sizeof saved];
+    size_t prev = 4 + offsetof(tb_settings_t, clock_color);
+    pack(blob, &saved, prev);
+    tb_settings_defaults(&out, "f412fa3f2a1c");
+    TB_TRUE(tb_settings_unpack(&out, blob, prev));
+    TB_TRUE(out.more.time_24h);
+    TB_EQ_INT(out.display.brightness, 40);
+    TB_EQ_INT(out.clock_color, TB_ST_CLOCK);        /* absent = the default */
+
+    /* a full blob with a value outside the palette is sanitized back to the default */
+    saved.clock_color = 200;
+    pack(blob, &saved, sizeof blob);
+    TB_TRUE(tb_settings_unpack(&out, blob, sizeof blob));
+    TB_TRUE(tb_settings_sanitize(&out));
+    TB_EQ_INT(out.clock_color, TB_ST_CLOCK);
+}

@@ -41,6 +41,7 @@ void tb_settings_defaults(tb_settings_t *s, const char *device_id)
     s->device.time_zone[0] = '\0';
     s->more.time_24h = false;           /* 12-hour, today's behavior */
     s->more.meeting_chime = true;
+    s->clock_color = TB_ST_CLOCK;       /* the Clock screen's own dark surface */
 }
 
 bool tb_settings_migrate_name(tb_settings_t *s, const char *device_id)
@@ -69,10 +70,12 @@ bool tb_settings_unpack(tb_settings_t *out, const void *blob, size_t n)
     memcpy(&version, b, sizeof version);
     if (version != TB_SETTINGS_VERSION) return false;
     size_t full = TB_SETTINGS_BLOB_HEADER + sizeof(tb_settings_t);
-    if (n == full) {
+    size_t prev = TB_SETTINGS_BLOB_HEADER + offsetof(tb_settings_t, clock_color);   /* 1.0.9 to 1.0.11 */
+    if (n == full || n == prev) {
+        /* Copy what the blob has; a shorter one keeps the defaults for the rest (clock_color). */
         unsigned char t24 = b[TB_SETTINGS_BLOB_HEADER + offsetof(tb_settings_t, more.time_24h)];
         unsigned char chime = b[TB_SETTINGS_BLOB_HEADER + offsetof(tb_settings_t, more.meeting_chime)];
-        memcpy(out, b + TB_SETTINGS_BLOB_HEADER, sizeof *out);
+        memcpy(out, b + TB_SETTINGS_BLOB_HEADER, n - TB_SETTINGS_BLOB_HEADER);
         out->more.time_24h = t24 != 0;
         out->more.meeting_chime = chime != 0;
         return true;
@@ -111,6 +114,7 @@ tb_err_t tb_settings_check(const tb_settings_patch_t *p, bool calendar_saved, co
         size_t n = strnlen(p->v.device.time_zone, sizeof(p->v.device.time_zone));
         if (n < 1 || n > TB_TZ_NAME_BYTES - 1) BAD("device.time_zone");
     }
+    if (p->has_clock_color && p->v.clock_color >= TB_ST_JIRA) BAD("display.clock_color");
     if (p->has_calendar && p->v.automatic.calendar && !calendar_saved) {
         f = "automatic.calendar";
         err = TB_E_NO_CALENDAR;
@@ -145,6 +149,7 @@ void tb_settings_apply(tb_settings_t *s, const tb_settings_patch_t *p)
     if (p->has_time_zone) tb_strlcpy(s->device.time_zone, p->v.device.time_zone, sizeof(s->device.time_zone));
     if (p->has_time_24h) s->more.time_24h = p->v.more.time_24h;
     if (p->has_meeting_chime) s->more.meeting_chime = p->v.more.meeting_chime;
+    if (p->has_clock_color) s->clock_color = p->v.clock_color;
 }
 
 static bool clamp_u8(uint8_t *v, int lo, int hi, int def)
@@ -168,6 +173,10 @@ bool tb_settings_sanitize(tb_settings_t *s)
         s->pomodoro.tick_volume = TB_TICK_SOFT;
         changed = true;
     }
+    if (s->clock_color >= TB_ST_JIRA) {
+        s->clock_color = TB_ST_CLOCK;
+        changed = true;
+    }
     s->device.name[sizeof(s->device.name) - 1] = '\0';
     s->device.time_zone[sizeof(s->device.time_zone) - 1] = '\0';
     return changed;
@@ -182,5 +191,6 @@ bool tb_settings_equal(const tb_settings_t *a, const tb_settings_t *b)
            a->display.brightness == b->display.brightness && a->automatic.calendar == b->automatic.calendar &&
            a->automatic.mac == b->automatic.mac && a->automatic.meeting_titles == b->automatic.meeting_titles &&
            !strcmp(a->device.name, b->device.name) && !strcmp(a->device.time_zone, b->device.time_zone) &&
-           a->more.time_24h == b->more.time_24h && a->more.meeting_chime == b->more.meeting_chime;
+           a->more.time_24h == b->more.time_24h && a->more.meeting_chime == b->more.meeting_chime &&
+           a->clock_color == b->clock_color;
 }
