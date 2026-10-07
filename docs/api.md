@@ -27,8 +27,53 @@ This is the **contract** between the bar's firmware and every program that talks
 15. [Notes for the firmware](#15-notes-for-the-firmware)
 16. [Notes for the Mac app](#16-notes-for-the-mac-app)
 17. [Download for Mac](#17-download-for-mac): the Mac app's zip from the bar, and `mac_app` in `info` (Proposed)
+18. [Todo list](#18-todo-list): GET/POST `/api/v1/todo`
 
 Appendices: [A, every endpoint](#appendix-a-every-endpoint) · [B, error codes](#appendix-b-error-codes)
+
+---
+
+## 18. Todo list
+
+### 18.1 `GET /api/v1/todo`
+
+Scope `full`. Retrieve the current todo list.
+
+```json
+{"ok": true, "list": "[ ] Task 1\n[x] Task 2\n"}
+```
+
+The list is in plain text format, one task per line:
+- `[ ] Task text` for an incomplete task
+- `[x] Task text` or `[X] Task text` for a completed task
+- Empty lines and lines starting with `#` are ignored
+
+If no list has been saved, `list` is an empty string.
+
+### 18.2 `POST /api/v1/todo`
+
+Scope `full`. Save a new todo list. The list is validated and saved to NVS. The response contains the confirmed list as it's now stored on the bar.
+
+| Field | Type | Required | Meaning |
+|---|---|---|---|
+| `list` | string | yes | The todo list in plain text format (see above). Max 4096 bytes. |
+
+Request:
+
+```json
+{"list": "[ ] Buy groceries\n[ ] Call mom\n[x] Fix the fence\n"}
+```
+
+Response (`200`):
+
+```json
+{"ok": true, "list": "[ ] Buy groceries\n[ ] Call mom\n[x] Fix the fence\n"}
+```
+
+Errors:
+
+- `400 bad_value` if the list exceeds 4096 bytes or contains invalid task format.
+- `500 internal_error` if NVS write fails.
 
 ---
 
@@ -1562,6 +1607,8 @@ The body is the zip, byte for byte. The `ETag` is the zip's SHA-256 in 64 hex di
 | `GET /api/v1/setup/networks` | none, setup network only | `request` | 13.1 |
 | `POST /api/v1/setup/wifi` | none, setup network only | `request` | 13.2 |
 | `GET /api/v1/setup/state` | none, setup network only | `request` | 13.3 |
+| `GET /api/v1/todo` | `full` | `request` | 18.1 |
+| `POST /api/v1/todo` | `full` | `request` | 18.2 |
 | `GET /mac/app.zip` and `HEAD` (Proposed; outside `/api/`, plain-text errors) | none | — (USB carries no files) | 17.1 |
 
 A method a path doesn't support gets `405 method_not_allowed` with an `Allow` header, `OPTIONS` and `HEAD` included (a reply to `HEAD` has no body); an unknown path under `/api/v1/` gets `404 not_found`.

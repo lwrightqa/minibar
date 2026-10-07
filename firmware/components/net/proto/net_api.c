@@ -19,6 +19,7 @@
 #include "net_util.h"
 #include "tb_fmt.h"
 #include "tb_text.h"
+#include "tb_todo.h"
 
 /* cJSON's own nesting limit (1000 by default) must be the build's (CMakeLists.txt sets it for every component, the
  * json one included; test/host/CMakeLists.txt for the host build): a 1000-level parse or cJSON_Delete would run the
@@ -394,7 +395,7 @@ static const char *link_name(tb_link_t l)
 /* Objects shared by several replies                                                                        */
 /* ======================================================================================================== */
 
-static const char *const STATUS_IDS[TB_ST_COUNT] = {"available", "busy", "meeting", "pomodoro", "away", "message", "clock"};
+static const char *const STATUS_IDS[TB_ST_COUNT] = {"available", "busy", "meeting", "pomodoro", "away", "message", "clock", "jira"};
 static const char *const PHASE_IDS[] = {"focus", "short", "long"};
 static const char *const POMO_STATES[] = {"ready", "running", "paused", "waiting"};
 
@@ -924,11 +925,12 @@ static void h_status_post(rt_t *r, cJSON *b)
     if (f != F_OK) { bad_request(r, "status", "\"status\" is required."); return; }
     int idx = -1;
     for (int i = 0; i < TB_ST_COUNT; i++)
-        if (!strcmp(st, STATUS_IDS[i])) idx = i;
+        if (i != TB_ST_JIRA && !strcmp(st, STATUS_IDS[i])) idx = i;     /* the Jira screen is reached by swiping, not set */
     if (idx < 0) {
         char msg[120];
         snprintf(msg, sizeof msg, "Unknown status \"%.32s\".%s", st,
-                 !strcmp(st, "on_a_call") || !strcmp(st, "call") ? " On a call is set by the Mac app only." : "");
+                 !strcmp(st, "on_a_call") || !strcmp(st, "call") ? " On a call is set by the Mac app only."
+                 : !strcmp(st, "jira") ? " The Jira screen is reached by swiping to it on the bar." : "");
         { bad_value(r, "status", msg); return; }
     }
     const char *back = NULL, *note = NULL;
@@ -1713,6 +1715,38 @@ static void h_setup_state(rt_t *r, cJSON *b)
 }
 
 /* ======================================================================================================== */
+/* section 18: Todo list                                                                                   */
+/* ======================================================================================================== */
+
+static void h_todo_get(rt_t *r, cJSON *b)
+{
+    (void)b;
+    const char *list = tb_todo_load();
+    ok(r, 200);
+    cJSON_AddStringToObject(r->o, "list", list);
+}
+
+static void h_todo_post(rt_t *r, cJSON *b)
+{
+    if (!need_body(r, b)) return;
+    const char *text;
+    if (get_str(b, "list", &text) != F_OK) { bad_request(r, "list", "\"list\" is required."); return; }
+
+    if (!text) text = "";
+    if (strlen(text) > TB_TODO_MAX_BYTES - 1)
+        { bad_value(r, "list", "Todo list is too large."); return; }
+
+    if (tb_todo_validate(text) != 0)
+        { bad_value(r, "list", "Invalid todo list format. Use \"[ ] Task\" or \"[x] Done\"."); return; }
+
+    if (tb_todo_save(text) != 0)
+        { fail(r, 500, "internal_error", "Failed to save todo list.", NULL); return; }
+
+    ok(r, 200);
+    cJSON_AddStringToObject(r->o, "list", text);
+}
+
+/* ======================================================================================================== */
 /* Routing                                                                                                  */
 /* ======================================================================================================== */
 
@@ -1752,6 +1786,8 @@ static const route_t ROUTES[] = {
     {"GET", "/api/v1/setup/networks", NEED_SETUP, h_setup_networks},
     {"POST", "/api/v1/setup/wifi", NEED_SETUP, h_setup_wifi},
     {"GET", "/api/v1/setup/state", NEED_SETUP, h_setup_state},
+    {"GET", "/api/v1/todo", NEED_FULL, h_todo_get},
+    {"POST", "/api/v1/todo", NEED_FULL, h_todo_post},
 };
 #define N_ROUTES (sizeof ROUTES / sizeof ROUTES[0])
 

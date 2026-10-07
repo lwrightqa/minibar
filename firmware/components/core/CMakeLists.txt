@@ -8,7 +8,9 @@ set(TB_CORE_SRCS
     src/tb_settings.c
     src/tb_gesture.c
     src/tb_fmt.c
+    src/tb_jira.c
     src/tb_text.c
+    src/tb_todo.c
 )
 
 if(ESP_PLATFORM)
