@@ -24,6 +24,7 @@
 #include "app.h"
 #include "board.h"
 #include "cal_sync.h"
+#include "jira_service.h"
 #include "net.h"
 #include "settings_store.h"
 #include "tb_bus.h"
@@ -108,6 +109,23 @@ void app_main(void)
     tb_clock_t now = app_clock_now();
     tb_app_init(&g_app, &settings, net_wifi_start_mode(), &now);
     settings_store_restore(&g_app);
+
+    /* Load Jira configuration from NVS. */
+    jira_info_t jira_info;
+    jira_get_info(&jira_info);
+    tb_jira_t jira;
+    tb_jira_init(&jira);
+    if (jira_info.configured) {
+        jira.configured = true;
+        jira.state = jira_info.state;
+        jira.count = jira_info.count;
+        jira.ok_at = jira_info.updated_at;
+        jira.alert_above = jira_info.alert_above;
+        strncpy(jira.label, jira_info.label, sizeof(jira.label) - 1);
+        jira.label[sizeof(jira.label) - 1] = '\0';
+    }
+    tb_app_set_jira(&g_app, &jira, &now);
+
     tb_app_flip(&g_app, flipped, true, &now);
 
     /* 8. The app task: from here on only it touches g_app, LVGL and the ui. The splash shows on its first frame and
