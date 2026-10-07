@@ -1097,6 +1097,24 @@ table.controls td.none { color: var(--muted); }
 .badge.ok { border-color: var(--s-available); color: var(--ink); }
 .badge.pick { border-color: var(--ink); color: var(--ink); }
 .auto-card .auto-line { margin: 0; font-size: 13px; color: var(--muted); }
+/* Calendars list on the Remote (Proposed 2026-10-07): one row per saved calendar, up to 3. */
+.cal-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.cal-row { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 6px; min-width: 0; }
+.cal-row.err { border-color: var(--s-busy, var(--ink)); }
+.cal-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cal-top b { font-size: 14px; overflow-wrap: anywhere; }
+.cal-tagchip { font-size: 11px; font-weight: 700; letter-spacing: .06em; padding: 0 6px; border: 1px solid var(--ink); border-radius: 4px; text-transform: uppercase; }
+.cal-top .badge { margin-left: auto; }
+.cal-row .row { gap: 8px; }
+.cal-row .btn { padding: 6px 12px; font-size: 13px; }
+.cal-err { color: var(--ink); font-weight: 600; }
+.cal-fields { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr) 96px; }
+.cal-fields input { width: 100%; box-sizing: border-box; }
+@media (max-width: 460px) { .cal-fields { grid-template-columns: minmax(0, 1fr); } }
+/* The calendar tag beside Next up on the bar, only with 2 or more calendars saved: up to 4 capitals, outlined in the
+   label's own color, 1 px, with the same 3 px radius as the source chips (square in Handjet's pixel grid). */
+.cal-tag { display: inline-block; margin-left: .7em; padding: 0 .4em; border: 1px solid currentColor; border-radius: .3em; font-size: .9em; line-height: 1.2; letter-spacing: .06em; vertical-align: baseline; opacity: 1; white-space: nowrap; }
+.scr[data-layout="pixel"] .cal-tag { border-radius: 0; }
 .mask { font-family: var(--f-mono); font-size: 12px; overflow-wrap: anywhere; }
 .check:has(input:disabled) { opacity: .55; cursor: not-allowed; }
 .setup .auto-card p.note-small { font-size: 13px; }
@@ -1311,6 +1329,17 @@ a.btn { display: inline-block; text-decoration: none; }
         </div>
         <label class="check" for="simPrivate"><input type="checkbox" id="simPrivate"> Private (the bar never shows its title)</label>
         <p class="note-small" style="margin:0">Starts the next sample meeting now, for 30 minutes. Pressed during a meeting, the next one follows straight on.</p>
+      </div>
+      <div class="sim-box" role="group" aria-labelledby="simCalsTitle">
+        <span class="field-label" id="simCalsTitle">Several calendars</span>
+        <div class="row">
+          <button class="btn" id="simCalAdd" type="button">Add a sample calendar</button>
+          <button class="btn ghost" id="simCalFail" type="button">Last calendar can't sync</button>
+          <button class="btn ghost" id="simCalAllFail" type="button">All calendars can't sync</button>
+          <button class="btn ghost" id="simCalDup" type="button">Same event in two calendars</button>
+          <button class="btn ghost" id="simCalDrop" type="button">Remove the calendar of the current meeting</button>
+        </div>
+        <p class="note-small" style="margin:0">Each button says in the log what the bar does. A calendar that can't sync is left out of the bar until it works again; the Remote's row says why.</p>
       </div>
       <div class="sim-box" role="group" aria-labelledby="simMacTitle">
         <span class="field-label" id="simMacTitle">Mac app</span>
@@ -1546,7 +1575,7 @@ a.btn { display: inline-block; text-decoration: none; }
           <p>Hold the screen to open one. Tap a tile to use it. <b>Done</b> closes the menu, and so does waiting 8 seconds.</p>
           <h4 style="margin-top:8px">Quick menu (hold a status)</h4>
           <div class="hp-tiles"><span>Display</span><span>Calendar</span><span>Wi-Fi</span><span>Power</span><span>Help</span><span class="done">Done</span></div>
-          <ul><li><b>Display</b> has Light, Theme and Tap sound.</li><li><b>Calendar</b> syncs now. While you've set a call or meeting aside, it says <b>Show again</b>.</li><li><b>Wi-Fi</b> shows the network, this bar's name and address, and paired devices, and sets up Wi-Fi again.</li><li><b>Power</b> has Restart and Power off.</li><li><b>Help</b> starts the quick tour.</li></ul>
+          <ul><li><b>Display</b> has Light, Theme and Tap sound.</li><li><b>Calendar</b> syncs now and shows how many calendars you have (and the first one that can't sync). While you've set a call or meeting aside, it says <b>Show again</b>.</li><li><b>Wi-Fi</b> shows the network, this bar's name and address, and paired devices, and sets up Wi-Fi again.</li><li><b>Power</b> has Restart and Power off.</li><li><b>Help</b> starts the quick tour.</li></ul>
           <h4 style="margin-top:8px">Timer menu (hold the Pomodoro)</h4>
           <div class="hp-tiles"><span>Skip</span><span>+5 min</span><span>Stop</span><span>Settings</span><span class="done">Done</span></div>
           <ul><li><b>Stop</b> ends the run, keeps today's tomatoes and goes back to your last status.</li><li><b>Settings</b> has Auto-start, Ticking and Help. While a call or meeting is set aside, <b>Show again</b> takes its place.</li></ul>
@@ -1569,7 +1598,7 @@ a.btn { display: inline-block; text-decoration: none; }
             <details><summary>The screen is dark</summary><p>Tap it or press PWR. A dark screen keeps everything running.</p></details>
             <details><summary>The Remote won't open</summary><p>Make sure your phone is on the office Wi-Fi, not mobile data. Some Android phones need the IP address: hold the screen, then tap Wi-Fi to see it.</p></details>
             <details><summary>"Another device is pairing"</summary><p>Someone else's code is on the bar. Wait for it to end (2 minutes at most), then try again.</p></details>
-            <details><summary>The Calendar tile says Off</summary><p>Add your calendar's secret iCal address on the Remote, or set up Wi-Fi first.</p></details>
+            <details><summary>The Calendar tile says Off</summary><p>Add a calendar's secret iCal address on the Remote, or set up Wi-Fi first. If it says Error, the Remote's Calendars list says which one can't be reached.</p></details>
             <details><summary>More than one MiniBar in the office</summary><p>Each bar has its own name, like MiniBar 2A1C. Hold the screen and tap Wi-Fi to see this bar's name and address.</p></details>
           </div>
         </section>
@@ -1672,23 +1701,20 @@ a.btn { display: inline-block; text-decoration: none; }
           <div class="auto-now"><span id="autoNow" aria-live="polite">Showing your status</span><button class="btn ghost" id="autoShowAgain" type="button" hidden>Show again</button></div>
 
           <div class="auto-card" id="calCard">
-            <div class="auto-head"><b>Calendar</b><span class="badge" id="calBadge">Connected</span></div>
+            <div class="auto-head"><b>Calendars</b><span class="badge" id="calBadge">Connected</span></div>
             <label class="check" for="calOn"><input type="checkbox" id="calOn" checked> Calendar meetings</label>
             <p class="auto-line" id="calLine"></p>
-            <div id="calSaved">
-              <div class="mask" id="calMask"></div>
-              <div class="row" id="calActions">
-                <button class="btn ghost" id="calSync" type="button">Sync now</button>
-                <button class="btn ghost" id="calReplace" type="button">Replace</button>
-                <button class="btn ghost" id="calRemove" type="button">Remove</button>
-              </div>
-              <div class="setup-msg" id="calConfirm" hidden>
-                <p style="margin:0 0 8px">Remove your calendar? The bar stops showing meetings and Next up.</p>
-                <div class="row"><button class="btn" id="calRemoveYes" type="button">Remove calendar</button><button class="btn ghost" id="calRemoveNo" type="button">Keep it</button></div>
-              </div>
-            </div>
+            <ul class="cal-list" id="calList" aria-label="Saved calendars"></ul>
             <div class="setup" id="calForm" hidden>
-              <label class="field" for="calInput"><span class="field-label">Secret address in iCal format</span></label>
+              <b id="calFormTitle" style="font-size:14px">Add a calendar</b>
+              <div class="cal-fields">
+                <label class="field" for="calName"><span class="field-label">Name</span>
+                  <input id="calName" type="text" maxlength="24" autocomplete="off" placeholder="Calendar 2"></label>
+                <label class="field" for="calLabel"><span class="field-label">Bar tag</span>
+                  <input id="calLabel" type="text" maxlength="4" autocomplete="off" spellcheck="false" placeholder="C2" aria-describedby="calLabelNote"></label>
+              </div>
+              <p class="note-small" id="calLabelNote" style="margin:0">The tag (up to 4 letters) shows next to Next up on the bar once you have 2 or more calendars. Everyone near your desk can read it, so don't put anything private in the name or tag.</p>
+              <label class="field" for="calInput"><span class="field-label" id="calInputLabel">Secret address in iCal format</span></label>
               <div class="msg-row" id="calInputRow">
                 <input id="calInput" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" aria-describedby="calMsg">
                 <button class="btn ghost" id="calShow" type="button" aria-pressed="false">Show</button>
@@ -1698,21 +1724,27 @@ a.btn { display: inline-block; text-decoration: none; }
                 <ol>
                   <li>On a computer, open Google Calendar. The phone app doesn't have this setting.</li>
                   <li>Click the gear, then Settings.</li>
-                  <li>On the left, under Settings for my calendars, click your calendar.</li>
+                  <li>On the left, under Settings for my calendars, click the calendar you want to add.</li>
                   <li>Click Integrate calendar.</li>
                   <li>Under "Secret address in iCal format", click the copy button, then paste the address here.</li>
                 </ol>
-                <p class="note-small">Google Calendar › Settings › your calendar › Integrate calendar › "Secret address in iCal format". Keep it private: anyone with it can read your calendar. MiniBar only reads it and never shows it again after you save it. If the setting is missing, your work account may have it turned off; ask IT.</p>
+                <p class="note-small">Google Calendar › Settings › the calendar › Integrate calendar › "Secret address in iCal format". Any calendar that gives you a secret iCal address works. Keep it private: anyone with it can read that calendar. MiniBar only reads it and never shows it again after you save it. If the setting is missing, your work account may have it turned off; ask IT.</p>
               </details>
               <div class="row">
                 <button class="btn" id="calSave" type="button">Add</button>
-                <button class="btn ghost" id="calCancel" type="button" hidden>Cancel</button>
+                <button class="btn ghost" id="calCancel" type="button">Cancel</button>
                 <button class="btn ghost" id="calSample" type="button">Fill in a sample (mock-up)</button>
               </div>
             </div>
+            <div class="row" id="calMainActions">
+              <button class="btn ghost" id="calAdd" type="button">Add a calendar</button>
+              <button class="btn ghost" id="calSync" type="button">Sync now</button>
+            </div>
+            <p class="note-small" id="calAddNote" hidden>You can add up to 3 calendars. Remove one to add another.</p>
             <div class="setup-msg" id="calMsg" hidden></div>
             <label class="check" for="calTitles"><input type="checkbox" id="calTitles"> Show meeting titles</label>
             <p class="note-small" id="calTitlesNote">Off: the bar and this page show meeting times only. Everyone near your desk can read titles, and events marked Private never show one.</p>
+            <p class="note-small">Meetings from all your calendars are merged, soonest first, and the bar shows one Next up. A meeting that's in two of your calendars shows once.</p>
             <p class="note-small">In the mock-up, a secret address ending in 0000/basic.ics gets the "Google didn't recognize that address" error, so you can see it.</p>
           </div>
 
@@ -1778,7 +1810,7 @@ a.btn { display: inline-block; text-decoration: none; }
           <dt>Power</dt><dd>On battery, the software is what keeps the bar switched on, so it also handles switching off: hold PWR for 3 seconds, or use Power in the quick menu, which also has Restart. A watchdog restarts the bar if the software ever freezes, so it can't get stuck on, and it shuts itself down before the battery runs flat. On USB the bar always has power, so powering off puts it into a deep sleep until you press PWR. While it's off, the Remote page can't reach it and says so.</dd>
           <dt>Wi-Fi setup</dt><dd>On first start the bar shows a QR code. Scanning it joins your phone to the bar's own network, where a page lets you choose the office Wi-Fi, enter the password and paste your calendar's secret iCal address (optional). You can also skip Wi-Fi; statuses and the Pomodoro work without it, but the calendar and the Remote don't. Once it's on the Wi-Fi, the bar shows its name and address (MiniBar 2A1C at minibar.local) on the Connected screen and in the Wi-Fi menu. A second MiniBar on the same network takes the next free address (minibar-2.local) and shows that instead, so you can tell them apart. The default name, MiniBar plus the last four characters of the bar's ID, is proposed. When a new bar's first setup ends, with Connected or with Skip, its quick tour of the controls follows once. If the office Wi-Fi drops later, the bar keeps following its saved calendar and reconnects on its own; the Calendar tile says Offline meanwhile.</dd>
           <dt>Phone remote</dt><dd>The device serves a small page at minibar.local on your Wi-Fi, like the Remote panel on this page, with the bar's name at the top. The first time, it asks you to pair: MiniBar shows a code, and you type it on the phone. Its Display section switches the bar's theme, Bold Signal or Low Glare Pixel, at once, and turns Tap sound on or off. A change made on the Remote while the bar's screen is dark happens underneath and shows, with its confirmation, when the screen is woken. The Help link at the top opens the help page the bar serves, which needs no pairing. Its Automatic status section has a switch for each source, holds your calendar's secret address, and shows what the bar is showing and why. Proposed: its Connect your Mac card has Download for Mac, which hands out the Mac app from the bar's own flash (MiniBar-1.0.zip, with its version and size), and the steps for opening it the first time, when macOS stops an app it can't check until you choose Open Anyway in System Settings › Privacy &amp; Security. The pairing prompt has the same link, since downloading needs no pairing, and on a phone the line under it says the easy way is to open minibar.local on your Mac. A bar that doesn't carry the app, or whose copy is damaged, shows no button, only a line saying why. Paired devices lists every phone, Mac and script that can control the bar, each with Remove. A message with characters the bar can't draw, such as an emoji, says which ones before you send it. Characters nobody can see (an odd-width space, a zero-width space, a direction mark) are tidied away rather than refused, and accents typed as a separate mark are joined to their letter.</dd>
-          <dt>Calendar</dt><dd>Paste your calendar's secret iCal address on the Remote, or during Wi-Fi setup (Google Calendar › Settings › your calendar › Integrate calendar › "Secret address in iCal format"). Meetings then show as In a meeting on their own and fill in Next up. Once saved, the address is never shown again; the Remote shows a short masked form with Replace and Remove. Show meeting titles is off by default, so the bar shows times only, and events marked Private never show a title. The bar syncs about every 10 minutes, or when you choose Sync now, and switches at each meeting's exact start and end time. Skipping Wi-Fi turns the calendar off; if Wi-Fi drops, the bar follows its last synced copy.</dd>
+          <dt>Calendar</dt><dd>Paste a calendar's secret iCal address on the Remote, or during Wi-Fi setup (Google Calendar › Settings › the calendar › Integrate calendar › "Secret address in iCal format"). You can add up to 3 calendars; their meetings are merged, soonest first, so there's one Next up and one In a meeting, and a meeting that's in two calendars shows once. With 2 or more calendars, Next up carries a small tag (up to 4 letters, yours to choose) for the calendar it came from. A calendar that can't sync is left out until it works again, and the Remote says which. Once saved, an address is never shown again; the Remote only says "Address saved", with Edit and Remove. Show meeting titles is off by default, so the bar shows times only, and events marked Private never show a title. The bar syncs about every 10 minutes, or when you choose Sync now, and switches at each meeting's exact start and end time. Skipping Wi-Fi turns the calendar off; if Wi-Fi drops, the bar follows its last synced copy.</dd>
           <dt>Automatic status</dt><dd>Two sources, each with its own switch on the Remote: meetings from your calendar, and calls from your Mac. On a call wins over In a meeting, which wins over your own status. A tap, swipe, BOOT, flip or a choice on the Remote sets the call or meeting aside until it ends, and a small headset or calendar glyph stays in the corner. Show again, in the quick menu, the timer menu or on the Remote, brings it back, and the next call or meeting always takes over again. A call or meeting that takes over pauses the Pomodoro, and the bar makes no sound while one is on.</dd>
           <dt>Mac app</dt><dd>A small menu-bar app sets On a call whenever your Mac's mic or camera is in use, over USB when the bar is powered from the Mac and otherwise over Wi-Fi. Only whether you're on a call, and optionally the app's name, leaves the Mac. To use Wi-Fi it pairs once: plugged into the Mac with USB it pairs on its own, or in its menu you choose Connect…, then Pair Over Wi-Fi, and type the code the bar shows. Proposed: the bar carries the app and hands it out, so you get it from the Remote's Download for Mac, in Connect your Mac or on the pairing prompt, with no pairing. It isn't signed through Apple, so the first time you open it macOS stops it until you choose Open Anyway in System Settings › Privacy &amp; Security; the card's steps walk through that, and you only do it once. A bar that doesn't carry the app (never flashed with it, or a damaged copy) says so on the card instead of showing the button. <a href="#api">How the Mac app talks to MiniBar</a></dd>
           <dt>Local API</dt><dd>The bar answers on your Wi-Fi at minibar.local, under <code>/api/v1/</code>: <code>POST /api/v1/call</code> sets or ends On a call, and <code>GET /api/v1/status</code> says what the bar is showing and which sources are on. Proposed: outside the API, <code>GET /mac/app.zip</code> hands out the Mac app, with no token. With pairing, every Wi-Fi request carries the token the device got when it paired. The same JSON works over USB serial, one line at a time marked <code>@tb</code>, with no token. It never returns the calendar address. <code>docs/api.md</code> is the full contract.</dd>
@@ -2123,27 +2155,60 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
   // Sample calendar (mock-up only): today's meetings as the bar keeps them after a sync. None is in progress at
   // page load, so the bar still opens on the Pomodoro. The firmware rebuilds this list from the iCal feed.
   let evSeq = 0, callSeq = 0;
-  function sampleEvents() {
+  // k picks the sample set: 0 is today's single calendar, 1 and 2 are what the second and third calendars hold.
+  function sampleEvents(k = 0) {
     // The first meeting starts on the next :00 or :30 at least 40 minutes away. Late in the evening that would be
     // tomorrow, so it moves closer (but still in the future) to keep at least one meeting later today.
     const n = now(), today = n.toDateString();
     let a = roundTo(addMin(n, 40), 30);
     if (a.toDateString() !== today) a = roundTo(addMin(n, 5), 5);
     if (a.toDateString() !== today) a = addMin(n, 1);
-    return [
+    const sets = [[
       { title: 'Design review', loc: 'Room 4', start: a, end: addMin(a, 45) },
       { title: '1:1 with Sam', loc: '', start: addMin(a, 60), end: addMin(a, 90) },
       { title: 'Team retro', loc: 'Room 2', start: addMin(a, 150), end: addMin(a, 210) },
-    ].map(e => ({ ...e, id: ++evSeq, priv: false }));
+    ], [
+      { title: 'Team standup', loc: 'Room 1', start: addMin(a, 15), end: addMin(a, 30) },
+      { title: 'Sprint planning', loc: 'Room 2', start: addMin(a, 120), end: addMin(a, 150) },
+    ], [
+      { title: 'Lunch with Alex', loc: 'Cafe', start: addMin(a, 100), end: addMin(a, 145) },
+    ]];
+    return sets[k % 3].map(e => ({ ...e, id: ++evSeq, priv: false }));
   }
   const SAMPLE_CAL = 'https://calendar.google.com/calendar/ical/you%40example.com/private-8c1d5e2a9b7f40c3a6e1d2b3c4f53f2a/basic.ics';
   // The saved address only lives in this variable, the way the firmware keeps it in encrypted NVS:
   // no screen, page or API ever reads it back. The Remote shows the host and the last four characters.
-  let calUrl = SAMPLE_CAL;
+  // Several calendars (Proposed 2026-10-07): up to 3, each with its own address (calUrls, by id), name, bar tag
+  // (label) and saved copy of its meetings. The bar merges them, soonest first. status is 'ok' or 'err'; a calendar
+  // in error is left out of the merge until it works. form is null, 'new' or the id being edited; confirm the id whose
+  // Remove is open. Today's single calendar becomes Calendar 1 when the bar updates.
+  const CAL_MAX = 3;
+  let calSeq = 1;
+  const calUrls = { 1: SAMPLE_CAL };
   const cal = {
-    state: 'ok', checking: false, host: 'calendar.google.com', file: 'basic.ics', hint: '3f2a',
-    on: true, titles: false, lastSync: addMin(t0, -2), events: sampleEvents(), replacing: false, confirm: false,
+    checking: false, on: true, titles: false, form: null, confirm: null,
+    list: [{ id: 1, k: 0, name: 'Calendar 1', label: 'C1', host: 'calendar.google.com', file: 'basic.ics', hint: '3f2a',
+      status: 'ok', lastSync: addMin(t0, -2), events: sampleEvents(0) }],
   };
+  Object.defineProperties(cal, {
+    state: { get() { return this.list.length ? 'ok' : 'none'; } },
+    // The merged list: working calendars only, one copy of an event that two calendars share (same id, which stands
+    // for the iCal UID), the earlier calendar in the list winning.
+    events: { get() {
+      const seen = new Set(), out = [];
+      this.list.filter(c => c.status === 'ok').forEach(c => c.events.forEach(e => { if (!seen.has(e.id)) { seen.add(e.id); e.calId = c.id; out.push(e); } }));
+      return out;
+    } },
+    lastSync: { get() { const d = this.list.filter(c => c.status === 'ok').map(c => c.lastSync); return d.length ? new Date(Math.max(...d)) : null; },
+      set(v) { this.list.forEach(c => { if (c.status === 'ok') c.lastSync = v; }); } },
+  });
+  const calWorking = () => cal.list.filter(c => c.status === 'ok');
+  const calBroken = () => cal.list.filter(c => c.status !== 'ok');
+  const calById = id => cal.list.find(c => c.id === id);
+  const calOwner = e => e && calById(e.calId);
+  // Every calendar's copy of one event (they share an id).
+  const copiesOf = e => cal.list.flatMap(c => c.events.filter(x => x.id === e.id));
+  const CAL_ERR = "Couldn't reach this calendar";
   // The Mac app. link is 'usb' or 'wifi' once it has been heard from; call is { id, app, since, via }.
   // refused: its last message over Wi-Fi was refused for want of a token (pairing).
   const mac = { on: true, link: null, lastHeard: null, lostAt: null, quiet: false, quietMs: 0, call: null, refused: false };
@@ -2582,6 +2647,9 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
   // AM or PM for a time in the side value: small after the digits (vAP) or leading the foot (fAP), as the look shows it.
   const vAP = d => `<span class="v-ampm">${ampm(d)}</span>`;
   const fAP = (d, sep = ' · ') => `<span class="f-ampm">${ampm(d)}${sep}</span>`;
+  // The calendar's tag beside Next up, only with 2 or more calendars saved: up to 4 characters, never cut, and the
+  // foot's title is what an ellipsis takes first.
+  const calTag = e => { const c = calOwner(e); return cal.list.length >= 2 && c ? `<span class="cal-tag">${esc(c.label)}</span>` : ''; };
   const side = (label, value, foot = '', valueClass = '') => `
     <aside class="side">
       ${sysRow()}
@@ -2684,10 +2752,11 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
         if (s.wifi.mode === 'offline') sd = side('Calendar', 'Off', 'needs Wi-Fi', 'small');
         else if (cal.state !== 'ok') sd = side('Calendar', 'Not set up', 'add it on the Remote', 'small');
         else if (!cal.on) sd = side('Calendar', 'Off', 'turned off on the Remote', 'small');
+        else if (!calWorking().length) sd = side('Calendar', "Can't sync", 'see the Remote', 'small');
         // Next up reads like Free until and Posted: the start time is the side value, and AM or PM leads the foot (in
         // Bold Signal it follows the digits instead), then the title and place (titles on) or how soon it starts. A
         // title in the foot gets about 25 characters before the ellipsis; as the side value it got about 9.
-        else if (nx) sd = side('Next up', fmtShort(nx.start) + vAP(nx.start), fAP(nx.start) + (titleOf(nx)
+        else if (nx) sd = side('Next up' + calTag(nx), fmtShort(nx.start) + vAP(nx.start), fAP(nx.start) + (titleOf(nx)
           ? esc(titleOf(nx)) + (placeOf(nx) ? ' · ' + esc(placeOf(nx)) : '') : `meeting in ${hm(minsUp(nx.start - n))}`));
         else sd = side('Next up', 'Nothing', 'rest of today is free', 'small');
         return {
@@ -3546,27 +3615,17 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     }
     // Calendar
     const none = cal.state !== 'ok';
-    $('calBadge').textContent = cal.checking ? 'Checking…' : none ? 'Not set up' : 'Connected';
-    $('calBadge').className = 'badge' + (!none && !cal.checking ? ' ok' : '');
+    const nBad = calBroken().length;
+    $('calBadge').textContent = cal.checking ? 'Checking…' : none ? 'Not set up' : nBad === cal.list.length ? "Can't sync" : nBad ? `${nBad} can't sync` : 'Connected';
+    $('calBadge').className = 'badge' + (!none && !cal.checking && !nBad ? ' ok' : '');
     $('calOn').checked = cal.on;
     $('calOn').disabled = none;
     // While an address is being checked, the badge and the message under the field say so (once).
     $('calLine').textContent = none && cal.checking ? 'Not set up yet.'
-      : none ? 'Not set up. Add your secret address below; the switch then turns on, meetings show as In a meeting, and Next up fills in.'
-      : `Synced ${ago(cal.lastSync)} · ${leftText()}` + (cal.on ? '' : ". Calendar meetings is off, so the bar won't show meetings.");
-    $('calSaved').hidden = none || cal.replacing;
-    $('calForm').hidden = !(none || cal.replacing);
-    $('calSave').textContent = none ? 'Add' : 'Save';
-    $('calSave').disabled = cal.checking;
-    $('calCancel').hidden = !cal.replacing;
-    $('calMask').textContent = none ? '' : `${cal.host}/…/${cal.file} · ending ${cal.hint}`;
-    $('calConfirm').hidden = !cal.confirm;
-    $('calActions').hidden = cal.confirm;
-    $('calTitles').checked = cal.titles;
+      : none ? 'Not set up. Add a calendar below; the switch then turns on, meetings show as In a meeting, and Next up fills in.'
+      : `${cal.list.length} of ${CAL_MAX} calendars · ${calWorking().length ? leftText() : "none can be reached"}` + (cal.on ? '' : ". Calendar meetings is off, so the bar won't show meetings.");
+    renderCalList();
     $('calTitles').disabled = none;
-    // Messages sit right under the address field while it's open, otherwise under the saved address.
-    const msgAt = $('calForm').hidden ? $('calSaved') : $('calInputRow');
-    if (msgAt.nextElementSibling !== $('calMsg')) msgAt.after($('calMsg'));
     // Mac. The badge says what the line under it says, in one word; Off wins over Connected.
     $('macOn').checked = mac.on;
     setText($('macBadge'), !mac.on ? 'Off' : mac.link ? 'Connected' : 'Not connected');
@@ -3610,7 +3669,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     el.textContent = text;
     el.hidden = !text;
     el.classList.toggle('err', !!isErr);
-    $('calInput').setAttribute('aria-invalid', isErr ? 'true' : 'false');
+    $('calInput').setAttribute('aria-invalid', isErr && /address|Google/.test(text) ? 'true' : 'false');
   }
   // The address field starts masked every time the form opens or closes; Show reveals it only while typing.
   function maskCalInput() {
@@ -3624,6 +3683,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     const cur = currentEvent(), nx = nextEvent();
     const calT = cal.state !== 'ok' ? 'no address saved'
       : cur ? `meeting until ${fmt(cur.end)}${cur.priv ? ' (private)' : ''}` : nx ? `next meeting at ${fmt(nx.start)}` : 'no more meetings today';
+    const calN = cal.state === 'ok' ? ` (${cal.list.length} calendar${cal.list.length === 1 ? '' : 's'}${calBroken().length ? `, ${calBroken().length} can't sync` : ''})` : '';
     const c = mac.call;
     const macT = c ? `on a call (${c.app || 'no app name'}) over ${c.via === 'usb' ? 'USB' : 'Wi-Fi'}`
       : mac.link ? `connected over ${mac.link === 'usb' ? 'USB' : 'Wi-Fi'}` : 'not connected';
@@ -3638,7 +3698,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
       : `none · ${n} paired${pair.fails ? ` · ${pair.fails} failed in a row` : ''}`;
     const m = info.mac_app;
     const appT = !m ? 'none' : m.state === 'ok' ? `${m.version} (${m.build}), ${sizeText(m.bytes)}` : 'damaged';
-    const text = `Calendar: ${calT} · Mac: ${macT}, ${macP}${q} · Pairing: ${pairT} · App on the bar: ${appT} · Remote on ${remoteOn.mac ? 'a Mac' : 'a phone'}`;
+    const text = `Calendar: ${calT}${calN} · Mac: ${macT}, ${macP}${q} · Pairing: ${pairT} · App on the bar: ${appT} · Remote on ${remoteOn.mac ? 'a Mac' : 'a phone'}`;
     if ($('simState').textContent !== text) $('simState').textContent = text;
     $('simPairMsg').textContent = macPair.msg;
     pickSeg($('simPhone'), $('simPhone').querySelector(`[data-v="${phone.token ? 'paired' : 'unpaired'}"]`));
@@ -4506,7 +4566,13 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     if (cal.checking) return `<div class="tile" data-action="sync"><b>Calendar</b><span>Sync…</span><small>syncing now</small></div>`;
     // With the office Wi-Fi dropped it can't sync, but it keeps following its last copy (the firmware's Proposed copy).
     if (linkDown()) return `<div class="tile" data-action="sync"><b>Calendar</b><span>Offline</span><small>synced ${ago(cal.lastSync, true)}</small></div>`;
-    return `<div class="tile" data-action="sync"><b>Calendar</b><span>Sync</span><small>synced ${ago(cal.lastSync, true)}</small></div>`;
+    // Several calendars (Proposed 2026-10-07): the value is the count of calendars that work when some don't ("2 of 3"),
+    // and the foot names the first one that can't sync by its bar tag; Error when none can. Otherwise Sync, and with 2 or
+    // more calendars the foot is the count (the sync time is on the Remote).
+    const bad = calBroken(), n = cal.list.length;
+    if (bad.length === n) return `<div class="tile" data-action="sync"><b>Calendar</b><span>Error</span><small class="clamp2">${n > 1 ? "can't reach any" : "can't reach it"}</small></div>`;
+    if (bad.length) return `<div class="tile" data-action="sync"><b>Calendar</b><span>${n - bad.length} of ${n}</span><small class="clamp2">${esc(bad[0].label)} can't sync</small></div>`;
+    return `<div class="tile" data-action="sync"><b>Calendar</b><span>Sync</span><small>${n > 1 ? n + ' calendars' : 'synced ' + ago(cal.lastSync, true)}</small></div>`;
   }
   // Help (Proposed): the tour of the controls, from the quick menu (its sixth tile, before Done) and the timer menu's
   // Settings (before Back). Not in the setup options.
@@ -4697,7 +4763,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
       if (s.wifi.mode === 'offline' || (linkDown() && cal.state === 'ok')) { toast("No Wi-Fi, can't sync"); say(linkDown() ? 'menu: the Wi-Fi has dropped, so the calendar can\'t sync; the bar keeps following its saved copy' : 'menu: calendar needs Wi-Fi'); }
       else if (cal.state !== 'ok') { toast('Add your calendar on the Remote'); say('menu: no calendar yet, add its secret address on the Remote'); }
       else if (cal.checking) { toast('Still syncing'); say('menu: calendar still syncing'); }
-      else { cal.lastSync = now(); bump(); toast('Calendar synced'); say(`menu: calendar synced, ${leftText()}`); }
+      else { const r = syncAll(); toast(r.toast); say(`menu: ${r.say}`); }
     }
     else if (a === 'skip') skip('menu');
     else if (a === 'stop') stop('menu');
@@ -5107,7 +5173,9 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
         $('wPass').value = '';
         say(`Wi-Fi: connected to ${n}`);
         connectedTimer = setTimeout(() => { if (s.wifi.mode === 'connected') { s.wifi.mode = 'ok'; render(); setupEnded(); } }, 3000);
-        if (calChk) { $('wCal').value = ''; maskWCal(); saveCalendar(calChk, 'setup'); }
+        // The setup page adds a calendar when there's room (as Calendar 1 on a new bar); with 3 saved it leaves them alone.
+        if (calChk && cal.list.length < CAL_MAX) { $('wCal').value = ''; maskWCal(); const no = calFreeNo(); saveCalendar(calChk, 'setup', { id: null, name: `Calendar ${no}`, label: `C${no}` }); }
+        else if (calChk) { $('wCal').value = ''; maskWCal(); notify('You already have 3 calendars · remove one on the Remote first'); }
       }
       syncSetupForm();
       render();
@@ -5154,16 +5222,79 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     };
   }
   let calTimer = null;
-  function saveCalendar(chk, how) {
+  // The Remote's list of calendars. Rows are rebuilt only when what they say changes, so a focused button stays put.
+  let calSig = '';
+  const todayCount = c => { const n = now(), day = n.toDateString(); return c.events.filter(e => e.end > n && e.start.toDateString() === day).length; };
+  function renderCalList() {
+    const full = cal.list.length >= CAL_MAX;
+    const rows = cal.list.map(c => {
+      const bad = c.status !== 'ok', k = todayCount(c);
+      const line = bad ? `${CAL_ERR}. Last synced ${ago(c.lastSync)}. Its meetings are left out of the bar until it works.`
+        : `Synced ${ago(c.lastSync)} · ${k ? `${k} meeting${k === 1 ? '' : 's'} left today` : 'no more meetings today'}`;
+      return { c, bad, line, ask: cal.confirm === c.id };
+    });
+    const sig = JSON.stringify([rows.map(r => [r.c.id, r.c.name, r.c.label, r.bad, r.line, r.ask]), cal.form, cal.checking, full]);
+    if (sig !== calSig) {
+      calSig = sig;
+      $('calList').innerHTML = rows.map(({ c, bad, line, ask }) => `
+        <li class="cal-row${bad ? ' err' : ''}" data-id="${c.id}">
+          <div class="cal-top"><b>${esc(c.name)}</b><span class="cal-tagchip" title="Bar tag">${esc(c.label)}</span><span class="badge${bad ? '' : ' ok'}">${bad ? "Can't sync" : 'Synced'}</span></div>
+          <p class="auto-line">Address saved</p>
+          <p class="auto-line${bad ? ' cal-err' : ''}" role="${bad ? 'alert' : 'status'}">${esc(line)}</p>
+          ${ask ? `<div class="setup-msg"><p style="margin:0 0 8px">Remove ${esc(c.name)}? The bar stops showing its meetings and Next up.</p>
+            <div class="row"><button class="btn" data-act="rm-yes" type="button">Remove calendar</button><button class="btn ghost" data-act="rm-no" type="button">Keep it</button></div></div>`
+          : `<div class="row"><button class="btn ghost" data-act="edit" type="button" ${cal.checking ? 'disabled' : ''}>Edit</button><button class="btn ghost" data-act="rm" type="button">Remove</button></div>`}
+        </li>`).join('');
+    }
+    const formOpen = cal.form !== null;
+    $('calForm').hidden = !formOpen;
+    $('calMainActions').hidden = formOpen;
+    $('calAdd').disabled = full || cal.checking;
+    $('calAddNote').hidden = !full || formOpen;
+    $('calSync').disabled = cal.checking || !cal.list.length;
+    $('calSync').hidden = !cal.list.length;
+    $('calSave').disabled = cal.checking;
+    $('calSave').textContent = cal.form === 'new' ? 'Add' : 'Save';
+    $('calFormTitle').textContent = cal.form === 'new' ? 'Add a calendar' : `Edit ${(calById(cal.form) || {}).name || 'calendar'}`;
+    $('calInputLabel').textContent = cal.form === 'new' ? 'Secret address in iCal format' : 'New secret address (leave empty to keep the saved one)';
+  }
+  $('calList').addEventListener('click', e => {
+    const b = e.target.closest('button[data-act]');
+    if (!b) return;
+    const c = calById(+b.closest('li').dataset.id);
+    if (!c) return;
+    const act = b.dataset.act;
+    if (act === 'rm') { cal.confirm = c.id; calMsg(''); updateRemote(); say(`remote: confirm removing ${c.name}`); }
+    else if (act === 'rm-no') { cal.confirm = null; calMsg(`Kept ${c.name}.`); updateRemote(); say(`remote: kept ${c.name}`); }
+    else if (act === 'rm-yes') removeCalendar(c.id);
+    else if (act === 'edit') openCalForm(c.id);
+  });
+  // The smallest default number not in use, so removing Calendar 1 and adding again gives Calendar 1 back.
+  const calFreeNo = () => [1, 2, 3].find(i => !cal.list.some(c => c.name === `Calendar ${i}`)) || cal.list.length + 1;
+  function openCalForm(id) {
+    cal.form = id; cal.confirm = null;
+    const c = id === 'new' ? null : calById(id), no = calFreeNo();
+    $('calName').value = c ? c.name : `Calendar ${no}`;
+    $('calLabel').value = c ? c.label : `C${no}`;
+    $('calName').placeholder = `Calendar ${no}`;
+    $('calInput').value = ''; maskCalInput();
+    calMsg('');
+    updateRemote();
+    $('calName').focus();
+    say(c ? `remote: editing ${c.name}` : 'remote: adding a calendar');
+  }
+  function closeCalForm(msg) { cal.form = null; $('calInput').value = ''; maskCalInput(); calMsg(msg || ''); updateRemote(); }
+  // chk: the checked address, or null when an edit keeps the saved one. o: { id, name, label }.
+  function saveCalendar(chk, how, o) {
     clearTimeout(calTimer);
     cal.checking = true;
-    calMsg('Checking the address with Google Calendar…');
+    calMsg(chk ? 'Checking the address with Google Calendar…' : 'Saving…');
     bump();
     render();
-    say(`${how}: checking the calendar address`);
+    say(`${how}: ${chk ? 'checking the calendar address' : 'saving the calendar'}`);
     calTimer = setTimeout(() => {
       cal.checking = false;
-      if (chk.hint === '0000') {
+      if (chk && chk.hint === '0000') {
         // Mock-up only: stands in for Google answering 401, 403 or 404. Nothing is saved.
         calMsg("Google didn't recognize that address. It may have been reset in Google Calendar. Copy the current secret address and paste it again.", true);
         if (how === 'setup') notify("Calendar address didn't work · add it on the Remote");
@@ -5172,37 +5303,60 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
         render();
         return;
       }
-      calUrl = chk.url;
-      const fresh = cal.state !== 'ok';
-      Object.assign(cal, { state: 'ok', host: chk.host, file: chk.file, hint: chk.hint, lastSync: now(), replacing: false, confirm: false });
-      if (fresh) { cal.on = true; cal.events = sampleEvents(); }
+      let c = o.id ? calById(o.id) : null;
+      const fresh = !cal.list.length;
+      if (!c) {
+        if (cal.list.length >= CAL_MAX) { calMsg('You already have 3 calendars. Remove one first.', true); bump(); render(); return; }
+        const k = [0, 1, 2].find(i => !cal.list.some(x => x.k === i));
+        c = { id: ++calSeq, k, status: 'ok', events: sampleEvents(k), lastSync: now() };
+        cal.list.push(c);
+      }
+      Object.assign(c, { name: o.name, label: o.label });
+      if (chk) { calUrls[c.id] = chk.url; Object.assign(c, { host: chk.host, file: chk.file, hint: chk.hint, status: 'ok', lastSync: now() }); }
+      if (fresh) cal.on = true;
+      cal.form = null; cal.confirm = null;
       $('calInput').value = ''; maskCalInput();
-      calMsg(`Saved. ${cap(leftText())}.${chk.google ? '' : " This isn't a Google address, but MiniBar can read any iCal feed."}`);
+      calMsg(`Saved ${c.name}. ${cap(leftText())}.${chk && !chk.google ? " This isn't a Google address, but MiniBar can read any iCal feed." : ''}`);
       bump();
       if (!syncAuto()) notify(`Calendar synced · ${leftText()}`);
-      say(`${how}: calendar saved, ${leftText()}`);
+      say(`${how}: ${c.name} saved, ${leftText()}`);
       render();
     }, 1200);
   }
-  function removeCalendar() {
+  function removeCalendar(id) {
+    const c = calById(id);
+    if (!c) return;
     clearTimeout(calTimer);
-    calUrl = '';
-    Object.assign(cal, { state: 'none', checking: false, on: false, events: [], lastSync: null, replacing: false, confirm: false, host: '', file: '', hint: '' });
-    s.aside.meeting = null;
-    $('calInput').value = ''; maskCalInput();
-    calMsg('Calendar removed.');
+    cal.checking = false;
+    const cur = currentEvent();
+    // If the meeting on the bar came from this calendar and no other calendar has it, the bar's meeting ends now (and
+    // the next one shows, if another calendar has one in progress). A copy in another calendar keeps it going.
+    delete calUrls[id];
+    cal.list = cal.list.filter(x => x.id !== id);
+    cal.confirm = null; cal.form = null;
+    if (!cal.list.length) { cal.on = false; s.aside.meeting = null; }
+    else if (s.aside.meeting && !cal.events.some(e => e.id === s.aside.meeting)) s.aside.meeting = null;
+    calMsg(`Removed ${c.name}.${cur && cur.calId === id ? (currentEvent() ? ' Its meeting carries on from another calendar.' : ' Its meeting is no longer shown.') : ''}`);
     bump();
-    if (!syncAuto('Calendar removed')) toast('Calendar removed');
-    say('remote: calendar removed');
+    if (!syncAuto(`${c.name} removed`)) toast(`${c.name} removed`);
+    say(`remote: ${c.name} removed${cur && cur.calId === id ? (currentEvent() ? ', its meeting carries on from another calendar' : ', the meeting it supplied ends on the bar') : ''}`);
     render();
   }
+  $('calAdd').addEventListener('click', () => { if (cal.list.length >= CAL_MAX) { calMsg('You already have 3 calendars. Remove one first.', true); return; } openCalForm('new'); });
   $('calSave').addEventListener('click', () => {
-    const chk = checkIcal($('calInput').value);
-    if (chk.err) { calMsg(chk.err, true); say('remote: calendar address rejected'); return; }
-    saveCalendar(chk, 'remote');
+    const name = $('calName').value.trim(), label = $('calLabel').value.trim().toUpperCase(), id = cal.form === 'new' ? null : cal.form;
+    if (!name) { calMsg('Give the calendar a name.', true); $('calName').focus(); return; }
+    if (!label) { calMsg('Give the calendar a short tag, up to 4 letters.', true); $('calLabel').focus(); return; }
+    if (cal.list.some(c => c.id !== id && (c.name.toLowerCase() === name.toLowerCase() || c.label === label))) { calMsg('Another calendar already uses that name or tag. Pick a different one.', true); return; }
+    const raw = $('calInput').value;
+    if (id === null || raw.trim()) {
+      const chk = checkIcal(raw);
+      if (chk.err) { calMsg(chk.err, true); say('remote: calendar address rejected'); return; }
+      saveCalendar(chk, 'remote', { id, name, label });
+    } else saveCalendar(null, 'remote', { id, name, label });
   });
   $('calInput').addEventListener('input', () => { if ($('calMsg').classList.contains('err')) calMsg(''); });
-  $('calInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('calSave').click(); } });
+  ['calName', 'calLabel', 'calInput'].forEach(i => $(i).addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('calSave').click(); } }));
   $('calShow').addEventListener('click', () => {
     const i = $('calInput'), show = i.type === 'password';
     i.type = show ? 'text' : 'password';
@@ -5211,35 +5365,28 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
   });
   $('calSample').addEventListener('click', () => {
     $('calInput').value = SAMPLE_CAL;
-    calMsg(`Sample address filled in. Choose ${cal.state === 'ok' ? 'Save' : 'Add'} to save it.`);
+    calMsg(`Sample address filled in. Choose ${cal.form === 'new' ? 'Add' : 'Save'} to save it.`);
     say('remote: sample calendar address filled in (mock-up only)');
   });
-  $('calReplace').addEventListener('click', () => {
-    cal.replacing = true; cal.confirm = false;
-    $('calInput').value = ''; maskCalInput();
-    calMsg('');
-    updateRemote();
-    $('calInput').focus();
-    say('remote: replacing the calendar address');
-  });
-  $('calCancel').addEventListener('click', () => {
-    cal.replacing = false;
-    $('calInput').value = ''; maskCalInput();
-    calMsg('');
-    updateRemote();
-    say('remote: kept the calendar address');
-  });
-  $('calRemove').addEventListener('click', () => { cal.confirm = true; calMsg(''); updateRemote(); say('remote: confirm removing the calendar'); });
-  $('calRemoveNo').addEventListener('click', () => { cal.confirm = false; calMsg('Kept your calendar.'); updateRemote(); say('remote: kept the calendar'); });
-  $('calRemoveYes').addEventListener('click', removeCalendar);
+  $('calCancel').addEventListener('click', () => { closeCalForm(''); say('remote: calendar form closed'); });
+  // Sync now reads every calendar. One that can't be reached stays in error and the others still update.
+  function syncAll() {
+    const bad = calBroken(), ok = calWorking().length, n = cal.list.length;
+    cal.lastSync = now();
+    bump();
+    if (!bad.length) return { toast: 'Calendar synced', say: `calendar synced, ${leftText()}`, msg: `${n > 1 ? 'Calendars' : 'Calendar'} synced. ${cap(leftText())}.` };
+    const names = bad.map(c => c.name).join(' and ');
+    return ok
+      ? { toast: `${ok} of ${n} synced`, say: `${ok} of ${n} calendars synced; ${names} couldn't be reached, the bar keeps showing the others`, msg: `Synced ${ok} of ${n} calendars. ${names}: ${CAL_ERR.toLowerCase()}.` }
+      : { toast: "Can't reach your calendar" + (n > 1 ? 's' : ''), say: `no calendar could be reached`, msg: `${CAL_ERR.replace('this calendar', n > 1 ? 'any of your calendars' : 'your calendar')}. Check that the address is still valid.` };
+  }
   $('calSync').addEventListener('click', () => {
     if (cal.checking) return;
-    cal.lastSync = now();
-    calMsg(`Calendar synced. ${cap(leftText())}.`);
-    bump();
+    const r = syncAll();
+    calMsg(r.msg);
     render();
-    toast('Calendar synced');
-    say(`remote: calendar synced, ${leftText()}`);
+    toast(r.toast);
+    say(`remote: ${r.say}`);
   });
   // Turning a source off ends its status at once; turning it back on during a call or meeting shows it at once.
   // A meeting or call set aside is forgotten when its source is turned off, so turning it back on shows it again.
@@ -5317,9 +5464,10 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     if (cal.state !== 'ok') { say('simulate: no calendar address saved, add one on the Remote first'); return; }
     // The next sample meeting moves up to start now, for 30 minutes. A meeting already on ends as it starts.
     const n = now(), cur = currentEvent(), nx = nextEvent();
-    if (cur) cur.end = n;
-    if (nx) cal.events.splice(cal.events.indexOf(nx), 1);
-    cal.events.push({ id: ++evSeq, title: nx ? nx.title : 'Design review', loc: nx ? nx.loc : 'Room 4', start: n, end: addMin(n, 30), priv: $('simPrivate').checked });
+    if (cur) copiesOf(cur).forEach(e => { e.end = n; });
+    let home = (nx && calOwner(nx)) || calWorking()[0] || cal.list[0];
+    if (nx) cal.list.forEach(c => { c.events = c.events.filter(e => e.id !== nx.id); });
+    home.events.push({ id: ++evSeq, title: nx ? nx.title : 'Design review', loc: nx ? nx.loc : 'Room 4', start: n, end: addMin(n, 30), priv: $('simPrivate').checked });
     bump();
     if (!cal.on) { say('simulate: meeting started, but Calendar meetings is off on the Remote, so the bar ignores it'); render(); return; }
     if (!syncAuto()) say(`simulate: meeting started${hiddenNote()}`);
@@ -5329,10 +5477,61 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     if (!s.powered) { say('simulate: MiniBar is off, press PWR to turn it on'); return; }
     const cur = currentEvent();
     if (!cur) { say('simulate: no meeting in progress to end'); return; }
-    cur.end = now();
+    copiesOf(cur).forEach(e => { e.end = now(); });
     bump();
     if (!syncAuto('Meeting ended')) say(`simulate: meeting ended${calData() ? '' : " (the bar wasn't showing it)"}`);
     render();
+  });
+  // Several calendars: edge cases. Each says in the log what the bar does.
+  const simCalsOk = () => {
+    if (!s.powered) { say('simulate: MiniBar is off, press PWR to turn it on'); return false; }
+    if (!cal.list.length) { say('simulate: no calendar saved, add one on the Remote first'); return false; }
+    return true;
+  };
+  $('simCalAdd').addEventListener('click', () => {
+    if (cal.list.length >= CAL_MAX) { say('simulate: 3 calendars are saved already, which is the most MiniBar takes'); return; }
+    const k = [0, 1, 2].find(i => !cal.list.some(x => x.k === i)), no = calFreeNo();
+    const c = { id: ++calSeq, k, name: `Calendar ${no}`, label: `C${no}`, host: 'calendar.google.com', file: 'basic.ics', hint: ['', '3f2a', '7c91', 'b2e4'][no] || '3f2a', status: 'ok', lastSync: now(), events: sampleEvents(k) };
+    cal.list.push(c); calUrls[c.id] = SAMPLE_CAL;
+    if (cal.list.length === 1) cal.on = true;
+    bump();
+    if (!syncAuto()) toast(`${c.name} added`);
+    say(`simulate: ${c.name} saved (a sample); ${cal.list.length >= 2 ? `Next up now carries a calendar tag, ${leftText()}` : leftText()}`);
+    render();
+  });
+  const failToggle = (list, label) => {
+    const down = list.some(c => c.status === 'ok');
+    list.forEach(c => { if (down) { c.status = 'err'; } else { c.status = 'ok'; c.lastSync = now(); } });
+    bump();
+    const left = calWorking().length;
+    if (!syncAuto(down ? "Can't reach a calendar" : 'Calendar back')) toast(down ? (left ? `${left} of ${cal.list.length} synced` : "Can't reach your calendar" + (cal.list.length > 1 ? 's' : '')) : 'Calendars synced');
+    say(down
+      ? `simulate: ${label} ${label.startsWith('None') ? 'can be reached' : "can't be reached"}. ${left ? `The bar keeps showing ${left === 1 ? 'the other calendar' : 'the others'}, and the Calendar tile reads "${left} of ${cal.list.length}" with the tag of the one that can't sync` : "The bar shows no meetings and the clock's side says Can't sync; the Calendar tile reads Error"}`
+      : `simulate: ${label} reachable again, its meetings are back on the bar`);
+    render();
+  };
+  $('simCalFail').addEventListener('click', () => {
+    if (!simCalsOk()) return;
+    const last = cal.list[cal.list.length - 1];
+    failToggle([last], last.name);
+  });
+  $('simCalAllFail').addEventListener('click', () => { if (simCalsOk()) failToggle(cal.list, cal.list.length > 1 ? 'None of the calendars' : 'The calendar'); });
+  $('simCalDup').addEventListener('click', () => {
+    if (!simCalsOk()) return;
+    if (cal.list.length < 2) { say('simulate: add a second calendar first, then the same event can be in both'); return; }
+    const src = nextEvent() || currentEvent() || cal.list[0].events[0];
+    const dst = cal.list.find(c => !c.events.some(e => e.id === src.id));
+    if (!src || !dst) { say('simulate: the next event is already in every calendar; the bar shows it once'); return; }
+    dst.events.push({ ...src });
+    bump();
+    say(`simulate: "${src.title}" is now in ${dst.name} too (same invitation). The bar and the Remote count it once, shown with the tag of the earlier calendar in the list`);
+    render();
+  });
+  $('simCalDrop').addEventListener('click', () => {
+    if (!simCalsOk()) return;
+    const cur = currentEvent();
+    if (!cur) { say('simulate: no meeting in progress, press Meeting starts now first'); return; }
+    removeCalendar(cur.calId);
   });
   $('simCallStart').addEventListener('click', () => {
     if (!s.powered) { say("simulate: MiniBar is off, so the Mac can't reach it"); return; }
