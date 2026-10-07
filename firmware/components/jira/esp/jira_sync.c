@@ -171,7 +171,9 @@ static jira_http_t ask(const jira_request_t *req, size_t *len, int32_t *retry_s)
     if (esp_http_client_open(c, body_len) == ESP_OK &&
         (body_len == 0 || esp_http_client_write(c, req->body, body_len) == body_len) &&
         esp_http_client_fetch_headers(c) >= 0) {
-        res = jira_http_class(esp_http_client_get_status_code(c));
+        int status = esp_http_client_get_status_code(c);
+        ESP_LOGI(TAG, "Jira answered %d for %s", status, req->url);
+        res = jira_http_class(status);
         char *ra = NULL;
         if (esp_http_client_get_header(c, "Retry-After", &ra) == ESP_OK && ra) *retry_s = jira_parse_retry_after(ra);
         if (res == JIRA_HTTP_ANSWER) {
