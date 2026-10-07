@@ -1108,6 +1108,7 @@ table.controls td.none { color: var(--muted); }
 .cal-row .row { gap: 8px; }
 .cal-row .btn { padding: 6px 12px; font-size: 13px; }
 .cal-err { color: var(--ink); font-weight: 600; }
+#calMainActions[hidden] { display: none; }
 .cal-fields { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr) 96px; }
 .cal-fields input { width: 100%; box-sizing: border-box; }
 @media (max-width: 460px) { .cal-fields { grid-template-columns: minmax(0, 1fr); } }
@@ -4566,12 +4567,12 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     if (cal.checking) return `<div class="tile" data-action="sync"><b>Calendar</b><span>Sync…</span><small>syncing now</small></div>`;
     // With the office Wi-Fi dropped it can't sync, but it keeps following its last copy (the firmware's Proposed copy).
     if (linkDown()) return `<div class="tile" data-action="sync"><b>Calendar</b><span>Offline</span><small>synced ${ago(cal.lastSync, true)}</small></div>`;
-    // Several calendars (Proposed 2026-10-07): the value is the count of calendars that work when some don't ("2 of 3"),
+    // Several calendars (Proposed 2026-10-07): the value is the count of calendars that work when some don't ("2/3"),
     // and the foot names the first one that can't sync by its bar tag; Error when none can. Otherwise Sync, and with 2 or
     // more calendars the foot is the count (the sync time is on the Remote).
     const bad = calBroken(), n = cal.list.length;
     if (bad.length === n) return `<div class="tile" data-action="sync"><b>Calendar</b><span>Error</span><small class="clamp2">${n > 1 ? "can't reach any" : "can't reach it"}</small></div>`;
-    if (bad.length) return `<div class="tile" data-action="sync"><b>Calendar</b><span>${n - bad.length} of ${n}</span><small class="clamp2">${esc(bad[0].label)} can't sync</small></div>`;
+    if (bad.length) return `<div class="tile" data-action="sync"><b>Calendar</b><span>${n - bad.length}/${n}</span><small class="clamp2">${esc(bad[0].label)} can't sync</small></div>`;
     return `<div class="tile" data-action="sync"><b>Calendar</b><span>Sync</span><small>${n > 1 ? n + ' calendars' : 'synced ' + ago(cal.lastSync, true)}</small></div>`;
   }
   // Help (Proposed): the tour of the controls, from the quick menu (its sixth tile, before Done) and the timer menu's
@@ -5506,7 +5507,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     const left = calWorking().length;
     if (!syncAuto(down ? "Can't reach a calendar" : 'Calendar back')) toast(down ? (left ? `${left} of ${cal.list.length} synced` : "Can't reach your calendar" + (cal.list.length > 1 ? 's' : '')) : 'Calendars synced');
     say(down
-      ? `simulate: ${label} ${label.startsWith('None') ? 'can be reached' : "can't be reached"}. ${left ? `The bar keeps showing ${left === 1 ? 'the other calendar' : 'the others'}, and the Calendar tile reads "${left} of ${cal.list.length}" with the tag of the one that can't sync` : "The bar shows no meetings and the clock's side says Can't sync; the Calendar tile reads Error"}`
+      ? `simulate: ${label} ${label.startsWith('None') ? 'can be reached' : "can't be reached"}. ${left ? `The bar keeps showing ${left === 1 ? 'the other calendar' : 'the others'}, and the Calendar tile reads "${left}/${cal.list.length}" with the tag of the one that can't sync` : "The bar shows no meetings and the clock's side says Can't sync; the Calendar tile reads Error"}`
       : `simulate: ${label} reachable again, its meetings are back on the bar`);
     render();
   };
