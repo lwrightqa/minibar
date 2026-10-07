@@ -17,7 +17,7 @@
 extern "C" {
 #endif
 
-#define CAL_COPY_MAX    16                                  /* meetings kept per calendar (saved copy and in RAM) */
+#define CAL_COPY_MAX    14                                  /* meetings kept per calendar (saved copy and in RAM) */
 #define CAL_MERGE_CAP   (TB_CALS_MAX * CAL_COPY_MAX)        /* the most the merge ever sees */
 
 typedef struct {
