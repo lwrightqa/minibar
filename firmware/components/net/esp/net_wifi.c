@@ -359,7 +359,8 @@ static void sta_apply(const creds_t *c)
     } else {
         wc.sta.threshold.authmode = WIFI_AUTH_OPEN;
     }
-    esp_wifi_set_config(WIFI_IF_STA, &wc);
+    esp_err_t cfg_err = esp_wifi_set_config(WIFI_IF_STA, &wc);
+    if (cfg_err != ESP_OK) ESP_LOGW(TAG, "the station's network wasn't applied: %s", esp_err_to_name(cfg_err));
     if (c->sec == NET_SEC_WORK_LOGIN) {
         /* PEAP or TTLS with MSCHAPv2: the supplicant negotiates which. The server's certificate isn't checked:
          * office RADIUS servers mostly use a private CA the bar can't know (see the README's open questions). */
@@ -1214,10 +1215,10 @@ void net_wifi_start(void)
         LOCK();
         s_mode = M_STA;
         UNLOCK();
+        esp_wifi_set_mode(WIFI_MODE_STA);   /* the driver refuses the station's settings until the mode includes it */
         sta_apply(&s_creds);
-        wifi_run(WIFI_MODE_STA);
-        esp_err_t cerr = esp_wifi_connect();
-        ESP_LOGI(TAG, "joining the saved network (%d saved, most recent first): %s", s_nets.count, esp_err_to_name(cerr));
+        wifi_run(WIFI_MODE_STA);    /* STA_START connects */
+        ESP_LOGI(TAG, "joining the saved network (%d saved, most recent first)", s_nets.count);
     } else {
         net_wifi_setup_begin();
     }
