@@ -752,3 +752,10 @@ QA checked every control on every screen of the mock-up while building `docs/con
   - BOOT and PWR are on the edge the user keeps on top, slightly inset in the case: turned over, the bar rests on that edge without pressing them (checked by the user, 2026-10-05). So flipping can't press PWR or power the bar off by accident.
   - Pairing works on the bar: the Remote paired with the 6-digit code shown on the bar (2026-10-05).
   - Not yet reported: touch and BOOT, PWR off and on, the clock from the internet, the calendar.
+
+## 2026-10-07: a short drag no longer acts as a tap (firmware 1.0.7)
+
+- **Reported:** on the Pomodoro screen a swipe often started the timer.
+- **Cause:** a press that moved 10 to 39 px (too far for a tap, too short for a swipe, or mostly vertical) was treated as a tap on status screens, so on Pomodoro it started the timer and elsewhere it advanced the status.
+- **Decision (Accepted, firmware):** such a drag now does nothing on every screen; it already did nothing on menus. A swipe is still more than 40 px sideways. If real taps now get lost to finger jitter, raise the 10 px slop instead of bringing the old behavior back.
+- **Open:** the mock-up (`docs/mockup.html`) still treats a short drag as a tap; align it after the multiple-calendars mock-up round, which is editing that file.

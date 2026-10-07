@@ -1315,6 +1315,8 @@ static void on_release(tb_app_t *a, tb_gesture_t g, int8_t tile, const tb_clock_
         else hide_menu(a);              /* "tap: menu closed" (also a tap on the read-only Network tile) */
         return;
     }
+    /* A drag of 10 to 40 px is neither a tap nor a swipe: ignored, so a lazy swipe can't start the Pomodoro or act. */
+    if (g == TB_GEST_MOVED_TAP) return;
     if (tb_app_on_wifi_screen(a)) {
         wifi_tap(a, now);
         return;

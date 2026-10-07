@@ -191,11 +191,11 @@ TB_TEST(status_names_and_color_keys)
     TB_EQ_INT(tb_app_color_key(&b->a, &b->now), TB_KEY_LONG);
 }
 
-TB_TEST(moved_tap_is_a_tap_on_a_status_screen_but_not_on_a_menu)
+TB_TEST(moved_tap_does_nothing_on_a_status_screen_or_a_menu)
 {
     bench_t *b = bench_new();
     swipe(b, -25);                                       /* 25 px: more than the slop, less than a swipe */
-    TB_EQ_INT(b->a.idx, TB_ST_MEETING);                  /* a tap: next status */
+    TB_EQ_INT(b->a.idx, TB_ST_BUSY);                /* a drag of 10 to 40 px is not a tap: nothing happens */
     hold(b);
     int i = tile_index(b, TB_ACT_POWER);
     tb_app_pointer(&b->a, true, 300, 80, (int8_t)i, &b->now);
