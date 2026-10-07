@@ -134,6 +134,7 @@ static char s_ip[TB_IP_BYTES], s_ssid[TB_SSID_BYTES];
 static int8_t s_rssi;
 static int64_t s_rssi_at;
 static int s_retry;
+static volatile bool s_we_left;     /* on_addr_timer disconnected the station itself */
 static esp_timer_handle_t s_retry_timer, s_join_timer, s_addr_timer, s_linger_timer, s_save_timer;
 static int64_t s_next_guard_ms;  /* net_wifi_follow()'s next look for a stray setup network (the app task's) */
 
@@ -267,9 +268,13 @@ static void creds_load(void)
     s_skipped = nvs_get_u8(h, "skipped", &skipped) == ESP_OK && skipped;
     size_t n = sizeof s_blob;
     esp_err_t e = nvs_get_blob(h, "nets", s_blob, &n);
-    if (e == ESP_OK) {
-        if (!net_nets_decode(&s_nets, s_blob, n)) ESP_LOGE(TAG, "the saved Wi-Fi list isn't readable: ignored, not erased");
-        else if (rw) legacy_erase(h);       /* a cut between the list's write and the old keys' erase */
+    if (e == ESP_OK && net_nets_decode(&s_nets, s_blob, n)) {
+        if (rw) legacy_erase(h);       /* a cut between the list's write and the old keys' erase */
+    } else if (e != ESP_ERR_NVS_NOT_FOUND) {
+        /* unreadable list: not erased, not overwritten; an old single network still works from RAM */
+        ESP_LOGE(TAG, "the saved Wi-Fi list isn't readable (%s): ignored, not erased", esp_err_to_name(e));
+        net_nets_init(&s_nets);
+        legacy_read(h, &s_nets);
     } else if (legacy_read(h, &s_nets)) {
         n = net_nets_encode(&s_nets, s_blob, sizeof s_blob);
         static uint8_t back[NET_NETS_BLOB_MAX];
@@ -400,10 +405,11 @@ static void join_failed(net_join_err_t e)
     if (s_have_creds) sta_apply(&s_creds);
 }
 
-static void reconnect_later(void)
+static void reconnect_later(int min_s)
 {
     static const int delays_s[] = {1, 2, 5, 10, 30};
     int d = delays_s[s_retry < 4 ? s_retry : 4];
+    if (d < min_s) d = min_s;
     if (s_retry < 100) s_retry++;
     esp_timer_stop(s_retry_timer);
     esp_timer_start_once(s_retry_timer, (uint64_t)d * 1000000ULL);
@@ -418,7 +424,8 @@ static void try_next_network(void)
     bool hold = s_ap_open && s_ap_clients > 0;
     bool round_done = hold || net_nets_try_next(s_nets.count, &s_try_pos);
     UNLOCK();
-    if (round_done) reconnect_later();
+    /* a round over 3 or more networks is ~2 s of scanning each: wait longer so the radio isn't busy a quarter of the time */
+    if (round_done) reconnect_later(!hold && s_nets.count >= 3 ? 60 : 0);
     else job(J_CONNECT);
 }
 
@@ -466,7 +473,8 @@ static void on_wifi(void *arg, esp_event_base_t base, int32_t id, void *data)
              * calendar is, so it doesn't sync through a link that's gone. */
             if (mode != M_SETUP) post_wifi(TB_WIFI_EV_LINK_DOWN, NULL, NULL, NULL, NULL);
             else cal_sync_set_online(false);
-        } else if (d->reason == WIFI_REASON_ASSOC_LEAVE) {
+        } else if (s_we_left) {
+            s_we_left = false;
             break;      /* we left a network that gave no address ourselves (on_addr_timer) */
         }
         /* On the setup screens the station waits for the page's choice: reconnecting to the old network could move
@@ -476,7 +484,7 @@ static void on_wifi(void *arg, esp_event_base_t base, int32_t id, void *data)
                 LOCK();
                 s_try_pos = 0;
                 UNLOCK();
-                reconnect_later();
+                reconnect_later(0);
             } else {
                 try_next_network();
             }
@@ -688,7 +696,8 @@ static void on_addr_timer(void *arg)
     } else if (saved) {
         ESP_LOGW(TAG, "no address from \"%s\" in %d s: trying the next saved network", s_creds.ssid,
                  (int)(NO_ADDRESS_US / 1000000));
-        esp_wifi_disconnect();      /* its DISCONNECTED (ASSOC_LEAVE) is ignored */
+        s_we_left = true;           /* its DISCONNECTED is ignored: try_next_network moves on */
+        esp_wifi_disconnect();
         try_next_network();
     }
 }

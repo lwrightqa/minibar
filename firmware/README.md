@@ -35,6 +35,8 @@ How the code is organized, and why, is in [ARCHITECTURE.md](ARCHITECTURE.md).
 > checked and tried again, a lost "setup is done" is caught up, a stray setup network is closed within a second, a
 > failed save of the network is tried again), and the setup page can't send a second network once a join has worked.
 > No screen changes. 474 host tests and both page suites pass; update with the app alone at 0x30000 (see Flash).
+> **1.0.6** (2026-10-07) fixes three findings from the 1.0.5 check: with 3 or more saved networks all out of range the bar now waits 60 s between rounds (it was busy about a quarter of the time); a network that gives no address is left by a flag, not by the disconnect reason; an unreadable saved list no longer hides an old single network. Not done: a host test of the migration order (it lives in ESP-only code). Downgrading to 1.0.4 loses the saved networks, and 1.0.5 -> 1.0.4 -> change network -> 1.0.5 loses the change (the list wins). Passwords sit in the plain `nvs` partition, as before.
+
 > **1.0.5** (2026-10-06) is the cut-down "five saved Wi-Fi networks" (decisions.md, Wi-Fi): the bar keeps up to 5
 > networks, adds one each time a join works, and tries them in order of last use, so one bar works at home and at
 > work. 485 host tests and both page suites pass; update with the app alone at 0x30000, which keeps the saved network.
