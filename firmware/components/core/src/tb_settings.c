@@ -3,6 +3,7 @@
  * Owner: core builder. The lead filled in the straightforward parts so the skeleton has something to test.
  */
 #include <ctype.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -38,6 +39,8 @@ void tb_settings_defaults(tb_settings_t *s, const char *device_id)
     s->automatic.meeting_titles = false;
     default_name(s->device.name, sizeof(s->device.name), "MiniBar", device_id);
     s->device.time_zone[0] = '\0';
+    s->more.time_24h = false;           /* 12-hour, today's behavior */
+    s->more.meeting_chime = true;
 }
 
 bool tb_settings_migrate_name(tb_settings_t *s, const char *device_id)
@@ -48,6 +51,38 @@ bool tb_settings_migrate_name(tb_settings_t *s, const char *device_id)
     if (strcmp(s->device.name, old_default) != 0) return false;
     default_name(s->device.name, sizeof(s->device.name), "MiniBar", device_id);
     return true;
+}
+
+size_t tb_settings_legacy_blob_bytes(void)
+{
+    /* Before 1.0.9 tb_settings_t ended where `more` starts, padded to its own alignment (its widest member, an enum). */
+    size_t al = _Alignof(tb_tick_vol_t), end = offsetof(tb_settings_t, more);
+    return TB_SETTINGS_BLOB_HEADER + ((end + al - 1) / al) * al;
+}
+
+bool tb_settings_unpack(tb_settings_t *out, const void *blob, size_t n)
+{
+    _Static_assert(_Alignof(tb_settings_t) <= TB_SETTINGS_BLOB_HEADER, "the settings follow the 4-byte version directly");
+    const unsigned char *b = blob;
+    uint32_t version;
+    if (!blob || n < sizeof version) return false;
+    memcpy(&version, b, sizeof version);
+    if (version != TB_SETTINGS_VERSION) return false;
+    size_t full = TB_SETTINGS_BLOB_HEADER + sizeof(tb_settings_t);
+    if (n == full) {
+        unsigned char t24 = b[TB_SETTINGS_BLOB_HEADER + offsetof(tb_settings_t, more.time_24h)];
+        unsigned char chime = b[TB_SETTINGS_BLOB_HEADER + offsetof(tb_settings_t, more.meeting_chime)];
+        memcpy(out, b + TB_SETTINGS_BLOB_HEADER, sizeof *out);
+        out->more.time_24h = t24 != 0;
+        out->more.meeting_chime = chime != 0;
+        return true;
+    }
+    if (n == tb_settings_legacy_blob_bytes()) {
+        /* Copy only what 1.0.8 wrote: `more` keeps the defaults already in *out. */
+        memcpy(out, b + TB_SETTINGS_BLOB_HEADER, offsetof(tb_settings_t, more));
+        return true;
+    }
+    return false;
 }
 
 static bool in_range(int v, int lo, int hi) { return v >= lo && v <= hi; }
@@ -108,6 +143,8 @@ void tb_settings_apply(tb_settings_t *s, const tb_settings_patch_t *p)
     if (p->has_meeting_titles) s->automatic.meeting_titles = p->v.automatic.meeting_titles;
     if (p->has_name) tb_strlcpy(s->device.name, p->v.device.name, sizeof(s->device.name));
     if (p->has_time_zone) tb_strlcpy(s->device.time_zone, p->v.device.time_zone, sizeof(s->device.time_zone));
+    if (p->has_time_24h) s->more.time_24h = p->v.more.time_24h;
+    if (p->has_meeting_chime) s->more.meeting_chime = p->v.more.meeting_chime;
 }
 
 static bool clamp_u8(uint8_t *v, int lo, int hi, int def)
@@ -144,5 +181,6 @@ bool tb_settings_equal(const tb_settings_t *a, const tb_settings_t *b)
            a->pomodoro.ticking == b->pomodoro.ticking && a->pomodoro.tick_volume == b->pomodoro.tick_volume &&
            a->display.brightness == b->display.brightness && a->automatic.calendar == b->automatic.calendar &&
            a->automatic.mac == b->automatic.mac && a->automatic.meeting_titles == b->automatic.meeting_titles &&
-           !strcmp(a->device.name, b->device.name) && !strcmp(a->device.time_zone, b->device.time_zone);
+           !strcmp(a->device.name, b->device.name) && !strcmp(a->device.time_zone, b->device.time_zone) &&
+           a->more.time_24h == b->more.time_24h && a->more.meeting_chime == b->more.meeting_chime;
 }

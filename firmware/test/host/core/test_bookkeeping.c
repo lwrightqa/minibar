@@ -31,7 +31,9 @@ TB_TEST(toast_pending_rules)
     TB_EQ_STR(b->a.toast, "Second");
     /* a pending toast waits for the toast on screen to go */
     hold(b);
+    tap_tile_named(b, TB_ACT_DISPLAY);
     tap_tile_named(b, TB_ACT_BRIGHT);                    /* (no toast) */
+    tap_tile_named(b, TB_ACT_QUICK_MENU);
     tb_app_notify(&b->a, "Third", &b->now);
     tap_tile_named(b, TB_ACT_CLOSE);
     tb_app_notify(&b->a, "Now", &b->now);                /* free: shows at once */

@@ -537,3 +537,9 @@ As of 2026-10-04, after the review round and the security review (details in ARC
 - **Host tests:** core 170, calendar 87 (list, merge, de-duplication, failing calendar, migration with hostile inputs and injected write, read-back and erase failures), net 180 (8 new for the calendars endpoints), ui 32, board 53: 522 under AddressSanitizer and UBSan, no warnings. Page suites: Remote (calendars: add up to 3, duplicates, edit, failing rows, remove) and setup pass at 390 px.
 - **Build:** fresh `idf.py` build in `build-cal108`, no warnings; app 2,160,080 bytes (0x20f5d0), 66% of the slot free.
 - **Not verified on hardware:** the migration from a 1.0.7 bar's real NVS, three TLS fetches in a row (RAM peak, time), NVS space with three copies, the tag's position and look on the panel, a restart with calendars failing, and a second Remote seeing a rename.
+
+## Version 1.0.9: time format, meeting chime, Jira count (2026-10-07)
+
+Three features the user approved in the mock-up (decisions.md: Time format, Meeting-start sound, Jira issue count). Built one at a time; each section below is added when its feature lands.
+
+- **Time format (12-hour or 24-hour).** `display.time_format` (api.md 10.5), default 12-hour, in the Display menu's Time tile and the Remote's Display section. Every `tb_fmt_*` takes the flag, so the clock, the status row, meeting spans, Next up, Free until, Posted, Away's "Back at", "since" and "left at" and the Calendar tile's foot follow it; 24-hour has no AM or PM and zero-pads the hour. The saved settings grew at the end of the struct, so a 1.0.8 blob loads whole and a bar updated from 1.0.8 starts in 12-hour (`tb_settings_unpack`, host-tested with a 1.0.8-sized blob). The quick menu's first tile is now **Display** (Light, Chime, Time, Back); Theme and Tap sound, which the bar doesn't have yet, join it later. The Mac app reads `time_format` from `info` and writes its menu times the same way.

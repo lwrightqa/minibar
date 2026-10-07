@@ -62,6 +62,7 @@ extern "C" {
 #define TB_ALARM_REPEAT_MS     4000    /* chime and flash every 4 s while ringing */
 #define TB_ALARM_LIMIT_MS      60000   /* ...for at most a minute */
 #define TB_FLASH_MS            1700    /* the white alarm flash animation */
+#define TB_FLASH_ONCE_MS       550     /* a meeting start's flash: one pulse of it */
 #define TB_PWR_SHOW_HOLD_MS    400     /* "Keep holding" appears; releasing earlier is a short press */
 #define TB_PWR_OFF_MS          3000    /* holding PWR this long powers off */
 #define TB_POWERING_OFF_MS     1200    /* "Powering off" shows this long before the power goes */
@@ -183,6 +184,7 @@ typedef struct {
     bool ringing;
     tb_ms_t ring_until, next_ring;
     tb_ms_t flash_at;               /* last flash start (ui animates TB_FLASH_MS from here), 0 = none */
+    bool flash_once;                /* that flash is a meeting start's single pulse (TB_FLASH_ONCE_MS), not the alarm's three */
 
     /* Wi-Fi as the screen sees it */
     tb_wifi_mode_t wifi_mode;

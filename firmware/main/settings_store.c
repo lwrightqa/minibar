@@ -62,8 +62,9 @@ void settings_store_load(tb_settings_t *out, const char *device_id)
     if (nvs_open(NS, NVS_READONLY, &h) != ESP_OK) return;
     settings_blob_t b;
     size_t n = sizeof(b);
-    if (nvs_get_blob(h, "settings", &b, &n) == ESP_OK && n == sizeof(b) && b.version == TB_SETTINGS_VERSION) {
-        *out = b.s;
+    /* tb_settings_unpack() takes this firmware's blob or the shorter one of 1.0.8 and earlier (the new fields keep
+     * their defaults: 12-hour, chime on), so an update loses no setting. */
+    if (nvs_get_blob(h, "settings", &b, &n) == ESP_OK && tb_settings_unpack(out, &b, n)) {
         if (tb_settings_sanitize(out)) ESP_LOGW(TAG, "settings out of range, fixed");
         if (tb_settings_migrate_name(out, device_id)) {
             /* The default name from before the rename (1.0.3). It's saved under the new one 2 s after start-up, as

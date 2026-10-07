@@ -7,6 +7,8 @@
  */
 #pragma once
 
+#include <stdalign.h>
+
 #include "tb_types.h"
 
 #ifdef __cplusplus
@@ -38,6 +40,13 @@ typedef struct {
         char name[TB_DEVICE_NAME_BYTES];    /* default "MiniBar " + last 4 of device_id, upper case ("MiniBar 2A1C") */
         char time_zone[TB_TZ_NAME_BYTES];   /* IANA name, "" until the setup page or the Mac's hello sends one */
     } device;
+    /* Added in 1.0.9. They sit AFTER everything else on purpose: the saved blob of an older firmware is a prefix of
+     * this struct, so main/settings_store.c loads it as it is and these two keep their defaults (a bar updated from
+     * 1.0.8 starts in 12-hour with the chime on, and loses no setting). Never reorder or insert above this line. */
+    _Alignas(4) struct {    /* 4-aligned, so this firmware's blob is larger than 1.0.8's whatever the padding held */
+        bool time_24h;          /* display.time_format "24h": 15:30, no AM or PM; default false = "12h" (3:30 PM) */
+        bool meeting_chime;     /* sound.meeting_chime: a chime and one flash at a meeting's start; default true */
+    } more;
 } tb_settings_t;
 
 /* A PATCH: only the fields with has_* set change (api.md 10.2). net fills it from the JSON body. */
@@ -47,8 +56,20 @@ typedef struct {
     bool has_brightness;
     bool has_calendar, has_mac, has_meeting_titles;
     bool has_name, has_time_zone;
+    bool has_time_24h, has_meeting_chime;
     tb_settings_t v;    /* the new values, read only where has_* is set */
 } tb_settings_patch_t;
+
+/*
+ * The saved blob is { uint32 version, tb_settings_t }. tb_settings_unpack() reads one back into *out (which already holds
+ * the defaults): a blob of this firmware's size whole, or a blob of the size 1.0.8 and earlier wrote (a prefix of
+ * tb_settings_t, see `more`) up to the fields it had, so a bar updated from 1.0.8 keeps every setting and starts in
+ * 12-hour with the chime on. Any other size or version is refused (false, *out untouched). Booleans are read as
+ * "not zero", so garbage in flash can't make an invalid bool.
+ */
+#define TB_SETTINGS_BLOB_HEADER 4
+bool tb_settings_unpack(tb_settings_t *out, const void *blob, size_t n);
+size_t tb_settings_legacy_blob_bytes(void);     /* what firmware before 1.0.9 saved (a test builds one) */
 
 /* Defaults. device_id is the 12-hex-digit id (board_device_id()); it names the bar "MiniBar 2A1C". */
 void tb_settings_defaults(tb_settings_t *s, const char *device_id);

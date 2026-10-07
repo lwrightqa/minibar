@@ -10,9 +10,10 @@ TB_TEST(menu_quick_tiles)
     TB_EQ_INT(b->a.menu.kind, TB_MENU_QUICK);
     TB_EQ_INT(b->a.menu.n, 5);
     const tb_tile_t *t = b->a.menu.tiles;
-    TB_EQ_STR(t[0].label, "Light");
+    TB_EQ_STR(t[0].label, "Display");
     TB_EQ_STR(t[0].value, "70%");
-    TB_EQ_STR(t[0].foot, "tap to change");
+    TB_EQ_STR(t[0].foot, "light, time, chime");
+    TB_EQ_INT(t[0].action, TB_ACT_DISPLAY);
     TB_EQ_STR(t[1].label, "Calendar");
     TB_EQ_STR(t[1].value, "Off");
     TB_EQ_STR(t[1].foot, "add it on the Remote");
@@ -88,10 +89,12 @@ TB_TEST(menu_light_steps)
 {
     bench_t *b = bench_new();
     hold(b);
+    tap_tile_named(b, TB_ACT_DISPLAY);
+    TB_EQ_INT(b->a.menu.kind, TB_MENU_DISPLAY);
     tap_tile_named(b, TB_ACT_BRIGHT);
     TB_EQ_INT(b->a.set.display.brightness, 100);
     TB_EQ_INT(fx_last(b, TB_FX_BACKLIGHT), 100);
-    TB_EQ_INT(b->a.menu.kind, TB_MENU_QUICK);           /* the menu stays, showing the new level */
+    TB_EQ_INT(b->a.menu.kind, TB_MENU_DISPLAY);         /* the Display menu stays, showing the new level */
     TB_EQ_STR(tile_with(b, TB_ACT_BRIGHT)->value, "100%");
     tap_tile_named(b, TB_ACT_BRIGHT);
     TB_EQ_INT(b->a.set.display.brightness, 40);
@@ -105,6 +108,7 @@ TB_TEST(menu_light_steps)
     tb_app_remote_settings(&b->a, &p, NULL, &b->now);
     TB_EQ_STR(b->a.toast, "Light 55%");
     hold(b);
+    tap_tile_named(b, TB_ACT_DISPLAY);
     tap_tile_named(b, TB_ACT_BRIGHT);
     TB_EQ_INT(b->a.set.display.brightness, 70);
 }
@@ -325,4 +329,57 @@ TB_TEST(menu_setup_screens)
     TB_EQ_INT(b->a.wifi_mode, TB_WIFI_OFFLINE);
     TB_EQ_STR(b->a.toast, "Offline \xC2\xB7 statuses still work");
     TB_EQ_INT(fx_count(b, TB_FX_WIFI_SKIP), 1);
+}
+
+TB_TEST(menu_display_time_tile)
+{
+    bench_t *b = bench_new();
+    hold(b);
+    tap_tile_named(b, TB_ACT_DISPLAY);
+    TB_EQ_INT(b->a.menu.kind, TB_MENU_DISPLAY);
+    TB_EQ_INT(b->a.menu.n, 3);
+    const tb_tile_t *t = b->a.menu.tiles;
+    TB_EQ_STR(t[0].label, "Light");
+    TB_EQ_STR(t[1].label, "Time");
+    TB_EQ_STR(t[1].value, "12-hr");
+    TB_EQ_STR(t[1].foot, "tap to switch");
+    TB_EQ_STR(t[2].label, "Display");
+    TB_EQ_STR(t[2].value, "Back");
+    TB_EQ_INT(t[2].style, TB_TILE_DONE);
+    TB_FALSE(b->a.set.more.time_24h);
+    /* a tap switches at once, the menu stays open, a toast says the full name, and it's saved */
+    tap_tile_named(b, TB_ACT_TIME_FMT);
+    TB_TRUE(b->a.set.more.time_24h);
+    TB_EQ_INT(b->a.menu.kind, TB_MENU_DISPLAY);
+    TB_EQ_STR(tile_with(b, TB_ACT_TIME_FMT)->value, "24-hr");
+    TB_EQ_STR(b->a.toast, "Time format \xC2\xB7 24-hour");
+    TB_TRUE(fx_count(b, TB_FX_SAVE_SETTINGS) >= 1);
+    tap_tile_named(b, TB_ACT_TIME_FMT);
+    TB_FALSE(b->a.set.more.time_24h);
+    TB_EQ_STR(tile_with(b, TB_ACT_TIME_FMT)->value, "12-hr");
+    TB_EQ_STR(b->a.toast, "Time format \xC2\xB7 12-hour");
+    /* Back is the way out: the quick menu, then Done closes it; the 8 s close also works from the Display menu */
+    tap_tile_named(b, TB_ACT_QUICK_MENU);
+    TB_EQ_INT(b->a.menu.kind, TB_MENU_QUICK);
+    tap_tile_named(b, TB_ACT_DISPLAY);
+    bench_run(b, 8100);
+    TB_EQ_INT(b->a.menu.kind, TB_MENU_NONE);
+}
+
+TB_TEST(time_format_changes_every_clock_text_rev)
+{
+    bench_t *b = bench_new();
+    uint32_t rev = b->a.rev;
+    hold(b);
+    tap_tile_named(b, TB_ACT_DISPLAY);
+    tap_tile_named(b, TB_ACT_TIME_FMT);
+    TB_TRUE(b->a.rev != rev);       /* what the screen shows changed, so ui redraws and the API's rev moves */
+    /* the Calendar tile's "synced at 9:05" foot follows the setting */
+    tb_app_set_calendar(&b->a, true, false, b->now.wall - 2 * 3600, &b->now);
+    tap_tile_named(b, TB_ACT_QUICK_MENU);
+    TB_EQ_STR(tile_with(b, TB_ACT_SYNC)->foot, "synced at 08:00");
+    tap_tile_named(b, TB_ACT_DISPLAY);
+    tap_tile_named(b, TB_ACT_TIME_FMT);
+    tap_tile_named(b, TB_ACT_QUICK_MENU);
+    TB_EQ_STR(tile_with(b, TB_ACT_SYNC)->foot, "synced at 8:00 AM");
 }

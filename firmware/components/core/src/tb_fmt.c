@@ -23,24 +23,43 @@ static int hour12(const struct tm *tm)
     return h == 0 ? 12 : h;
 }
 
-char *tb_fmt_time(char *buf, size_t cap, tb_epoch_t t)
+/* Time format (decisions.md "Time format (2026-10-07)"): 12-hour "3:30 PM" (hour without a zero, AM or PM) or 24-hour
+ * "15:30" (zero-padded hour, no AM or PM; midnight is 00:00). h24 comes from settings.display.time_format. */
+static void put_hm(char *buf, size_t cap, const struct tm *tm, bool h24, bool with_ampm)
+{
+    if (h24) snprintf(buf, cap, "%02d:%02d", tm->tm_hour, tm->tm_min);
+    else if (with_ampm) snprintf(buf, cap, "%d:%02d %s", hour12(tm), tm->tm_min, tm->tm_hour < 12 ? "AM" : "PM");
+    else snprintf(buf, cap, "%d:%02d", hour12(tm), tm->tm_min);
+}
+
+char *tb_fmt_time(char *buf, size_t cap, tb_epoch_t t, bool h24)
 {
     struct tm tm = local_tm(t);
-    snprintf(buf, cap, "%d:%02d %s", hour12(&tm), tm.tm_min, tm.tm_hour < 12 ? "AM" : "PM");
+    put_hm(buf, cap, &tm, h24, true);
     return buf;
 }
 
-char *tb_fmt_time_short(char *buf, size_t cap, tb_epoch_t t)
+char *tb_fmt_time_short(char *buf, size_t cap, tb_epoch_t t, bool h24)
 {
     struct tm tm = local_tm(t);
-    snprintf(buf, cap, "%d:%02d", hour12(&tm), tm.tm_min);
+    put_hm(buf, cap, &tm, h24, false);
     return buf;
 }
 
-const char *tb_fmt_ampm(tb_epoch_t t)
+const char *tb_fmt_ampm(tb_epoch_t t, bool h24)
 {
+    if (h24) return "";
     struct tm tm = local_tm(t);
     return tm.tm_hour < 12 ? "AM" : "PM";
+}
+
+char *tb_fmt_hhmm(char *buf, size_t cap, int hh, int mm, bool h24)
+{
+    if (hh < 0 || hh > 23) hh = 0;
+    if (mm < 0 || mm > 59) mm = 0;
+    if (h24) snprintf(buf, cap, "%02d:%02d", hh, mm);
+    else snprintf(buf, cap, "%d:%02d", hh % 12 == 0 ? 12 : hh % 12, mm);   /* no AM or PM, as "Back at 3:30" always was */
+    return buf;
 }
 
 char *tb_fmt_mmss(char *buf, size_t cap, int32_t seconds)
@@ -64,23 +83,24 @@ int32_t tb_mins_up(tb_ms_t ms)
     return m < 1 ? 1 : (int32_t)m;
 }
 
-char *tb_fmt_span(char *buf, size_t cap, tb_epoch_t a, tb_epoch_t b)
+char *tb_fmt_span(char *buf, size_t cap, tb_epoch_t a, tb_epoch_t b, bool h24)
 {
     char x[16], y[16];
-    if (strcmp(tb_fmt_ampm(a), tb_fmt_ampm(b)) == 0)
-        snprintf(buf, cap, "%s\xE2\x80\x93%s", tb_fmt_time_short(x, sizeof x, a), tb_fmt_time(y, sizeof y, b));
+    /* 24-hour has no AM or PM to share: both ends are written whole. */
+    if (!h24 && strcmp(tb_fmt_ampm(a, false), tb_fmt_ampm(b, false)) == 0)
+        snprintf(buf, cap, "%s\xE2\x80\x93%s", tb_fmt_time_short(x, sizeof x, a, false), tb_fmt_time(y, sizeof y, b, false));
     else
-        snprintf(buf, cap, "%s\xE2\x80\x93%s", tb_fmt_time(x, sizeof x, a), tb_fmt_time(y, sizeof y, b));
+        snprintf(buf, cap, "%s\xE2\x80\x93%s", tb_fmt_time(x, sizeof x, a, h24), tb_fmt_time(y, sizeof y, b, h24));
     return buf;
 }
 
-char *tb_fmt_ago(char *buf, size_t cap, tb_epoch_t then, tb_epoch_t now, bool short_form)
+char *tb_fmt_ago(char *buf, size_t cap, tb_epoch_t then, tb_epoch_t now, bool short_form, bool h24)
 {
     int64_t m = (now - then) / 60;
     char t[16];
     if (m < 1) snprintf(buf, cap, "just now");
     else if (m < 60) snprintf(buf, cap, "%d%s ago", (int)m, short_form ? "m" : " min");
-    else snprintf(buf, cap, "at %s", tb_fmt_time(t, sizeof t, then));
+    else snprintf(buf, cap, "at %s", tb_fmt_time(t, sizeof t, then, h24));
     return buf;
 }
 

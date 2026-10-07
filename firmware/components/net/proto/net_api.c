@@ -421,6 +421,8 @@ static void add_info(rt_t *r)
     cJSON_AddStringToObject(r->o, "device", "MiniBar");
     cJSON_AddStringToObject(r->o, "device_id", id);
     cJSON_AddStringToObject(r->o, "name", s_app ? s_app->set.device.name : "MiniBar");
+    /* The Time format (api.md 7.1): "12h" or "24h", so the Mac app writes its times as the bar does. Not secret. */
+    cJSON_AddStringToObject(r->o, "time_format", s_app && s_app->set.more.time_24h ? "24h" : "12h");
     cJSON_AddStringToObject(r->o, "fw", net_port_fw_version());
     cJSON_AddStringToObject(r->o, "api", NET_API_VERSION);
     cJSON_AddStringToObject(r->o, "host", bar_host(&w));
@@ -682,6 +684,7 @@ static void add_settings(rt_t *r)
     cJSON_AddStringToObject(p, "tick_volume", s->pomodoro.tick_volume == TB_TICK_MEDIUM ? "medium" : "soft");
     cJSON *d = cJSON_AddObjectToObject(so, "display");
     cJSON_AddNumberToObject(d, "brightness", s->display.brightness);
+    cJSON_AddStringToObject(d, "time_format", s->more.time_24h ? "24h" : "12h");
     cJSON *au = cJSON_AddObjectToObject(so, "automatic");
     cJSON_AddBoolToObject(au, "calendar", s->automatic.calendar);
     cJSON_AddBoolToObject(au, "mac", s->automatic.mac);
@@ -1093,6 +1096,13 @@ static void h_settings_patch(rt_t *r, cJSON *b)
         else if (cJSON_IsString(tv) && !strcmp(tv->valuestring, "medium")) p.v.pomodoro.tick_volume = TB_TICK_MEDIUM;
         else { bad_value(r, "pomodoro.tick_volume", "pomodoro.tick_volume must be \"soft\" or \"medium\"."); return; }
         p.has_tick_volume = true;
+    }
+    const cJSON *tf = item(di, "time_format");
+    if (tf) {
+        if (cJSON_IsString(tf) && !strcmp(tf->valuestring, "12h")) p.v.more.time_24h = false;
+        else if (cJSON_IsString(tf) && !strcmp(tf->valuestring, "24h")) p.v.more.time_24h = true;
+        else { bad_value(r, "display.time_format", "display.time_format must be \"12h\" or \"24h\"."); return; }
+        p.has_time_24h = true;
     }
     const cJSON *nm = item(de, "name");
     if (nm) {

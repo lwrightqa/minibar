@@ -192,3 +192,13 @@ public struct USBCommandName: OpenEnum {
     /// Any endpoint over USB.
     public static let request = USBCommandName(rawValue: "request")
 }
+
+/// The bar's Time format setting (`display.time_format`, api.md 7.1 and 10.1): `"12h"` (the default, 3:30 PM) or
+/// `"24h"` (15:30). *Open:* an unknown value is treated like no answer, so the Mac falls back to its own format.
+public struct TimeFormat: OpenEnum {
+    public let rawValue: String
+    public init(rawValue: String) { self.rawValue = rawValue }
+
+    public static let h12 = TimeFormat(rawValue: "12h")
+    public static let h24 = TimeFormat(rawValue: "24h")
+}

@@ -498,6 +498,51 @@ TB_TEST(settings_get_and_patch)
     nf_free(&r);
 }
 
+/* Time format (decisions.md "Time format (2026-10-07)"): display.time_format "12h" (default) or "24h". */
+TB_TEST(settings_time_format)
+{
+    setup_paired();
+    nf_resp_t r = nf_http("GET", "/api/v1/settings", NULL, T);
+    TB_EQ_STR(nf_str(r.j, "settings.display.time_format"), "12h");         /* default: today's behavior */
+    nf_free(&r);
+    r = nf_http("GET", "/api/v1/info", NULL, NULL);                        /* in info too, with no token: it isn't secret */
+    TB_EQ_STR(nf_str(r.j, "time_format"), "12h");
+    nf_free(&r);
+    r = nf_http("PATCH", "/api/v1/settings", "{\"display\": {\"time_format\": \"24h\"}}", T);
+    TB_EQ_INT(r.status, 200);
+    TB_EQ_STR(nf_str(r.j, "settings.display.time_format"), "24h");
+    nf_free(&r);
+    TB_TRUE(nf_app.set.more.time_24h);
+    TB_TRUE(toast_has("Time format \xC2\xB7 24-hour"));
+    r = nf_http("GET", "/api/v1/info", NULL, NULL);
+    TB_EQ_STR(nf_str(r.j, "time_format"), "24h");
+    nf_free(&r);
+    /* the same value again: accepted, nothing changes */
+    r = nf_http("PATCH", "/api/v1/settings", "{\"display\": {\"time_format\": \"24h\"}}", T);
+    TB_EQ_INT(r.status, 200);
+    nf_free(&r);
+    /* it applies with other fields and only to its own */
+    r = nf_http("PATCH", "/api/v1/settings", "{\"display\": {\"time_format\": \"12h\", \"brightness\": 40}}", T);
+    TB_EQ_INT(r.status, 200);
+    TB_EQ_STR(nf_str(r.j, "settings.display.time_format"), "12h");
+    TB_EQ_INT(nf_num(r.j, "settings.display.brightness"), 40);
+    nf_free(&r);
+    TB_FALSE(nf_app.set.more.time_24h);
+    /* anything else is bad_value on that field, and nothing else in the request applies */
+    const char *bad[] = {"\"24H\"", "\"25h\"", "\"\"", "\"12\"", "24", "true", "null", "[\"24h\"]", "{}"};
+    for (size_t i = 0; i < sizeof bad / sizeof bad[0]; i++) {
+        char body[128];
+        snprintf(body, sizeof body, "{\"display\": {\"brightness\": 100, \"time_format\": %s}}", bad[i]);
+        r = nf_http("PATCH", "/api/v1/settings", body, T);
+        TB_EQ_INT(r.status, 400);
+        TB_EQ_STR(nf_err(&r), "bad_value");
+        TB_EQ_STR(nf_str(r.j, "field"), "display.time_format");
+        nf_free(&r);
+    }
+    TB_EQ_INT(nf_app.set.display.brightness, 40);
+    TB_FALSE(nf_app.set.more.time_24h);
+}
+
 TB_TEST(settings_patch_is_all_or_nothing)
 {
     setup_paired();

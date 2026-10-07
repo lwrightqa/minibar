@@ -345,6 +345,56 @@ final class PresentationTests: XCTestCase {
         XCTAssertEqual(content.line1, "Paused until 15:15")
     }
 
+    /// The bar's Time format (info.time_format, api.md 7.1) wins over the Mac's own: the menu and the bar never
+    /// disagree (decisions.md "Time format (2026-10-07)"). The pattern is the bar's: hour zero-padded in 24-hour, no
+    /// AM or PM there; "2:15 PM" in 12-hour even on a 24-hour Mac.
+    func test_clockTimesFollowTheBarsTimeFormat() {
+        let paused = Make.settings(pause: .until(t0.addingTimeInterval(63 * 60)))
+        func line(_ format: TimeFormat?, locale: String) -> String {
+            var connection = Make.connection(.connected, reply: Make.reply(active: false))
+            connection.info = InfoReply(deviceID: "f412fa3f2a1c", name: barName, fw: "1.0.9", timeFormat: format)
+            return plain(MenuPresenter.content(for: Make.state(connection, settings: paused), now: t0, timeZone: la,
+                                               locale: Locale(identifier: locale), showDetails: false).line1)
+        }
+        XCTAssertEqual(line(.h24, locale: "en_US"), "Paused until 15:15")
+        XCTAssertEqual(line(.h12, locale: "en_GB"), "Paused until 3:15 PM")
+        XCTAssertEqual(line(.h12, locale: "en_US"), "Paused until 3:15 PM")
+        XCTAssertEqual(line(.h24, locale: "en_GB"), "Paused until 15:15")
+        // an older bar, or a value this app doesn't know: the Mac's own format, as before
+        XCTAssertEqual(line(nil, locale: "en_US"), "Paused until 3:15 PM")
+        XCTAssertEqual(line(nil, locale: "en_GB"), "Paused until 15:15")
+        XCTAssertEqual(line(TimeFormat(rawValue: "later"), locale: "en_GB"), "Paused until 15:15")
+        // the same in the connection summary's "Can't reach it since ..."
+        var connection = Make.connection(.unreachable, lastSuccess: t0.addingTimeInterval(-8 * 60))
+        connection.info = InfoReply(deviceID: "f412fa3f2a1c", name: barName, fw: "1.0.9", timeFormat: .h24)
+        let summary = MenuPresenter.connectionSummary(for: Make.state(connection), now: t0, timeZone: la, locale: enUS)
+        XCTAssertEqual(plain(summary.status), "Can\u{2019}t reach it since 14:04")
+    }
+
+    func test_infoDecodesTheTimeFormat() throws {
+        func info(_ extra: String) throws -> InfoReply {
+            let json = #"{"ok": true, "device": "MiniBar", "device_id": "f412fa3f2a1c", "name": "MiniBar 2A1C", "fw": "1.0.9", "api": "1.0", "host": "minibar.local", "auth": "bearer", "pairing": "idle", "heartbeat_s": 30, "timeout_s": 90, "time": "2026-10-04T14:11:58-07:00", "time_source": "ntp", "wifi": "connected"\#(extra)}"#
+            return try JSONDecoder().decode(InfoReply.self, from: Data(json.utf8))
+        }
+        XCTAssertEqual(try info(#", "time_format": "24h""#).timeFormat, .h24)
+        XCTAssertEqual(try info(#", "time_format": "12h""#).timeFormat, .h12)
+        XCTAssertNil(try info("").timeFormat)                                       // firmware before 1.0.9
+        XCTAssertEqual(try info(#", "time_format": "later""#).timeFormat, TimeFormat(rawValue: "later"))   // open field
+    }
+
+    func test_clockTimeFormats() {
+        let midnight = Calendar(identifier: .gregorian).date(from: DateComponents(timeZone: la, year: 2026, month: 10,
+                                                                                    day: 5, hour: 0, minute: 15, second: 7))!
+        let morning = midnight.addingTimeInterval(8 * 3600 + 40 * 60)      // 08:55:07
+        XCTAssertEqual(Formatting.clockTime(midnight, timeZone: la, locale: enUS, timeFormat: .h24), "00:15")
+        XCTAssertEqual(Formatting.clockTime(midnight, timeZone: la, locale: enUS, timeFormat: .h12), "12:15 AM")
+        XCTAssertEqual(Formatting.clockTime(morning, timeZone: la, locale: enUS, timeFormat: .h24), "08:55")
+        XCTAssertEqual(Formatting.clockTime(morning, timeZone: la, locale: enUS, timeFormat: .h12), "8:55 AM")
+        XCTAssertEqual(Formatting.clockTime(morning, timeZone: la, locale: enUS, withSeconds: true, timeFormat: .h24), "08:55:07")
+        XCTAssertEqual(Formatting.clockTime(t0, timeZone: la, locale: enUS, withSeconds: true, timeFormat: .h12), "2:12:00 PM")
+        XCTAssertEqual(Formatting.clockTime(t0, timeZone: la, locale: Locale(identifier: "ar_SA"), timeFormat: .h24), "14:12")
+    }
+
     // MARK: - Settings › Connection (6.4)
 
     func test_connectionSummary() {

@@ -96,7 +96,7 @@ static void cal_tile(tb_app_t *a, const tb_clock_t *now)
     }
     if (!a->cal_last_sync) snprintf(foot, sizeof foot, "not synced yet");          /* Firmware: no sync time saved */
     else if (!now->valid) snprintf(foot, sizeof foot, "tap to sync");              /* Firmware: clock unknown */
-    else snprintf(foot, sizeof foot, "synced %s", tb_fmt_ago(ago, sizeof ago, a->cal_last_sync, now->wall, true));
+    else snprintf(foot, sizeof foot, "synced %s", tb_fmt_ago(ago, sizeof ago, a->cal_last_sync, now->wall, true, a->set.more.time_24h));
     /* Firmware: with the link down it can't sync (Sync now says "No Wi-Fi, can't sync"), but it keeps following its
      * last copy, so the tile says it's offline and when it last synced (decisions.md, offline). */
     add(m, TB_ACT_SYNC, TB_TILE_NORMAL, "Calendar", link_down(a) ? "Offline" : "Sync", foot);
@@ -106,8 +106,9 @@ static void quick_menu(tb_app_t *a, const tb_clock_t *now)
 {
     tb_menu_t *m = &a->menu;
     char v[24];
+    /* Display (decisions.md): the light level, with the light, the time format and the meeting chime a tap further in. */
     snprintf(v, sizeof v, "%d%%", a->set.display.brightness);
-    add(m, TB_ACT_BRIGHT, TB_TILE_NORMAL, "Light", v, "tap to change");
+    add(m, TB_ACT_DISPLAY, TB_TILE_NORMAL, "Display", v, "light, time, chime");
     cal_tile(a, now);
     bool off = a->wifi_mode == TB_WIFI_OFFLINE;
     /* Firmware: a dropped link says so instead of the network's name. */
@@ -115,6 +116,19 @@ static void quick_menu(tb_app_t *a, const tb_clock_t *now)
     /* Bold Signal's Power tile says USB: the bar runs on USB with no battery (decisions.md, Product). */
     add(m, TB_ACT_POWER, TB_TILE_NORMAL, "Power", "USB", "off or restart");
     done_tile(m);
+}
+
+/* The Display menu: Light steps 40, 70 and 100% (the tile the quick menu had), Chime and Time switch at once and the
+ * menu stays open, so you see the new value; Back returns to the quick menu. The Time tile reads "12-hr" or "24-hr"
+ * (its label can't be "Time format": 85 px in a tile 92 px wide), the toast says the full name. */
+static void display_menu(tb_app_t *a)
+{
+    tb_menu_t *m = &a->menu;
+    char v[24];
+    snprintf(v, sizeof v, "%d%%", a->set.display.brightness);
+    add(m, TB_ACT_BRIGHT, TB_TILE_NORMAL, "Light", v, "tap to change");
+    add(m, TB_ACT_TIME_FMT, TB_TILE_NORMAL, "Time", a->set.more.time_24h ? "24-hr" : "12-hr", "tap to switch");
+    add(m, TB_ACT_QUICK_MENU, TB_TILE_DONE, "Display", "Back", "to the quick menu");
 }
 
 static void timer_menu(tb_app_t *a, const tb_clock_t *now)
@@ -234,6 +248,7 @@ void tb_menu_fill(tb_app_t *a, const tb_clock_t *now)
     case TB_MENU_POWER: power_menu(a); break;
     case TB_MENU_SETUP: setup_menu(a); break;
     case TB_MENU_FORGET: forget_menu(a); break;
+    case TB_MENU_DISPLAY: display_menu(a); break;
     case TB_MENU_NONE: break;
     }
 }

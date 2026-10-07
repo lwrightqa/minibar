@@ -17,13 +17,15 @@ extern "C" {
 
 typedef enum {
     TB_MENU_NONE = 0,
-    TB_MENU_QUICK,          /* Light, Calendar (or Show again), Wi-Fi, Power, Done */
+    TB_MENU_QUICK,          /* Display, Calendar (or Show again), Wi-Fi, Power, Done */
     TB_MENU_TIMER,          /* Skip, +5 (mid-phase only), Stop, Settings (or Show again), Done */
     TB_MENU_TIMER_SETTINGS, /* Auto-start, Ticking, Back */
     TB_MENU_WIFI,           /* Network (read-only, two columns), Devices, Set up / Change, Back: the five-column grid */
     TB_MENU_POWER,          /* Restart, Power off, Back */
     TB_MENU_SETUP,          /* on the Wi-Fi setup screens: Skip, QR code, Done */
     TB_MENU_FORGET,         /* Devices' confirmation: Paired (read-only), Forget all (danger), Keep (proposed) */
+    TB_MENU_DISPLAY,        /* the quick menu's Display tile: Light, Chime, Time, Back (decisions.md; Theme and Tap sound
+                             * join it when the bar has them) */
 } tb_menu_kind_t;
 
 typedef enum {
@@ -48,6 +50,10 @@ typedef enum {
     TB_ACT_DEVICES,         /* the Devices tile: opens the Forget all confirmation (api.md 4.8, proposed) */
     TB_ACT_FORGET_ALL,      /* forget every paired device (a tap in the first 600 ms is ignored) */
     TB_ACT_KEEP_DEVICES,    /* back to the Wi-Fi menu without forgetting */
+    TB_ACT_DISPLAY,         /* the quick menu's Display tile: opens the Display menu */
+    TB_ACT_QUICK_MENU,      /* the Display menu's Back: the quick menu again */
+    TB_ACT_TIME_FMT,        /* the Time tile: 12-hour <-> 24-hour, the menu stays open */
+    TB_ACT_MEET_CHIME,      /* the Chime tile: the meeting chime on <-> off, the menu stays open */
 } tb_action_t;
 /* A tap on a read-only tile (TB_ACT_NONE) closes the menu, as in the mock-up (the Network tile has no data-action). */
 

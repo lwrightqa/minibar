@@ -73,6 +73,9 @@ public struct InfoReply: Codable, Hashable, Sendable {
     public var timeoutS: Int
     public var time: BarTime?
     public var timeSource: TimeSource
+    /// The bar's Time format (api.md 7.1, firmware 1.0.9): the Mac writes its clock times the same way, so the bar and
+    /// the menu never disagree. `nil` from firmware that doesn't send it (the Mac's own format then applies).
+    public var timeFormat: TimeFormat?
     /// Over USB, tells the app whether Wi-Fi is worth trying.
     public var wifi: WiFiState
 
@@ -91,7 +94,8 @@ public struct InfoReply: Codable, Hashable, Sendable {
         timeoutS: Int = TinyBarAPI.Defaults.timeoutSeconds,
         time: BarTime? = nil,
         timeSource: TimeSource = .ntp,
-        wifi: WiFiState = .connected
+        wifi: WiFiState = .connected,
+        timeFormat: TimeFormat? = nil
     ) {
         self.ok = true
         self.device = device
@@ -109,6 +113,7 @@ public struct InfoReply: Codable, Hashable, Sendable {
         self.time = time
         self.timeSource = timeSource
         self.wifi = wifi
+        self.timeFormat = timeFormat
     }
 
     enum CodingKeys: String, CodingKey {
@@ -122,6 +127,7 @@ public struct InfoReply: Codable, Hashable, Sendable {
         case time
         case timeSource = "time_source"
         case wifi
+        case timeFormat = "time_format"
     }
 
     /// The `device` field says this is a MiniBar, under either of its names:

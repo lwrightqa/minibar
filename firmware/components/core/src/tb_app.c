@@ -425,6 +425,7 @@ static bool silence(tb_app_t *a)
 static void flash(tb_app_t *a, const tb_clock_t *now)
 {
     a->flash_at = stamp(now);
+    a->flash_once = false;
     tb_bump(a);
 }
 
@@ -809,9 +810,17 @@ static uint8_t next_brightness(uint8_t cur)
 static void menu_action(tb_app_t *a, tb_action_t act, const tb_clock_t *now)
 {
     switch (act) {
+    case TB_ACT_DISPLAY: open_submenu(a, TB_MENU_DISPLAY, now); return;
+    case TB_ACT_QUICK_MENU: open_submenu(a, TB_MENU_QUICK, now); return;
     case TB_ACT_BRIGHT:
+        /* No toast: the screen itself shows the change. The Display menu stays open for the next step. */
         a->set.display.brightness = next_brightness(a->set.display.brightness);
-        show_menu(a, now);
+        open_submenu(a, TB_MENU_DISPLAY, now);
+        return;
+    case TB_ACT_TIME_FMT:
+        a->set.more.time_24h = !a->set.more.time_24h;
+        open_submenu(a, TB_MENU_DISPLAY, now);
+        toastf(a, now, "Time format \xC2\xB7 %s", a->set.more.time_24h ? "24-hour" : "12-hour");
         return;
     case TB_ACT_POWER: open_submenu(a, TB_MENU_POWER, now); return;
     case TB_ACT_WIFI: open_submenu(a, TB_MENU_WIFI, now); return;
@@ -1062,7 +1071,8 @@ static uint32_t visible_sig(const tb_app_t *a)
                   (int64_t)st->pomodoro.chime << 33 | (int64_t)st->pomodoro.ticking << 34 |
                   (int64_t)st->pomodoro.tick_volume << 35 | (int64_t)st->display.brightness << 40 |
                   (int64_t)st->automatic.calendar << 48 | (int64_t)st->automatic.mac << 49 |
-                  (int64_t)st->automatic.meeting_titles << 50);
+                  (int64_t)st->automatic.meeting_titles << 50 | (int64_t)st->more.time_24h << 51 |
+                  (int64_t)st->more.meeting_chime << 52);
     h_str(&s, st->device.name);
     h_str(&s, st->device.time_zone);
     h_i64(&s, a->menu.kind);
@@ -1674,6 +1684,12 @@ tb_err_t tb_app_remote_settings(tb_app_t *a, const tb_settings_patch_t *p, const
     if (p->has_brightness) {
         a->set.display.brightness = want.display.brightness;
         toastf(a, now, "Light %d%%", a->set.display.brightness);    /* new copy, named like the quick menu's Light tile */
+    }
+    if (p->has_time_24h && want.more.time_24h != a->set.more.time_24h) {
+        /* The value it already has changes nothing. A change from the Remote or the API never clicks; the bar says it with a toast, like the Time tile. */
+        a->set.more.time_24h = want.more.time_24h;
+        tb_bump(a);
+        toastf(a, now, "Time format \xC2\xB7 %s", a->set.more.time_24h ? "24-hour" : "12-hour");
     }
     if (p->has_name) tb_strlcpy(a->set.device.name, want.device.name, sizeof(a->set.device.name));
     if (p->has_time_zone) tb_strlcpy(a->set.device.time_zone, want.device.time_zone, sizeof(a->set.device.time_zone));

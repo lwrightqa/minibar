@@ -1,4 +1,6 @@
 /* Settings: every range edge of api.md 10.1, the name counted in characters, sanitize, equal. */
+#include <stddef.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "tb_settings.h"
@@ -107,4 +109,100 @@ TB_TEST(settings_sanitize_and_equal)
     TB_FALSE(tb_settings_equal(&s, &d));
     tb_settings_defaults(&s, "ab");                 /* a short id falls back to 0000 */
     TB_EQ_STR(s.device.name, "MiniBar 0000");
+}
+
+/* ---------- the saved blob, and the two settings added in 1.0.9 ---------- */
+
+TB_TEST(settings_new_fields_defaults_and_patch)
+{
+    tb_settings_t s;
+    tb_settings_defaults(&s, "f412fa3f2a1c");
+    TB_FALSE(s.more.time_24h);          /* 12-hour: today's behavior */
+    TB_TRUE(s.more.meeting_chime);      /* on by default (decisions.md, Meeting-start sound) */
+    tb_settings_patch_t p;
+    memset(&p, 0, sizeof p);
+    p.has_time_24h = true;
+    p.v.more.time_24h = true;
+    TB_EQ_INT(tb_settings_check(&p, false, NULL), TB_OK);
+    tb_settings_t t = s;
+    tb_settings_apply(&t, &p);
+    TB_TRUE(t.more.time_24h);
+    TB_TRUE(t.more.meeting_chime);      /* only its own field */
+    TB_FALSE(tb_settings_equal(&s, &t));
+    memset(&p, 0, sizeof p);
+    p.has_meeting_chime = true;
+    p.v.more.meeting_chime = false;
+    tb_settings_apply(&t, &p);
+    TB_FALSE(t.more.meeting_chime);
+    TB_TRUE(t.more.time_24h);
+}
+
+/* The blob is { uint32 version, tb_settings_t }. */
+static size_t pack(unsigned char *out, const tb_settings_t *s, size_t n)
+{
+    uint32_t v = TB_SETTINGS_VERSION;
+    memset(out, 0, 4 + sizeof *s);
+    memcpy(out, &v, 4);
+    memcpy(out + 4, s, sizeof *s);
+    return n;
+}
+
+TB_TEST(settings_unpack_from_a_1_0_8_blob_keeps_everything_and_defaults_the_new_ones)
+{
+    tb_settings_t saved;
+    tb_settings_defaults(&saved, "f412fa3f2a1c");
+    saved.pomodoro.focus_min = 50;
+    saved.display.brightness = 100;
+    saved.automatic.meeting_titles = true;
+    snprintf(saved.device.name, sizeof saved.device.name, "Desk bar");
+    snprintf(saved.device.time_zone, sizeof saved.device.time_zone, "Europe/Berlin");
+    saved.more.time_24h = true;         /* garbage in the bytes an old firmware never wrote must not count */
+    saved.more.meeting_chime = false;
+    unsigned char blob[4 + sizeof(tb_settings_t)];
+    size_t legacy = tb_settings_legacy_blob_bytes();
+    TB_TRUE(legacy < 4 + sizeof(tb_settings_t));     /* the two sizes differ, so a blob's size says which firmware wrote it */
+    pack(blob, &saved, legacy);
+    tb_settings_t out;
+    tb_settings_defaults(&out, "f412fa3f2a1c");
+    TB_TRUE(tb_settings_unpack(&out, blob, legacy));
+    TB_EQ_INT(out.pomodoro.focus_min, 50);
+    TB_EQ_INT(out.display.brightness, 100);
+    TB_TRUE(out.automatic.meeting_titles);
+    TB_EQ_STR(out.device.name, "Desk bar");
+    TB_EQ_STR(out.device.time_zone, "Europe/Berlin");
+    TB_FALSE(out.more.time_24h);        /* absent = 12-hour */
+    TB_TRUE(out.more.meeting_chime);    /* absent = on */
+}
+
+TB_TEST(settings_unpack_current_blob_and_refusals)
+{
+    tb_settings_t saved, out;
+    tb_settings_defaults(&saved, "f412fa3f2a1c");
+    saved.more.time_24h = true;
+    saved.more.meeting_chime = false;
+    unsigned char blob[4 + sizeof saved];
+    pack(blob, &saved, sizeof blob);
+    tb_settings_defaults(&out, "f412fa3f2a1c");
+    TB_TRUE(tb_settings_unpack(&out, blob, sizeof blob));
+    TB_TRUE(out.more.time_24h);
+    TB_FALSE(out.more.meeting_chime);
+    TB_TRUE(tb_settings_equal(&out, &saved));
+    /* a bool byte that isn't 0 or 1 reads as "not zero", never as an invalid bool */
+    blob[4 + offsetof(tb_settings_t, more.time_24h)] = 0x41;
+    blob[4 + offsetof(tb_settings_t, more.meeting_chime)] = 0x00;
+    tb_settings_defaults(&out, "f412fa3f2a1c");
+    TB_TRUE(tb_settings_unpack(&out, blob, sizeof blob));
+    TB_TRUE(out.more.time_24h);
+    TB_FALSE(out.more.meeting_chime);
+    /* refused: wrong size, wrong version, tiny, null; *out stays as it was */
+    tb_settings_defaults(&out, "f412fa3f2a1c");
+    out.pomodoro.focus_min = 33;
+    TB_FALSE(tb_settings_unpack(&out, blob, sizeof blob - 1));
+    TB_FALSE(tb_settings_unpack(&out, blob, sizeof blob + 1));
+    TB_FALSE(tb_settings_unpack(&out, blob, 3));
+    TB_FALSE(tb_settings_unpack(&out, blob, 0));
+    TB_FALSE(tb_settings_unpack(&out, NULL, sizeof blob));
+    blob[0] = 9;
+    TB_FALSE(tb_settings_unpack(&out, blob, sizeof blob));
+    TB_EQ_INT(out.pomodoro.focus_min, 33);
 }

@@ -138,7 +138,7 @@ public enum MenuPresenter {
         /// A clock time on the Mac's clock: "2:04 PM", or "2:31:04 PM" with seconds.
         func clock(_ date: Date, seconds: Bool = false) -> String {
             Formatting.clockTime(date.addingTimeInterval(clockOffset), timeZone: timeZone, locale: locale,
-                                 withSeconds: seconds)
+                                 withSeconds: seconds, timeFormat: connection.info?.timeFormat)
         }
 
         // MARK: Line 1 (4.2)
@@ -392,15 +392,24 @@ public enum Formatting {
         return "\(minutes)m"
     }
 
-    /// A clock time in the Mac's own format: "2:04 PM", or "14:04" on a
-    /// 24-hour Mac; with `withSeconds`, "2:31:04 PM".
+    /// A clock time: in the bar's Time format when the bar said it (`timeFormat`, from `info`): "2:04 PM" for
+    /// `"12h"`, "14:04" for `"24h"` (hour zero-padded, no AM or PM, as the bar writes it), whatever the Mac's own
+    /// setting is, so the menu and the bar never disagree. Without it (older firmware, or a value this app doesn't
+    /// know) the Mac's own format: "2:04 PM", or "14:04" on a 24-hour Mac. With `withSeconds`, "2:31:04 PM".
     public static func clockTime(_ date: Date, timeZone: TimeZone, locale: Locale = .autoupdatingCurrent,
-                                 withSeconds: Bool = false) -> String {
+                                 withSeconds: Bool = false, timeFormat: TimeFormat? = nil) -> String {
         let formatter = DateFormatter()
-        formatter.locale = locale
         formatter.timeZone = timeZone
         formatter.dateStyle = .none
-        formatter.timeStyle = withSeconds ? .medium : .short
+        if timeFormat == .h24 || timeFormat == .h12 {
+            // The bar's pattern, on a fixed locale so the Mac's region can't change it (digits, AM and PM symbols).
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            let seconds = withSeconds ? ":ss" : ""
+            formatter.dateFormat = timeFormat == .h24 ? "HH:mm\(seconds)" : "h:mm\(seconds) a"
+        } else {
+            formatter.locale = locale
+            formatter.timeStyle = withSeconds ? .medium : .short
+        }
         return formatter.string(from: date)
     }
 

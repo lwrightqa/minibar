@@ -288,6 +288,26 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   await sleep(300);
   check((await text('#pRead')) === 'Focus 1 of 4 · ready', 'stopped: ready');
 
+  // Display: Time format (decisions.md "Time format (2026-10-07)"): the page's own times follow the bar's setting
+  check(await vis('#timeSeg') && (await text('#lDisplay')) === 'Display', 'the Display section has the Time format choice');
+  check(await p.getAttribute('#timeSeg button[data-v="12h"]', 'aria-pressed') === 'true', 'Time format starts at 12-hour');
+  await noScroll('with the Display section');
+  await p.click('#timeSeg button[data-v="24h"]');
+  await sleep(900);
+  check(await p.getAttribute('#timeSeg button[data-v="24h"]', 'aria-pressed') === 'true', '24-hour pressed');
+  check(await p.getAttribute('#timeSeg button[data-v="12h"]', 'aria-pressed') === 'false', '12-hour released');
+  s = await state();
+  check(s.toast === 'Time format \u00b7 24-hour', 'the bar toasts the change: ' + s.toast);
+  const rows24 = await p.$$eval('#devList .dev', els => els.map(e => e.innerText.replace(/\s+/g, ' ').trim()));
+  check(/Paired today, \d\d:\d\d \u00b7 used just now$/.test(rows24[0]), 'the page writes its times in 24-hour too: ' + rows24[0]);
+  check(((await usb('GET', '/api/v1/settings')).settings || {}).display.time_format === '24h', 'settings say 24h');
+  check((await usb('GET', '/api/v1/info')).time_format === '24h', 'info says 24h');
+  await p.click('#timeSeg button[data-v="12h"]');
+  await sleep(900);
+  check(await p.getAttribute('#timeSeg button[data-v="12h"]', 'aria-pressed') === 'true', 'back to 12-hour');
+  const rows12 = await p.$$eval('#devList .dev', els => els.map(e => e.innerText.replace(/\s+/g, ' ').trim()));
+  check(/Paired today, \d+:\d\d [AP]M \u00b7 used just now$/.test(rows12[0]), 'and its times are 12-hour again: ' + rows12[0]);
+
   // Message: characters the bar can't draw are named as you type, and Show waits until they're gone
   s = await state();
   const idxBefore = s.idx;

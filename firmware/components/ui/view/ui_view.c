@@ -36,18 +36,28 @@ typedef struct {
     char s[16];
 } tstr;
 
+/* The Time format setting for the view being built (ui_view_build sets it from the settings; nothing else formats a
+ * time). The ui builds views on one task, so a file-level flag is enough. 24-hour: no AM or PM anywhere, so every
+ * AM/PM chip and suffix is "" and the time takes the room it had. */
+static bool h24;
+
 static tstr fmt(tb_epoch_t t)
 {
     tstr r;
-    tb_fmt_time(r.s, sizeof r.s, t);
+    tb_fmt_time(r.s, sizeof r.s, t, h24);
     return r;
 }
 
 static tstr fmt_short(tb_epoch_t t)
 {
     tstr r;
-    tb_fmt_time_short(r.s, sizeof r.s, t);
+    tb_fmt_time_short(r.s, sizeof r.s, t, h24);
     return r;
+}
+
+static const char *ampm_of(tb_epoch_t t)
+{
+    return tb_fmt_ampm(t, h24);
 }
 
 static tstr hm(int32_t mins)
@@ -246,7 +256,7 @@ static void own_view(ui_view_t *v, const tb_app_t *a, const tb_clock_t *now)
         } else if (nx) {
             const char *t = tb_app_title_of(a, nx);
             snprintf(foot, sizeof foot, "then %s", t[0] ? t : "a meeting");
-            side(v, "Free until", fmt_short(nx->start).s, tb_fmt_ampm(nx->start), foot, false);
+            side(v, "Free until", fmt_short(nx->start).s, ampm_of(nx->start), foot, false);
         } else if (!now->valid) {
             /* Proposed: meetings can't be placed until the clock is set. */
             side(v, "Free until", "Not known", NULL, "the clock isn't set yet", true);
@@ -278,8 +288,8 @@ static void own_view(ui_view_t *v, const tb_app_t *a, const tb_clock_t *now)
         const char *note = a->away_note[0] ? a->away_note : "Not at my desk";
         int hh, mm;
         if (a->away_back_at[0] && sscanf(a->away_back_at, "%d:%d", &hh, &mm) == 2) {
-            char head[32];
-            snprintf(head, sizeof head, "Back at %d:%02d", hh % 12 == 0 ? 12 : hh % 12, mm);
+            char head[32], t[8];
+            snprintf(head, sizeof head, "Back at %s", tb_fmt_hhmm(t, sizeof t, hh, mm, h24));
             status_main(v, "Away", head, UI_FIT_WORD, note);
         } else {
             status_main(v, "Status", "Away", UI_FIT_WORD, note);
@@ -312,7 +322,7 @@ static void own_view(ui_view_t *v, const tb_app_t *a, const tb_clock_t *now)
                 strftime(foot, sizeof foot, "%b ", &tm);
                 snprintf(foot + strlen(foot), sizeof foot - strlen(foot), "%d", tm.tm_mday);
             }
-            side(v, "Posted", fmt_short(a->message_at).s, tb_fmt_ampm(a->message_at), foot, false);
+            side(v, "Posted", fmt_short(a->message_at).s, ampm_of(a->message_at), foot, false);
         } else {
             side(v, "Posted", "Earlier", NULL, "", true);   /* Proposed: posted while the clock was unknown */
         }
@@ -328,7 +338,7 @@ static void own_view(ui_view_t *v, const tb_app_t *a, const tb_clock_t *now)
             char date[48];
             tb_fmt_date_long(date, sizeof date, now->wall);
             status_main(v, date, fmt_short(now->wall).s, UI_FIT_TIME, sub);
-            PUT(v->head_ampm, "%s", tb_fmt_ampm(now->wall));
+            PUT(v->head_ampm, "%s", ampm_of(now->wall));
         } else {
             /* Proposed (ARCHITECTURE.md 13.5): the clock's look before the time is known. */
             status_main(v, "Clock not set", "--:--", UI_FIT_TIME, sub);
@@ -345,7 +355,7 @@ static void own_view(ui_view_t *v, const tb_app_t *a, const tb_clock_t *now)
             const char *t = tb_app_title_of(a, nx), *place = tb_app_place_of(a, nx);
             if (t[0]) snprintf(foot, sizeof foot, "%s%s%s", t, place[0] ? " " MID_DOT " " : "", place);
             else snprintf(foot, sizeof foot, "meeting in %s", hm(tb_mins_up((nx->start - now->wall) * 1000)).s);
-            side(v, "Next up", fmt_short(nx->start).s, tb_fmt_ampm(nx->start), foot, false);
+            side(v, "Next up", fmt_short(nx->start).s, ampm_of(nx->start), foot, false);
             /* With 2 or more calendars saved, a small tag says which one it came from; with one nothing changes. */
             if (a->n_cals >= 2 && nx->cal < TB_CALS_MAX && a->cals[nx->cal].used) PUT(v->label_tag, "%s", a->cals[nx->cal].tag);
         } else if (!now->valid) {
@@ -399,7 +409,7 @@ static void auto_view(ui_view_t *v, const tb_app_t *a, const tb_clock_t *now, tb
     const char *t = tb_app_title_of(a, m), *place = tb_app_place_of(a, m);
     const tb_meeting_t *nx = tb_app_next_meeting(a, now);
     char span[48], next[200];
-    tb_fmt_span(span, sizeof span, m->start, m->end);
+    tb_fmt_span(span, sizeof span, m->start, m->end, h24);
     v->chip = UI_CHIP_CALENDAR;
     PUT(v->kicker, "%s%s", t[0] ? "In a meeting " MID_DOT " " : "", span);
     if (t[0]) {
@@ -489,6 +499,7 @@ static void pairing_view(ui_view_t *v, const tb_app_t *a, const tb_clock_t *now)
 void ui_view_build(const tb_app_t *a, const tb_clock_t *now, ui_view_t *v)
 {
     memset(v, 0, sizeof(*v));
+    h24 = a->set.more.time_24h;
     v->bar_permille = -1;
     v->key = tb_app_color_key(a, now);
     if (a->booting) {
@@ -562,7 +573,8 @@ void ui_overlay_build(const tb_app_t *a, const tb_clock_t *now, ui_overlay_t *o)
     }
     if (a->flash_at && !a->off) {
         tb_ms_t t = now->mono - a->flash_at;
-        if (t >= 0 && t < TB_FLASH_MS) {
+        /* The alarm flashes three times; a meeting's start flashes once (decisions.md, Meeting-start sound). */
+        if (t >= 0 && t < (a->flash_once ? TB_FLASH_ONCE_MS : TB_FLASH_MS)) {
             o->flash = true;
             o->flash_opa = ui_flash_opa(t);
         }

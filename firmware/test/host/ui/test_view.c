@@ -591,3 +591,82 @@ TB_TEST(view_clock_side_says_cant_sync_when_no_calendar_works)
     ui_view_build(&A, &NOW, &V);
     TB_EQ_STR(V.label, "Next up");
 }
+
+/* ---------- Time format 24-hour (decisions.md "Time format (2026-10-07)") ---------- */
+
+static void scene24(const char *name)
+{
+    scene(name);
+    A.set.more.time_24h = true;
+    ui_view_build(&A, &NOW, &V);
+}
+
+TB_TEST(view_24h_every_time_on_every_screen)
+{
+    scene24("clock");
+    MAIN("Sunday, October 4", "14:04", "Idle \xC2\xB7 1 Pomodoro done today");
+    TB_EQ_STR(V.head_ampm, "");                 /* no AM or PM chip: the time has the room it had */
+    TB_EQ_STR(V.sys_time, "14:04");
+    SIDE("Next up", "15:00", "", "meeting in 56m");
+    scene24("available");
+    SIDE("Available for", "12m", "", "since 13:52");
+    TB_EQ_STR(V.sys_time, "14:04");
+    scene24("available_free");
+    SIDE("Free until", "15:00", "", "then a meeting");
+    scene24("busy");
+    SIDE("Busy for", "12m", "", "since 13:52");
+    scene24("meeting_manual_next");
+    TB_EQ_STR(V.sub, "Next: Design review at 15:00");
+    scene24("message_short");
+    SIDE("Posted", "14:04", "", "today");
+    TB_EQ_STR(V.sys_time, "14:04");
+    scene24("meeting_cal");
+    MAIN("13:45\xE2\x80\x93" "14:30", "In a meeting", "Next meeting at 15:00");
+    SIDE("Ends in", "26m", "", "at 14:30");
+    scene24("meeting_cal_titles");
+    MAIN("In a meeting \xC2\xB7 13:45\xE2\x80\x93" "14:30", "Design review", "Room 4 \xC2\xB7 Next: 1:1 with Sam at 15:00");
+    scene24("away_back");
+    MAIN("Away", "Back at 14:30", "Grabbing lunch");
+    SIDE("Gone for", "8m", "", "left at 13:56");
+    scene24("call_meeting");
+    SIDE("Meeting ends in", "26m", "", "at 14:30 \xC2\xB7 call 12m");
+    scene24("pill_focus");
+    TB_EQ_STR(V.sys_time, "14:04");             /* next to the pill the 12-hour time drops its AM or PM; 24-hour is whole */
+    scene24("pomo_focus");
+    TB_EQ_STR(V.sub, "Please don't interrupt \xC2\xB7 break at 14:22");
+}
+
+TB_TEST(view_24h_away_back_at_is_zero_padded_and_midnight_is_zero)
+{
+    scene("away_back");
+    snprintf(A.away_back_at, sizeof A.away_back_at, "03:40");
+    ui_view_build(&A, &NOW, &V);
+    TB_EQ_STR(V.head, "Back at 3:40");          /* 12-hour: as before, no AM or PM */
+    A.set.more.time_24h = true;
+    ui_view_build(&A, &NOW, &V);
+    TB_EQ_STR(V.head, "Back at 03:40");         /* the case Bold Signal steps down to 62 px for (decisions.md) */
+    snprintf(A.away_back_at, sizeof A.away_back_at, "00:05");
+    ui_view_build(&A, &NOW, &V);
+    TB_EQ_STR(V.head, "Back at 00:05");
+    snprintf(A.away_back_at, sizeof A.away_back_at, "23:59");
+    ui_view_build(&A, &NOW, &V);
+    TB_EQ_STR(V.head, "Back at 23:59");
+    A.set.more.time_24h = false;
+    ui_view_build(&A, &NOW, &V);
+    TB_EQ_STR(V.head, "Back at 11:59");
+    snprintf(A.away_back_at, sizeof A.away_back_at, "00:05");
+    ui_view_build(&A, &NOW, &V);
+    TB_EQ_STR(V.head, "Back at 12:05");
+}
+
+TB_TEST(view_24h_clock_unset_and_toggle_redraws)
+{
+    scene24("clock_unset");
+    TB_EQ_STR(V.head, "--:--");
+    TB_EQ_STR(V.head_ampm, "");
+    scene("clock");
+    uint64_t k12 = ui_view_key(&A, &NOW);
+    TB_EQ_STR(V.head_ampm, "PM");
+    A.rev++;                                    /* what tb_app does when the setting changes */
+    TB_TRUE(ui_view_key(&A, &NOW) != k12);
+}

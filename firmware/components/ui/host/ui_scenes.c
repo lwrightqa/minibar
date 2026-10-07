@@ -1,4 +1,5 @@
 /* ui_scenes.c: see ui_scenes.h. Owner: ui builder. */
+#include <stdio.h>
 #include <string.h>
 
 #include "tb_fmt.h"
@@ -314,6 +315,33 @@ static void s_menu_quick(tb_app_t *a, tb_clock_t *n)
     calendar(a, n, false, SAMPLE, 3);
     hold_menu(a, n);
 }
+/* Firmware only (the mock-up's Display menu also has Theme and Tap sound, which the bar doesn't have yet). */
+static void s_menu_display(tb_app_t *a, tb_clock_t *n)
+{
+    base(a, n, TB_ST_AVAILABLE);
+    calendar(a, n, false, SAMPLE, 3);
+    hold_menu(a, n);
+    tap_action(a, n, TB_ACT_DISPLAY);
+}
+static void s_menu_display_24h(tb_app_t *a, tb_clock_t *n)
+{
+    s_menu_display(a, n);
+    tap_action(a, n, TB_ACT_TIME_FMT);
+}
+/* Time format 24-hour: the clock, and Away's longest headline (Bold Signal steps down to 62 px for it). */
+static void s_clock_24h(tb_app_t *a, tb_clock_t *n)
+{
+    s_clock(a, n);
+    a->set.more.time_24h = true;
+    a->rev++;
+}
+static void s_away_back_24h(tb_app_t *a, tb_clock_t *n)
+{
+    s_away_back(a, n);
+    snprintf(a->away_back_at, sizeof a->away_back_at, "03:40");
+    a->set.more.time_24h = true;
+    a->rev++;
+}
 static void s_menu_quick_offline(tb_app_t *a, tb_clock_t *n)
 {
     base(a, n, TB_ST_AVAILABLE);
@@ -623,6 +651,10 @@ const ui_scene_t ui_scenes[] = {
     {"setup_connected", "Wi-Fi setup: Connected", s_setup_connected, 0, false},
     {"setup_failed", "Wi-Fi setup: Couldn't connect", s_setup_failed, 0, false},
     {"menu_quick", "The quick menu", s_menu_quick, 0, false},
+    {"menu_display", "The Display menu (firmware only: Light, Time, Back)", s_menu_display, 0, false},
+    {"menu_display_24h", "The Display menu after Time is switched to 24-hr (toast over it)", s_menu_display_24h, 0, false},
+    {"clock_24h", "Clock with Time format 24-hour", s_clock_24h, 0, false},
+    {"away_back_24h", "Away, Back at 03:40 in 24-hour", s_away_back_24h, 0, false},
     {"menu_quick_offline", "The quick menu offline", s_menu_quick_offline, 0, false},
     {"menu_quick_nocal", "The quick menu without a calendar", s_menu_quick_nocal, 0, false},
     {"menu_quick_syncing", "The quick menu while syncing", s_menu_quick_syncing, 0, false},

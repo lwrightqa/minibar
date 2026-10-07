@@ -580,7 +580,7 @@ bar → mac  @tb {"id": 3, "ok": true, "device_id": "f412fa3f2a1c", "rev": 1843,
 
 ```text
 mac → bar  @tb {"cmd": "hello", "id": 1, "client": "6F1C2A9E-5B7D-4E0A-9C3B-2D8F1A7E4B60", "app_version": "1.0 (12)", "api": "1.0", "time": "2026-10-04T14:11:58-07:00", "time_zone": "America/Los_Angeles"}
-bar → mac  @tb {"id": 1, "ok": true, "device": "MiniBar", "device_id": "f412fa3f2a1c", "name": "MiniBar 2A1C", "fw": "1.0.0", "api": "1.0", "host": "minibar.local", "auth": "bearer", "pairing": "idle", "pairing_seq": null, "paired": 3, "heartbeat_s": 30, "timeout_s": 90, "time": "2026-10-04T14:11:58-07:00", "time_source": "ntp", "wifi": "connected"}
+bar → mac  @tb {"id": 1, "ok": true, "device": "MiniBar", "device_id": "f412fa3f2a1c", "name": "MiniBar 2A1C", "time_format": "12h", "fw": "1.0.0", "api": "1.0", "host": "minibar.local", "auth": "bearer", "pairing": "idle", "pairing_seq": null, "paired": 3, "heartbeat_s": 30, "timeout_s": 90, "time": "2026-10-04T14:11:58-07:00", "time_source": "ntp", "wifi": "connected"}
 ```
 
 The reply is the `info` object (7.1) plus `id`. A `hello` counts as a heartbeat and marks the Mac connected over USB, but doesn't change its call state; the app sends a `call` right after it.
@@ -662,7 +662,7 @@ When the app sees it, it sends `hello` and then its current call state at once, 
 No token needed. Who this bar is, before pairing. The USB `hello` reply is the same object.
 
 ```json
-{"ok": true, "device": "MiniBar", "device_id": "f412fa3f2a1c", "name": "MiniBar 2A1C", "fw": "1.0.0", "api": "1.0", "host": "minibar.local", "auth": "bearer", "pairing": "idle", "pairing_seq": null, "paired": 3, "heartbeat_s": 30, "timeout_s": 90, "time": "2026-10-04T14:11:58-07:00", "time_source": "ntp", "wifi": "connected"}
+{"ok": true, "device": "MiniBar", "device_id": "f412fa3f2a1c", "name": "MiniBar 2A1C", "time_format": "12h", "fw": "1.0.0", "api": "1.0", "host": "minibar.local", "auth": "bearer", "pairing": "idle", "pairing_seq": null, "paired": 3, "heartbeat_s": 30, "timeout_s": 90, "time": "2026-10-04T14:11:58-07:00", "time_source": "ntp", "wifi": "connected"}
 ```
 
 | Field | Meaning |
@@ -670,6 +670,7 @@ No token needed. Who this bar is, before pairing. The USB `hello` reply is the s
 | `device` | Always `"MiniBar"`. Firmware 1.0.2 and earlier answered `"TinyBar"`, the product's old name; a client that may meet one accepts both (14.6). |
 | `device_id` | 12 lowercase hex digits, the bar's Wi-Fi MAC address. The key clients store tokens under. |
 | `name` | The bar's name (`device.name`), also its mDNS instance name. |
+| `time_format` | `"12h"` or `"24h"`: the bar's Time format (`display.time_format`, 10.5), so the Mac app writes its clock times the way the bar does. Firmware 1.0.8 and earlier don't send it (the Mac's own format applies). Not secret, like the rest of this reply. *(Added with firmware 1.0.9.)* |
 | `fw`, `api` | Firmware and API versions. |
 | `host` | The mDNS name the bar has now. |
 | `auth` | `"bearer"` (pairing required) or `"none"` (4.1). |
@@ -888,7 +889,7 @@ Scope `full`.
   "ok": true,
   "settings": {
     "pomodoro": {"focus_min": 25, "short_min": 5, "long_min": 15, "long_every": 4, "auto_start": false, "chime": true, "ticking": false, "tick_volume": "soft"},
-    "display": {"brightness": 70},
+    "display": {"brightness": 70, "time_format": "12h"},
     "automatic": {"calendar": true, "mac": true, "meeting_titles": false},
     "device": {"name": "MiniBar 2A1C", "time_zone": "America/Los_Angeles"}
   }
@@ -906,6 +907,7 @@ Scope `full`.
 | `pomodoro.ticking` | boolean | `false` | Ticking during focus (decided 2026-10-04: optional, off by default). |
 | `pomodoro.tick_volume` | `"soft"` or `"medium"` | `"soft"` | Kept while ticking is off, as on the Remote. |
 | `display.brightness` | 10 to 100 (percent) | 70 | The bar's Light tile steps through 40, 70 and 100; from any other value its next tap goes to the next of those above it (from 100, to 40). |
+| `display.time_format` | `"12h"` or `"24h"` | `"12h"` | **Accepted, firmware 1.0.9, see 10.5.** 12-hour (3:30 PM) or 24-hour (15:30) for every time the bar and the Remote show. |
 | `display.theme` | `"bold_signal"` or `"low_glare_pixel"` (*open*) | `"bold_signal"` | **Proposed (2026-10-05), see 10.3.** The bar's look: Bold Signal, or Low Glare Pixel (the Low Glare layout set in Handjet). Not in the example above until it's approved. |
 | `sound.tap_sound` | boolean | `true` (**Proposed**) | **Proposed (2026-10-05), see 10.4.** Tap sound: a short, quiet click when the bar acts on a tap, swipe or hold on its screen. It's always silent during a call or meeting. Not in the example above until it's approved. |
 | `automatic.calendar` | boolean | `true` once an address is saved, `false` before | Calendar meetings. Can't be `true` with no address saved. |
@@ -1016,6 +1018,35 @@ bar → mac  @tb {"id": 9, "http_status": 200, "ok": true, "settings": {"pomodor
 - **Version:** a new group and field, so it's an addition under 2.1 (API 1.1). Clients that speak 1.0 ignore it.
 - **The Mac app needs nothing.** It doesn't read or change settings, and it ignores fields it doesn't know (2.1).
 - **The setup network (section 13) doesn't offer it.**
+
+### 10.5 `display.time_format`, 12-hour or 24-hour
+
+**Accepted (the user, 2026-10-07), in firmware 1.0.9.** Every time the bar shows, and every time the Remote and the Mac app write, follows one setting (`decisions.md`, Time format).
+
+| | |
+|---|---|
+| Name | `display.time_format` |
+| Values | `"12h"` (3:30 PM, the default) or `"24h"` (15:30). Exactly these two strings, in lower case. |
+| Default | `"12h"`, on a new bar and on a bar updated from firmware that had no such setting (it loses no other setting either). |
+| Read | `GET /api/v1/settings` (10.1): `settings.display.time_format`, always present; and `time_format` in `GET /api/v1/info` (7.1), which needs no token, for the Mac app. |
+| Change | `PATCH /api/v1/settings` (10.2), scope `full`; on the bar, the Time tile in the quick menu's Display menu (hold, then Display, then Time); on the Remote, Time format in its Display section. |
+
+```json
+{"display": {"time_format": "24h"}}
+```
+
+- **Checks:** a string that is exactly `"12h"` or `"24h"`. Anything else (`"24H"`, `"25h"`, `""`, a number, `true`, `null`, an array) is `400 bad_value` with `"field": "display.time_format"`, and nothing else in the request applies (10.2).
+
+  ```json
+  {"ok": false, "error": "bad_value", "message": "display.time_format must be \"12h\" or \"24h\".", "field": "display.time_format"}
+  ```
+
+- **What changes:** the clock, the status row's clock, a meeting's start and end ("14:30-15:15"), Next up, Free until, Posted, Away's "Back at", "since" and "left at", and the times in toasts and the Calendar tile's "synced at" foot. **24-hour has no AM or PM anywhere and zero-pads the hour** (09:05, 00:15, 23:59; midnight is 00:00, never 24:00). 12-hour is unchanged. The bar says "Time format · 24-hour" (or "12-hour") in a toast; the value it already has changes nothing and shows no toast. A change from the API or the Remote never clicks.
+- **What does not change:** times on the wire. `back_at` for Away stays `"HH:MM"`, 24-hour, in `POST /api/v1/status` (8.1), whatever the setting, and every `time`, `since`, `start`, `end` and the like stays RFC 3339 (2.3). Only how a screen writes them follows the setting.
+- **`rev`:** a change, including one made on the bar, bumps `rev` in `GET /api/v1/status` (7.3), so the Remote re-reads the settings within about 2 seconds.
+- **The Mac app follows it:** it reads `time_format` from `info` each time it connects (and again whenever it repeats `hello`), so "Paused until 15:15" matches the bar's own clock; with no `time_format` (older firmware) or a value it doesn't know, it keeps the Mac's own format. A change made while the Mac stays connected shows in its menu from its next `info`, not at once.
+- **Version:** a new field, an addition under 2.1 (API 1.1). Clients that speak 1.0 ignore it.
+- **The setup network (section 13) doesn't offer it.** A bar in Wi-Fi setup writes its times in the saved format.
 
 ---
 

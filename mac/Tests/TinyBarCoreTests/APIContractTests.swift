@@ -103,7 +103,7 @@ final class APIContractTests: XCTestCase {
         let callReply: Set = ["ok", "device_id", "showing", "screen", "stale", "call", "sources", "heartbeat_s", "timeout_s", "time"]
         let barCall: Set = ["active", "app", "inputs", "via", "since", "aside"]
         let info: Set = ["ok", "device", "device_id", "name", "fw", "api", "host", "auth", "pairing", "pairing_seq", "paired",
-                         "heartbeat_s", "timeout_s", "time", "time_source", "wifi"]
+                         "heartbeat_s", "timeout_s", "time", "time_source", "wifi", "time_format"]
         let status: Set = ["ok", "device_id", "rev", "time", "time_source", "showing", "screen", "own", "message", "away",
                            "call", "meeting", "pomodoro", "sources", "macs", "calendar", "wifi"]
         let pomodoro: Set = ["state", "phase", "round", "rounds", "length_s", "remaining_s", "ends_at", "paused_by",

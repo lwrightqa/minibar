@@ -254,6 +254,18 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
         <p class="field-err" id="msgErr" hidden></p>
       </form>
       <div>
+        <span class="field-label" id="lDisplay">Display</span>
+        <div class="auto-sec">
+          <div class="setting">
+            <span id="lTimeFmt">Time format</span>
+            <div class="seg" id="timeSeg" role="group" aria-labelledby="lDisplay lTimeFmt" aria-describedby="timeLine">
+              <button type="button" data-v="12h" aria-pressed="true">12-hour</button><button type="button" data-v="24h" aria-pressed="false">24-hour</button>
+            </div>
+          </div>
+          <p class="note-small" id="timeLine">12-hour shows 3:30 PM. 24-hour shows 15:30, with no AM or PM. It applies to the clock, meeting times, Next up and Away, here and on the bar.</p>
+        </div>
+      </div>
+      <div>
         <span class="field-label">Automatic status</span>
         <div class="auto-sec">
           <p class="note-small">Your calendar and your Mac can set the status for you, separately or together. Whatever you pick yourself wins until the call or meeting ends.</p>
@@ -350,10 +362,13 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
   // ---------- time, in the bar's own zone and against its clock ----------
   const barNow = () => Date.now() + skew;
   const parse = iso => iso ? Date.parse(iso) : NaN;
-  // fmt(): "2:04 PM" from the bar's own RFC 3339 time (its local time is in the string).
+  // fmt(): "2:04 PM" from the bar's own RFC 3339 time (its local time is in the string), or "14:04" when the bar's Time
+  // format (settings.display.time_format) is 24-hour, so this page and the bar never disagree.
+  const is24 = () => !!(set && set.display && set.display.time_format === '24h');
   function fmt(iso) {
     const m = iso && /T(\d\d):(\d\d)/.exec(iso);
     if (!m) return '';
+    if (is24()) return `${m[1]}:${m[2]}`;
     const h = +m[1];
     return `${h % 12 || 12}:${m[2]} ${h < 12 ? 'AM' : 'PM'}`;
   }
@@ -928,6 +943,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
       $('pSound').checked = set.pomodoro.chime;
       $('pTick').checked = set.pomodoro.ticking;
       pickSeg($('tickSeg'), set.pomodoro.tick_volume);
+      if (set.display) pickSeg($('timeSeg'), set.display.time_format);
       // The volume choice is dimmed and disabled while ticking is off, so it never reads as "ticking at Soft".
       $('tickSeg').querySelectorAll('button').forEach(b => { b.disabled = !set.pomodoro.ticking; });
       $('tickSeg').setAttribute('aria-disabled', String(!set.pomodoro.ticking));
@@ -1035,6 +1051,13 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
   $('pAuto').addEventListener('change', e => patch({ pomodoro: { auto_start: e.target.checked } }));
   $('pSound').addEventListener('change', e => patch({ pomodoro: { chime: e.target.checked } }));
   $('pTick').addEventListener('change', e => patch({ pomodoro: { ticking: e.target.checked } }));
+  $('timeSeg').addEventListener('click', async e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    const r = await patch({ display: { time_format: b.dataset.v } });
+    if (r.status === 200) renderDevices();      // its times (Paired today, 3:05 PM) are written with the new format at once
+    if (r.status === 200) phoneSay(`Time format: ${b.dataset.v === '24h' ? '24-hour' : '12-hour'}`);
+  });
   $('tickSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b && !b.disabled) patch({ pomodoro: { tick_volume: b.dataset.v } }); });
 
   let msgTouched = false;
