@@ -112,3 +112,7 @@ Rebuild the fixtures with `python3 firmware/test/host/calendar/fixtures/make_fix
   blocks for a tick after every 50 ms of work, from the fetch loop and, through the reader's tick hook, from inside
   one `cal_feed_write()` and its recurrence walks. The worst feed the budget allows takes about 0.1 s at -O2 on a
   desktop (`test_sec_review.c`), so a few seconds on the S3 at most; to be timed on the board.
+
+## Several calendars (1.0.8)
+
+`cal_list.h` (pure): up to 3 calendars with names and tags (add, edit, remove, the saved form, `cal_list_reconcile`) and `cal_merge()` (soonest first, one copy of the same UID and start from the earlier calendar, failing calendars left out, trimmed to 32). `cal_migrate.h` (pure, over `cal_kv_ops_t`): the single address of earlier firmware moves to a slot (write, read back, compare, erase the old key). `cal_sync.h`: `cal_sync_add/edit/remove_id/get_items`; the single-address functions remain for the old API and the setup page. Tests: `test_list.c`, `test_migrate.c`.

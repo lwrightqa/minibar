@@ -1021,7 +1021,9 @@ bar → mac  @tb {"id": 9, "http_status": 200, "ok": true, "settings": {"pomodor
 
 ## 11. Calendar
 
-All scope `full`. The secret address is **write-only**: once saved, no screen, page or reply shows it in full again (`decisions.md`). The bar keeps it encrypted (section 15).
+All scope `full`. The secret address is **write-only**: once saved, no screen, page or reply shows it, in full or masked (`decisions.md`). The bar keeps it encrypted (section 15).
+
+*(Firmware 1.0.8, 2026-10-07: the bar reads up to **3 calendars**, merged soonest first. Sections 11.1 to 11.4 are the earlier single-address calls, kept working; 11.5 is the list API for several. See `decisions.md`, Multiple calendars.)*
 
 ### 11.1 `GET /api/v1/calendar`
 
@@ -1030,7 +1032,7 @@ All scope `full`. The secret address is **write-only**: once saved, no screen, p
   "ok": true,
   "calendar": {
     "saved": true,
-    "address": {"host": "calendar.google.com", "file": "basic.ics", "ending": "3f2a"},
+    "address": null,
     "last_sync": "2026-10-04T14:20:00-07:00",
     "syncing": false,
     "error": null,
@@ -1047,11 +1049,11 @@ All scope `full`. The secret address is **write-only**: once saved, no screen, p
 
 | Field | Meaning |
 |---|---|
-| `saved` | An address is saved. When `false`, `address`, `last_sync`, `today` and `left_today` are `null`. |
-| `address` | The masked form the Remote shows ("calendar.google.com/…/basic.ics · ending 3f2a"): the host, the file name, and the last four characters of the private token in the path. Never the full address. *(2026-10-04, security review:)* some feeds use the private token as the file name (".../8c1d5e2a…3f2a.ics"). When the file name is long or looks random, `file` is just `"….ics"` and `ending` comes from it, so the token never shows. Short word-like names ("basic.ics", "calendar.ics", "team-standup.ics") still show. |
+| `saved` | At least one calendar is saved. When `false`, `last_sync`, `today` and `left_today` are `null`. With several calendars this object describes them as one: `last_sync` is the latest good sync, `error` the first calendar that can't sync, `today` and `left_today` the merged list. Per calendar: 11.5. |
+| `address` | **Always `null` since 1.0.8** (the key stays so clients that read it keep working). Not even the masked form is returned. *(Before 1.0.8:* the masked form the Remote showed ("calendar.google.com/…/basic.ics · ending 3f2a"): the host, the file name, and the last four characters of the private token in the path. Never the full address. *(2026-10-04, security review:)* some feeds use the private token as the file name (".../8c1d5e2a…3f2a.ics"). When the file name is long or looks random, `file` is just `"….ics"` and `ending` comes from it, so the token never shows. Short word-like names ("basic.ics", "calendar.ics", "team-standup.ics") still show.)* |
 | `last_sync`, `syncing` | The last successful sync, and whether one is running. |
 | `error` | The last sync's problem, or `null`: `{"error": code, "message": text, "at": time}` with a code from the table in 11.2. While it's set, the bar keeps following the last good copy. |
-| `check` | The result of the last `PUT` (11.2): `null`, or `{"state": "checking" \| "saved" \| "failed", "error": code or null, "message": text or null}`. Kept for 10 minutes. |
+| `check` | The result of the last `PUT` (11.2) or `POST /api/v1/calendars` (11.5): `null`, or `{"state": "checking" \| "saved" \| "failed", "error": code or null, "message": text or null}`. Kept for 10 minutes. |
 | `today` | Today's meetings that count (timed, shown as busy, not declined; `decisions.md`), still to come or in progress, in order. `title` and `location` follow Show meeting titles and Private, as in 7.3. *(2026-10-04, security review:)* the list stops before the reply would pass 8,192 bytes (2.5). Usually every meeting fits; on a very busy day with long titles shown, it holds the earliest ones (about 24 at the longest titles). |
 | `left_today` | How many there are, always all of them, so a `today` shorter than `left_today` was cut. |
 
@@ -1064,10 +1066,11 @@ All scope `full`. The secret address is **write-only**: once saved, no screen, p
 1. The bar checks the format at once, with the same rules as the Remote page. A `webcal://` address is turned into `https://`.
 2. It answers **`202`** and fetches the address once, in the background, to check it with the calendar's server.
 3. The client polls `GET /api/v1/calendar` until `check.state` is `"saved"` or `"failed"`.
-4. **Nothing changes until the check passes:** on `"failed"` the old address (if any) stays. On `"saved"` the new address replaces the old one, a first address turns Calendar meetings on, and the bar shows "Calendar synced · 3 meetings left today".
+4. With no calendar saved this adds one (named "Calendar 1"); with one saved it replaces that one's address; with two or three it answers `409 several_calendars` (use 11.5).
+5. **Nothing changes until the check passes:** on `"failed"` the old address (if any) stays. On `"saved"` the new address replaces the old one, a first address turns Calendar meetings on, and the bar shows "Calendar synced · 3 meetings left today".
 
 ```json
-{"ok": true, "calendar": {"saved": true, "address": {"host": "calendar.google.com", "file": "basic.ics", "ending": "3f2a"}, "last_sync": "2026-10-04T14:20:00-07:00", "syncing": true, "error": null, "check": {"state": "checking", "error": null, "message": null}, "today": [], "left_today": 0}}
+{"ok": true, "calendar": {"saved": true, "address": null, "last_sync": "2026-10-04T14:20:00-07:00", "syncing": true, "error": null, "check": {"state": "checking", "error": null, "message": null}, "today": [], "left_today": 0}}
 ```
 
 Format errors (`400`, at once, nothing saved):
@@ -1100,7 +1103,7 @@ Check results (in `check`, after the `202`), and the same codes for later syncs 
 
 ### 11.3 `DELETE /api/v1/calendar`: remove the address
 
-No body. Removes the address and the saved copy, turns Calendar meetings and Show meeting titles off, and ends a calendar meeting on screen (toast "Calendar removed"). The reply is the calendar object with `"saved": false`.
+No body. Removes the only calendar's address and saved copy, turns Calendar meetings and Show meeting titles off, and ends a calendar meeting on screen (toast "Calendar 1 removed", with the calendar's name). The reply is the calendar object with `"saved": false`. With two or three calendars saved: `409 several_calendars` (use `DELETE /api/v1/calendars/{id}`).
 
 ```json
 {"ok": true, "calendar": {"saved": false, "address": null, "last_sync": null, "syncing": false, "error": null, "check": null, "today": null, "left_today": null}}
@@ -1110,14 +1113,14 @@ No body. Removes the address and the saved copy, turns Calendar meetings and Sho
 
 ### 11.4 `POST /api/v1/calendar/sync`: Sync now
 
-An empty body or `{}`. Answers `202` with the calendar object (`"syncing": true`); the result shows in `last_sync` or `error`, and the bar toasts "Calendar synced".
+An empty body or `{}`. Syncs **every** calendar, one after another. Answers `202` with the calendar object (`"syncing": true`); the result shows in `last_sync` or `error` (and per calendar in 11.5), and the bar toasts "Calendar synced", or "Couldn't sync the calendar" if any failed.
 
 ```json
 {}
 ```
 
 ```json
-{"ok": true, "calendar": {"saved": true, "address": {"host": "calendar.google.com", "file": "basic.ics", "ending": "3f2a"}, "last_sync": "2026-10-04T14:20:00-07:00", "syncing": true, "error": null, "check": null, "today": [{"start": "2026-10-04T15:00:00-07:00", "end": "2026-10-04T15:45:00-07:00", "title": null, "location": null}], "left_today": 1}}
+{"ok": true, "calendar": {"saved": true, "address": null, "last_sync": "2026-10-04T14:20:00-07:00", "syncing": true, "error": null, "check": null, "today": [{"start": "2026-10-04T15:00:00-07:00", "end": "2026-10-04T15:45:00-07:00", "title": null, "location": null}], "left_today": 1}}
 ```
 
 | Error | When |
@@ -1126,6 +1129,49 @@ An empty body or `{}`. Answers `202` with the calendar object (`"syncing": true`
 | `503 offline` | The bar has no Wi-Fi. (Reachable over USB only, then.) |
 
 The bar also syncs on its own about every 10 minutes and switches into and out of In a meeting at each event's exact start and end from its saved copy (`decisions.md`).
+
+### 11.5 Several calendars (firmware 1.0.8)
+
+Up to **3 calendars**, each with a **name** (up to 24 characters, default "Calendar 1", "Calendar 2", the lowest number free) and a **tag** (up to 4 letters or digits, kept in capitals, default C1, C2, C3). Names and tags must differ from each other, compared without case. Both show on the bar and the Remote, so nothing private belongs in them. The bar merges the calendars' meetings soonest first; the same event in two calendars (same UID and start) shows once, with the earlier calendar's tag. A calendar that can't sync is **left out** of the bar until it works. With 2 or more calendars the bar's Next up carries the tag.
+
+An `id` is 1 to 3 and stays with a calendar until it's removed (ids don't shift). **No reply here has any part of an address**, only that one is saved.
+
+`GET /api/v1/calendars` and the replies of `POST`, `PATCH` and `DELETE` below:
+
+```json
+{
+  "ok": true,
+  "max": 3,
+  "syncing": false,
+  "calendars": [
+    {"id": 1, "name": "Work", "tag": "WRK", "address_saved": true, "last_sync": "2026-10-04T14:20:00-07:00", "syncing": false, "status": "ok", "error": null, "left_today": 3},
+    {"id": 3, "name": "Home", "tag": "HOM", "address_saved": true, "last_sync": "2026-10-04T13:58:00-07:00", "syncing": false, "status": "error",
+     "error": {"error": "calendar_unreachable", "message": "MiniBar couldn't reach the calendar's server. Try again in a minute.", "at": "2026-10-04T14:20:05-07:00"}, "left_today": 0}
+  ],
+  "check": null
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `calendars` | The saved calendars in list order (by `id`). |
+| `status` | `"ok"`, or `"error"` when its last sync failed; then `error` is as in 11.1 and its meetings are left out of the bar (`left_today` is 0). |
+| `left_today` | That calendar's own meetings still to come or in progress today. |
+| `check` | The last add or address change: `null`, or `{"state": "checking" \| "saved" \| "failed", "id": 2 or null, "error": code or null, "message": text or null}`. `id` is the calendar being changed, `null` for a new one. Kept 10 minutes. |
+
+**`POST /api/v1/calendars`**: add. Body `{"url": "...", "name": "Work", "tag": "WRK"}`; `name` and `tag` are optional. The format is checked at once (the errors of 11.2, plus `400 bad_value` with `field` `name` or `tag`), and a name or tag another calendar has gives `409 already_used`. At 3, `409 calendar_limit`. Then `202` with the list and `check.state` `"checking"`; the bar fetches the address once, and **only a good fetch adds the calendar** (poll `check`). A first calendar turns Calendar meetings on; the bar shows "Calendar synced · 3 meetings left today".
+
+**`PATCH /api/v1/calendars/{id}`**: change. Send at least one of `name`, `tag`, `url`. A new name or tag takes effect at once (`200`; the new tag reaches the bar's Next up). A `url` is checked like an add and replaces the saved address only if it works (`202`, poll `check` with its `id`); an empty or missing `url` keeps the saved address. `404 not_found` for an id that isn't saved.
+
+**`DELETE /api/v1/calendars/{id}`**: remove that calendar and its saved copy (`200` with the list). If the meeting on the bar came only from it, the meeting ends at once with the toast "Calendar 2 removed" (its name); a copy of the same event in another calendar carries on. Removing the last one turns Calendar meetings and Show meeting titles off, as 11.3 does. `404 not_found` if there's no such id.
+
+Sync now (11.4) reads every calendar. `GET /api/v1/status` has `calendar.count` and `calendar.failing`, and with 2 or more calendars each meeting object (`meeting.current`, `meeting.next`, `calendar.today`) has `"calendar": id`.
+
+| Error | When |
+|---|---|
+| `409 calendar_limit` | Already 3 calendars. |
+| `409 already_used` | Another calendar has that name or tag. |
+| `409 several_calendars` | `PUT` or `DELETE /api/v1/calendar` with 2 or 3 calendars saved. |
 
 ---
 
@@ -1440,6 +1486,10 @@ The body is the zip, byte for byte. The `ETag` is the zip's SHA-256 in 64 hex di
 | `PUT /api/v1/calendar` | `full` | `request` | 11.2 |
 | `DELETE /api/v1/calendar` | `full` | `request` | 11.3 |
 | `POST /api/v1/calendar/sync` | `full` | `request` | 11.4 |
+| `GET /api/v1/calendars` | `full` | `request` | 11.5 |
+| `POST /api/v1/calendars` | `full` | `request` | 11.5 |
+| `PATCH /api/v1/calendars/{id}` | `full` | `request` | 11.5 |
+| `DELETE /api/v1/calendars/{id}` | `full` | `request` | 11.5 |
 | `GET /api/v1/clients` | `full` | `request` | 12.1 |
 | `DELETE /api/v1/clients/{token_id}` | `full` | `request` | 12.2 |
 | `DELETE /api/v1/clients/self` | `call`, `full` | — (USB has no token) | 12.3 |
@@ -1474,6 +1524,7 @@ A method a path doesn't support gets `405 method_not_allowed` with an `Allow` he
 | 409 | `nothing_to_set_aside`, `nothing_set_aside` | 8.3. |
 | 409 | `not_running`, `nothing_to_extend` | 9.1. |
 | 409 | `no_calendar` | No calendar address saved. |
+| 409 | `calendar_limit`, `already_used`, `several_calendars` | Several calendars (11.5). |
 | 413 | `too_large` | Body or USB line too long. |
 | 415 | `unsupported_media_type` | The body isn't sent as `application/json`. |
 | 421 | `wrong_host` | The `Host` header isn't the bar's (2.2). |

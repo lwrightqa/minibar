@@ -30,6 +30,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "cal_list.h"
 #include "cal_url.h"
 #include "net_api.h"
 #include "net_pair.h"
@@ -54,6 +55,12 @@ static char s_join_ssid[33], s_join_pass[129];
 static tb_ms_t s_join_at, s_cal_at, s_sync_at;
 static bool s_cal_from_setup;
 static char s_cal_url[1100];
+/* Several calendars: by slot. Each has its own sample meetings, and every one has the "Standup" at +300 min, so the merge
+ * shows it once. An add or an address change is checked for 1.2 s first (it fails when the address ends in 0000/basic.ics). */
+static cal_items_t s_items;
+static struct { char url[1100]; bool failing; int shift; } s_slot[TB_CALS_MAX];
+static int s_chk_slot = -1;
+static char s_chk_name[100], s_chk_tag[40];
 static uint8_t s_tokens[NET_TOKEN_BLOB_MAX];
 static size_t s_tokens_n;
 
@@ -120,37 +127,174 @@ int net_port_cal_check(const char *url)
     return CAL_URL_OK;
 }
 
-int net_port_cal_put(const char *url, bool from_setup)
+/* The fake's list as the pure list logic (cal_list.h) sees it, so names and tags are checked by the real rules. */
+static void fake_list(cal_list_t *l)
 {
-    int e = net_port_cal_check(url);
-    if (e) return e;
+    cal_list_init(l);
+    for (int i = 0; i < TB_CALS_MAX; i++) {
+        if (!s_items.c[i].used) continue;
+        l->c[i].used = true;
+        tb_strlcpy(l->c[i].name, s_items.c[i].name, sizeof l->c[i].name);
+        tb_strlcpy(l->c[i].tag, s_items.c[i].tag, sizeof l->c[i].tag);
+    }
+}
+
+/* The summary status (GET /api/v1/calendar) from the items. */
+static void refresh_status(void)
+{
+    cal_check_state_t chk = s_cal.check;
+    const char *ce = s_cal.check_error;
+    char cm[sizeof s_cal.check_message];
+    memcpy(cm, s_cal.check_message, sizeof cm);
+    int cid = s_cal.check_id;
+    memset(&s_cal, 0, sizeof s_cal);
+    s_cal.check = chk;
+    s_cal.check_error = ce;
+    s_cal.check_id = cid;
+    memcpy(s_cal.check_message, cm, sizeof cm);
+    for (int i = 0; i < TB_CALS_MAX; i++) {
+        const cal_item_t *c = &s_items.c[i];
+        if (!c->used) continue;
+        s_cal.saved = true;
+        if (c->last_sync > s_cal.last_sync) s_cal.last_sync = c->last_sync;
+        if (c->failing && !s_cal.error) {
+            s_cal.error = c->error;
+            tb_strlcpy(s_cal.error_message, c->error_message, sizeof s_cal.error_message);
+            s_cal.error_at = c->error_at;
+        }
+    }
+    s_cal.syncing = s_cal.check == CAL_CHECK_CHECKING || s_sync_at != 0;
+}
+
+/* Merge the calendars' sample meetings into core, and tell it the list. */
+static void rebuild(const tb_clock_t *now, bool announce_removed_name_valid, const char *removed)
+{
+    static tb_meeting_t mine[TB_CALS_MAX][3], out[CAL_MERGE_CAP];
+    cal_source_t src[TB_CALS_MAX];
+    tb_cal_info_t info[TB_CALS_MAX];
+    int ns = 0;
+    memset(info, 0, sizeof info);
+    for (int i = 0; i < TB_CALS_MAX; i++) {
+        if (!s_items.c[i].used) continue;
+        static const char *const titles[] = {"Design review", "1:1 with Sam", "Planning"};
+        int starts[3] = {48 + s_slot[i].shift, 108 + s_slot[i].shift, 198};
+        for (int k = 0; k < 3; k++) {
+            memset(&mine[i][k], 0, sizeof mine[i][k]);
+            mine[i][k].id = k == 2 ? 5000 : (uint32_t)(1000 + i * 10 + k);
+            mine[i][k].start = now->wall + starts[k] * 60;
+            mine[i][k].end = mine[i][k].start + 30 * 60;
+            tb_strlcpy(mine[i][k].title, k == 2 ? "Standup" : titles[(i + k) % 3], sizeof mine[i][k].title);
+        }
+        info[i].used = true;
+        info[i].failing = s_slot[i].failing;
+        tb_strlcpy(info[i].name, s_items.c[i].name, sizeof info[i].name);
+        tb_strlcpy(info[i].tag, s_items.c[i].tag, sizeof info[i].tag);
+        src[ns++] = (cal_source_t){i, s_slot[i].failing, mine[i], 3};
+    }
+    int n = cal_merge(src, ns, out, TB_MEETINGS_MAX, now->wall);
+    if (announce_removed_name_valid) {
+        tb_app_calendar_removed(&s_app, removed, info, out, n, now);
+    } else {
+        tb_app_set_cal_list(&s_app, info, now);
+        tb_app_set_meetings(&s_app, out, n, now);
+    }
+}
+
+void net_port_cal_items(cal_items_t *out) { *out = s_items; }
+
+cal_res_t net_port_cal_add(const char *url, const char *name, const char *tag)
+{
+    cal_res_t res = {net_port_cal_check(url), 0};
+    if (res.url_err) return res;
+    cal_list_t l;
+    fake_list(&l);
+    res.list_err = (int)cal_list_add(&l, name, tag, NULL);
+    if (res.list_err) return res;
     tb_strlcpy(s_cal_url, url, sizeof s_cal_url);
-    s_cal_from_setup = from_setup;
+    s_chk_slot = -1;
+    tb_strlcpy(s_chk_name, name ? name : "", sizeof s_chk_name);
+    tb_strlcpy(s_chk_tag, tag ? tag : "", sizeof s_chk_tag);
     s_cal.check = CAL_CHECK_CHECKING;
     s_cal.check_error = NULL;
     s_cal.check_message[0] = '\0';
-    s_cal.syncing = true;
+    s_cal.check_id = 0;
     s_cal_at = now_clock().mono + 1200;
+    refresh_status();
     tb_clock_t now = now_clock();
     tb_app_set_calendar(&s_app, s_cal.saved, true, s_cal.last_sync, &now);
+    return res;
+}
+
+cal_res_t net_port_cal_edit(int id, const char *url, const char *name, const char *tag)
+{
+    cal_res_t res = {0, 0};
+    int slot = id - 1;
+    if (slot < 0 || slot >= TB_CALS_MAX || !s_items.c[slot].used) { res.list_err = CAL_LIST_NO_SUCH; return res; }
+    if (url && url[0] && (res.url_err = net_port_cal_check(url)) != 0) return res;
+    cal_list_t l;
+    fake_list(&l);
+    res.list_err = (int)cal_list_edit(&l, slot, name, tag);
+    if (res.list_err) return res;
+    tb_clock_t now = now_clock();
+    if (url && url[0]) {
+        tb_strlcpy(s_cal_url, url, sizeof s_cal_url);
+        s_chk_slot = slot;
+        tb_strlcpy(s_chk_name, name ? name : "", sizeof s_chk_name);
+        tb_strlcpy(s_chk_tag, tag ? tag : "", sizeof s_chk_tag);
+        s_cal.check = CAL_CHECK_CHECKING;
+        s_cal.check_error = NULL;
+        s_cal.check_message[0] = '\0';
+        s_cal.check_id = id;
+        s_cal_at = now.mono + 1200;
+        refresh_status();
+    } else {
+        tb_strlcpy(s_items.c[slot].name, l.c[slot].name, sizeof s_items.c[slot].name);
+        tb_strlcpy(s_items.c[slot].tag, l.c[slot].tag, sizeof s_items.c[slot].tag);
+        rebuild(&now, false, NULL);
+    }
+    return res;
+}
+
+int net_port_cal_remove_id(int id)
+{
+    int slot = id - 1;
+    if (slot < 0 || slot >= TB_CALS_MAX || !s_items.c[slot].used) return -1;
+    tb_clock_t now = now_clock();
+    char name[TB_CAL_NAME_BYTES];
+    tb_strlcpy(name, s_items.c[slot].name, sizeof name);
+    memset(&s_items.c[slot], 0, sizeof s_items.c[slot]);
+    memset(&s_slot[slot], 0, sizeof s_slot[slot]);
+    s_items.n--;
+    refresh_status();
+    rebuild(&now, true, name);
+    tb_app_set_calendar(&s_app, s_cal.saved, false, s_cal.last_sync, &now);
     return 0;
+}
+
+/* The single-address calls: the setup page always adds; PUT adds the first or replaces the only one. */
+int net_port_cal_put(const char *url, bool from_setup)
+{
+    int only = -1;
+    for (int i = 0; i < TB_CALS_MAX; i++)
+        if (s_items.c[i].used) only = i;
+    s_cal_from_setup = from_setup;
+    cal_res_t r = from_setup || only < 0 ? net_port_cal_add(url, NULL, NULL) : net_port_cal_edit(only + 1, url, NULL, NULL);
+    return r.url_err;
 }
 
 int net_port_cal_remove(void)
 {
-    if (!s_cal.saved) return -1;
-    memset(&s_cal, 0, sizeof s_cal);
-    tb_clock_t now = now_clock();
-    tb_app_calendar_event(&s_app, TB_CALEV_REMOVED, &now);
-    return 0;
+    for (int i = 0; i < TB_CALS_MAX; i++)
+        if (s_items.c[i].used) return net_port_cal_remove_id(i + 1);
+    return -1;
 }
 
 int net_port_cal_sync_now(void)
 {
     if (!s_cal.saved) return -1;
     if (!s_wifi.sta_up) return -2;
-    s_cal.syncing = true;
     s_sync_at = now_clock().mono + 1000;
+    refresh_status();
     return 0;
 }
 
@@ -234,36 +378,52 @@ static void sim_tick(const tb_clock_t *now)
     if (s_cal.check == CAL_CHECK_CHECKING && now->mono >= s_cal_at) {
         size_t n = strlen(s_cal_url);
         bool bad = n >= 14 && !strcmp(s_cal_url + n - 14, "0000/basic.ics");
-        s_cal.syncing = false;
         if (bad) {
             s_cal.check = CAL_CHECK_FAILED;
             s_cal.check_error = "calendar_rejected";
             snprintf(s_cal.check_message, sizeof s_cal.check_message,
                      "Google didn't recognize that address. It may have been reset in Google Calendar.");
+            refresh_status();
             tb_app_set_calendar(&s_app, s_cal.saved, false, s_cal.last_sync, now);
             if (s_cal_from_setup) tb_app_calendar_event(&s_app, TB_CALEV_SETUP_FAILED, now);
         } else {
+            cal_list_t l;
+            fake_list(&l);
+            int slot = s_chk_slot;
+            if (slot >= 0) cal_list_edit(&l, slot, s_chk_name, s_chk_tag);
+            else cal_list_add(&l, s_chk_name, s_chk_tag, &slot);
+            s_items.c[slot].used = true;
+            s_items.c[slot].id = slot + 1;
+            tb_strlcpy(s_items.c[slot].name, l.c[slot].name, sizeof s_items.c[slot].name);
+            tb_strlcpy(s_items.c[slot].tag, l.c[slot].tag, sizeof s_items.c[slot].tag);
+            s_items.c[slot].last_sync = now->wall;
+            s_items.c[slot].failing = false;
+            s_items.c[slot].error = NULL;
+            s_items.c[slot].left_today = 3;
+            s_items.n = 0;
+            for (int i = 0; i < TB_CALS_MAX; i++) s_items.n += s_items.c[i].used;
+            tb_strlcpy(s_slot[slot].url, s_cal_url, sizeof s_slot[slot].url);
+            s_slot[slot].failing = false;
+            s_slot[slot].shift = slot * 30;
             s_cal.check = CAL_CHECK_SAVED;
-            s_cal.saved = true;
-            /* the masked form the bar would show (calendar's cal_url_check) */
-            static cal_url_info_t info;
-            if (cal_url_check(s_cal_url, &info) == CAL_URL_OK) {
-                tb_strlcpy(s_cal.host, info.host, sizeof s_cal.host);
-                tb_strlcpy(s_cal.file, info.file, sizeof s_cal.file);
-                tb_strlcpy(s_cal.ending, info.ending, sizeof s_cal.ending);
-            }
-            s_cal.last_sync = now->wall;
-            int starts[] = {48, 108, 198};
-            sample_meetings(starts, 3, now);
+            s_cal.check_id = slot + 1;
+            refresh_status();
+            rebuild(now, false, NULL);
             tb_app_calendar_event(&s_app, TB_CALEV_SAVED, now);
             tb_app_set_calendar(&s_app, true, false, s_cal.last_sync, now);
         }
+        s_cal.syncing = s_sync_at != 0;
     }
     if (s_sync_at && now->mono >= s_sync_at) {
         s_sync_at = 0;
-        s_cal.syncing = false;
-        s_cal.last_sync = now->wall;
-        tb_app_calendar_event(&s_app, TB_CALEV_SYNCED, now);
+        bool any_bad = false;
+        for (int i = 0; i < TB_CALS_MAX; i++) {
+            if (!s_items.c[i].used) continue;
+            if (s_slot[i].failing) any_bad = true;
+            else s_items.c[i].last_sync = now->wall;
+        }
+        refresh_status();
+        tb_app_calendar_event(&s_app, any_bad ? TB_CALEV_SYNC_FAILED : TB_CALEV_SYNCED, now);
         tb_app_set_calendar(&s_app, true, false, s_cal.last_sync, now);
     }
 }
@@ -448,6 +608,21 @@ static void handle(int fd, bool *quit)
         s_cal.saved = true;
         sample_meetings(starts, n, &now);
         tb_app_set_calendar(&s_app, true, false, now.wall, &now);
+        respond(fd, 200, "text/plain", NULL, "ok", 2);
+    } else if (!strcmp(q.path, "/_sim/calfail") && q.body) {
+        /* body: "<id> <0|1>": that calendar can't sync (1) or works again (0): left out of the bar, its row says why */
+        int id = 0, on = 0;
+        sscanf(q.body, "%d %d", &id, &on);
+        if (id >= 1 && id <= TB_CALS_MAX && s_items.c[id - 1].used) {
+            cal_item_t *c = &s_items.c[id - 1];
+            s_slot[id - 1].failing = on;
+            c->failing = on;
+            c->error = on ? "calendar_unreachable" : NULL;
+            tb_strlcpy(c->error_message, on ? "MiniBar couldn't reach the calendar's server. Try again in a minute." : "", sizeof c->error_message);
+            c->error_at = on ? now.wall : 0;
+            refresh_status();
+            rebuild(&now, false, NULL);
+        }
         respond(fd, 200, "text/plain", NULL, "ok", 2);
     } else if (!strcmp(q.path, "/_sim/tap")) {
         tb_app_pointer(&s_app, true, 300, 80, TB_TILE_NONE, &now);

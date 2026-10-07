@@ -7,6 +7,8 @@
 #include "cal_url.h"
 #include "fake_port.h"
 #include "net_port.h"
+#include <stdio.h>
+
 #include "tb_text.h"
 
 /* 2026-10-04 14:12:00 -07:00 */
@@ -25,6 +27,10 @@ char fake_join_ssid[33], fake_join_user[129], fake_join_pass[129], fake_join_cal
 int fake_cal_put_calls;
 bool fake_cal_put_from_setup;
 int fake_cal_sync_result;
+cal_items_t fake_items;
+int fake_cal_add_calls, fake_cal_edit_calls, fake_cal_remove_calls;
+char fake_cal_last_url[1100], fake_cal_last_name[100], fake_cal_last_tag[40];
+int fake_cal_last_id;
 int fake_mac_time_calls;
 tb_epoch_t fake_mac_time;
 bool fake_mac_time_accept;
@@ -54,6 +60,10 @@ void fake_reset(void)
     fake_cal_put_calls = 0;
     fake_cal_put_from_setup = false;
     fake_cal_sync_result = 0;
+    memset(&fake_items, 0, sizeof fake_items);
+    fake_cal_add_calls = fake_cal_edit_calls = fake_cal_remove_calls = 0;
+    fake_cal_last_url[0] = fake_cal_last_name[0] = fake_cal_last_tag[0] = '\0';
+    fake_cal_last_id = 0;
     fake_mac_time_calls = 0;
     fake_mac_time = 0;
     fake_mac_time_accept = true;
@@ -151,6 +161,70 @@ int net_port_cal_sync_now(void)
 }
 
 void net_port_cal_status(cal_status_t *out) { *out = fake_cal; }
+
+void net_port_cal_items(cal_items_t *out) { *out = fake_items; }
+
+/* The fake's list as the pure list logic (cal_list.h) sees it, so names and tags are checked by the real rules. */
+static void fake_list(cal_list_t *l)
+{
+    cal_list_init(l);
+    for (int i = 0; i < TB_CALS_MAX; i++) {
+        if (!fake_items.c[i].used) continue;
+        l->c[i].used = true;
+        snprintf(l->c[i].name, sizeof l->c[i].name, "%s", fake_items.c[i].name);
+        snprintf(l->c[i].tag, sizeof l->c[i].tag, "%s", fake_items.c[i].tag);
+    }
+}
+
+cal_res_t net_port_cal_add(const char *url, const char *name, const char *tag)
+{
+    cal_res_t res = {net_port_cal_check(url), 0};
+    if (res.url_err) return res;
+    cal_list_t l;
+    fake_list(&l);
+    res.list_err = (int)cal_list_add(&l, name, tag, NULL);
+    if (res.list_err) return res;
+    fake_cal_add_calls++;
+    snprintf(fake_cal_last_url, sizeof fake_cal_last_url, "%s", url);
+    snprintf(fake_cal_last_name, sizeof fake_cal_last_name, "%s", name ? name : "");
+    snprintf(fake_cal_last_tag, sizeof fake_cal_last_tag, "%s", tag ? tag : "");
+    fake_cal.check = CAL_CHECK_CHECKING;
+    fake_cal.check_id = 0;
+    return res;
+}
+
+cal_res_t net_port_cal_edit(int id, const char *url, const char *name, const char *tag)
+{
+    cal_res_t res = {0, 0};
+    int slot = id - 1;
+    if (slot < 0 || slot >= TB_CALS_MAX || !fake_items.c[slot].used) { res.list_err = CAL_LIST_NO_SUCH; return res; }
+    if (url && url[0] && (res.url_err = net_port_cal_check(url)) != 0) return res;
+    cal_list_t l;
+    fake_list(&l);
+    res.list_err = (int)cal_list_edit(&l, slot, name, tag);
+    if (res.list_err) return res;
+    fake_cal_edit_calls++;
+    fake_cal_last_id = id;
+    snprintf(fake_cal_last_url, sizeof fake_cal_last_url, "%s", url ? url : "");
+    if (url && url[0]) {
+        fake_cal.check = CAL_CHECK_CHECKING;
+        fake_cal.check_id = id;
+    } else {
+        snprintf(fake_items.c[slot].name, sizeof fake_items.c[slot].name, "%s", l.c[slot].name);
+        snprintf(fake_items.c[slot].tag, sizeof fake_items.c[slot].tag, "%s", l.c[slot].tag);
+    }
+    return res;
+}
+
+int net_port_cal_remove_id(int id)
+{
+    int slot = id - 1;
+    if (slot < 0 || slot >= TB_CALS_MAX || !fake_items.c[slot].used) return -1;
+    memset(&fake_items.c[slot], 0, sizeof fake_items.c[slot]);
+    fake_items.n--;
+    fake_cal_remove_calls++;
+    return 0;
+}
 
 void net_port_random(void *buf, size_t n)
 {

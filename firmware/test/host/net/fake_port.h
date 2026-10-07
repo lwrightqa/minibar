@@ -19,6 +19,12 @@ extern char fake_join_ssid[33], fake_join_user[129], fake_join_pass[129], fake_j
 extern int fake_cal_put_calls;
 extern bool fake_cal_put_from_setup;
 extern int fake_cal_sync_result;        /* 0, -1 none saved, -2 offline */
+/* several calendars: the list the fake reports, and what the last add or edit was asked (an add or an edit with an
+ * address only starts a check; the test finishes it by changing fake_items and fake_cal.check itself) */
+extern cal_items_t fake_items;
+extern int fake_cal_add_calls, fake_cal_edit_calls, fake_cal_remove_calls;
+extern char fake_cal_last_url[1100], fake_cal_last_name[100], fake_cal_last_tag[40];
+extern int fake_cal_last_id;
 
 /* time */
 extern int fake_mac_time_calls;

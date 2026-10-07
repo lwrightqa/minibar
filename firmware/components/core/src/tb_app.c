@@ -1791,8 +1791,15 @@ static void take_cal_list(tb_app_t *a, const tb_cal_info_t c[TB_CALS_MAX])
         if (!c || !c[i].used) continue;
         a->cals[i].used = true;
         a->cals[i].failing = c[i].failing;
-        tb_strlcpy(a->cals[i].name, c[i].name, sizeof a->cals[i].name);
-        tb_strlcpy(a->cals[i].tag, c[i].tag, sizeof a->cals[i].tag);
+        char t[TB_CAL_NAME_BYTES + 1];  /* the source may lack its terminator: read no further than its array */
+        size_t n = strnlen(c[i].name, sizeof c[i].name);
+        memcpy(t, c[i].name, n);
+        t[n] = '\0';
+        tb_strlcpy(a->cals[i].name, t, sizeof a->cals[i].name);
+        n = strnlen(c[i].tag, sizeof c[i].tag);
+        memcpy(t, c[i].tag, n);
+        t[n] = '\0';
+        tb_strlcpy(a->cals[i].tag, t, sizeof a->cals[i].tag);
         a->n_cals++;
     }
     tb_bump(a);

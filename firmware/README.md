@@ -528,3 +528,12 @@ As of 2026-10-04, after the review round and the security review (details in ARC
   **Delete your `build-<name>/sdkconfig` (and `firmware/sdkconfig`) before building 1.0.2.** An existing sdkconfig
   keeps 1.0.1's +Y, and one older than `CONFIG_TINYBAR_LCD_TURN_180` also takes the turn on: +Y with the turn draws
   every pose upside down. The build warns (`board_imu.c`) unless the pair is −Y with the turn.
+
+## Version 1.0.8: several calendars (2026-10-07)
+
+- **What it does:** up to 3 calendars, merged soonest first (decisions.md, Multiple calendars). The Remote's Calendars list (name, tag, Address saved, per-row sync status, Edit, Remove, Add a calendar), the tag after Next up with 2 or more calendars, the quick menu's tile ("3 calendars", "2/3" with "C3 can't sync", "Error"), the clock's "Can't sync" side, and the toast "Calendar 2 removed". A calendar that can't sync is left out of the bar until it works.
+- **API:** `GET/POST /api/v1/calendars`, `PATCH/DELETE /api/v1/calendars/{id}` (api.md 11.5). The single-address calls still work with one calendar and answer `409 several_calendars` with more. **Change:** `calendar.address` is always null: not even the masked form is returned.
+- **Update:** the saved address becomes "Calendar 1" (tag C1) by itself, with its saved copy; nothing to re-enter. Settings, Wi-Fi and paired devices are untouched.
+- **Host tests:** core 170, calendar 87 (list, merge, de-duplication, failing calendar, migration with hostile inputs and injected write, read-back and erase failures), net 180 (8 new for the calendars endpoints), ui 32, board 53: 522 under AddressSanitizer and UBSan, no warnings. Page suites: Remote (calendars: add up to 3, duplicates, edit, failing rows, remove) and setup pass at 390 px.
+- **Build:** fresh `idf.py` build in `build-cal108`, no warnings; app 2,160,080 bytes (0x20f5d0), 66% of the slot free.
+- **Not verified on hardware:** the migration from a 1.0.7 bar's real NVS, three TLS fetches in a row (RAM peak, time), NVS space with three copies, the tag's position and look on the panel, a restart with calendars failing, and a second Remote seeing a rename.

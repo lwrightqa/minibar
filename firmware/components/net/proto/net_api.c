@@ -482,6 +482,8 @@ static cJSON *meeting_obj(const tb_meeting_t *m)
     add_time(o, "end", m->end);
     add_str0(o, "title", tb_app_title_of(s_app, m));
     add_str0(o, "location", tb_app_place_of(s_app, m));
+    /* with 2 or more calendars: which one the meeting came from (api.md 11.5), the id GET /api/v1/calendars lists */
+    if (s_app->n_cals >= 2) cJSON_AddNumberToObject(o, "calendar", m->cal + 1);
     return o;
 }
 
@@ -621,6 +623,10 @@ static uint32_t add_status(rt_t *r)
     add_time(cal, "last_sync", cs.saved ? cs.last_sync : 0);
     cJSON_AddBoolToObject(cal, "syncing", cs.syncing);
     add_str(cal, "error", cs.error);
+    cJSON_AddNumberToObject(cal, "count", a->n_cals);
+    int failing = 0;
+    for (int i = 0; i < TB_CALS_MAX; i++) failing += a->cals[i].used && a->cals[i].failing;
+    cJSON_AddNumberToObject(cal, "failing", failing);
 
     cJSON *wo = cJSON_AddObjectToObject(o, "wifi");
     cJSON_AddStringToObject(wo, "state", wifi_word(w.state));
@@ -693,14 +699,8 @@ static void add_calendar(rt_t *r, int status, int max_today)
     ok(r, status);
     cJSON *c = cJSON_AddObjectToObject(r->o, "calendar");
     cJSON_AddBoolToObject(c, "saved", cs.saved);
-    if (cs.saved) {
-        cJSON *ad = cJSON_AddObjectToObject(c, "address");
-        cJSON_AddStringToObject(ad, "host", cs.host);
-        cJSON_AddStringToObject(ad, "file", cs.file);
-        cJSON_AddStringToObject(ad, "ending", cs.ending);
-    } else {
-        cJSON_AddNullToObject(c, "address");
-    }
+    /* Since 1.0.8 no part of an address is ever returned, not even masked (api.md 11.1): the key stays, always null. */
+    cJSON_AddNullToObject(c, "address");
     add_time(c, "last_sync", cs.saved ? cs.last_sync : 0);
     cJSON_AddBoolToObject(c, "syncing", cs.syncing);
     if (cs.error) {
@@ -1139,6 +1139,21 @@ static bool cal_format_failed(rt_t *r, int e, const char *field)
     return true;
 }
 
+/* Calendars saved: 0, 1 or more. Before 1.0.8's single-address calls (PUT and DELETE /calendar) act on the only one. */
+static int cal_count(void)
+{
+    cal_items_t it;
+    net_port_cal_items(&it);
+    return it.n;
+}
+
+static bool several(rt_t *r)
+{
+    if (cal_count() < 2) return false;
+    fail(r, 409, "several_calendars", "More than one calendar is saved. Use /api/v1/calendars/{id}.", NULL);
+    return true;
+}
+
 static void h_cal_put(rt_t *r, cJSON *b)
 {
     if (!need_body(r, b)) return;
@@ -1147,6 +1162,7 @@ static void h_cal_put(rt_t *r, cJSON *b)
     if (f != F_OK || !url[0]) { bad_request(r, "url", cal_url_err_message(CAL_URL_EMPTY)); return; }
     if (strlen(url) > CAL_URL_MAX) { bad_value(r, "url", "The address can be up to 1024 bytes."); return; }
     if (cal_format_failed(r, net_port_cal_check(url), "url")) return;
+    if (several(r)) return;
     if (cal_format_failed(r, net_port_cal_put(url, false), "url")) return;
     add_calendar(r, 202, TB_MEETINGS_MAX);
 }
@@ -1154,6 +1170,7 @@ static void h_cal_put(rt_t *r, cJSON *b)
 static void h_cal_delete(rt_t *r, cJSON *b)
 {
     (void)b;
+    if (several(r)) return;
     if (net_port_cal_remove() != 0) { fail(r, 409, "no_calendar", "No calendar address is saved.", NULL); return; }
     add_calendar(r, 200, TB_MEETINGS_MAX);
 }
@@ -1165,6 +1182,143 @@ static void h_cal_sync(rt_t *r, cJSON *b)
     if (e == -1) { fail(r, 409, "no_calendar", "No calendar address is saved.", NULL); return; }
     if (e == -2) { fail(r, 503, "offline", "MiniBar has no Wi-Fi, so it can't sync.", NULL); return; }
     add_calendar(r, 202, TB_MEETINGS_MAX);
+}
+
+/* ---------- several calendars (api.md 11.5) ---------- */
+
+/* GET /api/v1/calendars and the replies of POST, PATCH and DELETE: every calendar by id, never an address. */
+static void add_calendars(rt_t *r, int status)
+{
+    cal_items_t it;
+    cal_status_t cs;
+    net_port_cal_items(&it);
+    net_port_cal_status(&cs);
+    ok(r, status);
+    cJSON_AddNumberToObject(r->o, "max", TB_CALS_MAX);
+    cJSON_AddBoolToObject(r->o, "syncing", cs.syncing);
+    cJSON *arr = cJSON_AddArrayToObject(r->o, "calendars");
+    for (int i = 0; i < TB_CALS_MAX; i++) {
+        const cal_item_t *c = &it.c[i];
+        if (!c->used) continue;
+        cJSON *o = cJSON_CreateObject();
+        cJSON_AddNumberToObject(o, "id", c->id);
+        cJSON_AddStringToObject(o, "name", c->name);
+        cJSON_AddStringToObject(o, "tag", c->tag);
+        cJSON_AddBoolToObject(o, "address_saved", true);
+        add_time(o, "last_sync", c->last_sync);
+        cJSON_AddBoolToObject(o, "syncing", c->syncing);
+        cJSON_AddStringToObject(o, "status", c->failing ? "error" : "ok");
+        if (c->error) {
+            cJSON *e = cJSON_AddObjectToObject(o, "error");
+            cJSON_AddStringToObject(e, "error", c->error);
+            add_str0(e, "message", c->error_message);
+            add_time(e, "at", c->error_at);
+        } else {
+            cJSON_AddNullToObject(o, "error");
+        }
+        cJSON_AddNumberToObject(o, "left_today", c->left_today);
+        cJSON_AddItemToArray(arr, o);
+    }
+    if (cs.check != CAL_CHECK_NONE) {
+        static const char *const st[] = {NULL, "checking", "saved", "failed"};
+        cJSON *k = cJSON_AddObjectToObject(r->o, "check");
+        cJSON_AddStringToObject(k, "state", st[cs.check]);
+        if (cs.check_id) cJSON_AddNumberToObject(k, "id", cs.check_id);
+        else cJSON_AddNullToObject(k, "id");
+        add_str(k, "error", cs.check_error);
+        add_str0(k, "message", cs.check_message);
+    } else {
+        cJSON_AddNullToObject(r->o, "check");
+    }
+}
+
+static void h_cals_get(rt_t *r, cJSON *b)
+{
+    (void)b;
+    add_calendars(r, 200);
+}
+
+/* A name or tag from the body: absent or null is "not given"; anything but a string is a type error. */
+static bool cal_text_field(rt_t *r, const cJSON *b, const char *k, const char **out, size_t max)
+{
+    *out = NULL;
+    fstat_t f = get_str(b, k, out);
+    if (f == F_TYPE) {
+        char m[48];
+        snprintf(m, sizeof m, "\"%s\" must be a string.", k);
+        bad_request(r, k, m);
+        return false;
+    }
+    if (f == F_OK && strlen(*out) > max) {
+        char m[64];
+        snprintf(m, sizeof m, "\"%s\" is too long.", k);
+        bad_value(r, k, m);
+        return false;
+    }
+    return true;
+}
+
+/* The error of a calendar change, or false when it started. */
+static bool cal_res_failed(rt_t *r, cal_res_t res)
+{
+    if (res.url_err) return cal_format_failed(r, res.url_err, "url");
+    switch ((cal_list_err_t)res.list_err) {
+    case CAL_LIST_OK: return false;
+    case CAL_LIST_FULL: fail(r, 409, "calendar_limit", cal_list_err_message(CAL_LIST_FULL), NULL); break;
+    case CAL_LIST_BAD_NAME: fail(r, 400, "bad_value", cal_list_err_message(CAL_LIST_BAD_NAME), "name"); break;
+    case CAL_LIST_BAD_TAG: fail(r, 400, "bad_value", cal_list_err_message(CAL_LIST_BAD_TAG), "tag"); break;
+    case CAL_LIST_DUP: fail(r, 409, "already_used", cal_list_err_message(CAL_LIST_DUP), NULL); break;
+    case CAL_LIST_NO_SUCH: fail(r, 404, "not_found", cal_list_err_message(CAL_LIST_NO_SUCH), "id"); break;
+    }
+    return true;
+}
+
+static void h_cals_post(rt_t *r, cJSON *b)
+{
+    if (!need_body(r, b)) return;
+    const char *url = NULL, *name, *tag;
+    fstat_t f = get_str(b, "url", &url);
+    if (f != F_OK || !url[0]) { bad_request(r, "url", cal_url_err_message(CAL_URL_EMPTY)); return; }
+    if (strlen(url) > CAL_URL_MAX) { bad_value(r, "url", "The address can be up to 1024 bytes."); return; }
+    if (!cal_text_field(r, b, "name", &name, 96) || !cal_text_field(r, b, "tag", &tag, 32)) return;
+    if (cal_res_failed(r, net_port_cal_add(url, name, tag))) return;
+    add_calendars(r, 202);
+}
+
+/* The {id} of /api/v1/calendars/{id}: 1 to 3, else 0. */
+static int cal_id_param(const rt_t *r)
+{
+    const char *p = r->param;
+    if (p[0] < '1' || p[0] > '0' + TB_CALS_MAX || p[1]) return 0;
+    return p[0] - '0';
+}
+
+static void h_cals_patch(rt_t *r, cJSON *b)
+{
+    if (!need_body(r, b)) return;
+    int id = cal_id_param(r);
+    if (!id) { fail(r, 404, "not_found", "There's no calendar with that id.", "id"); return; }
+    const char *url = NULL, *name, *tag;
+    fstat_t f = get_str(b, "url", &url);
+    if (f == F_TYPE) { bad_request(r, "url", "\"url\" must be a string or null."); return; }
+    if (f == F_OK && strlen(url) > CAL_URL_MAX) { bad_value(r, "url", "The address can be up to 1024 bytes."); return; }
+    if (!cal_text_field(r, b, "name", &name, 96) || !cal_text_field(r, b, "tag", &tag, 32)) return;
+    bool has_url = f == F_OK && url[0];
+    if (!has_url && !(name && name[0]) && !(tag && tag[0])) {
+        bad_request(r, NULL, "Send at least one of \"name\", \"tag\" or \"url\".");
+        return;
+    }
+    if (has_url && cal_format_failed(r, net_port_cal_check(url), "url")) return;
+    if (cal_res_failed(r, net_port_cal_edit(id, has_url ? url : NULL, name, tag))) return;
+    add_calendars(r, has_url ? 202 : 200);      /* a new address is checked first, in the background */
+}
+
+static void h_cals_delete(rt_t *r, cJSON *b)
+{
+    (void)b;
+    int id = cal_id_param(r);
+    if (!id || net_port_cal_remove_id(id) != 0) { fail(r, 404, "not_found", "There's no calendar with that id.", "id"); return; }
+    add_calendars(r, 200);
 }
 
 /* ---------- section 4: pairing ---------- */
@@ -1575,6 +1729,10 @@ static const route_t ROUTES[] = {
     {"PUT", "/api/v1/calendar", NEED_FULL, h_cal_put},
     {"DELETE", "/api/v1/calendar", NEED_FULL, h_cal_delete},
     {"POST", "/api/v1/calendar/sync", NEED_FULL, h_cal_sync},
+    {"GET", "/api/v1/calendars", NEED_FULL, h_cals_get},
+    {"POST", "/api/v1/calendars", NEED_FULL, h_cals_post},
+    {"PATCH", "/api/v1/calendars/*", NEED_FULL, h_cals_patch},
+    {"DELETE", "/api/v1/calendars/*", NEED_FULL, h_cals_delete},
     {"GET", "/api/v1/clients", NEED_FULL, h_clients},
     {"DELETE", "/api/v1/clients/self", NEED_CALL, h_client_self},
     {"DELETE", "/api/v1/clients/*", NEED_FULL, h_client_delete},

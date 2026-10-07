@@ -91,6 +91,36 @@ void net_port_cal_status(cal_status_t *out)
     cal_sync_get_status(out);
 }
 
+void net_port_cal_items(cal_items_t *out)
+{
+    cal_sync_get_items(out);
+}
+
+static cal_res_t cal_res_of(esp_err_t e, cal_res_t res)
+{
+    if (e == ESP_OK) return (cal_res_t){0, 0};
+    if (e == ESP_ERR_NOT_FOUND) return (cal_res_t){0, CAL_LIST_NO_SUCH};
+    if (!res.url_err && !res.list_err) res.url_err = (int)CAL_URL_NOT_A_URL;    /* no memory: the address couldn't be taken */
+    return res;
+}
+
+cal_res_t net_port_cal_add(const char *url, const char *name, const char *tag)
+{
+    cal_res_t res = {0, 0};
+    return cal_res_of(cal_sync_add(url, name, tag, false, &res), res);
+}
+
+cal_res_t net_port_cal_edit(int id, const char *url, const char *name, const char *tag)
+{
+    cal_res_t res = {0, 0};
+    return cal_res_of(cal_sync_edit(id, url, name, tag, &res), res);
+}
+
+int net_port_cal_remove_id(int id)
+{
+    return cal_sync_remove_id(id) == ESP_OK ? 0 : -1;
+}
+
 /* ---------- randomness, hashing, the token table ---------- */
 
 void net_port_random(void *buf, size_t n)

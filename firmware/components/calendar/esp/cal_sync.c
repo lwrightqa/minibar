@@ -24,6 +24,7 @@
  * silenced (cal_sync_init); this file logs results, sizes and error codes, and a calendar's tag, never its address.
  */
 #include <pthread.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
@@ -49,6 +50,7 @@
 #include "cal_url.h"
 #include "tb_app.h"
 #include "tb_bus.h"
+#include "tb_text.h"
 
 static const char *TAG = "cal";
 
@@ -508,21 +510,6 @@ static void yield_tick(void *ctx)
     y->since_us = esp_timer_get_time();
 }
 
-/* The address is a secret: copies are zeroed before they're freed. */
-static void free_secret(char *s)
-{
-    if (!s) return;
-    memset(s, 0, strlen(s));
-    free(s);
-}
-
-static void free_info(cal_url_info_t *info)
-{
-    if (!info) return;
-    memset(info, 0, sizeof(*info));
-    free(info);
-}
-
 typedef struct {
     tb_epoch_t ws, we, now;
     cal_tz_t tz;
@@ -775,7 +762,7 @@ static void run_check(char *url, int slot, const char *name, const char *tag, bo
         int sl = slot;
         if (sl >= 0 && !s.list.c[sl].used) {
             res = CAL_SYNC_UNREACHABLE;     /* the calendar was removed while its new address was being checked */
-            gone = true;
+            list_err = "That calendar was removed.";
         } else if (sl >= 0) {
             cal_list_edit(&s.list, sl, name, tag);
         } else {
@@ -1262,6 +1249,12 @@ esp_err_t cal_sync_remove_id(int id)
     c->error = NULL;
     c->error_message[0] = '\0';
     cal_list_remove(&s.list, slot);
+    bool more = s.check_url != NULL;
+    for (int i = 0; i < TB_CALS_MAX; i++) more = more || s.sl[i].sync_req || s.sl[i].syncing;
+    if (!more) {                /* a Sync now that was waiting only for this one has nothing left to report */
+        s.report = false;
+        s.report_ok = true;
+    }
     if (s.check_url && s.check_slot == slot) {      /* its new address was waiting for a check */
         free_secret(s.check_url);
         s.check_url = NULL;

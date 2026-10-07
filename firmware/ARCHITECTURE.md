@@ -34,7 +34,7 @@ Upright is the side buttons on top; see `components/board/README.md`, "Which way
 | core | `components/core/` | core builder | **yes** | `tb_app` (the device state machine), `tb_pomodoro`, `tb_settings`, `tb_menu`, `tb_gesture`, `tb_fmt`, `tb_text` |
 | ui | `components/ui/` | ui builder | `view/` yes | LVGL screens and overlays in Bold Signal; `ui_view` (what each screen says, as data); fonts; tomato images; host snapshot tool |
 | net | `components/net/` | net builder | `proto/` yes | Wi-Fi (station, WPA2-Enterprise, setup AP + DNS), mDNS, HTTP server, Remote and setup pages, USB serial, SNTP; `proto/`: the router, the Mac table, pairing |
-| calendar | `components/calendar/` | calendar builder | `src/` yes | Address checks, streaming ICS reader, RRULE, time zones; `esp/`: HTTPS sync service |
+| calendar | `components/calendar/` | calendar builder | `src/` yes | Address checks, the calendars list and merge, the move from one address, streaming ICS reader, RRULE, time zones; `esp/`: HTTPS sync service |
 | board | `components/board/` | board builder | no | Power hold, display + touch for LVGL, backlight, buttons, IMU flip, RTC, audio, device id, watchdog |
 
 Dependencies (an arrow means "includes the headers of"):
@@ -63,7 +63,7 @@ No cycles, and nothing depends on main. net doesn't call board: it posts `TB_EV_
 | usb_rx | net | 0 | 4 | 4 KB, **PSRAM** | Reads "@tb " lines (2 KB max), `tb_bus_exec(net_api_usb_line)`, writes the reply |
 | net | net | 0 | 4 | 4 KB, internal | Wi-Fi worker: saves credentials (tried again if the save fails) and the Wi-Fi skip, scans, opens the setup network (scan first, then the access point) and closes it after setup (checked against the driver's mode, tried again until it's down), starts mDNS and SNTP once online, hands the setup page's calendar address over |
 | dns | net | 0 | 5 | 4 KB, **PSRAM** | Setup mode only: port 53 on every address, answers the setup subnet's A queries with 4.3.2.1 (NODATA for other types); priority 5 as in ESP-IDF's captive_portal example |
-| cal_sync | calendar | 0 | 2 | 10 KB, internal | HTTPS fetch streamed through the ICS reader; one at a time; blocks a tick after every 50 ms of work, from inside recurrence expansion too (the reader's tick hook) |
+| cal_sync | calendar | 0 | 2 | 10 KB, internal | HTTPS fetch streamed through the ICS reader; one at a time, the (up to 3) calendars in list order, each with its own back-off, merged by `cal_merge()`; blocks a tick after every 50 ms of work, from inside recurrence expansion too (the reader's tick hook) |
 | tiT (lwIP tcpip) | IDF | **0** (pinned) | 18 | 4 KB | |
 | sys_evt (event loop) | IDF | 0 | 20 | 5 KB | runs net's Wi-Fi and IP handlers |
 | wifi, mdns, sntp | IDF | 0 | IDF defaults | IDF | |
@@ -152,6 +152,8 @@ setup screens restart at the QR code, set-aside is cleared, "Ready" or "Ready ·
 | `TB_EV_CAL_MEETINGS` | calendar | `tb_cal_meetings_t*` (malloc'ed) | `tb_app_set_meetings`, then `free` |
 | `TB_EV_CAL_STATUS` | calendar | saved, checking, last sync | `tb_app_set_calendar` |
 | `TB_EV_CAL_EVENT` | calendar | saved, setup failed, removed, synced | `tb_app_calendar_event` (the toasts) |
+| `TB_EV_CAL_LIST` | calendar | `tb_cal_list_t*` (malloc'ed): names, tags, which can't sync, by slot | `tb_app_set_cal_list`, then `free` |
+| `TB_EV_CAL_REMOVED` | calendar | `tb_cal_removed_t*`: the removed name, the list and the merged meetings without it | `tb_app_calendar_removed` ("Calendar 2 removed"; a meeting only that calendar supplied ends at once), then `free` |
 | `TB_EV_NOTIFY` | anyone | text | `tb_app_notify` |
 | `TB_EV_EXEC` | `tb_bus_exec` | fn, ctx | runs fn on the app task (the router); `tb_bus_receive` returns it as `TB_EV_NONE` |
 
@@ -513,9 +515,10 @@ that do I2C (the ISR is IRAM-safe and may read their buffers while the cache is 
 | `nvs` / `tinybar` | `state` (own status, last status, message, today's tomatoes, focused time, date) | main | 2 s after a change; and before power off and restart, always (with `settings`), so the focus minutes since the session started aren't lost (NVS skips an unchanged blob, so this costs no wear) |
 | `nvs` / `wifi` | `nets`: up to 5 saved networks (ssid, security, username, password, use counter; plain until NVS encryption is agreed), one blob of 100 to 300 bytes (1480 at most). Replaces the keys `ssid`, `user`, `pass`, `sec` of 1.0.4, which move into it at the first start of 1.0.5 | net | on a join that works (adds the network as the newest) and when a reconnect changes the order; a save that fails is tried again after 5 s, 30 s, 2, 10 and 30 min (1.0.4), since without it the next start opens the setup network |
 | `nvs` / `wifi` | `skipped`: Skip was the last Wi-Fi choice | net | on Skip; erased by Set up and a working join |
-| `nvs` / `cal` | `list`: the last good meetings list and its sync time, packed (`cal_store.h`; a few hundred bytes, at most 4.7 KB) | calendar | when the list changes |
+| `nvs` / `cal` | `list0` to `list2`: each calendar's last good meetings (at most 16) and sync time, packed (`cal_store.h`; a few hundred bytes, at most 4.7 KB each). `list` is the single copy of 1.0.7 and earlier, moved to a slot once | calendar | when that calendar's meetings change |
+| `nvs` / `cal` | `meta`: the calendars' names and tags (`cal_list.h`; under 100 bytes) | calendar | on an add, rename or remove |
 | `nvs` / `board` | `pose`: the IMU axis that pointed up when the bar last stood still (a `brd_up_axis_t`; 1.0.2) | board (imu task) | once the bar has stood still for 10 s in an orientation other than the stored one |
-| `nvs_sec` / `calsec` | `url`: the calendar address (write-only to the outside) | calendar | on a successful check; erased on remove |
+| `nvs_sec` / `calsec` | `url0` to `url2`: the calendars' addresses (write-only to the outside; never returned, not even masked). `url` is the single address of 1.0.7 and earlier: `cal_migrate.c` writes it to a slot, reads it back, then erases it | calendar | on a successful check; erased on remove |
 | `nvs_sec` / `tokens` | `table`: token hashes and records | net | on pairing, revoke, forget all, and (rate-limited) last-used updates |
 
 The namespace `tinybar` is the project's name from before the rename to MiniBar, and it stays: it holds every bar's
@@ -725,3 +728,12 @@ they changed):
   (2,337,232 bytes) checked as above and `dist/minibar-1.0.4-app.bin`. 474 host tests (core 163, calendar 67, net
   161, ui 30, board 53): 14 new in `net/test_setup_network.c` and `core/test_setup_network.c`. The setup page's
   Playwright suite is 22 checks (2 new), the Remote's 163.
+
+## Several calendars (firmware 1.0.8, 2026-10-07)
+
+Up to 3 calendars (decisions.md, Multiple calendars). A calendar lives in a slot (0 to 2): the slot is its API id minus one, its place in the list, and `tb_meeting_t.cal`. `cal_list.c` (pure, host-tested) holds names and tags and `cal_merge()`; `cal_migrate.c` (pure, over a key-value interface) moves the single address of 1.0.7. `cal_sync.c` keeps per slot the address, status, back-off, a copy of at most 16 meetings (PSRAM, 4 KB each) and a 12 KB merge workspace. Firmware notes:
+
+- **Memory:** about 12 KB for the three copies, 12 KB merge, 8 KB published list, all PSRAM; fetch buffers unchanged (calendars are read one at a time).
+- **Time:** a sync of each calendar is up to 3 minutes (the fetch budget), so three failing calendars can keep the task busy about 9 minutes on a Sync now; the HTTP server never waits for it. The merge runs under the service mutex (48 entries, a few ms).
+- **Flash:** an address is written when added or changed, a copy only when its meetings change, names and tags only on an edit. Not written: the "can't sync" flag.
+- **Not measured on hardware:** the TLS fetch of three calendars in a row (internal RAM peak after the second and third), NVS space with three copies in the 24 KB partition, and the tag's pixel position on the real panel (`ui.c`, from the mock-up's numbers).

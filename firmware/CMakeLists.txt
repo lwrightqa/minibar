@@ -6,7 +6,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 # The firmware version reported as "fw" in GET /api/v1/info, the USB hello reply and the mDNS TXT record.
-set(PROJECT_VER "1.0.7")
+set(PROJECT_VER "1.0.8")
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 

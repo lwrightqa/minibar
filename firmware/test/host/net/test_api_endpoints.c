@@ -546,9 +546,6 @@ TB_TEST(settings_patch_is_all_or_nothing)
 static void saved_calendar(void)
 {
     fake_cal.saved = true;
-    snprintf(fake_cal.host, sizeof fake_cal.host, "calendar.google.com");
-    snprintf(fake_cal.file, sizeof fake_cal.file, "basic.ics");
-    snprintf(fake_cal.ending, sizeof fake_cal.ending, "3f2a");
     fake_cal.last_sync = fake_now.wall - 240;
     nf_app.cal_saved = true;
     nf_app.set.automatic.calendar = true;
@@ -585,9 +582,7 @@ TB_TEST(calendar_get_without_and_with_an_address)
     fake_cal.error_at = now - 60;
     r = nf_http("GET", "/api/v1/calendar", NULL, T);
     TB_TRUE(nf_true(r.j, "calendar.saved"));
-    TB_EQ_STR(nf_str(r.j, "calendar.address.host"), "calendar.google.com");
-    TB_EQ_STR(nf_str(r.j, "calendar.address.file"), "basic.ics");
-    TB_EQ_STR(nf_str(r.j, "calendar.address.ending"), "3f2a");
+    TB_TRUE(nf_null(r.j, "calendar.address"));            /* since 1.0.8 not even the masked form */
     TB_TRUE(nf_str(r.j, "calendar.last_sync") != NULL);
     TB_EQ_STR(nf_str(r.j, "calendar.error.error"), "calendar_unreachable");
     TB_TRUE(nf_str(r.j, "calendar.error.at") != NULL);

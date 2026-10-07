@@ -96,7 +96,21 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 .badge { font-size: 11px; font-weight: 600; letter-spacing: .04em; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
 .badge.ok { border-color: var(--s-available); color: var(--ink); }
 .auto-card .auto-line { margin: 0; font-size: 13px; color: var(--muted); }
-.mask { font-family: var(--f-mono); font-size: 12px; overflow-wrap: anywhere; }
+/* Calendars list (decisions.md, Multiple calendars): one row per saved calendar, up to 3. */
+.cal-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.cal-row { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 6px; min-width: 0; }
+.cal-row.err { border-color: var(--s-busy); }
+.cal-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cal-top b { font-size: 14px; overflow-wrap: anywhere; }
+.cal-tagchip { font-size: 11px; font-weight: 700; letter-spacing: .06em; padding: 0 6px; border: 1px solid var(--ink); border-radius: 4px; text-transform: uppercase; }
+.cal-top .badge { margin-left: auto; }
+.cal-row .row { gap: 8px; }
+.cal-row .btn { padding: 6px 12px; font-size: 13px; }
+.cal-err { color: var(--ink); font-weight: 600; }
+.cal-fields { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr) 96px; }
+.cal-fields input { width: 100%; box-sizing: border-box; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; font-size: 16px; }
+.cal-fields input:focus-visible { outline: 2px solid var(--state); outline-offset: 1px; }
+.cal-fields input[aria-invalid="true"] { border-color: var(--s-busy); }
 details.help summary { cursor: pointer; font-size: 13px; font-weight: 600; }
 details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: var(--muted); display: grid; gap: 3px; }
 .auto-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; margin-bottom: 8px; border-radius: 12px; border: 1px solid var(--c); }
@@ -246,23 +260,20 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
           <div class="auto-now"><span id="autoNow" aria-live="polite">Showing your status</span><button class="btn ghost" id="autoShowAgain" type="button" hidden>Show again</button></div>
 
           <div class="auto-card" id="calCard">
-            <div class="auto-head"><b>Calendar</b><span class="badge" id="calBadge">Not set up</span></div>
+            <div class="auto-head"><b>Calendars</b><span class="badge" id="calBadge">Not set up</span></div>
             <label class="check" for="calOn"><input type="checkbox" id="calOn"> Calendar meetings</label>
             <p class="auto-line" id="calLine"></p>
-            <div id="calSaved" hidden>
-              <div class="mask" id="calMask"></div>
-              <div class="row" id="calActions">
-                <button class="btn ghost" id="calSync" type="button">Sync now</button>
-                <button class="btn ghost" id="calReplace" type="button">Replace</button>
-                <button class="btn ghost" id="calRemove" type="button">Remove</button>
-              </div>
-              <div class="setup-msg" id="calConfirm" hidden>
-                <p style="margin:0 0 8px">Remove your calendar? The bar stops showing meetings and Next up.</p>
-                <div class="row"><button class="btn" id="calRemoveYes" type="button">Remove calendar</button><button class="btn ghost" id="calRemoveNo" type="button">Keep it</button></div>
-              </div>
-            </div>
+            <ul class="cal-list" id="calList" aria-label="Saved calendars"></ul>
             <div class="setup" id="calForm">
-              <label class="field" for="calInput"><span class="field-label">Secret address in iCal format</span></label>
+              <b id="calFormTitle" style="font-size:14px">Add a calendar</b>
+              <div class="cal-fields">
+                <label class="field" for="calName"><span class="field-label">Name</span>
+                  <input id="calName" type="text" maxlength="24" autocomplete="off" placeholder="Calendar 1"></label>
+                <label class="field" for="calLabel"><span class="field-label">Bar tag</span>
+                  <input id="calLabel" type="text" maxlength="4" autocomplete="off" spellcheck="false" placeholder="C1" aria-describedby="calLabelNote"></label>
+              </div>
+              <p class="note-small" id="calLabelNote" style="margin:0">The tag (up to 4 letters or digits) shows next to Next up on the bar once you have 2 or more calendars. Everyone near your desk can read it, so don't put anything private in the name or tag.</p>
+              <label class="field" for="calInput"><span class="field-label" id="calInputLabel">Secret address in iCal format</span></label>
               <div class="msg-row" id="calInputRow">
                 <input id="calInput" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" aria-describedby="calMsg">
                 <button class="btn ghost" id="calShow" type="button" aria-pressed="false">Show</button>
@@ -272,20 +283,26 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
                 <ol>
                   <li>On a computer, open Google Calendar. The phone app doesn't have this setting.</li>
                   <li>Click the gear, then Settings.</li>
-                  <li>On the left, under Settings for my calendars, click your calendar.</li>
+                  <li>On the left, under Settings for my calendars, click the calendar you want to add.</li>
                   <li>Click Integrate calendar.</li>
                   <li>Under "Secret address in iCal format", click the copy button, then paste the address here.</li>
                 </ol>
-                <p class="note-small" style="margin-top:6px">Google Calendar › Settings › your calendar › Integrate calendar › "Secret address in iCal format". Keep it private: anyone with it can read your calendar. MiniBar only reads it and never shows it again after you save it. If the setting is missing, your work account may have it turned off; ask IT.</p>
+                <p class="note-small" style="margin-top:6px">Google Calendar › Settings › the calendar › Integrate calendar › "Secret address in iCal format". Any calendar that gives you a secret iCal address works. Keep it private: anyone with it can read that calendar. MiniBar only reads it and never shows it again after you save it. If the setting is missing, your work account may have it turned off; ask IT.</p>
               </details>
               <div class="row">
                 <button class="btn" id="calSave" type="button">Add</button>
-                <button class="btn ghost" id="calCancel" type="button" hidden>Cancel</button>
+                <button class="btn ghost" id="calCancel" type="button">Cancel</button>
               </div>
             </div>
+            <div class="row" id="calMainActions">
+              <button class="btn ghost" id="calAdd" type="button">Add a calendar</button>
+              <button class="btn ghost" id="calSync" type="button">Sync now</button>
+            </div>
+            <p class="note-small" id="calAddNote" hidden>You can add up to 3 calendars. Remove one to add another.</p>
             <div class="setup-msg" id="calMsg" role="status" hidden></div>
             <label class="check" for="calTitles"><input type="checkbox" id="calTitles"> Show meeting titles</label>
             <p class="note-small" id="calTitlesNote">Off: the bar and this page show meeting times only. Everyone near your desk can read titles, and events marked Private never show one.</p>
+            <p class="note-small">Meetings from all your calendars are merged, soonest first, and the bar shows one Next up. A meeting that's in two of your calendars shows once. A calendar that can't sync is left out of the bar until it works.</p>
           </div>
 
           <div class="auto-card" id="macCard">
@@ -322,12 +339,13 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
 
   // ---------- state from the bar ----------
   let st = null, etag = '', fetchedAt = 0, skew = 0;   // status, its ETag, when it came (performance.now()), bar clock - ours
-  let info = null, set = null, cal = null;              // GET info, settings, calendar
+  let info = null, set = null, cal = null, cals = null; // GET info, settings, calendar (all as one), calendars (by id)
   let lastCalKey = '', lastRev = -1;
   // paired: this phone's cookie works (GET /status answered 200); wasPaired: it did at some point on this page, so a
   // later 401 means it was forgotten or removed, not that it never paired.
   let paired = false, wasPaired = false;
-  const ui = { calReplacing: false, calConfirm: false, calChecking: false, calSyncing: false, busy: false };
+  const CAL_MAX = 3;
+  const ui = { calForm: null, calConfirm: null, calChecking: false, calSyncing: false, busy: false };   // calForm: 'new', an id, or null
 
   // ---------- time, in the bar's own zone and against its clock ----------
   const barNow = () => Date.now() + skew;
@@ -394,8 +412,10 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     if (r.status === 200) { set = r.j.settings; render(); }
   }
   async function loadCalendar() {
-    const r = await api('GET', '/calendar');
-    if (r.status === 200) { cal = r.j.calendar; render(); }
+    const [a, b] = await Promise.all([api('GET', '/calendar'), api('GET', '/calendars')]);
+    if (a.status === 200) cal = a.j.calendar;
+    if (b.status === 200) cals = b.j;
+    render();
   }
   // The bar's message for an error reply, or a plain fallback.
   const errText = r => r.status === 0 ? "Can't reach MiniBar." : (r.j && r.j.message) || `Something went wrong (${r.status}).`;
@@ -942,32 +962,23 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
       $('abBtn').textContent = shown ? 'Set aside' : 'Show again';
     }
     // Calendar
-    const saved = cal ? cal.saved : st.calendar.saved, none = !saved;
+    const list = cals ? cals.calendars : [], nCal = cals ? list.length : st.calendar.count || (st.calendar.saved ? 1 : 0);
+    const none = !nCal, nBad = list.filter(c => c.status === 'error').length;
     const checking = ui.calChecking || st.calendar.syncing && ui.calSyncing;
-    $('calBadge').textContent = ui.calChecking ? 'Checking…' : none ? 'Not set up' : 'Connected';
-    $('calBadge').className = 'badge' + (!none && !ui.calChecking ? ' ok' : '');
+    $('calBadge').textContent = ui.calChecking ? 'Checking…' : none ? 'Not set up' : nBad && nBad === nCal ? "Can't sync" : nBad ? `${nBad} can't sync` : 'Connected';
+    $('calBadge').className = 'badge' + (!none && !ui.calChecking && !nBad ? ' ok' : '');
     $('calOn').checked = st.sources.calendar;
     $('calOn').disabled = none;
-    const left = st.meeting.left_today, leftText = left ? `${left} meeting${left === 1 ? '' : 's'} left today` : 'no more meetings today';
-    const lastSync = st.calendar.last_sync;
-    let line = none && ui.calChecking ? 'Not set up yet.'
-      : none ? 'Not set up. Add your secret address below; the switch then turns on, meetings show as In a meeting, and Next up fills in.'
-      : `Synced ${lastSync ? ago(lastSync) : 'not yet'} · ${leftText}` + (st.sources.calendar ? '' : ". Calendar meetings is off, so the bar won't show meetings.");
-    if (!none && cal && cal.error) line += ` Last try didn't work: ${cal.error.message || cal.error.error}`;
-    $('calLine').textContent = line;
-    $('calSaved').hidden = none || ui.calReplacing;
-    $('calForm').hidden = !(none || ui.calReplacing);
-    $('calSave').textContent = none ? 'Add' : 'Save';
-    $('calSave').disabled = ui.calChecking;
-    $('calCancel').hidden = !ui.calReplacing;
-    $('calMask').textContent = cal && cal.address ? `${cal.address.host}/…/${cal.address.file} · ending ${cal.address.ending}` : '';
-    $('calConfirm').hidden = !ui.calConfirm;
-    $('calActions').hidden = ui.calConfirm;
-    $('calSync').disabled = checking;
+    const left = cal && cal.left_today || 0;
+    const leftText = left ? `${left} meeting${left === 1 ? '' : 's'} left today` : 'no more meetings today';
+    $('calLine').textContent = none && ui.calChecking ? 'Not set up yet.'
+      : none ? 'Not set up. Add a calendar below; the switch then turns on, meetings show as In a meeting, and Next up fills in.'
+      : `${nCal} of ${CAL_MAX} calendars · ${nBad < nCal ? leftText : 'none can be reached'}` + (st.sources.calendar ? '' : ". Calendar meetings is off, so the bar won't show meetings.");
+    renderCalList(list, checking);
     $('calTitles').checked = set ? set.automatic.meeting_titles : false;
     $('calTitles').disabled = none;
     // Messages sit right under the address field while it's open, otherwise under the saved address.
-    const msgAt = $('calForm').hidden ? $('calSaved') : $('calInputRow');
+    const msgAt = $('calForm').hidden ? $('calMainActions') : $('calInputRow');
     if (msgAt.nextElementSibling !== $('calMsg')) msgAt.after($('calMsg'));
     // Mac
     $('macOn').checked = st.sources.mac;
@@ -1141,32 +1152,100 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     not_a_calendar: "That address didn't send back a calendar. Copy the Secret address in iCal format.",
     offline: "MiniBar isn't online, so it can't check the address.",
   };
+  // A calendar that can't sync says so in one sentence on its own row (decisions.md: the same words for one calendar).
+  const CAL_ERR = "Couldn't reach this calendar";
   async function waitFor(done, every = 1000, limit = 40) {
     for (let i = 0; i < limit; i++) {
       await new Promise(r => setTimeout(r, every));
-      const r = await api('GET', '/calendar');
+      const r = await api('GET', '/calendars');
       if (r.status !== 200) continue;
-      cal = r.j.calendar;
-      if (done(cal)) return cal;
+      cals = r.j;
+      if (done(cals)) return cals;
     }
     return null;
   }
-  $('calSave').addEventListener('click', async () => {
-    const chk = checkIcal($('calInput').value);
-    if (chk.err) { calMsg(chk.err, true); return; }
-    ui.calChecking = true;
-    calMsg('Checking the address with Google Calendar…');
+  const calById = id => cals && cals.calendars.find(c => c.id === id);
+  const calCount = () => cals ? cals.calendars.length : 0;
+  // The smallest default number not in use, so removing Calendar 1 and adding again gives Calendar 1 back.
+  const calFreeNo = () => [1, 2, 3].find(i => !(cals ? cals.calendars : []).some(c => c.name === `Calendar ${i}` || c.tag === `C${i}`)) || calCount() + 1;
+  // The Remote's list of calendars. Rows are rebuilt only when what they say changes, so a focused button stays put.
+  let calSig = '';
+  function renderCalList(list, checking) {
+    const full = list.length >= CAL_MAX;
+    const rows = list.map(c => {
+      const bad = c.status === 'error', k = c.left_today || 0;
+      const line = bad ? `${CAL_ERR}. ${c.last_sync ? `Last synced ${ago(c.last_sync)}` : "It hasn't synced yet"}. Its meetings are left out of the bar until it works.`
+        : `${c.last_sync ? `Synced ${ago(c.last_sync)}` : 'Not synced yet'} · ${k ? `${k} meeting${k === 1 ? '' : 's'} left today` : 'no more meetings today'}`;
+      return { c, bad, line, ask: ui.calConfirm === c.id };
+    });
+    const sig = JSON.stringify([rows.map(r => [r.c.id, r.c.name, r.c.tag, r.bad, r.line, r.ask]), ui.calForm, checking, full]);
+    if (sig !== calSig) {
+      calSig = sig;
+      $('calList').innerHTML = rows.map(({ c, bad, line, ask }) => `
+        <li class="cal-row${bad ? ' err' : ''}" data-id="${c.id}">
+          <div class="cal-top"><b>${esc(c.name)}</b><span class="cal-tagchip" title="Bar tag">${esc(c.tag)}</span><span class="badge${bad ? '' : ' ok'}">${bad ? "Can't sync" : 'Synced'}</span></div>
+          <p class="auto-line">Address saved</p>
+          <p class="auto-line${bad ? ' cal-err' : ''}" role="${bad ? 'alert' : 'status'}">${esc(line)}</p>
+          ${ask ? `<div class="setup-msg"><p style="margin:0 0 8px">Remove ${esc(c.name)}? The bar stops showing its meetings and Next up.</p>
+            <div class="row"><button class="btn" data-act="rm-yes" type="button">Remove calendar</button><button class="btn ghost" data-act="rm-no" type="button">Keep it</button></div></div>`
+          : `<div class="row"><button class="btn ghost" data-act="edit" type="button" ${checking ? 'disabled' : ''}>Edit</button><button class="btn ghost" data-act="rm" type="button">Remove</button></div>`}
+        </li>`).join('');
+    }
+    const formOpen = ui.calForm !== null || !list.length;     // with none saved the form is the way in
+    $('calForm').hidden = !formOpen;
+    $('calMainActions').hidden = formOpen;
+    $('calCancel').hidden = !list.length;
+    $('calAdd').disabled = full || checking;
+    $('calAddNote').hidden = !full || formOpen;
+    $('calSync').disabled = checking || !list.length;
+    $('calSync').hidden = !list.length;
+    $('calSave').disabled = ui.calChecking;
+    if (ui.calForm === null || ui.calForm === 'new') { const no = calFreeNo(); $('calName').placeholder = `Calendar ${no}`; $('calLabel').placeholder = `C${no}`; }
+    const isNew = ui.calForm === null || ui.calForm === 'new';
+    $('calSave').textContent = isNew ? 'Add' : 'Save';
+    $('calFormTitle').textContent = isNew ? 'Add a calendar' : `Edit ${(calById(ui.calForm) || {}).name || 'calendar'}`;
+    $('calInputLabel').textContent = isNew ? 'Secret address in iCal format' : 'New secret address (leave empty to keep the saved one)';
+  }
+  $('calList').addEventListener('click', async e => {
+    const b = e.target.closest('button[data-act]');
+    if (!b) return;
+    const c = calById(+b.closest('li').dataset.id);
+    if (!c) return;
+    const act = b.dataset.act;
+    if (act === 'rm') { ui.calConfirm = c.id; calMsg(''); render(); }
+    else if (act === 'rm-no') { ui.calConfirm = null; calMsg(`Kept ${c.name}.`); render(); }
+    else if (act === 'rm-yes') {
+      const r = await api('DELETE', '/calendars/' + c.id);
+      ui.calConfirm = null;
+      if (r.status === 200) { cals = r.j; $('calInput').value = ''; maskCalInput(); calMsg(`Removed ${c.name}.`); poll(); }
+      else calMsg(errText(r), true);
+      render();
+    }
+    else if (act === 'edit') openCalForm(c.id);
+  });
+  function openCalForm(id) {
+    ui.calForm = id; ui.calConfirm = null;
+    const c = id === 'new' ? null : calById(id), no = calFreeNo();
+    $('calName').value = c ? c.name : `Calendar ${no}`;
+    $('calLabel').value = c ? c.tag : `C${no}`;
+    $('calName').placeholder = `Calendar ${no}`;
+    $('calInput').value = ''; maskCalInput();
+    calMsg('');
     render();
-    const r = await api('PUT', '/calendar', { url: chk.url });
-    if (r.status !== 202) { ui.calChecking = false; calMsg(errText(r), true); render(); return; }
-    cal = r.j.calendar;
-    const c = await waitFor(x => x.check && x.check.state !== 'checking');
+    $('calName').focus();
+  }
+  function closeCalForm(msg) { ui.calForm = null; $('calInput').value = ''; maskCalInput(); calMsg(msg || ''); render(); }
+  $('calAdd').addEventListener('click', () => { if (calCount() >= CAL_MAX) { calMsg('You already have 3 calendars. Remove one first.', true); return; } openCalForm('new'); });
+  $('calCancel').addEventListener('click', () => closeCalForm(''));
+  // After a check ends: the message for a good or a failed one.
+  async function checkDone(c, name, google) {
     ui.calChecking = false;
+    await loadCalendar();       // the meetings left today count comes from the whole calendar, read again after the save
     if (c && c.check && c.check.state === 'saved') {
-      ui.calReplacing = false; ui.calConfirm = false;
+      ui.calForm = null; ui.calConfirm = null;
       $('calInput').value = ''; maskCalInput();
-      const left = c.left_today || 0;
-      calMsg(`Saved. ${cap(left ? `${left} meeting${left === 1 ? '' : 's'} left today` : 'no more meetings today')}.${chk.google ? '' : " This isn't a Google address, but MiniBar can read any iCal feed."}`);
+      const left = cal && cal.left_today || 0;
+      calMsg(`Saved ${name}. ${cap(left ? `${left} meeting${left === 1 ? '' : 's'} left today` : 'no more meetings today')}.${google === false ? " This isn't a Google address, but MiniBar can read any iCal feed." : ''}`);
     } else if (c && c.check) {
       calMsg(CHECK_TEXT[c.check.error] || c.check.message || "That address didn't work.", true);
     } else {
@@ -1174,25 +1253,45 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     }
     poll();
     render();
+  }
+  $('calSave').addEventListener('click', async () => {
+    const isNew = ui.calForm === null || ui.calForm === 'new', no = calFreeNo();
+    // A new calendar left unnamed gets the defaults the fields show as placeholders.
+    const name = $('calName').value.trim() || (isNew ? `Calendar ${no}` : ''), tag = ($('calLabel').value.trim() || (isNew ? `C${no}` : '')).toUpperCase();
+    const id = isNew ? null : ui.calForm, list = cals ? cals.calendars : [];
+    if (!name) { calMsg('Give the calendar a name.', true); $('calName').focus(); return; }
+    if (!/^[A-Z0-9]{1,4}$/.test(tag)) { calMsg('Give the calendar a short tag, up to 4 letters or digits.', true); $('calLabel').focus(); return; }
+    if (list.some(c => c.id !== id && (c.name.toLowerCase() === name.toLowerCase() || c.tag === tag))) { calMsg('Another calendar already uses that name or tag. Pick a different one.', true); return; }
+    const raw = $('calInput').value;
+    let chk = null;
+    if (isNew || raw.trim()) {
+      chk = checkIcal(raw);
+      if (chk.err) { calMsg(chk.err, true); return; }
+    }
+    ui.calChecking = true;
+    calMsg(chk ? 'Checking the address with Google Calendar…' : 'Saving…');
+    render();
+    const body = { name, tag };
+    if (chk) body.url = chk.url;
+    const r = isNew ? await api('POST', '/calendars', body) : await api('PATCH', '/calendars/' + id, body);
+    if (r.status === 200 && !chk) {      // a new name or tag: nothing to check
+      ui.calChecking = false; cals = r.j;
+      closeCalForm(`Saved ${name}.`);
+      poll();
+      return;
+    }
+    if (r.status !== 202) { ui.calChecking = false; calMsg(errText(r), true); render(); return; }
+    cals = r.j;
+    const c = await waitFor(x => x.check && x.check.state !== 'checking');
+    await checkDone(c, name, chk.google);
   });
   $('calInput').addEventListener('input', () => { if ($('calMsg').classList.contains('err')) calMsg(''); });
-  $('calInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('calSave').click(); } });
+  ['calName', 'calLabel', 'calInput'].forEach(i => $(i).addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('calSave').click(); } }));
   $('calShow').addEventListener('click', () => {
     const i = $('calInput'), show = i.type === 'password';
     i.type = show ? 'text' : 'password';
     $('calShow').textContent = show ? 'Hide' : 'Show';
     $('calShow').setAttribute('aria-pressed', String(show));
-  });
-  $('calReplace').addEventListener('click', () => { ui.calReplacing = true; ui.calConfirm = false; $('calInput').value = ''; maskCalInput(); calMsg(''); render(); $('calInput').focus(); });
-  $('calCancel').addEventListener('click', () => { ui.calReplacing = false; $('calInput').value = ''; maskCalInput(); calMsg(''); render(); });
-  $('calRemove').addEventListener('click', () => { ui.calConfirm = true; calMsg(''); render(); });
-  $('calRemoveNo').addEventListener('click', () => { ui.calConfirm = false; calMsg('Kept your calendar.'); render(); });
-  $('calRemoveYes').addEventListener('click', async () => {
-    const r = await api('DELETE', '/calendar');
-    ui.calConfirm = false;
-    if (r.status === 200) { cal = r.j.calendar; $('calInput').value = ''; maskCalInput(); calMsg('Calendar removed.'); poll(); }
-    else calMsg(errText(r), true);
-    render();
   });
   $('calSync').addEventListener('click', async () => {
     if (ui.calSyncing) return;
@@ -1202,8 +1301,10 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     render();
     const c = await waitFor(x => !x.syncing);
     ui.calSyncing = false;
-    if (c && !c.error) { const left = c.left_today || 0; calMsg(`Calendar synced. ${cap(left ? `${left} meeting${left === 1 ? '' : 's'} left today` : 'no more meetings today')}.`); }
-    else if (c && c.error) calMsg(CHECK_TEXT[c.error.error] || c.error.message || "Couldn't sync the calendar.", true);
+    const bad = c ? c.calendars.filter(x => x.status === 'error') : [];
+    await loadCalendar();
+    if (c && !bad.length) { const left = cal && cal.left_today || 0; calMsg(`Calendar synced. ${cap(left ? `${left} meeting${left === 1 ? '' : 's'} left today` : 'no more meetings today')}.`); }
+    else if (bad.length) calMsg(`${bad.map(x => x.name).join(' and ')} couldn't sync. ${CAL_ERR}.`, true);
     poll();
     render();
   });

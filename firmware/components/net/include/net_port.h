@@ -80,8 +80,14 @@ void net_port_setup_status(net_join_status_t *out);
 int net_port_cal_check(const char *url);
 /* 0 started (202); otherwise the cal_url_err_t format error. */
 int net_port_cal_put(const char *url, bool from_setup);
-/* 0 removed, -1 none saved. */
+/* 0 removed, -1 none saved (the only calendar: the router refuses first when there are several). */
 int net_port_cal_remove(void);
+/* Several calendars (api.md 11.5). add and edit return zeros when the check started, else the error. edit with a
+ * NULL or empty url changes the name and tag only. remove_id: 0 removed, -1 no such calendar. */
+void net_port_cal_items(cal_items_t *out);
+cal_res_t net_port_cal_add(const char *url, const char *name, const char *tag);
+cal_res_t net_port_cal_edit(int id, const char *url, const char *name, const char *tag);
+int net_port_cal_remove_id(int id);
 /* 0 started, -1 none saved, -2 offline. */
 int net_port_cal_sync_now(void);
 void net_port_cal_status(cal_status_t *out);

@@ -448,9 +448,6 @@ TB_TEST(sec_cookie_with_an_origin_that_cannot_be_read_is_refused)
 static void busy_day(int n, char fill)
 {
     fake_cal.saved = true;
-    snprintf(fake_cal.host, sizeof fake_cal.host, "calendar.google.com");
-    snprintf(fake_cal.file, sizeof fake_cal.file, "basic.ics");
-    snprintf(fake_cal.ending, sizeof fake_cal.ending, "3f2a");
     fake_cal.last_sync = fake_now.wall - 60;
     nf_app.cal_saved = true;
     nf_app.set.automatic.calendar = true;

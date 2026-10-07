@@ -544,3 +544,50 @@ TB_TEST(every_scene_draws_only_drawable_text)
         }
     }
 }
+
+/* ---------- several calendars (decisions.md, 2026-10-07) ---------- */
+
+static void two_calendars(void)
+{
+    scene("clock");
+    memset(A.cals, 0, sizeof A.cals);
+    for (int i = 0; i < 3; i++) {
+        A.cals[i].used = i < 2;
+        snprintf(A.cals[i].name, sizeof A.cals[i].name, "Calendar %d", i + 1);
+        snprintf(A.cals[i].tag, sizeof A.cals[i].tag, "C%d", i + 1);
+    }
+    A.n_cals = 2;
+}
+
+TB_TEST(view_next_up_carries_the_calendar_tag_with_two_or_more)
+{
+    scene("clock");
+    TB_EQ_STR(V.label_tag, "");                 /* one calendar: nothing changes */
+    two_calendars();
+    A.meetings[0].cal = 1;
+    ui_view_build(&A, &NOW, &V);
+    SIDE("Next up", "3:00", "PM", "meeting in 56m");
+    TB_EQ_STR(V.label_tag, "C2");
+    A.meetings[0].cal = 0;
+    ui_view_build(&A, &NOW, &V);
+    TB_EQ_STR(V.label_tag, "C1");
+    A.n_cals = 1;                               /* back to one: no tag */
+    ui_view_build(&A, &NOW, &V);
+    TB_EQ_STR(V.label_tag, "");
+    two_calendars();
+    scene("clock_nothing");
+    TB_EQ_STR(V.label_tag, "");                 /* the "Free" and "Nothing" sides aren't tagged */
+}
+
+TB_TEST(view_clock_side_says_cant_sync_when_no_calendar_works)
+{
+    two_calendars();
+    A.cals[0].failing = A.cals[1].failing = true;
+    ui_view_build(&A, &NOW, &V);
+    SIDE("Calendar", "Can't sync", "", "see the Remote");
+    TB_TRUE(V.value_small);
+    TB_EQ_STR(V.label_tag, "");
+    A.cals[1].failing = false;                  /* one works: Next up from it */
+    ui_view_build(&A, &NOW, &V);
+    TB_EQ_STR(V.label, "Next up");
+}

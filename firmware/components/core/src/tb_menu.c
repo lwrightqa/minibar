@@ -82,7 +82,7 @@ static void cal_tile(tb_app_t *a, const tb_clock_t *now)
         if (bad >= n) {
             add(m, TB_ACT_SYNC, TB_TILE_NORMAL, "Calendar", "Error", n > 1 ? "can't reach\nany" : "can't\nreach it");
         } else {
-            char v[12];
+            char v[24];
             snprintf(v, sizeof v, "%d/%d", n - bad, n);
             snprintf(foot, sizeof foot, "%s can't\nsync", a->cals[first].tag);
             add(m, TB_ACT_SYNC, TB_TILE_NORMAL, "Calendar", v, foot);

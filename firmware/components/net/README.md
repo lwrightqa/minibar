@@ -73,3 +73,7 @@ Run the fake bar by hand with `build-host-net/net/tb_fakebar --port 8080` (add `
 3. **sdkconfig (lead):** `CONFIG_LWIP_DHCP_GET_NTP_SRV=y` and `CONFIG_LWIP_SNTP_MAX_SERVERS=3`, so an office's own NTP server (DHCP option 42) is used next to `pool.ntp.org` and `time.google.com`. The code uses them when set.
 4. **API gaps (api.md):** status has no list of skipped rounds, so the Remote shows every earlier round of the set ripe; the bar's own tomato row can show a skipped one pale.
 5. **Hidden networks.** The setup page lists only networks it can see (as the mock-up does); the API already accepts a hidden network's name.
+
+## Several calendars (1.0.8)
+
+`net_api.c`: `GET/POST /api/v1/calendars`, `PATCH/DELETE /api/v1/calendars/{id}`; `PUT` and `DELETE /api/v1/calendar` answer `409 several_calendars` with 2 or more saved. No reply carries any part of an address. `web/remote.html` has the Calendars list. Host: `test/host/net/test_calendars.c`; the page suite (`host/pages_remote.test.js`) drives the fake bar's three calendars (`/_sim/calfail` makes one fail).
