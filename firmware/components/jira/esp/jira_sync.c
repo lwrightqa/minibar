@@ -29,9 +29,3 @@ bool jira_remove(void)
 {
     return false;
 }
-
-const char *jira_test_message(const char *code)
-{
-    (void)code;
-    return "";
-}
