@@ -236,6 +236,66 @@ static void pomo_view(ui_view_t *v, const tb_app_t *a, const tb_clock_t *now)
     if (v->bar_permille > 1000) v->bar_permille = 1000;
 }
 
+/* ---------- the Jira screen (decisions.md "Jira issue count (2026-10-07)"; mock-up jiraView()) ---------- */
+
+/* The label small above, the count as the one big number, one supporting line, and the side column's time. Over the alert
+ * limit the key is Focus's orange (tb_app_color_key) and the words say so. Can't reach Jira keeps the last count with "as
+ * of" for 2 hours, then drops it; a rejected token or a missing filter show no number at all.
+ * Where the bar's fonts differ from the mock-up's: the 112, 100 and 78 px headline fonts have no ellipsis, dash or plus, so
+ * "Asking Jira" shows three middle dots, no answer a double hyphen, and "10k+" (10,000 issues or more) is drawn at the 62 px
+ * step, which has them. */
+static void jira_view(ui_view_t *v, const tb_app_t *a, const tb_clock_t *now)
+{
+    const tb_jira_t *j = &a->jira;
+    char buf[48], ago[24];
+    sys_row(v, a, now, false);
+    v->layout = UI_LAYOUT_STATUS;
+    v->fit = UI_FIT_WORD;
+    v->head_caps = true;
+    PUT(v->kicker, "Jira " MID_DOT " %s", j->label[0] ? j->label : "Jira");
+    int32_t c;
+    bool have = tb_jira_count_shown(j, now->wall, now->valid, &c);
+    int64_t since = now->valid && j->ok_at ? now->wall - j->ok_at : 0;
+    if (j->state == TB_JIRA_LOADING) {
+        PUT(v->head, MID_DOT MID_DOT MID_DOT);
+        PUT(v->sub, "Asking Jira\xE2\x80\xA6");
+        side(v, "Jira", "Checking", NULL, "your site", true);
+    } else if (j->state == TB_JIRA_TOKEN || j->state == TB_JIRA_NOFILTER) {
+        bool tok = j->state == TB_JIRA_TOKEN;
+        PUT(v->head, "%s", tok ? "Token rejected" : "Filter not found");
+        v->fit = UI_FIT_62;
+        v->head_caps = false;
+        PUT(v->sub, "%s", tok ? "Update it on the Remote" : "Check the filter on the Remote");
+        side(v, "Jira", tok ? "Sign-in" : "Filter", NULL, tok ? "needs a new token" : "not found or not shared", true);
+    } else if (!have) {
+        PUT(v->head, "--");
+        PUT(v->sub, "Can't reach Jira " MID_DOT " trying again");
+        if (j->ok_at && now->valid) {
+            snprintf(buf, sizeof buf, "last answer %s ago", tb_jira_ago_text(ago, sizeof ago, since));
+            side(v, "Jira", "Offline", NULL, buf, true);
+        } else {
+            side(v, "Jira", "Offline", NULL, "no answer yet", true);
+        }
+    } else {
+        tb_jira_count_text(buf, sizeof buf, c);
+        PUT(v->head, "%s", buf);
+        if (c >= TB_JIRA_BIG) {
+            v->fit = UI_FIT_62;
+            v->head_caps = false;
+        }
+        if (j->state == TB_JIRA_UNREACHABLE) {
+            if (now->valid && j->ok_at) PUT(v->sub, "Can't reach Jira " MID_DOT " as of %s ago", tb_jira_ago_text(ago, sizeof ago, since));
+            else PUT(v->sub, "Can't reach Jira");
+            if (j->ok_at) side(v, "Last update", fmt_short(j->ok_at).s, ampm_of(j->ok_at), "can't reach Jira", false);
+        } else {
+            if (tb_jira_over(j, now->wall, now->valid)) PUT(v->sub, "Over your limit of %d", (int)j->alert_above);
+            else if (c == 0) PUT(v->sub, "No issues right now");
+            else PUT(v->sub, "%s " MID_DOT " updated %s", c == 1 ? "issue" : "issues", fmt(j->ok_at).s);
+            side(v, "Updated", fmt_short(j->ok_at).s, ampm_of(j->ok_at), "every 5 minutes", false);
+        }
+    }
+}
+
 /* ---------- view() ---------- */
 
 static void own_view(ui_view_t *v, const tb_app_t *a, const tb_clock_t *now)
@@ -328,6 +388,13 @@ static void own_view(ui_view_t *v, const tb_app_t *a, const tb_clock_t *now)
         }
         return;
     }
+    case TB_ST_JIRA:
+        if (a->jira.configured) {
+            jira_view(v, a, now);
+            return;
+        }
+        /* not set up: it isn't a screen (core never lands here); the clock stands in */
+        /* fall through */
     case TB_ST_CLOCK:
     default: {
         sys_row(v, a, now, false);

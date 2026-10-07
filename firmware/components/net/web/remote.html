@@ -147,6 +147,14 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
 .dev .setup-msg { grid-column: 1 / -1; margin-top: 6px; }
 .dev .setup-msg p { margin: 0 0 8px; font-size: 13px; color: var(--ink); }
 .btn.sm { padding: 6px 12px; font-size: 13px; }
+/* Todo list */
+.todo-count { display: flex; gap: 16px; font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+.todo-textarea { width: 100%; min-height: 120px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: 14px var(--f-mono); resize: vertical; font-family: inherit; }
+.todo-textarea:focus-visible { outline: 2px solid var(--state); outline-offset: 1px; }
+.todo-row { display: flex; gap: 8px; margin-top: 10px; }
+.todo-item { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 8px; cursor: pointer; font-size: 14px; border: 1px solid transparent; }
+.todo-item:hover { background: var(--line); }
+.todo-item input { margin: 0; width: 16px; height: 16px; accent-color: var(--state); cursor: pointer; }
 [hidden] { display: none !important; }
 </style>
 </head>
@@ -253,6 +261,23 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
         </div>
         <p class="field-err" id="msgErr" hidden></p>
       </form>
+      <div>
+        <span class="field-label">Todo list</span>
+        <div class="auto-sec">
+          <div class="todo-count">
+            <span><b id="todoIncomplete">0</b> incomplete</span>
+            <span><b id="todoTotal">0</b> total</span>
+          </div>
+          <div class="setup-msg" id="todoMsg" role="status" hidden></div>
+          <textarea class="todo-textarea" id="todoEdit" placeholder="[ ] Task 1&#10;[x] Task 2&#10;[ ] Task 3" aria-describedby="todoErr"></textarea>
+          <p class="note-small" style="margin:6px 0 0">Format: [ ] for incomplete, [x] for done. One task per line.</p>
+          <p class="field-err" id="todoErr" hidden></p>
+          <div class="todo-row">
+            <button class="btn" id="todoSave" type="button">Save</button>
+            <button class="btn ghost" id="todoClear" type="button">Clear</button>
+          </div>
+        </div>
+      </div>
       <div>
         <span class="field-label" id="lDisplay">Display</span>
         <div class="auto-sec">
@@ -434,8 +459,39 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     if (b.status === 200) cals = b.j;
     render();
   }
+  let todoList = '';  // current todo list on the bar
+  function todoMsg(text, isErr) {
+    const el = $('todoMsg');
+    el.textContent = text;
+    el.hidden = !text;
+    el.classList.toggle('err', !!isErr);
+  }
+  function parseTodoCount(list) {
+    if (!list) return { incomplete: 0, total: 0 };
+    let incomplete = 0, total = 0;
+    const lines = list.split('\n');
+    lines.forEach(line => {
+      if (/^\[[x X ]\]/.test(line)) {
+        total++;
+        if (line[1] === ' ') incomplete++;
+      }
+    });
+    return { incomplete, total };
+  }
+  async function loadTodo() {
+    const r = await api('GET', '/todo');
+    if (r.status === 200) {
+      todoList = r.j.list || '';
+      $('todoEdit').value = todoList;
+      const { incomplete, total } = parseTodoCount(todoList);
+      $('todoIncomplete').textContent = incomplete;
+      $('todoTotal').textContent = total;
+      todoMsg('');
+    }
+    render();
+  }
   // The bar's message for an error reply, or a plain fallback.
-  const errText = r => r.status === 0 ? "Can't reach MiniBar." : (r.j && r.j.message) || `Something went wrong (${r.status}).`;
+  const errText = r => r.status === 0 ? "Can't reach MiniBar." : (r.j && r.j.message) || `Something went wrong (${r.status)).`;
   const barName = () => (info && info.name) || 'MiniBar';
   const setText = (el, t) => { if (el.textContent !== t) el.textContent = t; };
   const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -1148,6 +1204,37 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     else if (r.status) msgErr(errText(r));
   });
 
+  // ---------- todo list ----------
+  $('todoSave').addEventListener('click', async () => {
+    const list = $('todoEdit').value;
+    const r = await api('POST', '/todo', { list });
+    if (r.status === 200) {
+      todoList = r.j.list || '';
+      const { incomplete, total } = parseTodoCount(todoList);
+      $('todoIncomplete').textContent = incomplete;
+      $('todoTotal').textContent = total;
+      todoMsg('Saved.');
+    } else if (r.j && r.j.error === 'bad_value') {
+      todoMsg('Invalid format. Use [ ] for incomplete and [x] for done, one per line.', true);
+    } else {
+      todoMsg(errText(r), true);
+    }
+  });
+  $('todoClear').addEventListener('click', async () => {
+    if (confirm('Clear all tasks?')) {
+      const r = await api('POST', '/todo', { list: '' });
+      if (r.status === 200) {
+        todoList = '';
+        $('todoEdit').value = '';
+        $('todoIncomplete').textContent = '0';
+        $('todoTotal').textContent = '0';
+        todoMsg('Cleared.');
+      } else {
+        todoMsg(errText(r), true);
+      }
+    }
+  });
+
   $('abBtn').addEventListener('click', async () => { const r = await api('POST', '/aside', { aside: $('abBtn').textContent === 'Set aside' }); if (!took(r) && r.status) offlineNote(errText(r)); });
   $('autoShowAgain').addEventListener('click', async () => { const r = await api('POST', '/aside', { aside: false }); if (!took(r) && r.status) offlineNote(errText(r)); });
   $('calOn').addEventListener('change', e => patch({ automatic: { calendar: e.target.checked } }));
@@ -1353,7 +1440,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     head();
     await loadInfo();
     const r = await api('GET', '/status');     // a 401 shows the pairing prompt (lost())
-    if (r.status === 200 && r.j) { gotStatus(r.j, r.etag); showMain(); loadDevices(); }
+    if (r.status === 200 && r.j) { gotStatus(r.j, r.etag); showMain(); loadDevices(); loadTodo(); }
     else if (!paired && !$('pairView').hidden) restorePair();   // back to this phone's own code, if it's still on the bar
   }
   start();

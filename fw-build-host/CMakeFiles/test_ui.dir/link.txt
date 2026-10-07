@@ -1,0 +1,1 @@
+/usr/bin/cc -g -fsanitize=address,undefined CMakeFiles/test_ui.dir/tb_test_main.c.o CMakeFiles/test_ui.dir/ui/test_assets.c.o CMakeFiles/test_ui.dir/ui/test_view.c.o -o test_ui  ui/libtb_ui_view.a core/libtb_core.a 

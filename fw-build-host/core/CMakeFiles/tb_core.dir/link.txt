@@ -1,0 +1,2 @@
+/usr/bin/ar qc libtb_core.a CMakeFiles/tb_core.dir/src/tb_app.c.o CMakeFiles/tb_core.dir/src/tb_menu.c.o CMakeFiles/tb_core.dir/src/tb_pomodoro.c.o CMakeFiles/tb_core.dir/src/tb_settings.c.o CMakeFiles/tb_core.dir/src/tb_gesture.c.o CMakeFiles/tb_core.dir/src/tb_fmt.c.o CMakeFiles/tb_core.dir/src/tb_jira.c.o CMakeFiles/tb_core.dir/src/tb_text.c.o CMakeFiles/tb_core.dir/src/tb_todo.c.o
+/usr/bin/ranlib libtb_core.a

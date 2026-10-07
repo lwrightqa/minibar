@@ -181,7 +181,7 @@ TB_TEST(status_names_and_color_keys)
     TB_EQ_STR(tb_status_name(TB_ST_MEETING), "In a meeting");
     TB_EQ_STR(tb_status_name(TB_ST_COUNT), "");
     const tb_color_key_t keys[TB_ST_COUNT] = {TB_KEY_AVAILABLE, TB_KEY_BUSY, TB_KEY_MEETING, TB_KEY_FOCUS,
-                                              TB_KEY_AWAY, TB_KEY_MESSAGE, TB_KEY_CLOCK};
+                                              TB_KEY_AWAY, TB_KEY_MESSAGE, TB_KEY_CLOCK, TB_KEY_JIRA};
     for (int i = 0; i < TB_ST_COUNT; i++) {
         b->a.idx = (tb_status_t)i;
         TB_EQ_INT(tb_app_color_key(&b->a, &b->now), keys[i]);

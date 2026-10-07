@@ -59,6 +59,10 @@ typedef enum {
     TB_ST_AWAY,
     TB_ST_MESSAGE,
     TB_ST_CLOCK,        /* idle */
+    /* Added in 1.0.9, AFTER the others so a status saved by an older firmware (stored as this number) still means what it
+     * did. The swipe and tap order is not the number order: Jira sits between Message and Clock, and only exists while
+     * it is set up (tb_app.c, status_step; decisions.md, Jira issue count). */
+    TB_ST_JIRA,         /* the Jira issue count (tb_jira.h) */
     TB_ST_COUNT
 } tb_status_t;
 
@@ -78,6 +82,7 @@ typedef enum {
     TB_KEY_MESSAGE,
     TB_KEY_CLOCK,       /* dark surface #0E1013, info column #1B1E23 */
     TB_KEY_SETUP,       /* Wi-Fi setup #1D3557 */
+    TB_KEY_JIRA,        /* the Jira screen, #1D3557 like setup (over its alert limit it takes TB_KEY_FOCUS's orange) */
     TB_KEY_COUNT
 } tb_color_key_t;
 

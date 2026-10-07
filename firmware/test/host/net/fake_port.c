@@ -32,6 +32,7 @@ int fake_cal_add_calls, fake_cal_edit_calls, fake_cal_remove_calls;
 char fake_cal_last_url[1100], fake_cal_last_name[100], fake_cal_last_tag[40];
 int fake_cal_last_id;
 int fake_mac_time_calls;
+fake_jira_t fake_jira;
 tb_epoch_t fake_mac_time;
 bool fake_mac_time_accept;
 int fake_tokens_saves;
@@ -68,6 +69,7 @@ void fake_reset(void)
     fake_mac_time = 0;
     fake_mac_time_accept = true;
     fake_tokens_saves = 0;
+    memset(&fake_jira, 0, sizeof fake_jira);
 }
 
 void fake_tokens_clear(void)
@@ -261,4 +263,66 @@ size_t net_port_tokens_load(void *blob, size_t cap)
     size_t n = s_tokens_n < cap ? s_tokens_n : cap;
     memcpy(blob, s_tokens, n);
     return n;
+}
+
+/* ---------- jira_service.h, faked: the real rules (jira_resolve) over a state the tests control ---------- */
+
+void jira_get_info(jira_info_t *out)
+{
+    memset(out, 0, sizeof *out);
+    out->alert_above = -1;
+    out->count = -1;
+    out->test.state = fake_jira.test_state;
+    snprintf(out->test.name, sizeof out->test.name, "%s", fake_jira.test_name);
+    out->test.count = fake_jira.test_count;
+    out->test.error = fake_jira.test_error;
+    if (!fake_jira.saved) return;
+    const jira_cfg_t *c = &fake_jira.cfg;
+    out->configured = true;
+    snprintf(out->site, sizeof out->site, "%s", c->site);
+    jira_email_hint(c->email, out->email_hint, sizeof out->email_hint);
+    out->token_saved = c->token[0] != '\0';
+    snprintf(out->filter_id, sizeof out->filter_id, "%s", c->filter);
+    snprintf(out->filter_name, sizeof out->filter_name, "%s", fake_jira.filter_name);
+    snprintf(out->label, sizeof out->label, "%s", c->label);
+    out->alert_above = c->alert_above;
+    out->state = fake_jira.state;
+    out->count = fake_jira.count;
+    out->updated_at = fake_jira.updated_at;
+}
+
+jira_err_t jira_save(const jira_input_t *in)
+{
+    jira_cfg_t c;
+    jira_err_t e = jira_resolve(fake_jira.saved ? &fake_jira.cfg : NULL, in, &c);
+    if (e != JIRA_OK) return e;
+    fake_jira.save_calls++;
+    fake_jira.saved = true;
+    fake_jira.cfg = c;
+    fake_jira.state = TB_JIRA_LOADING;
+    fake_jira.count = -1;
+    fake_jira.updated_at = 0;
+    return JIRA_OK;
+}
+
+jira_err_t jira_test(const jira_input_t *in)
+{
+    jira_cfg_t c;
+    jira_err_t e = jira_resolve(fake_jira.saved ? &fake_jira.cfg : NULL, in, &c);
+    if (e != JIRA_OK) return e;
+    fake_jira.test_calls++;
+    fake_jira.last_test_cfg = c;
+    fake_jira.test_state = JIRA_TEST_ASKING;
+    return JIRA_OK;
+}
+
+bool jira_remove(void)
+{
+    bool was = fake_jira.saved;
+    int saves = fake_jira.save_calls, tests = fake_jira.test_calls, removes = fake_jira.remove_calls + 1;
+    memset(&fake_jira, 0, sizeof fake_jira);         /* the token and every setting go */
+    fake_jira.save_calls = saves;
+    fake_jira.test_calls = tests;
+    fake_jira.remove_calls = removes;
+    return was;
 }

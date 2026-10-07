@@ -47,6 +47,7 @@
  */
 #pragma once
 
+#include "tb_jira.h"
 #include "tb_menu.h"
 #include "tb_pomodoro.h"
 #include "tb_settings.h"
@@ -214,6 +215,10 @@ typedef struct {
     tb_auto_t shown_kind;           /* autoShown: the call or meeting on screen, so changes are announced once */
     uint32_t shown_id;
 
+    /* Jira issue count (decisions.md): the screen between Message and Clock, there only while it is set up */
+    tb_jira_t jira;
+    bool jira_known;                /* the Jira service has reported once (a saved Jira status isn't dropped before that) */
+
     /* the Pomodoro */
     tb_pomo_t pomo;
     int8_t ticking_level;           /* last TB_FX_TICKING sent: 0, 1, 2 */
@@ -334,6 +339,10 @@ void tb_app_set_mac_link(tb_app_t *a, tb_link_t link, const tb_clock_t *now);
 /* Today's and tomorrow's meetings that count, sorted by start (calendar; at most TB_MEETINGS_MAX). Ids must be
  * nonzero (0 is stored as 1). */
 void tb_app_set_meetings(tb_app_t *a, const tb_meeting_t *m, int n, const tb_clock_t *now);
+/* The Jira service's state (components/jira): configured or not, what the last check said, the count, its label and alert
+ * limit. Not configured takes the Jira screen out of the swipe order, and if it was showing, goes back to your last
+ * status. The first call also says the service is up, so a Jira status saved before a restart isn't dropped early. */
+void tb_app_set_jira(tb_app_t *a, const tb_jira_t *j, const tb_clock_t *now);
 /* Calendar status for the menus and screens. */
 void tb_app_set_calendar(tb_app_t *a, bool saved, bool checking, tb_epoch_t last_sync, const tb_clock_t *now);
 void tb_app_calendar_event(tb_app_t *a, tb_cal_event_t ev, const tb_clock_t *now);
@@ -414,6 +423,8 @@ bool tb_app_pairing_visible(const tb_app_t *a);
 bool tb_app_pairing_shown(const tb_app_t *a);
 /* The color key the screen is painted in right now (status, phase, call, meeting, clock or setup). */
 tb_color_key_t tb_app_color_key(const tb_app_t *a, const tb_clock_t *now);
+/* The Jira screen is in the swipe order: it is set up. */
+bool tb_app_jira_shown(const tb_app_t *a);
 /* STATES[i].name: "Available", "Busy", "In a meeting", "Pomodoro", "Away", "Message", "Clock". */
 const char *tb_status_name(tb_status_t st);
 

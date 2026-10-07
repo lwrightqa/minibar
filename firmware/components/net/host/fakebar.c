@@ -16,6 +16,9 @@
  *   POST /_sim/forget    Forget all, confirmed on the bar (hold, Wi-Fi, Devices, Forget all)
  *   POST /_sim/restart   what a restart does to pairing: any code ends, the back-off is cleared (tokens stay)
  *   POST /_sim/connected the bar shows Wi-Fi setup's Connected screen (it's back on the office Wi-Fi; a tap ends it)
+ *   POST /_sim/jira      body: how Jira answers from now on: "ok 12", "down", "token", "nofilter", or "age 180" (the last answer
+ *                        was that many minutes ago); the saved setup checks again at once (filter 10042 is "Open bugs",
+ *                        10043 "Needs review", any other "Filter <id>")
  * Not part of the firmware or the host tests.
  */
 #include <arpa/inet.h>
@@ -32,6 +35,7 @@
 
 #include "cal_list.h"
 #include "cal_url.h"
+#include "jira_service.h"
 #include "net_api.h"
 #include "net_pair.h"
 #include "net_port.h"
@@ -351,8 +355,146 @@ static void sample_meetings(const int *starts_min, int n, const tb_clock_t *now)
     tb_app_set_meetings(&s_app, m, n, now);
 }
 
+/* ======================================================================================================== */
+/* The Jira service, simulated (jira_service.h): the real checks (jira_resolve), answers from /_sim/jira               */
+/* ======================================================================================================== */
+
+static struct {
+    bool saved;
+    jira_cfg_t cfg;
+    tb_jira_t j;
+    char mode[16];
+    int count;
+    tb_ms_t check_at;           /* the saved setup's check finishes then (0: none) */
+    jira_test_state_t test_state;
+    char test_name[TB_JIRA_LABEL_BYTES];
+    int test_count;
+    const char *test_error;
+    tb_ms_t test_at;
+    jira_cfg_t test_cfg;
+    char filter_name[TB_JIRA_LABEL_BYTES];
+} s_jira = {.mode = "ok", .count = 12};
+
+static const char *jira_name_of(const char *id, char *buf, size_t cap)
+{
+    snprintf(buf, cap, "%s", !strcmp(id, "10042") ? "Open bugs" : !strcmp(id, "10043") ? "Needs review" : "");
+    if (!buf[0]) snprintf(buf, cap, "Filter %s", id);
+    return buf;
+}
+
+static void jira_push(const tb_clock_t *now)
+{
+    tb_app_set_jira(&s_app, &s_jira.j, now);
+}
+
+void jira_get_info(jira_info_t *out)
+{
+    memset(out, 0, sizeof *out);
+    out->alert_above = -1;
+    out->count = -1;
+    out->test.state = s_jira.test_state;
+    snprintf(out->test.name, sizeof out->test.name, "%s", s_jira.test_name);
+    out->test.count = s_jira.test_count;
+    out->test.error = s_jira.test_error;
+    if (!s_jira.saved) return;
+    const jira_cfg_t *c = &s_jira.cfg;
+    out->configured = true;
+    snprintf(out->site, sizeof out->site, "%s", c->site);
+    jira_email_hint(c->email, out->email_hint, sizeof out->email_hint);
+    out->token_saved = c->token[0] != '\0';
+    snprintf(out->filter_id, sizeof out->filter_id, "%s", c->filter);
+    snprintf(out->filter_name, sizeof out->filter_name, "%s", s_jira.filter_name);
+    snprintf(out->label, sizeof out->label, "%s", c->label);
+    out->alert_above = c->alert_above;
+    out->state = s_jira.j.state;
+    out->count = s_jira.j.count;
+    out->updated_at = s_jira.j.ok_at;
+}
+
+jira_err_t jira_save(const jira_input_t *in)
+{
+    jira_cfg_t c;
+    jira_err_t e = jira_resolve(s_jira.saved ? &s_jira.cfg : NULL, in, &c);
+    if (e != JIRA_OK) return e;
+    tb_clock_t now = now_clock();
+    char nm[TB_JIRA_LABEL_BYTES];
+    jira_name_of(c.filter, nm, sizeof nm);
+    if (c.label_auto) snprintf(c.label, sizeof c.label, "%s", nm);       /* the name the first check learns */
+    snprintf(s_jira.filter_name, sizeof s_jira.filter_name, "%s", nm);
+    s_jira.saved = true;
+    s_jira.cfg = c;
+    tb_jira_configure(&s_jira.j, c.label, c.alert_above);
+    s_jira.check_at = now.mono + 600;
+    jira_push(&now);
+    return JIRA_OK;
+}
+
+jira_err_t jira_test(const jira_input_t *in)
+{
+    jira_cfg_t c;
+    jira_err_t e = jira_resolve(s_jira.saved ? &s_jira.cfg : NULL, in, &c);
+    if (e != JIRA_OK) return e;
+    s_jira.test_cfg = c;
+    s_jira.test_state = JIRA_TEST_ASKING;
+    s_jira.test_at = now_clock().mono + 800;
+    return JIRA_OK;
+}
+
+bool jira_remove(void)
+{
+    bool was = s_jira.saved;
+    tb_clock_t now = now_clock();
+    s_jira.saved = false;
+    memset(&s_jira.cfg, 0, sizeof s_jira.cfg);
+    tb_jira_clear(&s_jira.j);
+    s_jira.check_at = 0;
+    s_jira.test_state = JIRA_TEST_IDLE;
+    jira_push(&now);
+    return was;
+}
+
+/* What Jira would answer for a check of this filter now. */
+static tb_jira_result_t jira_answer(const char *filter, int *count, const char **err)
+{
+    (void)filter;
+    *err = NULL;
+    if (!s_wifi.sta_up) { *err = JIRA_ERR_OFFLINE; return TB_JIRA_RES_UNREACHABLE; }
+    if (!strcmp(s_jira.mode, "down")) { *err = JIRA_ERR_UNREACHABLE; return TB_JIRA_RES_UNREACHABLE; }
+    if (!strcmp(s_jira.mode, "token")) { *err = JIRA_ERR_TOKEN; return TB_JIRA_RES_TOKEN; }
+    if (!strcmp(s_jira.mode, "nofilter") || !strcmp(filter, "10000")) { *err = JIRA_ERR_FILTER; return TB_JIRA_RES_NOFILTER; }
+    *count = s_jira.count;
+    return TB_JIRA_RES_OK;
+}
+
+static void jira_tick(const tb_clock_t *now)
+{
+    if (s_jira.saved && s_jira.check_at && now->mono >= s_jira.check_at) {
+        int c = 0;
+        const char *err;
+        tb_jira_result_t r = jira_answer(s_jira.cfg.filter, &c, &err);
+        tb_jira_apply(&s_jira.j, r, c, now->wall);
+        s_jira.check_at = 0;
+        jira_push(now);
+    }
+    if (s_jira.test_state == JIRA_TEST_ASKING && now->mono >= s_jira.test_at) {
+        int c = 0;
+        const char *err;
+        tb_jira_result_t r = jira_answer(s_jira.test_cfg.filter, &c, &err);
+        if (r == TB_JIRA_RES_OK) {
+            s_jira.test_state = JIRA_TEST_OK;
+            jira_name_of(s_jira.test_cfg.filter, s_jira.test_name, sizeof s_jira.test_name);
+            s_jira.test_count = c;
+            s_jira.test_error = NULL;
+        } else {
+            s_jira.test_state = JIRA_TEST_ERROR;
+            s_jira.test_error = err;
+        }
+    }
+}
+
 static void sim_tick(const tb_clock_t *now)
 {
+    jira_tick(now);
     if (s_join.state == NET_JOIN_CONNECTING && now->mono >= s_join_at) {
         if (!strcmp(s_join_ssid, "Printer-Direct")) {
             s_join.state = NET_JOIN_FAILED;
@@ -623,6 +765,21 @@ static void handle(int fd, bool *quit)
             refresh_status();
             rebuild(&now, false, NULL);
         }
+        respond(fd, 200, "text/plain", NULL, "ok", 2);
+    } else if (!strcmp(q.path, "/_sim/jira") && q.body) {
+        char mode[16] = "";
+        int n = 0;
+        sscanf(q.body, "%15s %d", mode, &n);
+        if (!strcmp(mode, "age")) {
+            if (s_jira.j.ok_at) s_jira.j.ok_at = now.wall - (tb_epoch_t)n * 60;
+            s_jira.j.state = TB_JIRA_UNREACHABLE;
+            snprintf(s_jira.mode, sizeof s_jira.mode, "down");
+        } else {
+            snprintf(s_jira.mode, sizeof s_jira.mode, "%s", mode);
+            if (!strcmp(mode, "ok")) s_jira.count = n;
+        }
+        if (s_jira.saved) s_jira.check_at = now.mono + 300;
+        jira_push(&now);
         respond(fd, 200, "text/plain", NULL, "ok", 2);
     } else if (!strcmp(q.path, "/_sim/tap")) {
         tb_app_pointer(&s_app, true, 300, 80, TB_TILE_NONE, &now);

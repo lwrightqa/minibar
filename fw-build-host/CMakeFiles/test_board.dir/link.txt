@@ -1,0 +1,1 @@
+/usr/bin/cc -g -fsanitize=address,undefined CMakeFiles/test_board.dir/tb_test_main.c.o CMakeFiles/test_board.dir/board/test_board.c.o CMakeFiles/test_board.dir/board/test_orient_start.c.o -o test_board  board/libtb_board_logic.a -lm 

@@ -1,0 +1,1 @@
+/usr/bin/cc -g -fsanitize=address,undefined CMakeFiles/tb_fakebar.dir/host/fakebar.c.o -o tb_fakebar  libtb_net_proto.a ../calendar/libtb_calendar.a ../jira/libtb_jira.a ../core/libtb_core.a 

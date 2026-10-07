@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "tb_fmt.h"
+#include "tb_jira.h"
 #include "tb_text.h"
 #include "ui_scenes.h"
 
@@ -342,6 +343,37 @@ static void s_away_back_24h(tb_app_t *a, tb_clock_t *n)
     a->set.more.time_24h = true;
     a->rev++;
 }
+/* The Jira screen (decisions.md "Jira issue count"): a count answered 22 minutes ago, unless the scene says otherwise. */
+static void jira_scene(tb_app_t *a, tb_clock_t *n, tb_jira_state_t st, int32_t count, int alert, int64_t ok_ago_s)
+{
+    base(a, n, TB_ST_JIRA);
+    tb_jira_t j;
+    tb_jira_init(&j);
+    tb_jira_configure(&j, "Open bugs", alert);
+    if (st != TB_JIRA_LOADING) tb_jira_apply(&j, TB_JIRA_RES_OK, count < 0 ? 0 : count, REF - ok_ago_s);
+    if (st == TB_JIRA_UNREACHABLE) tb_jira_apply(&j, TB_JIRA_RES_UNREACHABLE, 0, REF);
+    if (st == TB_JIRA_TOKEN) tb_jira_apply(&j, TB_JIRA_RES_TOKEN, 0, REF);
+    if (st == TB_JIRA_NOFILTER) tb_jira_apply(&j, TB_JIRA_RES_NOFILTER, 0, REF);
+    if (st == TB_JIRA_UNREACHABLE && count < 0) j.count = -1;
+    tb_app_set_jira(a, &j, n);
+    quiet_toast(a);
+}
+static void s_jira_ok(tb_app_t *a, tb_clock_t *n) { jira_scene(a, n, TB_JIRA_OK, 12, 20, 22 * 60); }
+static void s_jira_one(tb_app_t *a, tb_clock_t *n) { jira_scene(a, n, TB_JIRA_OK, 1, -1, 22 * 60); }
+static void s_jira_zero(tb_app_t *a, tb_clock_t *n) { jira_scene(a, n, TB_JIRA_OK, 0, 10, 22 * 60); }
+static void s_jira_over(tb_app_t *a, tb_clock_t *n) { jira_scene(a, n, TB_JIRA_OK, 12, 10, 22 * 60); }
+static void s_jira_big(tb_app_t *a, tb_clock_t *n) { jira_scene(a, n, TB_JIRA_OK, 12345, -1, 22 * 60); }
+static void s_jira_loading(tb_app_t *a, tb_clock_t *n) { jira_scene(a, n, TB_JIRA_LOADING, 0, -1, 0); }
+static void s_jira_kept(tb_app_t *a, tb_clock_t *n) { jira_scene(a, n, TB_JIRA_UNREACHABLE, 12, 20, 12 * 60); }
+static void s_jira_kept_over(tb_app_t *a, tb_clock_t *n) { jira_scene(a, n, TB_JIRA_UNREACHABLE, 12, 10, 12 * 60); }
+static void s_jira_dropped(tb_app_t *a, tb_clock_t *n) { jira_scene(a, n, TB_JIRA_UNREACHABLE, 12, 20, 3 * 3600); }
+static void s_jira_token(tb_app_t *a, tb_clock_t *n) { jira_scene(a, n, TB_JIRA_TOKEN, 0, 10, 0); }
+static void s_jira_nofilter(tb_app_t *a, tb_clock_t *n) { jira_scene(a, n, TB_JIRA_NOFILTER, 0, 10, 0); }
+static void s_jira_dark_hold(tb_app_t *a, tb_clock_t *n)
+{
+    jira_scene(a, n, TB_JIRA_OK, 12, 20, 22 * 60);
+    hold_menu(a, n);
+}
 static void s_menu_quick_offline(tb_app_t *a, tb_clock_t *n)
 {
     base(a, n, TB_ST_AVAILABLE);
@@ -655,6 +687,18 @@ const ui_scene_t ui_scenes[] = {
     {"menu_display_24h", "The Display menu after Time is switched to 24-hr (toast over it)", s_menu_display_24h, 0, false},
     {"clock_24h", "Clock with Time format 24-hour", s_clock_24h, 0, false},
     {"away_back_24h", "Away, Back at 03:40 in 24-hour", s_away_back_24h, 0, false},
+    {"jira_ok", "Jira: a count, updated 22 minutes ago (firmware only)", s_jira_ok, 0, false},
+    {"jira_one", "Jira: one issue", s_jira_one, 0, false},
+    {"jira_zero", "Jira: a calm zero", s_jira_zero, 0, false},
+    {"jira_over", "Jira: over the limit (orange)", s_jira_over, 0, false},
+    {"jira_big", "Jira: 10k+ at the 62 px step", s_jira_big, 0, false},
+    {"jira_loading", "Jira: the first check", s_jira_loading, 0, false},
+    {"jira_kept", "Jira: can't reach it, the last count kept (12 min)", s_jira_kept, 0, false},
+    {"jira_kept_over", "Jira: can't reach it, kept and over the limit", s_jira_kept_over, 0, false},
+    {"jira_dropped", "Jira: can't reach it for 3 hours, the count dropped", s_jira_dropped, 0, false},
+    {"jira_token", "Jira: token rejected", s_jira_token, 0, false},
+    {"jira_nofilter", "Jira: filter not found", s_jira_nofilter, 0, false},
+    {"jira_menu", "Jira: the quick menu over it", s_jira_dark_hold, 0, false},
     {"menu_quick_offline", "The quick menu offline", s_menu_quick_offline, 0, false},
     {"menu_quick_nocal", "The quick menu without a calendar", s_menu_quick_nocal, 0, false},
     {"menu_quick_syncing", "The quick menu while syncing", s_menu_quick_syncing, 0, false},

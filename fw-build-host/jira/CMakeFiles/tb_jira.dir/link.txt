@@ -1,0 +1,2 @@
+/usr/bin/ar qc libtb_jira.a CMakeFiles/tb_jira.dir/src/jira_proto.c.o
+/usr/bin/ranlib libtb_jira.a

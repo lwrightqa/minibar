@@ -20,7 +20,7 @@ if(ESP_PLATFORM)
              "esp/net_port_esp.c"
         INCLUDE_DIRS "include"
         PRIV_INCLUDE_DIRS "esp"
-        REQUIRES core calendar esp_common
+        REQUIRES core calendar jira esp_common
         PRIV_REQUIRES bus json esp_wifi esp_netif esp_event esp_http_server wpa_supplicant lwip nvs_flash
                       esp_driver_usb_serial_jtag esp_timer esp_app_format mbedtls log espressif__mdns
                       bootloader_support freertos)
@@ -43,11 +43,11 @@ else()
     endif()
     add_library(tb_net_proto STATIC ${TB_NET_PROTO_SRCS} ${IDF_PATH}/components/json/cJSON/cJSON.c)
     target_include_directories(tb_net_proto PUBLIC include ${IDF_PATH}/components/json/cJSON)
-    target_link_libraries(tb_net_proto PUBLIC tb_core tb_calendar)
+    target_link_libraries(tb_net_proto PUBLIC tb_core tb_calendar tb_jira)
     target_compile_options(tb_net_proto PRIVATE -Wall -Wextra -Werror=implicit-function-declaration)
     # A bar on Linux for testing the Remote and setup pages in a browser (not a test; see host/fakebar.c).
     add_executable(tb_fakebar host/fakebar.c)
-    target_link_libraries(tb_fakebar PRIVATE tb_net_proto tb_calendar tb_core)
+    target_link_libraries(tb_fakebar PRIVATE tb_net_proto tb_calendar tb_jira tb_core)
     target_compile_definitions(tb_fakebar PRIVATE TB_WEB_DIR="${CMAKE_CURRENT_SOURCE_DIR}/web")
     target_compile_options(tb_fakebar PRIVATE -Wall -Wextra)
 endif()

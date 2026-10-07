@@ -1,0 +1,2 @@
+/usr/bin/ar qc libtb_net_proto.a CMakeFiles/tb_net_proto.dir/proto/net_api.c.o CMakeFiles/tb_net_proto.dir/proto/net_macs.c.o CMakeFiles/tb_net_proto.dir/proto/net_nets.c.o CMakeFiles/tb_net_proto.dir/proto/net_pair.c.o CMakeFiles/tb_net_proto.dir/proto/net_util.c.o "CMakeFiles/tb_net_proto.dir/home/user/esp/esp-idf/components/json/cJSON/cJSON.c.o"
+/usr/bin/ranlib libtb_net_proto.a

@@ -1,0 +1,1 @@
+/usr/bin/cc -g -fsanitize=address,undefined CMakeFiles/test_jira.dir/tb_test_main.c.o -o test_jira  jira/libtb_jira.a core/libtb_core.a 

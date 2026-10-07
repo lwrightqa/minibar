@@ -18,12 +18,41 @@
 #include "tb_internal.h"
 #include "tb_text.h"
 
-static const char *const STATE_NAME[TB_ST_COUNT] = {"Available", "Busy", "In a meeting", "Pomodoro", "Away", "Message", "Clock"};
+static const char *const STATE_NAME[TB_ST_COUNT] = {"Available", "Busy", "In a meeting", "Pomodoro", "Away", "Message", "Clock", "Jira"};
 #define POMO TB_ST_POMODORO
 
 const char *tb_status_name(tb_status_t st)
 {
     return st < TB_ST_COUNT ? STATE_NAME[st] : "";
+}
+
+bool tb_app_jira_shown(const tb_app_t *a)
+{
+    return a->jira.configured;
+}
+
+/* The order of the swipe and the tap, which isn't the number order: Jira sits between Message and Clock (the mock-up's
+ * STATES), and is skipped while it isn't set up (stepIdx()). */
+static const tb_status_t ORDER[TB_ST_COUNT] = {TB_ST_AVAILABLE, TB_ST_BUSY, TB_ST_MEETING, TB_ST_POMODORO,
+                                               TB_ST_AWAY,      TB_ST_MESSAGE, TB_ST_JIRA,  TB_ST_CLOCK};
+
+static tb_status_t status_step(const tb_app_t *a, tb_status_t from, int dir)
+{
+    int at = 0;
+    for (int i = 0; i < TB_ST_COUNT; i++)
+        if (ORDER[i] == from) at = i;
+    for (int n = 0; n < TB_ST_COUNT; n++) {
+        at = (at + dir + TB_ST_COUNT) % TB_ST_COUNT;
+        if (ORDER[at] != TB_ST_JIRA || tb_app_jira_shown(a)) return ORDER[at];
+    }
+    return from;
+}
+
+/* What the toasts call a status: the Jira screen goes by its label, as in the mock-up. */
+static const char *status_label(const tb_app_t *a, tb_status_t st)
+{
+    if (st == TB_ST_JIRA && a->jira.configured && a->jira.label[0]) return a->jira.label;
+    return STATE_NAME[st];
 }
 
 /* ======================================================================================================== */
@@ -274,6 +303,7 @@ tb_color_key_t tb_app_color_key(const tb_app_t *a, const tb_clock_t *now)
         return a->pomo.phase == TB_PH_FOCUS ? TB_KEY_FOCUS : a->pomo.phase == TB_PH_SHORT ? TB_KEY_SHORT : TB_KEY_LONG;
     case TB_ST_AWAY: return TB_KEY_AWAY;
     case TB_ST_MESSAGE: return TB_KEY_MESSAGE;
+    case TB_ST_JIRA: return tb_jira_over(&a->jira, now->wall, now->valid) ? TB_KEY_FOCUS : TB_KEY_JIRA;   /* over the limit: Focus's orange */
     default: return TB_KEY_CLOCK;
     }
 }
@@ -775,7 +805,7 @@ static void go(tb_app_t *a, int i, bool aside_it, const tb_clock_t *now)
     silence(a);
     tb_auto_t aside = aside_it ? set_aside(a, now) : TB_AUTO_NONE;
     a->idx = (tb_status_t)((i + TB_ST_COUNT) % TB_ST_COUNT);
-    if (a->idx != POMO && a->idx != TB_ST_CLOCK) a->last_status = a->idx;
+    if (a->idx != POMO && a->idx != TB_ST_CLOCK && a->idx != TB_ST_JIRA) a->last_status = a->idx;
     /* Firmware: Message before any message was set shows the mock-up's "Hello"; it's stored, so the API and the
      * Remote report what the bar shows (and POST /status "message" works). */
     if (a->idx == TB_ST_MESSAGE && !a->message[0]) {
@@ -785,7 +815,7 @@ static void go(tb_app_t *a, int i, bool aside_it, const tb_clock_t *now)
     a->since_ms = now->mono;
     a->since = wall_or_0(now);
     hide_menu(a);
-    if (aside != TB_AUTO_NONE) toastf(a, now, "%s set aside \xC2\xB7 %s", kind_cap(aside), STATE_NAME[a->idx]);
+    if (aside != TB_AUTO_NONE) toastf(a, now, "%s set aside \xC2\xB7 %s", kind_cap(aside), status_label(a, a->idx));
     tb_bump(a);
 }
 
@@ -1158,6 +1188,11 @@ static uint32_t visible_sig(const tb_app_t *a)
                   (int64_t)st->more.meeting_chime << 52);
     h_str(&s, st->device.name);
     h_str(&s, st->device.time_zone);
+    h_i64(&s, a->jira.configured | a->jira.state << 1 | (int64_t)a->jira_known << 8);
+    h_i64(&s, a->jira.count);
+    h_i64(&s, a->jira.ok_at);
+    h_i64(&s, a->jira.alert_above);
+    h_str(&s, a->jira.label);
     h_i64(&s, a->menu.kind);
     h_i64(&s, a->menu.n);
     for (int i = 0; i < a->menu.n; i++) h_tile(&s, &a->menu.tiles[i]);
@@ -1266,7 +1301,8 @@ void tb_app_restore(tb_app_t *a, tb_status_t idx, tb_status_t last_status, const
                     uint16_t done_today, tb_ms_t focused_ms, int32_t tallies_day)
 {
     if (idx < TB_ST_COUNT) a->idx = idx;
-    if (last_status < TB_ST_COUNT && last_status != TB_ST_POMODORO && last_status != TB_ST_CLOCK) a->last_status = last_status;
+    if (last_status < TB_ST_COUNT && last_status != TB_ST_POMODORO && last_status != TB_ST_CLOCK && last_status != TB_ST_JIRA)
+        a->last_status = last_status;
     if (message) tb_strlcpy(a->message, message, sizeof(a->message));
     a->message_at = message_at;
     if (a->idx == TB_ST_MESSAGE && !a->message[0]) tb_strlcpy(a->message, TB_MESSAGE_FALLBACK, sizeof(a->message));
@@ -1419,14 +1455,14 @@ static void on_release(tb_app_t *a, tb_gesture_t g, int8_t tile, const tb_clock_
         wifi_tap(a, now);
         return;
     }
-    if (g == TB_GEST_SWIPE_NEXT) go(a, (int)a->idx + 1, true, now);
-    else if (g == TB_GEST_SWIPE_PREV) go(a, (int)a->idx - 1, true, now);
+    if (g == TB_GEST_SWIPE_NEXT) go(a, (int)status_step(a, a->idx, 1), true, now);
+    else if (g == TB_GEST_SWIPE_PREV) go(a, (int)status_step(a, a->idx, -1), true, now);
     else if (tb_app_auto_top(a, now, NULL) != TB_AUTO_NONE) back_to_own(a, now);
     else if (a->idx == POMO) start_pause(a, true, now);
     else if (silence(a)) {
         toast(a, "Alarm off", now);
         tb_bump(a);
-    } else go(a, (int)a->idx + 1, true, now);
+    } else go(a, (int)status_step(a, a->idx, 1), true, now);
 }
 
 void tb_app_pointer(tb_app_t *a, bool pressed, int16_t x, int16_t y, int8_t tile, const tb_clock_t *now)
@@ -1497,7 +1533,7 @@ static void boot_click(tb_app_t *a, const tb_clock_t *now)
         back_to_own(a, now);
         return;
     }
-    go(a, (int)a->idx + 1, true, now);
+    go(a, (int)status_step(a, a->idx, 1), true, now);
 }
 
 void tb_app_button(tb_app_t *a, tb_button_t b, const tb_clock_t *now)
@@ -1597,7 +1633,7 @@ tb_err_t tb_app_remote_status(tb_app_t *a, tb_status_t st, const char *back_at, 
 {
     tb_err_t err = remote_guard(a, true);
     if (err) return err;
-    if ((int)st < 0 || st >= TB_ST_COUNT) return TB_E_BAD_VALUE;
+    if ((int)st < 0 || st >= TB_ST_COUNT || st == TB_ST_JIRA) return TB_E_BAD_VALUE;   /* the Remote has no Jira button */
     bool has_back = back_at && back_at[0], has_note = note && note[0];
     if ((has_back || has_note) && st != TB_ST_AWAY) return TB_E_BAD_VALUE;
     if (has_back && !valid_hhmm(back_at)) return TB_E_BAD_VALUE;
@@ -1872,6 +1908,21 @@ void tb_app_set_meetings(tb_app_t *a, const tb_meeting_t *m, int n, const tb_clo
     a->n_meetings = (uint8_t)n;
     a->rev++;   /* the list isn't in the visible signature (too big to hash every loop) */
     sync_auto(a, NULL, now);
+    settle(a, now);
+}
+
+void tb_app_set_jira(tb_app_t *a, const tb_jira_t *j, const tb_clock_t *now)
+{
+    a->jira = *j;
+    a->jira.label[sizeof a->jira.label - 1] = '\0';
+    a->jira_known = true;
+    /* Out of the swipe order: if it was showing, back to your last status (the mock-up's Remove). */
+    if (!a->jira.configured && a->idx == TB_ST_JIRA) {
+        a->idx = a->last_status == TB_ST_JIRA ? TB_ST_AVAILABLE : a->last_status;
+        a->since_ms = now->mono;
+        a->since = wall_or_0(now);
+    }
+    tb_bump(a);
     settle(a, now);
 }
 

@@ -1,0 +1,2 @@
+/usr/bin/ar qc libtb_board_logic.a CMakeFiles/tb_board_logic.dir/logic/brd_inputs.c.o CMakeFiles/tb_board_logic.dir/logic/brd_sound.c.o CMakeFiles/tb_board_logic.dir/logic/brd_rtc.c.o
+/usr/bin/ranlib libtb_board_logic.a

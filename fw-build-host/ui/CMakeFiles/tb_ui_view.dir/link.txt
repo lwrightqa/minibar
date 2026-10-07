@@ -1,0 +1,2 @@
+/usr/bin/ar qc libtb_ui_view.a CMakeFiles/tb_ui_view.dir/view/ui_view.c.o CMakeFiles/tb_ui_view.dir/view/ui_theme.c.o CMakeFiles/tb_ui_view.dir/host/ui_scenes.c.o
+/usr/bin/ranlib libtb_ui_view.a

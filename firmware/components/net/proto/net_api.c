@@ -16,6 +16,7 @@
 #include "net_macs.h"
 #include "net_pair.h"
 #include "net_port.h"
+#include "jira_service.h"
 #include "net_util.h"
 #include "tb_fmt.h"
 #include "tb_text.h"
@@ -1747,6 +1748,130 @@ static void h_todo_post(rt_t *r, cJSON *b)
 }
 
 /* ======================================================================================================== */
+/* Jira issue count (api.md section 19; decisions.md "Jira issue count (2026-10-07)")                       */
+/* ======================================================================================================== */
+
+/* GET /api/v1/jira and the replies of PUT, DELETE and test: everything about it that isn't secret. The token and the email
+ * are never here, not even masked in the token's case: only whether one is saved, and the email as "y•••@example.com". */
+static void add_jira(rt_t *r, int status)
+{
+    static const char *const state[] = {"loading", "ok", "unreachable", "token_rejected", "filter_not_found"};
+    static const char *const tstate[] = {"idle", "asking", "ok", "error"};
+    jira_info_t j;
+    jira_get_info(&j);
+    ok(r, status);
+    cJSON *o = cJSON_AddObjectToObject(r->o, "jira");
+    cJSON_AddBoolToObject(o, "configured", j.configured);
+    add_str0(o, "site", j.site);
+    add_str0(o, "email_hint", j.email_hint);
+    cJSON_AddBoolToObject(o, "token_saved", j.token_saved);
+    add_str0(o, "filter_id", j.filter_id);
+    add_str0(o, "filter_name", j.filter_name);
+    add_str0(o, "label", j.label);
+    if (j.alert_above >= 0) cJSON_AddNumberToObject(o, "alert_above", j.alert_above);
+    else cJSON_AddNullToObject(o, "alert_above");
+    add_str(o, "state", j.configured ? state[j.state <= TB_JIRA_NOFILTER ? j.state : 0] : NULL);
+    if (j.configured && j.count >= 0) cJSON_AddNumberToObject(o, "count", j.count);
+    else cJSON_AddNullToObject(o, "count");
+    add_time(o, "updated_at", j.configured ? j.updated_at : 0);
+    cJSON *t = cJSON_AddObjectToObject(o, "test");
+    cJSON_AddStringToObject(t, "state", tstate[j.test.state <= JIRA_TEST_ERROR ? j.test.state : 0]);
+    add_str0(t, "filter_name", j.test.state == JIRA_TEST_OK ? j.test.name : NULL);
+    if (j.test.state == JIRA_TEST_OK) cJSON_AddNumberToObject(t, "count", j.test.count);
+    else cJSON_AddNullToObject(t, "count");
+    add_str(t, "error", j.test.state == JIRA_TEST_ERROR ? j.test.error : NULL);
+    add_str0(t, "message", j.test.state == JIRA_TEST_ERROR ? jira_test_message(j.test.error) : NULL);
+}
+
+/* The body of PUT and test: strings (site, email, token, filter_id, label) and alert_above (a whole number, a string of
+ * digits, or null to clear). A field of another type is bad_value on that field; the value is never echoed. */
+static bool jira_input(rt_t *r, const cJSON *b, jira_input_t *in)
+{
+    static const char *const names[] = {"site", "email", "token", "filter_id", "label"};
+    const char **dst[] = {&in->site, &in->email, &in->token, &in->filter, &in->label};
+    memset(in, 0, sizeof *in);
+    for (int i = 0; i < 5; i++) {
+        char msg[64];
+        const char *v = NULL;
+        fstat_t f = get_str(b, names[i], &v);
+        if (f == F_TYPE) {
+            snprintf(msg, sizeof msg, "%s must be a string.", names[i]);
+            bad_value(r, names[i], msg);
+            return false;
+        }
+        if (strlen(v ? v : "") > 512) {
+            snprintf(msg, sizeof msg, "%s is too long.", names[i]);
+            bad_value(r, names[i], msg);
+            return false;
+        }
+        *dst[i] = v;
+    }
+    const cJSON *al = item(b, "alert_above");
+    static char digits[16];
+    if (al) {
+        in->has_alert = true;
+        if (cJSON_IsNull(al)) {
+            in->alert = NULL;
+        } else if (cJSON_IsNumber(al) && al->valuedouble >= 0 && al->valuedouble <= TB_JIRA_ALERT_MAX &&
+                   (double)(int)al->valuedouble == al->valuedouble) {
+            snprintf(digits, sizeof digits, "%d", (int)al->valuedouble);
+            in->alert = digits;
+        } else if (cJSON_IsString(al) && al->valuestring) {
+            in->alert = al->valuestring;
+        } else {
+            bad_value(r, "alert_above", "alert_above must be a whole number from 0 to 9999, or null.");
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool jira_refused(rt_t *r, jira_err_t e)
+{
+    if (e == JIRA_OK) return false;
+    bad_value(r, jira_err_field(e), jira_err_message(e));
+    return true;
+}
+
+static void h_jira_get(rt_t *r, cJSON *b)
+{
+    (void)b;
+    add_jira(r, 200);
+}
+
+static void h_jira_put(rt_t *r, cJSON *b)
+{
+    if (!need_body(r, b)) return;
+    jira_input_t in;
+    if (!jira_input(r, b, &in)) return;
+    jira_info_t was;
+    jira_get_info(&was);
+    if (jira_refused(r, jira_save(&in))) return;
+    jira_info_t now;
+    jira_get_info(&now);
+    char t[TB_TOAST_BYTES];
+    snprintf(t, sizeof t, was.configured ? "Jira saved" : "Jira added \xC2\xB7 %s", now.label);
+    tb_app_notify(s_app, t, &r->now);
+    add_jira(r, 200);
+}
+
+static void h_jira_test(rt_t *r, cJSON *b)
+{
+    if (!need_body(r, b)) return;
+    jira_input_t in;
+    if (!jira_input(r, b, &in)) return;
+    if (jira_refused(r, jira_test(&in))) return;
+    add_jira(r, 202);
+}
+
+static void h_jira_delete(rt_t *r, cJSON *b)
+{
+    (void)b;
+    if (jira_remove()) tb_app_notify(s_app, "Jira removed", &r->now);
+    add_jira(r, 200);
+}
+
+/* ======================================================================================================== */
 /* Routing                                                                                                  */
 /* ======================================================================================================== */
 
@@ -1783,6 +1908,10 @@ static const route_t ROUTES[] = {
     {"GET", "/api/v1/clients", NEED_FULL, h_clients},
     {"DELETE", "/api/v1/clients/self", NEED_CALL, h_client_self},
     {"DELETE", "/api/v1/clients/*", NEED_FULL, h_client_delete},
+    {"GET", "/api/v1/jira", NEED_FULL, h_jira_get},
+    {"PUT", "/api/v1/jira", NEED_FULL, h_jira_put},
+    {"DELETE", "/api/v1/jira", NEED_FULL, h_jira_delete},
+    {"POST", "/api/v1/jira/test", NEED_FULL, h_jira_test},
     {"GET", "/api/v1/setup/networks", NEED_SETUP, h_setup_networks},
     {"POST", "/api/v1/setup/wifi", NEED_SETUP, h_setup_wifi},
     {"GET", "/api/v1/setup/state", NEED_SETUP, h_setup_state},

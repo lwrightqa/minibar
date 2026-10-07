@@ -1,5 +1,6 @@
 /* fake_port.h: knobs of the host tests' net_port.h fake. Owner: net builder. */
 #pragma once
+#include "jira_service.h"
 #include "net_port.h"
 
 extern tb_clock_t fake_now;
@@ -25,6 +26,24 @@ extern cal_items_t fake_items;
 extern int fake_cal_add_calls, fake_cal_edit_calls, fake_cal_remove_calls;
 extern char fake_cal_last_url[1100], fake_cal_last_name[100], fake_cal_last_tag[40];
 extern int fake_cal_last_id;
+
+/* Jira (jira_service.h's fake): what is "saved", what the last check said, and what the router asked. A test finishes a
+ * Test by filling in fake_jira.test itself. */
+typedef struct {
+    bool saved;
+    jira_cfg_t cfg;
+    tb_jira_state_t state;
+    int32_t count;
+    tb_epoch_t updated_at;
+    char filter_name[TB_JIRA_LABEL_BYTES];
+    jira_test_state_t test_state;
+    char test_name[TB_JIRA_LABEL_BYTES];
+    int32_t test_count;
+    const char *test_error;
+    jira_cfg_t last_test_cfg;
+    int save_calls, test_calls, remove_calls;
+} fake_jira_t;
+extern fake_jira_t fake_jira;
 
 /* time */
 extern int fake_mac_time_calls;

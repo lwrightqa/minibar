@@ -1,0 +1,41 @@
+file(REMOVE_RECURSE
+  "CMakeFiles/test_net.dir/net/fake_port.c.o"
+  "CMakeFiles/test_net.dir/net/fake_port.c.o.d"
+  "CMakeFiles/test_net.dir/net/net_fixture.c.o"
+  "CMakeFiles/test_net.dir/net/net_fixture.c.o.d"
+  "CMakeFiles/test_net.dir/net/test_align_fix.c.o"
+  "CMakeFiles/test_net.dir/net/test_align_fix.c.o.d"
+  "CMakeFiles/test_net.dir/net/test_api_endpoints.c.o"
+  "CMakeFiles/test_net.dir/net/test_api_endpoints.c.o.d"
+  "CMakeFiles/test_net.dir/net/test_api_http.c.o"
+  "CMakeFiles/test_net.dir/net/test_api_http.c.o.d"
+  "CMakeFiles/test_net.dir/net/test_api_usb.c.o"
+  "CMakeFiles/test_net.dir/net/test_api_usb.c.o.d"
+  "CMakeFiles/test_net.dir/net/test_calendars.c.o"
+  "CMakeFiles/test_net.dir/net/test_calendars.c.o.d"
+  "CMakeFiles/test_net.dir/net/test_macs.c.o"
+  "CMakeFiles/test_net.dir/net/test_macs.c.o.d"
+  "CMakeFiles/test_net.dir/net/test_nets.c.o"
+  "CMakeFiles/test_net.dir/net/test_nets.c.o.d"
+  "CMakeFiles/test_net.dir/net/test_pair.c.o"
+  "CMakeFiles/test_net.dir/net/test_pair.c.o.d"
+  "CMakeFiles/test_net.dir/net/test_pairing_fix.c.o"
+  "CMakeFiles/test_net.dir/net/test_pairing_fix.c.o.d"
+  "CMakeFiles/test_net.dir/net/test_review_round.c.o"
+  "CMakeFiles/test_net.dir/net/test_review_round.c.o.d"
+  "CMakeFiles/test_net.dir/net/test_sec_review.c.o"
+  "CMakeFiles/test_net.dir/net/test_sec_review.c.o.d"
+  "CMakeFiles/test_net.dir/net/test_setup_network.c.o"
+  "CMakeFiles/test_net.dir/net/test_setup_network.c.o.d"
+  "CMakeFiles/test_net.dir/net/test_util.c.o"
+  "CMakeFiles/test_net.dir/net/test_util.c.o.d"
+  "CMakeFiles/test_net.dir/tb_test_main.c.o"
+  "CMakeFiles/test_net.dir/tb_test_main.c.o.d"
+  "test_net"
+  "test_net.pdb"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang C)
+  include(CMakeFiles/test_net.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()

@@ -1,0 +1,2 @@
+/usr/bin/ar qc libtb_calendar.a CMakeFiles/tb_calendar.dir/src/cal_ics.c.o CMakeFiles/tb_calendar.dir/src/cal_list.c.o CMakeFiles/tb_calendar.dir/src/cal_migrate.c.o CMakeFiles/tb_calendar.dir/src/cal_rrule.c.o CMakeFiles/tb_calendar.dir/src/cal_status.c.o CMakeFiles/tb_calendar.dir/src/cal_store.c.o CMakeFiles/tb_calendar.dir/src/cal_today.c.o CMakeFiles/tb_calendar.dir/src/cal_tz.c.o CMakeFiles/tb_calendar.dir/src/cal_url.c.o
+/usr/bin/ranlib libtb_calendar.a

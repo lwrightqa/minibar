@@ -685,3 +685,80 @@ TB_TEST(view_24h_clock_unset_and_toggle_redraws)
     A.rev++;                                    /* what tb_app does when the setting changes */
     TB_TRUE(ui_view_key(&A, &NOW) != k12);
 }
+
+/* ---------- the Jira screen (decisions.md "Jira issue count (2026-10-07)") ---------- */
+
+TB_TEST(view_jira_every_state)
+{
+    scene("jira_ok");
+    TB_EQ_INT(V.layout, UI_LAYOUT_STATUS);
+    TB_EQ_INT(V.key, TB_KEY_JIRA);
+    MAIN("Jira \xC2\xB7 Open bugs", "12", "issues \xC2\xB7 updated 1:42 PM");
+    TB_EQ_INT(V.fit, UI_FIT_WORD);
+    TB_TRUE(V.head_caps);
+    SIDE("Updated", "1:42", "PM", "every 5 minutes");
+    TB_FALSE(V.value_small);
+    TB_EQ_STR(V.sys_time, "2:04 PM");
+    scene("jira_one");
+    MAIN("Jira \xC2\xB7 Open bugs", "1", "issue \xC2\xB7 updated 1:42 PM");
+    scene("jira_zero");
+    MAIN("Jira \xC2\xB7 Open bugs", "0", "No issues right now");      /* a calm zero, even with an alert set */
+    TB_EQ_INT(V.key, TB_KEY_JIRA);
+    scene("jira_over");
+    TB_EQ_INT(V.key, TB_KEY_FOCUS);                                  /* the orange; the words say it too */
+    MAIN("Jira \xC2\xB7 Open bugs", "12", "Over your limit of 10");
+    SIDE("Updated", "1:42", "PM", "every 5 minutes");
+    scene("jira_big");
+    TB_EQ_STR(V.head, "10k+");
+    TB_EQ_INT(V.fit, UI_FIT_62);                                     /* the 112 px font has no plus sign */
+    TB_FALSE(V.head_caps);
+    scene("jira_loading");
+    MAIN("Jira \xC2\xB7 Open bugs", "\xC2\xB7\xC2\xB7\xC2\xB7", "Asking Jira\xE2\x80\xA6");
+    SIDE("Jira", "Checking", "", "your site");
+    TB_TRUE(V.value_small);
+    scene("jira_kept");
+    MAIN("Jira \xC2\xB7 Open bugs", "12", "Can't reach Jira \xC2\xB7 as of 12 min ago");
+    SIDE("Last update", "1:52", "PM", "can't reach Jira");
+    TB_EQ_INT(V.key, TB_KEY_JIRA);
+    scene("jira_kept_over");
+    TB_EQ_INT(V.key, TB_KEY_FOCUS);                                  /* the kept count keeps its color */
+    scene("jira_dropped");
+    MAIN("Jira \xC2\xB7 Open bugs", "--", "Can't reach Jira \xC2\xB7 trying again");
+    SIDE("Jira", "Offline", "", "last answer 3 h ago");
+    scene("jira_token");
+    MAIN("Jira \xC2\xB7 Open bugs", "Token rejected", "Update it on the Remote");
+    TB_EQ_INT(V.fit, UI_FIT_62);
+    TB_FALSE(V.head_caps);
+    SIDE("Jira", "Sign-in", "", "needs a new token");
+    TB_EQ_INT(V.key, TB_KEY_JIRA);                                   /* no count, so never the alert color */
+    scene("jira_nofilter");
+    MAIN("Jira \xC2\xB7 Open bugs", "Filter not found", "Check the filter on the Remote");
+    SIDE("Jira", "Filter", "", "not found or not shared");
+}
+
+TB_TEST(view_jira_follows_the_time_format_and_never_shows_a_stale_count)
+{
+    scene("jira_ok");
+    A.set.more.time_24h = true;
+    ui_view_build(&A, &NOW, &V);
+    MAIN("Jira \xC2\xB7 Open bugs", "12", "issues \xC2\xB7 updated 13:42");
+    SIDE("Updated", "13:42", "", "every 5 minutes");
+    scene("jira_kept");
+    A.set.more.time_24h = true;
+    ui_view_build(&A, &NOW, &V);
+    SIDE("Last update", "13:52", "", "can't reach Jira");
+    /* the clock is unknown: no "ago" to compute, the kept count still shows */
+    scene("jira_kept");
+    NOW.valid = false;
+    ui_view_build(&A, &NOW, &V);
+    TB_EQ_STR(V.head, "12");
+    TB_EQ_STR(V.sub, "Can't reach Jira");
+    /* a long label is the 18 characters it was cut to, in the kicker's capitals */
+    scene("jira_ok");
+    snprintf(A.jira.label, sizeof A.jira.label, "Open bugs and inc\xE2\x80\xA6");
+    ui_view_build(&A, &NOW, &V);
+    TB_EQ_STR(V.kicker, "Jira \xC2\xB7 Open bugs and inc\xE2\x80\xA6");
+    A.jira.label[0] = '\0';
+    ui_view_build(&A, &NOW, &V);
+    TB_EQ_STR(V.kicker, "Jira \xC2\xB7 Jira");                         /* no label: the mock-up's fallback */
+}
