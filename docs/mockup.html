@@ -34,6 +34,7 @@
   --s-call: #c41563;
   --s-clock: #0b0c0e;
   --s-setup: #1d3557;
+  --s-jira: #1d3557;
   --s-fg: #ffffff;
 
   --state: var(--s-busy);
@@ -1429,6 +1430,20 @@ a.btn { display: inline-block; text-decoration: none; }
         </div>
         <p class="note-small" style="margin:0">Scan the More help code stands in for pointing the phone at the tour's last card: the phone panel opens the help page the code leads to. Forget "tour seen" makes the bar forget it has shown its tour, so it shows it once more after its next start-up (Restart, or power off and on), as a bar that gets the tour in a firmware update does; First-time Wi-Fi setup forgets it too, and then the tour shows when setup ends. The bar remembers it in this browser. Wi-Fi drops cuts the bar off the office Wi-Fi until Wi-Fi is back: it keeps following its saved calendar, and the Remote can't reach it meanwhile.</p>
       </div>
+      <div class="sim-box" role="group" aria-labelledby="simJiraTitle">
+        <span class="field-label" id="simJiraTitle">Jira</span>
+        <div class="row">
+          <button class="btn" type="button" data-jira="ok12">Count is 12</button>
+          <button class="btn ghost" type="button" data-jira="ok0">Count is 0</button>
+          <button class="btn ghost" type="button" data-jira="ok27">Count is 27</button>
+          <button class="btn ghost" type="button" data-jira="down">Can't reach Jira</button>
+          <button class="btn ghost" type="button" data-jira="age">12 min without an answer</button>
+          <button class="btn ghost" type="button" data-jira="stale">3 h without an answer</button>
+          <button class="btn ghost" type="button" data-jira="token">Token rejected</button>
+          <button class="btn ghost" type="button" data-jira="nofilter">Filter not found</button>
+        </div>
+        <p class="note-small" style="margin:0">Sets how Jira answers the bar's next check, and checks now. Needs the Jira section on the Remote saved first.</p>
+      </div>
       <div class="sim-box" role="group" aria-labelledby="simSoundTitle">
         <span class="field-label" id="simSoundTitle">Sounds</span>
         <div class="row">
@@ -1794,6 +1809,42 @@ a.btn { display: inline-block; text-decoration: none; }
           </div>
         </div>
       </div>
+      <div id="jiraSec">
+        <span class="field-label" id="jiraHead">Jira</span>
+        <div class="auto-card" id="jiraCard">
+          <div class="auto-head"><b>Issue count</b><span class="badge" id="jiraBadge">Not set up</span></div>
+          <p class="note-small" id="jiraIntro">MiniBar asks your Jira site how many issues are in one filter, every 5 minutes, and shows the number as its own screen you can swipe to. It only reads. Until you save this, the screen stays out of the swipe order.</p>
+          <p class="auto-line" id="jiraLine"></p>
+          <div class="setup" id="jiraForm">
+            <label class="field" for="jiraSite"><span class="field-label">Site address</span>
+              <input id="jiraSite" type="url" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="https://yourteam.atlassian.net"></label>
+            <label class="field" for="jiraEmail"><span class="field-label">Account email</span>
+              <input id="jiraEmail" type="email" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="you@example.com" aria-describedby="jiraEmailNote"></label>
+            <p class="note-small" id="jiraEmailNote" style="margin:0">Only sent to your own Jira site, to sign in. MiniBar never sends it anywhere else.</p>
+            <label class="field" for="jiraTok"><span class="field-label">API token</span>
+              <input id="jiraTok" type="password" autocomplete="new-password" spellcheck="false" autocapitalize="off" placeholder="Paste the token" aria-describedby="jiraTokNote"></label>
+            <p class="note-small" id="jiraTokNote" style="margin:0">Write-only: once saved, MiniBar never shows it again. For a read-only token, create one with scopes in your Atlassian account (Security, API tokens, Create API token with scopes, Jira, read:jira-work).</p>
+            <label class="field" for="jiraFilter"><span class="field-label">Filter ID</span>
+              <input id="jiraFilter" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" placeholder="10042" aria-describedby="jiraFilterNote"></label>
+            <p class="note-small" id="jiraFilterNote" style="margin:0">The number after filter= in the filter's address. You can paste the whole address.</p>
+            <div class="cal-fields">
+              <label class="field" for="jiraLabel"><span class="field-label">Screen label</span>
+                <input id="jiraLabel" type="text" maxlength="18" autocomplete="off" placeholder="The filter's name"></label>
+              <label class="field" for="jiraLimit"><span class="field-label">Alert above (optional)</span>
+                <input id="jiraLimit" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="None" aria-describedby="jiraLimitNote"></label>
+            </div>
+            <p class="note-small" id="jiraLimitNote" style="margin:0">The label shows on the bar, so everyone near your desk can read it. Above the alert number the screen turns orange and says so.</p>
+            <div class="row">
+              <button class="btn" id="jiraSave" type="button">Save</button>
+              <button class="btn ghost" id="jiraTest" type="button">Test</button>
+              <button class="btn ghost" id="jiraRemove" type="button" hidden>Remove</button>
+              <button class="btn ghost" id="jiraSample" type="button">Fill in a sample (mock-up)</button>
+            </div>
+          </div>
+          <div class="setup-msg" id="jiraMsg" hidden role="status"></div>
+          <p class="note-small">In the mock-up, filter 10042 is "Open bugs", 10043 is "Needs review", and anything else answers as "Filter" plus its number. The Simulate panel's Jira box decides how Jira answers.</p>
+        </div>
+      </div>
       <div id="devSec">
         <span class="field-label" id="devLabel" tabindex="-1">Paired devices</span>
         <div class="auto-card">
@@ -1821,6 +1872,7 @@ a.btn { display: inline-block; text-decoration: none; }
           <dt>Help</dt><dd>Proposed, from the user's request of 2026-10-05. The bar has a quick tour of its controls, seven tips in a row: Tap, Swipe and BOOT, which you try for real and which only say what they would have done ("Practice only: Busy would become In a meeting"), so nothing changes; Touch and hold, Flip and PWR, which say what they do and end the tour if you try them; and More help, with a QR code for the help page the bar serves at minibar.local/help (at its IP address, so any phone on the office Wi-Fi can open it). A tap, BOOT or a swipe left goes on, a swipe right goes back, and a hold, flip or PWR leaves; it closes on its own after 30 seconds without a touch. It shows by itself once, when a new bar's first setup ends; after that it's under Help in the quick menu, or Settings in the timer menu. It never fills the screen with a status color, makes no sound of its own, and changes nothing: your status, the timer, a call or meeting you set aside and every setting carry on underneath. The Remote says while it's showing, and has a Help link to the same page on every view. Try it with the Simulate panel's Help and Wi-Fi box.</dd>
           <dt>Tap sound</dt><dd>Proposed (the setting's place, beside Theme, decided by the user on 2026-10-05). The screen can't buzz under your finger, so a short, quiet click confirms a touch the bar acted on: a crisp click for a tap, a swipe or a menu tile, when your finger lifts, and a lower one at the moment a hold opens the menu, while your finger is still down. Touches the bar ignores stay silent, so silence means it didn't count. It's never louder than Soft ticking, and it's silent during a call or calendar meeting (even one you set aside), on a dark screen (the touch that wakes it), while starting up or powering off, and for BOOT, PWR, a flip and anything done from the Remote. It's on by default; turn it off in the Display menu (hold, then Display, then Tap sound) or on the Remote's Display section. In the API it's <code>sound.tap_sound</code>. Hear it beside the ticks and the chime with the Simulate panel's Sounds box.</dd>
           <dt>Meeting chime</dt><dd>Proposed (2026-10-07, approved by the user). When a calendar meeting starts, the bar plays a soft two-note chime and flashes once, so you notice it even with the screen off to one side. It only happens for a meeting the bar knew about before it began: one added after it started is silent, an all-day event never sounds, and the same event in two calendars sounds once. Back-to-back meetings each get one. It follows the same quiet rule as the other sounds: while a call is on, or another meeting is already in progress (even one you've set aside), the bar only flashes, and the same while your status is Away. A ringing Pomodoro alarm is not stacked: no chime. A dark screen wakes for it, and a bar that's powered off doesn't. Busy gets the chime. Turn it off in the Display menu (hold, then Display, then Chime) or on the Remote's Display section; Off turns off both the chime and the flash. In the API it's <code>sound.meeting_chime</code>. Try it with the Simulate panel's Meeting starts now.</dd>
+          <dt>Jira screen</dt><dd>Proposed (2026-10-07, approved by the user). Once you set it up in the Remote's Jira section, the bar shows one more screen in the swipe order, after Message and before Clock: a small "Jira · label", the number of issues in your one filter as the big number, and one line under it. The bar itself asks your Jira site every 5 minutes. Until it's set up the screen doesn't exist: tap, swipe and BOOT skip it, and the Remote has no Jira button. Above the alert number you chose, the screen turns orange (the count turns orange in Low Glare Pixel) and says "Over your limit of 10". If Jira can't be reached the last count stays with "as of 12 min ago", and after 2 hours it gives way to a dash. "Token rejected" and "Filter not found" show no number, and say where to fix it. The API token is write-only: it's never shown again, never sent anywhere but your own Jira site, and the Remote's Test button shows the count or a plain reason. Try every state with the Simulate panel's Jira box.</dd>
           <dt>Themes</dt><dd>Proposed, from the user's request of 2026-10-05. The bar has two looks. Bold Signal, the default, fills the screen with the status color behind big white capitals, the strongest signal across the room. Low Glare Pixel, the alternate, is the Low Glare layout set entirely in the Handjet pixel font: a near-black screen with the status in a colored pixel headline, a thin edge bar and a faint side tint, so it gives off far less light toward the people around you and the monitors nearby. Switch on the bar (hold the screen, then Display, then Theme; the Display menu also has Light, Tap sound, Chime and Time format) or on the Remote (Display, then Theme). Only the look changes, at once and on whatever screen is up, and a toast confirms it: "Theme · Low Glare Pixel". While the screen isn't free (dark, starting up, in Wi-Fi setup, showing a pairing code, or while PWR is held) the toast waits, as any confirmation from the Remote does; a PWR hold that powers the bar off drops it, and the bar starts in the new theme. Every screen says the same words in both. The bar keeps the theme through Restart and power off and on, and Wi-Fi setup and Forget all leave it alone. In the API it's <code>display.theme</code>.</dd>
           <dt>Pomodoro</dt><dd>25-minute focus sessions, 5-minute breaks and a 15-minute break after every fourth session, all adjustable. Focus shows in orange so people know not to interrupt; breaks turn the bar teal or blue to say it's a good moment. Each finished session earns a red tomato, upcoming sessions show as faded tomatoes, and the one in progress ripens like a real tomato as you focus: color breaks at the bottom and spreads up to the stem, through yellow and orange to red. The timer keeps running when you switch to another status, with a small countdown in the corner, and the bar jumps back to it when a phase ends. A call or calendar meeting pauses it, and the bar makes no sound while one is on. A ringing alarm goes quiet and chimes once when it's over. Ticking during focus is optional and off by default: one gentle tick a second, Soft or Medium, set on the Remote or under Settings in the timer menu. It's silent while the timer is paused, on breaks, while the alarm rings, during calls and meetings, while the screen is dark, and when the bar is powered off.</dd>
           <dt>BOOT and PWR</dt><dd>Both buttons sit on the bar's top long edge, slightly inset, so the bar can rest on that edge turned over without pressing them (turned over, they're on the bottom edge). BOOT jumps to the next status without looking; on a call or meeting screen it goes back to your own status, like a tap. A press of PWR turns the screen off and on, holding it for 3 seconds powers the bar off, and a press turns it back on. If the screen is dark or an alarm is ringing, the first press of either button only wakes the screen or silences the alarm. On a pairing code, BOOT cancels it, and a PWR press cancels it and turns the screen off. While Keep holding or Powering off shows, BOOT does nothing. Neither button makes the Tap sound click; they click on their own.</dd>
@@ -1970,6 +2022,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
       <li>Proposed: the bar's theme is a setting, <code>display.theme</code>: <code>"bold_signal"</code> (the default) or <code>"low_glare_pixel"</code>. The Remote reads and changes it with <code>GET</code> and <code>PATCH /api/v1/settings</code> (scope <code>full</code>), as <code>{"display": {"theme": "low_glare_pixel"}}</code>; any other value is <code>400 bad_value</code>. A change bumps <code>rev</code> in the status, so a switch made on the bar reaches the Remote within about 2 seconds. The Mac app doesn't use it. See <code>docs/api.md</code> 10.3.</li>
       <li>Proposed: Tap sound is a setting too, <code>sound.tap_sound</code>: <code>true</code> (the default) or <code>false</code>, read as <code>settings.sound.tap_sound</code> and changed with <code>PATCH /api/v1/settings</code> (scope <code>full</code>), as <code>{"sound": {"tap_sound": false}}</code>; anything but <code>true</code> or <code>false</code> is <code>400 bad_value</code> with <code>"field": "sound.tap_sound"</code>. The bar shows "Tap sound on" or "Tap sound off"; a change through the API never makes it click, since only touches on the bar do. See <code>docs/api.md</code> 10.4.</li>
       <li>Proposed: Meeting chime is a setting too, <code>sound.meeting_chime</code>: <code>true</code> (the default) or <code>false</code>, read as <code>settings.sound.meeting_chime</code> and changed with <code>PATCH /api/v1/settings</code> (scope <code>full</code>), as <code>{"sound": {"meeting_chime": false}}</code>; anything but <code>true</code> or <code>false</code> is <code>400 bad_value</code> with <code>"field": "sound.meeting_chime"</code>. The bar shows "Meeting chime on" or "Meeting chime off"; a change through the API never plays the chime.</li>
+      <li>Proposed: the Jira screen has its own settings, <code>jira</code>, read with <code>GET /api/v1/jira</code> and changed with <code>PUT /api/v1/jira</code> and <code>DELETE /api/v1/jira</code> (scope <code>full</code>); <code>POST /api/v1/jira/test</code> asks Jira once and answers with the count or an error. The token goes in with <code>PUT</code> and is never returned: <code>GET</code> says only <code>"token_saved": true</code>. Details in <code>docs/decisions.md</code>, Jira issue count.</li>
       <li>Proposed: the help page is a plain page at <code>/help</code> on the office network, outside the API. The bar serves it as it serves the Remote's page, and it needs no pairing, since it holds nothing private. The quick tour's last tip links to it by the bar's IP address, and the Remote's Help link and "How pairing works" open it.</li>
       <li>Proposed: Download for Mac. The bar carries the Mac app's zip in its own flash and hands it out at <code>GET /mac/app.zip</code>, outside <code>/api/</code> since it isn't JSON, with no product name in the path; <code>Content-Disposition</code> carries the readable name (<code>MiniBar-1.0.zip</code>). It needs no token, like the Remote's page, and the host check applies. <code>HEAD</code> gets the same headers; one <code>Range</code> gets <code>206</code>, so a download that broke off resumes; with no app, or a damaged copy, it's a plain-text <code>404</code>. <code>GET /api/v1/info</code> (and the USB <code>hello</code>) reports the copy as <code>mac_app</code>: <code>null</code>, or <code>state</code>, <code>reason</code>, <code>version</code>, <code>build</code>, <code>bytes</code>, <code>archs</code>, <code>min_macos</code>, <code>file</code>, <code>path</code> and <code>sha256</code>, which is where the Remote's "MiniBar for Mac 1.0 (12) · 1.8 MB" comes from. The Mac app ignores it. See <code>docs/api.md</code> 17.</li>
     </ul>
@@ -1983,6 +2036,14 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
   const css = getComputedStyle(document.documentElement);
   const col = n => css.getPropertyValue('--s-' + n).trim();
 
+  // Jira issue count (Proposed 2026-10-07, decisions.md "Jira issue count"): one filter's count, read by the bar itself every
+  // 5 minutes, shown as its own screen in the swipe order once set up. state is 'loading' (first check), 'ok', 'unreach'
+  // (the last count is kept, labeled "as of"), 'token' or 'nofilter'. The API token is never kept here: it lives in
+  // jiraToken (the Jira section's closure), standing in for the bar's protected storage, and nothing reads it back.
+  const jira = { on: false, site: '', email: '', filter: '', name: '', label: '', limit: null, tokenSaved: false,
+    state: 'loading', count: null, okAt: null, tryAt: null };
+  const jiraSim = { mode: 'ok', count: 12 };
+  const jiraShown = () => jira.on;
   const STATES = [
     { id: 'available', name: 'Available' },
     { id: 'busy',      name: 'Busy' },
@@ -1990,8 +2051,11 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     { id: 'pomodoro',  name: 'Pomodoro' },
     { id: 'away',      name: 'Away' },
     { id: 'message',   name: 'Message' },
+    { id: 'jira',      get name() { return jira.on && jira.label ? jira.label : 'Jira'; } },
     { id: 'clock',     name: 'Clock' },
   ];
+  // The next screen in a direction, skipping the Jira screen while it isn't set up (it is hidden from the swipe order).
+  const stepIdx = (from, dir) => { let i = from; do { i = (i + dir + STATES.length) % STATES.length; } while (STATES[i].id === 'jira' && !jiraShown()); return i; };
   const POMO = STATES.findIndex(x => x.id === 'pomodoro');
   const PHASE_NAME = { focus: 'Focus', short: 'Short break', long: 'Long break' };
   let style = null;   // the Style panel's current look; set in the Style panel section below
@@ -2797,6 +2861,8 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
           side: side('Posted', fmtShort(s.messageAt) + vAP(s.messageAt), fAP(s.messageAt, ' ') + 'today'),
         };
       }
+      case 'jira':
+        return jiraView();
       case 'clock': {
         let sd;
         if (s.wifi.mode === 'offline') sd = side('Calendar', 'Off', 'needs Wi-Fi', 'small');
@@ -2815,6 +2881,31 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
         };
       }
     }
+  }
+
+  // The Jira screen (Proposed): the label small above, the count as the one big number, one supporting line, and the
+  // side column's time. Above the alert limit the screen takes the Focus color (the count itself in Low Glare Pixel) and
+  // says so in words. Can't reach Jira keeps the last count with "as of" for 2 hours, then drops it; a rejected token or
+  // a missing filter show no number at all, since the number would be wrong or out of date.
+  const JIRA_EVERY = 5 * 60000, JIRA_STALE = 2 * 3600000;
+  const jiraAgo = ms => { const m = Math.max(1, Math.round(ms / 60000)); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ' ' + (m % 60) + ' min' : ''}`; };
+  const jiraShow = c => c >= 10000 ? '10k+' : String(c);
+  const jiraCount = () => jira.count != null && (jira.state === 'ok' || (jira.state === 'unreach' && jira.okAt && now() - jira.okAt < JIRA_STALE)) ? jira.count : null;
+  const jiraWarn = () => { const c = jiraCount(); return c != null && jira.limit != null && c > jira.limit; };
+  function jiraView() {
+    rendering = 'jira';
+    const n = now(), c = jiraCount(), lab = esc(jira.label || 'Jira');
+    const kick = `<div class="kicker">Jira · ${lab}</div>`;
+    const word = (w, fs = 17) => `<div class="word" style="--fs:${fs}">${w}</div>`;
+    const msgWord = w => `<div class="word title" style="--fs:10" data-min=".79" data-fit="title">${w}</div>`;
+    const upd = jira.okAt ? side('Updated', fmtShort(jira.okAt) + vAP(jira.okAt), 'every 5 minutes') : '';
+    if (jira.state === 'loading') return { main: kick + word('…') + '<div class="sub">Asking Jira…</div>', side: side('Jira', 'Checking', 'your site', 'small') };
+    if (jira.state === 'token') return { main: kick + msgWord('Token rejected') + '<div class="sub">Update it on the Remote</div>', side: side('Jira', 'Sign-in', 'needs a new token', 'small') };
+    if (jira.state === 'nofilter') return { main: kick + msgWord('Filter not found') + '<div class="sub">Check the filter on the Remote</div>', side: side('Jira', 'Filter', 'not found or not shared', 'small') };
+    if (c == null) return { main: kick + word('—') + "<div class=\"sub\">Can't reach Jira · trying again</div>", side: side('Jira', 'Offline', jira.okAt ? 'last answer ' + jiraAgo(n - jira.okAt) + ' ago' : 'no answer yet', 'small') };
+    if (jira.state === 'unreach') return { main: kick + word(jiraShow(c)) + `<div class="sub">Can't reach Jira · as of ${jiraAgo(n - jira.okAt)} ago</div>`, side: side('Last update', fmtShort(jira.okAt) + vAP(jira.okAt), "can't reach Jira") };
+    const sub = jiraWarn() ? `Over your limit of ${jira.limit}` : c === 0 ? 'No issues right now' : `${c === 1 ? 'issue' : 'issues'} · updated ${fmt(jira.okAt)}`;
+    return { main: kick + word(jiraShow(c)) + `<div class="sub">${sub}</div>`, side: upd };
   }
 
   // The automatic screens. Both start with a source chip (MAC or CALENDAR), so they're never mistaken for a status
@@ -2989,7 +3080,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
   function practiceResult(kind) {
     const u = tourUnder(), back = kind === 'right';
     if (u.a) {
-      const i = kind === 'tap' || kind === 'boot' ? s.idx : s.idx + (back ? -1 : 1);
+      const i = kind === 'tap' || kind === 'boot' ? s.idx : stepIdx(s.idx, back ? -1 : 1);
       return { text: `Practice only: the ${u.a.kind} would be set aside for ${nameOfIdx(i)}.`, to: keyOfIdx(i) };
     }
     if (u.pomoUnder && kind === 'tap') {
@@ -2997,7 +3088,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
         : pomo.running ? 'pause the timer' : isReady() ? 'start Focus' : 'resume the timer';
       return { text: `Practice only: this would ${what}.`, to: pomo.phase };
     }
-    const j = s.idx + (back ? -1 : 1);
+    const j = stepIdx(s.idx, back ? -1 : 1);
     return { text: `Practice only: ${STATES[s.idx].name} would ${back ? 'go back to' : 'become'} ${nameOfIdx(j)}.`, to: keyOfIdx(j) };
   }
   // The Flip card says what a flip would do now: it always turns the layout, quiets an alarm and starts what the
@@ -3321,7 +3412,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
       const a = autoTop(), st = STATES[s.idx];
       let v;
       if (a) { key = a.kind; v = autoView(a); }
-      else { key = st.id === 'pomodoro' ? pomo.phase : st.id; v = view(st.id); }
+      else { key = st.id === 'pomodoro' ? pomo.phase : st.id === 'jira' && jiraWarn() ? 'focus' : st.id; v = view(st.id); }
       html = `<div class="main">${v.main}</div>${v.side}`;
       barPct = v.bar == null ? null : v.bar;
       document.documentElement.style.setProperty('--state', key === 'clock' ? 'var(--s-meeting)' : `var(--s-${key})`);
@@ -3637,6 +3728,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     $('tourNote').hidden = !(tour.on && s.powered);
     $('tapSound').checked = s.tapSound;
     $('meetChime').checked = s.meetChime;
+    { const jb = document.querySelector('.sbtn[data-id="jira"]'); if (jb) { jb.style.display = jira.on ? '' : 'none'; jb.lastChild.textContent = STATES.find(x => x.id === 'jira').name; } }
     updateAutoRemote();
     updateMacDl();
     updatePhonePair();
@@ -3773,6 +3865,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     if (t - lastPoll >= 2000) { lastPoll = t; remotePoll(); }
     updatePhonePair();
     syncWithCue();
+    if (jira.on && jira.state !== 'loading' && jira.tryAt && now() - jira.tryAt >= JIRA_EVERY) jiraSync();
     releaseHeldAlarm();
     macTimers(dt);
     // The regular calendar sync, about every 10 minutes. Meetings start and end on time from the saved copy.
@@ -3828,7 +3921,8 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     silence();
     const aside = setAside();
     s.idx = (i + STATES.length) % STATES.length;
-    if (!['pomodoro', 'clock'].includes(STATES[s.idx].id)) s.lastStatus = s.idx;
+    if (STATES[s.idx].id === 'jira' && !jiraShown()) s.idx = stepIdx(s.idx, i < s.idx || i === -1 ? -1 : 1);
+    if (!['pomodoro', 'clock', 'jira'].includes(STATES[s.idx].id)) s.lastStatus = s.idx;
     s.since = now();
     hideMenu();
     render();
@@ -4454,6 +4548,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     // A change from the Remote doesn't wake a dark screen: it happens underneath and shows, with any toast, when the
     // screen is woken (decided 2026-10-05, the theme round's rule for every change from the Remote). It ends the tour.
     b.addEventListener('click', () => { tourEnd('remote'); go(i, 'remote'); });
+    if (st.id === 'jira') b.style.display = 'none';
     grid.appendChild(b);
   });
 
@@ -6004,6 +6099,132 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     say(`simulate: ${b.textContent.toLowerCase()} (mock-up only)`);
   });
 
+
+  // ---------- Jira issue count: the Remote's Jira section and the bar's check (Proposed 2026-10-07) ----------
+  // The bar itself calls Jira Cloud every 5 minutes: POST /rest/api/3/search/approximate-count with `filter = <id>`, signed
+  // in with the account's email and an API token (Basic auth, over TLS). The token is kept only in jiraToken, standing in
+  // for the bar's protected storage: no screen, page or API reads it back, and the log never names it.
+  let jiraToken = '', jiraTimer = null, jiraName = '', jiraRmAt = 0;
+  const SITE_RE = /^https:\/\/([a-z0-9][a-z0-9-]{0,62})\.atlassian\.net\/?$/i;
+  const jiraNameOf = id => id === '10042' ? 'Open bugs' : id === '10043' ? 'Needs review' : 'Filter ' + id;
+  const jiraFilterId = raw => { raw = raw.trim(); if (/^\d{1,10}$/.test(raw)) return raw; const m = raw.match(/[?&]filter=(\d{1,10})(?!\d)/) || raw.match(/\/filters\/(\d{1,10})(?!\d)/); return m ? m[1] : null; };
+  const jiraMask = e => e.replace(/^(.)[^@]*@/, '$1•••@');
+  function jiraMsg(text, err) { const el = $('jiraMsg'); el.textContent = text; el.hidden = !text; el.classList.toggle('err', !!err); }
+  function updateJiraRemote() {
+    const j = jira, st = j.state;
+    const badge = !j.on ? 'Not set up' : st === 'loading' ? 'Checking' : st === 'ok' ? `Showing ${jiraShow(j.count)}` : st === 'unreach' ? "Can't reach Jira" : st === 'token' ? 'Token rejected' : 'Filter not found';
+    setText($('jiraBadge'), badge);
+    $('jiraBadge').classList.toggle('bad', j.on && !['ok', 'loading'].includes(st));
+    setText($('jiraLine'), j.on ? `${j.site.replace(/^https:\/\//, '').replace(/\/$/, '')} · filter ${j.filter} (${j.name}) · ${j.email ? jiraMask(j.email) : ''} · token saved` : '');
+    $('jiraLine').hidden = !j.on;
+    $('jiraRemove').hidden = !j.on;
+    $('jiraSave').textContent = j.on ? 'Save changes' : 'Save';
+    $('jiraTok').placeholder = j.tokenSaved ? 'Token saved (paste to replace)' : 'Paste the token';
+    $('jiraEmail').placeholder = j.on ? jiraMask(j.email) + ' (saved)' : 'you@example.com';
+  }
+  // Check everything the form can check without asking Jira. Blank fields keep what's saved.
+  function jiraRead() {
+    const site = $('jiraSite').value.trim() || jira.site, email = $('jiraEmail').value.trim() || jira.email, raw = $('jiraFilter').value.trim() || jira.filter;
+    if (!site) { $('jiraSite').focus(); return { err: 'Enter your site address, like https://yourteam.atlassian.net.' }; }
+    if (!SITE_RE.test(site)) { $('jiraSite').focus(); return { err: 'Use your site address, like https://yourteam.atlassian.net. It has to start with https:// and end in .atlassian.net.' }; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { $('jiraEmail').focus(); return { err: 'Enter the email address of your Atlassian account.' }; }
+    if (!jiraToken && !$('jiraTok').value) { $('jiraTok').focus(); return { err: 'Paste your API token.' }; }
+    const filter = jiraFilterId(raw);
+    if (!filter) { $('jiraFilter').focus(); return { err: "Enter the filter's ID: the number after filter= in its address." }; }
+    const lim = $('jiraLimit').value.trim();
+    if (lim && !/^\d{1,4}$/.test(lim)) { $('jiraLimit').focus(); return { err: 'Alert above is a whole number, or leave it empty.' }; }
+    return { site: site.replace(/\/$/, '').toLowerCase(), email, filter, token: $('jiraTok').value || null,
+      limit: lim ? +lim : ($('jiraLimit').dataset.touched ? null : jira.limit) };
+  }
+  function jiraAnswer(filter) {   // what Jira would say to the Test button, from the Simulate panel
+    if (!wifiUp()) return { err: "MiniBar can't reach the internet right now, so it can't ask Jira. Check its Wi-Fi." };
+    if (jiraSim.mode === 'down') return { err: "Couldn't reach Jira. Check the site address, and that this MiniBar is online." };
+    if (jiraSim.mode === 'token') return { err: "Jira didn't accept that email and token. Check them, or create a new token." };
+    if (jiraSim.mode === 'nofilter' || /0000$/.test(filter)) return { err: "Jira has no filter with that ID, or this account can't see it." };
+    return { name: jiraNameOf(filter), count: jiraSim.mode === 'ok' ? jiraSim.count : 12 };
+  }
+  $('jiraTest').addEventListener('click', () => {
+    const v = jiraRead();
+    if (v.err) { jiraMsg(v.err, true); return; }
+    jiraMsg('Asking Jira…');
+    say('remote: Jira test, the bar asks your site (the token is not logged)');
+    setTimeout(() => {
+      const a = jiraAnswer(v.filter);
+      if (a.err) { jiraMsg(a.err, true); say('jira: test failed'); return; }
+      jiraName = a.name;
+      if (!$('jiraLabel').value.trim()) $('jiraLabel').placeholder = a.name;
+      jiraMsg(`It works. "${a.name}" has ${a.count} ${a.count === 1 ? 'issue' : 'issues'} right now.`);
+      say(`jira: test ok, filter ${v.filter} has ${a.count}`);
+    }, 700);
+  });
+  $('jiraSave').addEventListener('click', () => {
+    const v = jiraRead();
+    if (v.err) { jiraMsg(v.err, true); return; }
+    const was = jira.on, changed = !was || v.filter !== jira.filter || v.site !== jira.site || !!v.token || v.email !== jira.email;
+    if (v.token) { jiraToken = v.token; jira.tokenSaved = true; }
+    else if (!jiraToken) jiraToken = 'saved';
+    $('jiraTok').value = '';
+    const name = jiraName && jiraNameOf(v.filter) === jiraName ? jiraName : jiraNameOf(v.filter);
+    Object.assign(jira, { on: true, site: v.site, email: v.email, filter: v.filter, name, limit: v.limit, tokenSaved: true });
+    jira.label = $('jiraLabel').value.trim() || (was && !$('jiraLabel').dataset.touched ? jira.label : '') || name;
+    if (changed) Object.assign(jira, { state: 'loading', count: null, okAt: null });
+    $('jiraSite').value = ''; $('jiraEmail').value = ''; $('jiraFilter').value = ''; $('jiraLabel').value = ''; $('jiraLimit').value = '';
+    ['jiraLabel', 'jiraLimit'].forEach(i => delete $(i).dataset.touched);
+    $('jiraSite').placeholder = jira.site; $('jiraFilter').placeholder = jira.filter; $('jiraLabel').placeholder = jira.label; $('jiraLimit').placeholder = jira.limit == null ? 'None' : String(jira.limit);
+    jiraMsg(`${was ? 'Saved.' : 'Saved. The Jira screen is now in the swipe order.'} Token saved.`);
+    bump();
+    toast(was ? 'Jira saved' : `Jira added · ${jira.label}`);
+    say(`remote: Jira ${was ? 'saved' : 'added'}, screen "${jira.label}", filter ${jira.filter}${jira.limit != null ? `, alert above ${jira.limit}` : ''} (the token is not logged)`);
+    jiraSync();
+    render();
+    updateJiraRemote();
+  });
+  ['jiraLabel', 'jiraLimit'].forEach(i => $(i).addEventListener('input', () => { $(i).dataset.touched = '1'; }));
+  $('jiraRemove').addEventListener('click', () => {
+    if (Date.now() - jiraRmAt > 4000) { jiraRmAt = Date.now(); $('jiraRemove').textContent = 'Tap again to remove'; setTimeout(() => { if (jira.on) $('jiraRemove').textContent = 'Remove'; }, 4000); return; }
+    jiraRmAt = 0; clearTimeout(jiraTimer); jiraToken = '';
+    const onIt = STATES[s.idx].id === 'jira';
+    Object.assign(jira, { on: false, site: '', email: '', filter: '', name: '', label: '', limit: null, tokenSaved: false, state: 'loading', count: null, okAt: null, tryAt: null });
+    if (onIt) s.idx = s.lastStatus;
+    ['jiraSite', 'jiraEmail', 'jiraFilter', 'jiraLabel', 'jiraLimit'].forEach(i => { $(i).value = ''; });
+    $('jiraSite').placeholder = 'https://yourteam.atlassian.net'; $('jiraFilter').placeholder = '10042'; $('jiraLabel').placeholder = "The filter's name"; $('jiraLimit').placeholder = 'None';
+    $('jiraRemove').textContent = 'Remove';
+    jiraMsg('Removed. The token and everything else about Jira are gone from MiniBar, and the screen is out of the swipe order.');
+    bump(); toast('Jira removed'); say('remote: Jira removed, the token is erased'); render(); updateJiraRemote();
+  });
+  $('jiraSample').addEventListener('click', () => {
+    $('jiraSite').value = 'https://example.atlassian.net'; $('jiraEmail').value = 'you@example.com'; $('jiraTok').value = 'sample-api-token'; $('jiraFilter').value = '10042';
+    jiraMsg(`Sample values filled in. Choose ${jira.on ? 'Save changes' : 'Save'}, or Test.`);
+  });
+  // The bar's check. First one shows "Asking Jira…" (about a second); later ones change the screen only when the answer
+  // does. A bar off the Wi-Fi counts as can't reach Jira.
+  function jiraSync() {
+    if (!jira.on) return;
+    jira.tryAt = now();
+    const mode = !wifiUp() ? 'down' : jiraSim.mode, cnt = jiraSim.count;
+    clearTimeout(jiraTimer);
+    jiraTimer = setTimeout(() => {
+      if (!jira.on) return;
+      if (mode === 'ok') Object.assign(jira, { state: 'ok', count: cnt, okAt: now() });
+      else if (mode === 'down') jira.state = 'unreach';
+      else Object.assign(jira, { state: mode === 'token' ? 'token' : 'nofilter', count: null });
+      jira.tryAt = now();
+      bump(); lastKey = ''; render(); updateJiraRemote();
+      say(`jira: ${mode === 'ok' ? `count ${cnt}${jiraWarn() ? ', over the alert limit' : ''}` : mode === 'down' ? "can't reach Jira" + (jira.count != null ? ', keeps the last count' : '') : mode === 'token' ? 'token rejected' : 'filter not found'}`);
+    }, jira.state === 'loading' ? 1200 : 300);
+  }
+  document.querySelector('[aria-labelledby="simJiraTitle"]').addEventListener('click', e => {
+    const b = e.target.closest('[data-jira]');
+    if (!b) return;
+    if (!jira.on) { say('simulate: Jira is not set up, save the Jira section on the Remote first'); return; }
+    const k = b.dataset.jira;
+    if (k.startsWith('ok')) { jiraSim.mode = 'ok'; jiraSim.count = +k.slice(2); }
+    else if (k === 'age' || k === 'stale') { jiraSim.mode = 'down'; if (jira.okAt) jira.okAt = new Date(Date.now() - (k === 'age' ? 12 : 180) * 60000); }
+    else jiraSim.mode = k;
+    jiraSync();
+  });
+  updateJiraRemote();
+
   // ---------- Style panel ----------
   // Choices live in this browser only; Copy settings hands them over for the firmware.
   // Pixel fonts list only the weights Google Fonts serves (w), and screens set font-synthesis: none, so nothing is
@@ -6064,7 +6285,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     ...PIXEL_W,
   };
   const COLOR_KEYS = [['available', 'Available'], ['busy', 'Busy'], ['meeting', 'Meeting'], ['call', 'On a call'], ['focus', 'Focus'],
-    ['short', 'Short break'], ['long', 'Long break'], ['away', 'Away'], ['message', 'Message']];
+    ['short', 'Short break'], ['long', 'Long break'], ['away', 'Away'], ['message', 'Message'], ['jira', 'Jira']];
   const ALL_KEYS = [...COLOR_KEYS.map(([k]) => k), 'clock', 'setup'];
   const BASE = {};
   ALL_KEYS.forEach(k => { BASE[k] = col(k); });
@@ -6082,7 +6303,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     head: 'Barlow Condensed', text: 'Atkinson Hyperlegible Next', mono: 'JetBrains Mono',
     mode: 'dark', headlineCase: 'none', labelCase: 'upper', sidePanel: 'tint', accentBar: true, accentWidth: 6, cornerRadius: 8,
     base: { background: '#111110', text: '#e2ddd3', mutedText: '#9a948a' },
-    colors: { available: '#5ccf72', busy: '#ff5f57', meeting: '#a588ff', call: '#f2d04f', focus: '#ff9945', short: '#36c6c0', long: '#6cbcfa', away: '#b4ab9e', message: '#f27ab8', clock: '#4a463f', setup: '#6cbcfa' },
+    colors: { available: '#5ccf72', busy: '#ff5f57', meeting: '#a588ff', call: '#f2d04f', focus: '#ff9945', short: '#36c6c0', long: '#6cbcfa', away: '#b4ab9e', message: '#f27ab8', clock: '#4a463f', setup: '#6cbcfa', jira: '#6cbcfa' },
     tints: { available: [null, '#172018'], busy: [null, '#241716'], meeting: [null, '#1d1b23'], call: [null, '#232015'], focus: [null, '#241c14'], short: [null, '#141f1e'], long: [null, '#181f23'], away: [null, '#1e1d1b'], message: [null, '#23191d'] },
     roles: { kick: 'head', sub: 'text', sys: 'mono' }, weights: { word: 500, kick: 600, val: 500, sub: 500 },
     // Words at 93 px and the timer at 109 px, as on the approved Low Glare page.
@@ -6144,7 +6365,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     head: 'Barlow Condensed', text: 'Barlow', mode: 'solid', headlineCase: 'upper', sidePanel: 'tint', accentBar: false, cornerRadius: 8,
     layout: 'signal', power: 'usb',
     base: { background: '#0E1013', text: '#FFFFFF', mutedText: '#DFE5EA' },
-    colors: { available: '#0F7F3C', busy: '#D01B3A', meeting: '#8B3AE5', call: '#1450B4', focus: '#B0590D', short: '#0B7A70', long: '#12708F', away: '#545C65', message: '#C0198C', clock: '#0E1013', setup: '#1D3557' },
+    colors: { available: '#0F7F3C', busy: '#D01B3A', meeting: '#8B3AE5', call: '#1450B4', focus: '#B0590D', short: '#0B7A70', long: '#12708F', away: '#545C65', message: '#C0198C', clock: '#0E1013', setup: '#1D3557', jira: '#1D3557' },
     // The clock's info column is a raised panel, lighter than its near-black field.
     tints: { available: [null, '#0B612E'], busy: [null, '#9E152C'], meeting: [null, '#6A2CAE'], call: [null, '#0F3D89'], focus: [null, '#86440A'], short: [null, '#085D55'], long: [null, '#0E556D'], away: [null, '#40464D'], message: [null, '#92136B'], clock: [null, '#1B1E23'] },
     roles: { kick: 'text', sub: 'text', sys: 'text' }, weights: { word: 700, kick: 700, val: 700, sub: 500, tv: 700 },
@@ -6186,7 +6407,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
         head: 'Nunito', text: 'Nunito Sans', mode: 'light', headlineCase: 'none', labelCase: 'none', sidePanel: 'tint', accentBar: true, accentWidth: 8, cornerRadius: 12,
         wordLH: [1.22, '-.22em'],   // a little lower than the default, so the source chip clears the headline
         base: { background: '#faf8f4', text: '#1c1f24', mutedText: '#454b54' },
-        colors: { available: '#0b8440', busy: '#d1313f', meeting: '#6f57e0', call: '#8a6f00', focus: '#b45a06', short: '#08807c', long: '#0a77b3', away: '#776f63', message: '#b23fb0', clock: '#c9c2b6', setup: '#2f4a73' },
+        colors: { available: '#0b8440', busy: '#d1313f', meeting: '#6f57e0', call: '#8a6f00', focus: '#b45a06', short: '#08807c', long: '#0a77b3', away: '#776f63', message: '#b23fb0', clock: '#c9c2b6', setup: '#2f4a73', jira: '#2f4a73' },
         tints: { available: ['#d3f4d8', '#a6e5b2'], busy: ['#ffdddb', '#feb5b1'], meeting: ['#e7e7ff', '#cecdfe'], call: ['#ffeeba', '#ffdb69'], focus: ['#ffe6d3', '#fec89c'], short: ['#caf5f3', '#8fe6e2'], long: ['#d6edfe', '#a7daff'], away: ['#ede9e2', '#dad1c6'], message: ['#fedefc', '#f7bcf4'], clock: ['#faf8f4', '#efebe4'], setup: ['#faf8f4', '#faf8f4'] },
         roles: { kick: 'text', sub: 'text', sys: 'text' }, weights: { word: 800, kick: 700, val: 800, sub: 600 },
         sizes: { kick: 17, label: 15, sub: 19, val: 38, vals: 22, foot: 13, sys: 13, word: .8 }, kickTrack: 0,
@@ -6200,7 +6421,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
       style: {
         ...PIXEL_TYPE, mode: 'dark', headlineCase: 'upper', sidePanel: 'solid', accentBar: false, cornerRadius: 0, barStyle: 'seg',
         base: { background: '#16141f', text: '#f3ead3', mutedText: '#b5ad98' },
-        colors: { available: '#5cc070', busy: '#e8545e', meeting: '#9479e2', call: '#f2c45a', focus: '#f08a45', short: '#5fd3cf', long: '#68b2f2', away: '#a59f93', message: '#ef86b6', clock: '#262333', setup: '#16141f' },
+        colors: { available: '#5cc070', busy: '#e8545e', meeting: '#9479e2', call: '#f2c45a', focus: '#f08a45', short: '#5fd3cf', long: '#68b2f2', away: '#a59f93', message: '#ef86b6', clock: '#262333', setup: '#16141f', jira: '#68b2f2' },
         pad: [16, 14, 16, 20], padSide: [12, 14, 14, 14],
       },
     },

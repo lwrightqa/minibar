@@ -827,3 +827,82 @@ QA checked every control on every screen of the mock-up while building `docs/con
 - **Proposed API.** `sound.meeting_chime`: `true` (the default) or `false`, as `settings.sound.meeting_chime`, changed with `PATCH /api/v1/settings` (scope `full`) as `{"sound": {"meeting_chime": false}}`; anything else is `400 bad_value` with `"field": "sound.meeting_chime"`. Beside `sound.tap_sound` (`docs/api.md` 10.4); `docs/api.md` is not edited in this round. A change through the API plays nothing.
 - **Firmware notes.** The core already knows when a meeting starts (the calendar task's per-minute check); it needs the "known before start" flag per meeting id and a 20 s window. The chime is two synthesized notes, about 20 KB at 24 kHz if rendered to a buffer, or generated on the fly like the Pomodoro chime. The flash reuses the alarm's with a count of 1. Stored in `nvs` with the sound settings; defaults to on for a bar updated from today's firmware.
 - **Open:** (1) Should Away really be flash only, or should it stay silent and not flash at all? (2) Should the flash wake a dark screen when the chime is off? Today Off means no cue at all. (3) A calendar's meeting that starts exactly as a Pomodoro alarm rings gives neither the chime nor the alarm: acceptable, or should the alarm keep ringing under the meeting screen? (4) Is a Sound menu wanted after all (see above)?
+
+## Jira issue count (2026-10-07)
+
+**Approved by the user (2026-10-07):** the **bar itself** calls Jira Cloud over HTTPS every few minutes, for **one filter**, and shows the count as **its own swipeable status screen** with a label and the number (for example "Open bugs 12"). Built in `docs/mockup.html` (Remote: Jira section; Simulate: Jira box); everything below is **Proposed** until the firmware step, except what the user approved above.
+
+**Research note.** `developer.atlassian.com` and `support.atlassian.com` were blocked from this sandbox, so the endpoint facts below come from search results quoting Atlassian's pages and community posts, not from reading the reference. **Verify the items marked (verify) against the live Jira Cloud REST docs before the firmware step.**
+
+- **Which request counts the issues.** `POST https://<site>.atlassian.net/rest/api/3/search/approximate-count`, JSON body `{"jql": "filter = <id>"}`, answer `{"count": N}`. This is Atlassian's replacement for the `total` that `/rest/api/3/search` used to return (that endpoint is being retired, and its replacement `/rest/api/3/search/jql` returns no total). The count is **approximate** by design, which is fine for a wall number. `filter = <id>` lets Jira apply the saved filter itself, so the bar never needs the filter's JQL. One small request and a ~20-byte answer per check. (verify: Atlassian says the JQL must be **bounded**; a filter such as `status = Open` with no project may be refused. The bar would then show "Filter not found"-style copy, so the open question below matters.)
+- **Filter lookup (Save and Test only).** `GET /rest/api/3/filter/{id}` returns the filter's `name` and `jql`, used once to default the screen label and to tell "no such filter, or you can't see it" (404) from a bad token (401). Not repeated on every check.
+- **Decided: the filter is entered as its numeric ID** (the number after `filter=` in its address; pasting the whole address works). *Not names:* names aren't unique, change when someone renames the filter, and need a search call. The Test button shows the name it found, which fills the label if you left it blank.
+- **Auth.** HTTP Basic: the Atlassian account **email as the user name, the API token as the password**, base64 in the `Authorization` header, HTTPS only.
+- **Does a read-only token work? Yes, if it's a scoped token.** A classic API token (no scopes) **inherits everything the account can do, so it can't be read-only**. A token created with scopes (id.atlassian.com, Security, API tokens, "Create API token with scopes", Jira, **`read:jira-work`**) can only read. (verify the exact scope names for the filter and count calls.) **A scoped token must be used through the gateway** `https://api.atlassian.com/ex/jira/<cloudId>/rest/api/3/...` and not the site address; the bar would look up the `cloudId` once from the public `https://<site>.atlassian.net/_edge/tenant_info` (verify) and keep it. Tokens **expire after 1 to 365 days** (one year by default), so "Token rejected" will turn up about once a year; its screen says where to fix it. The Remote's help text recommends the scoped read-only token.
+- **Rate limits.** Jira Cloud has three independent limits: a per-hour **points** quota, a per-second **burst** limit per endpoint, and per-site limits. As of the 2026 changes, **API-token traffic is governed by the burst limits only** (the points quota applies to Forge, Connect and OAuth apps). Over a limit Jira answers **429** with **`Retry-After`** (seconds), and `X-RateLimit-*` / `RateLimit-Reason` headers. At **one request every 5 minutes** (288 a day) the bar is far below any of them. **Proposed:** a 429 waits for `Retry-After` (at least the normal interval), keeping the last count and showing "Can't reach Jira".
+- **TLS on the ESP32.** Plain HTTPS with server verification; **no new work in principle**: the calendar sync already uses `esp_http_client` with `esp_crt_bundle_attach` and `CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=y` (`firmware/components/calendar/esp/cal_sync.c`, `firmware/sdkconfig.defaults`), so Atlassian's public certificate chain (and `api.atlassian.com`) should verify with the existing bundle (verify on the bar). It needs the clock to be right (NTP, as today) and SNI, which the client sets from the host name. The token never travels over an unverified connection: no "insecure" fallback.
+- **Costs (Proposed).** **RAM:** one TLS session at a time, the same ~28 KB the calendar sync needs, so the Jira check **runs in the same task, after the calendar syncs, never at the same time**; request and answer buffers are 1 KB or less. **Flash:** a few KB of code, plus the copy for the screen in the converted fonts (check "Token rejected" and "Filter not found" at the headline step in Barlow Condensed 700 and Handjet). **Time:** about 1 to 2 s per check including the handshake. **Interval: 5 minutes** (`JIRA_EVERY`), plus a check at once on Save, on Test and when Wi-Fi comes back; after failures it backs off 5, 10, 20 then 30 minutes. A fixed 5 minutes was chosen because a number nobody can act on faster than that doesn't need more, and it keeps the radio mostly idle.
+
+### The Remote's Jira section
+
+A **Jira** section after Automatic status (before Paired devices), one card, **Issue count**, with a badge: Not set up, Checking, "Showing 12", Can't reach Jira, Token rejected, Filter not found.
+
+| Field | Rules |
+| --- | --- |
+| Site address | `https://<name>.atlassian.net` only (https required; anything else: "Use your site address, like https://yourteam.atlassian.net..."). Shown as saved. |
+| Account email | Needs an `@`. After saving it's shown **masked** ("y•••@example.com") and the field is blank; blank keeps it. Note under it: "Only sent to your own Jira site, to sign in. MiniBar never sends it anywhere else." |
+| API token | Password-style, **write-only**. After saving, the field is empty and says "Token saved (paste to replace)", and the section says "token saved". It is never shown, filled in or returned again. No Show button. |
+| Filter ID | Digits, or the filter's address (the ID is picked out of `filter=` or `/filters/`). |
+| Screen label | Up to 18 characters, default the filter's name (the placeholder shows it after a Test). Shown on the bar, so the note says everyone near the desk can read it. |
+| Alert above (optional) | Whole number, up to 4 digits. Above it the screen turns the warning color and says "Over your limit of N". Empty means no alert. |
+
+- **Buttons:** **Save** ("Save changes" once set up; the screen joins the swipe order at once, toast "Jira added · Open bugs"), **Test** (asks Jira with what's typed, or what's saved for blank fields, **without saving**; "Asking Jira…", then "It works. "Open bugs" has 12 issues right now." or one plain reason), **Remove** (asks twice: "Tap again to remove"; erases the token and every Jira setting, takes the screen out of the swipe order, and if the bar was on it, goes back to your last status; toast "Jira removed").
+- **Test and error copy (plain, no codes):** "Couldn't reach Jira. Check the site address, and that this MiniBar is online." / "Jira didn't accept that email and token. Check them, or create a new token." / "Jira has no filter with that ID, or this account can't see it." / "MiniBar can't reach the internet right now, so it can't ask Jira. Check its Wi-Fi."
+- **Not configured: the screen doesn't exist.** It is out of the swipe order for tap, swipe and BOOT (and the tour's "would become" practice line), and the Remote's status buttons have no Jira button. Removing it brings that back.
+
+### The screen, on the bar (640 x 172)
+
+Position: after Message, before Clock. It keeps the layout of the other status screens: a small label line, one big number, one supporting line, and the side column. **Own-status rules are the same as for Clock and Message** (a call or meeting covers it and carries on underneath; a tap goes to the next screen).
+
+- **Bold Signal:** field **#1D3557** (the info navy the Wi-Fi setup screens use; white text 12.4:1), white Barlow Condensed (the same headline sizes and positions as Busy; the count uses the headline step, the two message states the "title" step so "Filter not found" fits). **Warning:** the field becomes **#B0590D** (white 4.9:1), the same orange as Focus; the words say "Over your limit of 10", so the color isn't the only signal.
+- **Low Glare Pixel:** near-black **#111110**, Handjet; the edge bar and the **count in #6CBCFA** (9.2:1 on the field); **warning #FF9945** (8.9:1) for the edge bar and the count.
+- **Copy for every state** (label line is always "Jira · <label>"; `Updated` is the time of the last good answer, in the Time format):
+
+| State | Big text | Supporting line | Side column | Look |
+| --- | --- | --- | --- | --- |
+| Loading (first check) | … | Asking Jira… | Jira / Checking / your site | normal |
+| Count | 12 | issues · updated 3:42 PM | Updated / 3:42 PM / every 5 minutes | normal |
+| One | 1 | issue · updated 3:42 PM | same | normal |
+| Zero | 0 | No issues right now | same | normal (a calm zero) |
+| Over the limit | 12 | Over your limit of 10 | same | warning color |
+| Can't reach Jira, count kept | 12 | Can't reach Jira · as of 12 min ago | Last update / 3:30 AM / can't reach Jira | the count's own color (warning if over) |
+| Can't reach Jira, nothing usable | — | Can't reach Jira · trying again | Jira / Offline / last answer 3 h ago (or "no answer yet") | normal |
+| Token rejected | Token rejected | Update it on the Remote | Jira / Sign-in / needs a new token | normal, no count |
+| Filter not found | Filter not found | Check the filter on the Remote | Jira / Filter / not found or not shared | normal, no count |
+
+- **Decided (design): can't reach Jira keeps the last count, labeled "as of N min ago", for 2 hours, then drops it** to a dash. A brief outage shouldn't blank a number people glance at, but a number from yesterday must not pass for today's. A rejected token or a missing filter show **no** number at all, since it would be wrong or out of date for a reason the owner has to fix. Counts of 10,000 or more show as "10k+".
+- **Everything is Proposed for the firmware step.** The mock-up keeps the Jira settings in memory only (like a calendar address) and the token in a variable nobody reads back.
+
+### Privacy (Proposed rules, to carry into the firmware and `docs/api.md`)
+
+- The **token** is never in the repo, never in a log line (the `Authorization` header is redacted, and the HTTP client's debug logging stays off for this request), never in a crash or USB line, never returned by any API (`GET` says only `"token_saved": true`), never shown on the Remote or the bar, never sent to the Mac app, and **stored only in protected storage (`nvs_sec`, encrypted)**. Remove and Forget all erase it.
+- The **email** is sent **only to the user's own Jira site** (or Atlassian's own gateway, `api.atlassian.com`, for a scoped token) as part of signing in, and nowhere else: not to the Mac app, not in any log, and the Remote shows it masked.
+- The **site address, filter ID, label and alert number** aren't secret. The label shows on the bar.
+- Test data in the mock-up is generic (`example.atlassian.net`, `you@example.com`, filter 10042).
+
+### Proposed API (for `docs/api.md`, not edited in this round; scope `full` for all of it)
+
+- `GET /api/v1/jira`: `{"configured": true, "site": "https://example.atlassian.net", "email_hint": "y•••@example.com", "token_saved": true, "filter_id": "10042", "filter_name": "Open bugs", "label": "Open bugs", "alert_above": 10, "state": "ok", "count": 12, "updated_at": "2026-10-07T15:42:00Z"}`. `state` is `loading`, `ok`, `unreachable`, `token_rejected` or `filter_not_found`. Nothing secret.
+- `PUT /api/v1/jira` with `site`, `email`, `token` (write-only; leave it out to keep the saved one), `filter_id`, optional `label` and `alert_above` (`null` clears it). `400 bad_value` with the `field` that failed.
+- `POST /api/v1/jira/test` with the same fields (all optional; blanks use what's saved): asks Jira once, saves nothing, answers `{"ok": true, "filter_name": "Open bugs", "count": 12}` or an error `jira_unreachable`, `jira_token_rejected` or `jira_filter_not_found`.
+- `DELETE /api/v1/jira`: erases the token and every Jira setting.
+
+### Open questions
+
+1. **Classic or scoped token?** Scoped (read-only) needs the `cloudId` lookup and the `api.atlassian.com/ex/jira/<cloudId>` gateway; classic works against the site address but can do everything the account can. Is read-only worth that extra step, or should the bar accept either (it can tell which one worked)?
+2. **Unbounded filters.** If `approximate-count` refuses a filter with no restriction (verify), what should the bar say? Today that would read "Filter not found"; a clearer "This filter needs a project or date limit" may be better.
+3. **The warning color is Focus's orange.** The Pomodoro screen is also orange. Is that acceptable, or should it be the Busy red?
+4. **Interval.** 5 minutes, with a back-off to 30. A shorter one costs the bar nothing on USB power, but loads Jira for no visible gain.
+5. **More than one filter later?** Not built; the section, API and screen all assume one.
+6. **Atlassian site that isn't `*.atlassian.net`** (a custom domain) isn't supported; Data Center and Server aren't either.
+7. **Approximate counts** can be off by a few on a big filter; fine for a wall number, but the copy says "issues", not "exactly".
