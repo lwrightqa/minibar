@@ -18,6 +18,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "tb_jira.h"
 #include "tb_types.h"
 
 #ifdef __cplusplus
@@ -44,6 +45,9 @@ typedef enum {
     TB_EV_CAL_EVENT,        /* u.i32: tb_cal_event_t (saved, setup failed, removed, synced) */
     TB_EV_CAL_LIST,         /* u.ptr: a heap-allocated tb_cal_list_t (names, tags, which can't sync); freed by the app task */
     TB_EV_CAL_REMOVED,      /* u.ptr: a heap-allocated tb_cal_removed_t: one of several calendars was removed */
+
+    /* jira */
+    TB_EV_JIRA,             /* u.jira: the Jira screen's whole state (tb_jira_t), from the Jira service */
 
     /* anyone */
     TB_EV_NOTIFY,           /* u.text: a confirmation toast (copied into the event) */
@@ -96,6 +100,7 @@ typedef struct {
         } wifi;
         struct { int32_t source; } time;    /* 1 ntp, 2 rtc, 3 mac (api.md 7.1 time_source) */
         struct { bool saved; bool checking; tb_epoch_t last_sync; } cal;
+        tb_jira_t jira;
         char text[96];
         struct { tb_exec_fn fn; void *ctx; void *done; } exec;
     } u;

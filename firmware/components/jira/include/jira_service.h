@@ -62,6 +62,8 @@ jira_err_t jira_save(const jira_input_t *in);
 jira_err_t jira_test(const jira_input_t *in);
 /* DELETE: erase the token and every Jira setting, and take the screen out of the swipe order. false when none was set up. */
 bool jira_remove(void);
+/* Wi-Fi and the clock: the periodic check runs only while online; coming back online checks at once. Called from the app task. */
+void jira_set_online(bool online);
 
 #ifdef __cplusplus
 }

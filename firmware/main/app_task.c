@@ -34,6 +34,7 @@
 #include "board.h"
 #include "cal_sync.h"
 #include "cal_tz.h"
+#include "jira_service.h"
 #include "net.h"
 #include "net_api.h"
 #include "settings_store.h"
@@ -132,6 +133,7 @@ static void handle_event(const tb_event_t *ev)
         case TB_WIFI_EV_CONNECTED:
             tb_app_wifi_connected(&g_app, ev->u.wifi.ssid, ev->u.wifi.ip, ev->u.wifi.host, &now);
             cal_sync_set_online(true);
+            jira_set_online(true);
             break;
         case TB_WIFI_EV_FAILED:
             tb_app_wifi_failed(&g_app, ev->u.wifi.ssid, ev->u.wifi.error, &now);
@@ -141,10 +143,12 @@ static void handle_event(const tb_event_t *ev)
             if (ev->u.wifi.ssid[0]) tb_strlcpy(g_app.wifi_ssid, ev->u.wifi.ssid, sizeof g_app.wifi_ssid);
             tb_app_wifi_link(&g_app, true, ev->u.wifi.ip, ev->u.wifi.host, &now);
             cal_sync_set_online(true);
+            jira_set_online(true);
             break;
         case TB_WIFI_EV_LINK_DOWN:
             tb_app_wifi_link(&g_app, false, NULL, NULL, &now);
             cal_sync_set_online(false);
+            jira_set_online(false);
             break;
         }
         break;
@@ -175,6 +179,9 @@ static void handle_event(const tb_event_t *ev)
         break;
     case TB_EV_CAL_EVENT:
         tb_app_calendar_event(&g_app, (tb_cal_event_t)ev->u.i32, &now);
+        break;
+    case TB_EV_JIRA:
+        tb_app_set_jira(&g_app, &ev->u.jira, &now);
         break;
     case TB_EV_CAL_LIST: {
         tb_cal_list_t *l = ev->u.ptr;
@@ -258,7 +265,10 @@ static void run_effects(void)
         case TB_FX_WIFI_SETUP:
         case TB_FX_WIFI_SKIP:
         case TB_FX_WIFI_DONE:
-            if (fx[i].kind == TB_FX_WIFI_SKIP) cal_sync_set_online(false);
+            if (fx[i].kind == TB_FX_WIFI_SKIP) {
+                cal_sync_set_online(false);
+                jira_set_online(false);
+            }
             if (s_net_ready) {
                 wifi_effect(fx[i].kind);
             } else if (s_n_deferred < (int)(sizeof s_deferred / sizeof s_deferred[0])) {
