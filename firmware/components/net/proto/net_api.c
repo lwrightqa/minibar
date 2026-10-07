@@ -826,6 +826,35 @@ static void h_status_get(rt_t *r, cJSON *b)
     if (inm && (strstr(inm, r->resp->etag) || !strcmp(inm, "*"))) r->status = 304;
 }
 
+/* GET /api/v1/status-options: available status choices for the Remote's clock color selector. */
+static void h_status_options(rt_t *r, cJSON *b)
+{
+    (void)b;
+    ok(r, 200);
+    cJSON *options = cJSON_AddArrayToObject(r->o, "options");
+
+    /* Available statuses (all except Jira which is reached by swiping): available, busy, meeting, pomodoro, away, message, clock. */
+    const struct {
+        const char *id;
+        const char *label;
+    } statuses[] = {
+        {"available", "Available"},
+        {"busy", "Busy"},
+        {"meeting", "Meeting"},
+        {"pomodoro", "Pomodoro"},
+        {"away", "Away"},
+        {"message", "Message"},
+        {"clock", "Clock"},
+    };
+
+    for (size_t i = 0; i < sizeof(statuses) / sizeof(statuses[0]); i++) {
+        cJSON *opt = cJSON_CreateObject();
+        cJSON_AddStringToObject(opt, "id", statuses[i].id);
+        cJSON_AddStringToObject(opt, "label", statuses[i].label);
+        cJSON_AddItemToArray(options, opt);
+    }
+}
+
 /* ---------- POST /api/v1/call (section 5) ---------- */
 
 static void h_call(rt_t *r, cJSON *b)
@@ -1891,6 +1920,7 @@ static const route_t ROUTES[] = {
     {"POST", "/api/v1/pair/cancel", NEED_NONE, h_pair_cancel},
     {"GET", "/api/v1/status", NEED_CALL, h_status_get},
     {"POST", "/api/v1/status", NEED_FULL, h_status_post},
+    {"GET", "/api/v1/status-options", NEED_CALL, h_status_options},
     {"POST", "/api/v1/call", NEED_CALL, h_call},
     {"POST", "/api/v1/message", NEED_FULL, h_message},
     {"POST", "/api/v1/aside", NEED_FULL, h_aside},
