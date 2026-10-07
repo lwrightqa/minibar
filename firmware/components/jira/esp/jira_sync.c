@@ -210,6 +210,10 @@ static jira_http_t ask_count(const jira_cfg_t *c, bool want_name, char *name, si
         if (want_name) {
             res = jira_filter_request(c->host, c->filter, &req) ? ask(&req, &len, retry_s) : JIRA_HTTP_UNREACHABLE;
             if (res == JIRA_HTTP_ANSWER && !jira_parse_filter_name(s_rx, len, name, name_cap)) name[0] = '\0';
+            if (res == JIRA_HTTP_NOFILTER) {
+                name[0] = '\0';
+                res = JIRA_HTTP_ANSWER;   /* the name is optional: the count decides whether the filter works */
+            }
         }
         if (res == JIRA_HTTP_ANSWER) {
             res = jira_count_request(c->host, c->filter, &req) ? ask(&req, &len, retry_s) : JIRA_HTTP_UNREACHABLE;
