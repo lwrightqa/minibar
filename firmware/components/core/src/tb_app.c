@@ -1304,6 +1304,8 @@ void tb_app_init(tb_app_t *a, const tb_settings_t *s, tb_wifi_mode_t wifi_start,
     strcpy(a->wifi_host, "minibar.local");
     tb_pomo_init(&a->pomo, &a->set, now->valid ? tb_local_yyyymmdd(now->wall) : 0);
     tb_gesture_reset(&a->gesture);
+    /* Jira is uninitialized (memset leaves count at 0); set it to -1 so count_shown knows there's no count yet. */
+    tb_jira_init(&a->jira);
     a->last_mono = now->mono;
     a->last_wall_min = -1;
     a->bl_level = (int16_t)a->set.display.brightness;
