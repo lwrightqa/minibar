@@ -42,6 +42,8 @@ typedef enum {
     TB_EV_CAL_MEETINGS,     /* u.ptr: a heap-allocated tb_cal_meetings_t; the app task frees it with free() */
     TB_EV_CAL_STATUS,       /* u.cal: saved, checking, last sync */
     TB_EV_CAL_EVENT,        /* u.i32: tb_cal_event_t (saved, setup failed, removed, synced) */
+    TB_EV_CAL_LIST,         /* u.ptr: a heap-allocated tb_cal_list_t (names, tags, which can't sync); freed by the app task */
+    TB_EV_CAL_REMOVED,      /* u.ptr: a heap-allocated tb_cal_removed_t: one of several calendars was removed */
 
     /* anyone */
     TB_EV_NOTIFY,           /* u.text: a confirmation toast (copied into the event) */
@@ -61,6 +63,19 @@ typedef struct {
     uint8_t n;
     tb_meeting_t m[TB_MEETINGS_MAX];
 } tb_cal_meetings_t;
+
+/* The calendars by slot, as the bar's screens need them (no address, ever). */
+typedef struct {
+    tb_cal_info_t c[TB_CALS_MAX];
+} tb_cal_list_t;
+
+/* A calendar was removed: its name for the toast, and the list and merged meetings as they are without it, in one
+ * piece, so a meeting that only it supplied ends at once and one another calendar also has carries on unbroken. */
+typedef struct {
+    char name[TB_CAL_NAME_BYTES];
+    tb_cal_list_t list;
+    tb_cal_meetings_t meetings;
+} tb_cal_removed_t;
 
 typedef void (*tb_exec_fn)(void *ctx);
 

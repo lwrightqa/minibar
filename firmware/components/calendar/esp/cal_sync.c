@@ -1,21 +1,27 @@
 /*
- * cal_sync.c: the calendar service on the device: the secret address in NVS, the HTTPS fetch streamed through the
- * ICS reader, the 10-minute schedule, PUT / remove / Sync now, and the bus posts. Owner: calendar builder.
- * See cal_sync.h for the behavior; this file is the plumbing.
+ * cal_sync.c: the calendar service on the device: up to three secret addresses in NVS, the HTTPS fetch streamed
+ * through the ICS reader, the 10-minute schedule, add / edit / remove / Sync now, the merge, and the bus posts.
+ * Owner: calendar builder. See cal_sync.h for the behavior; this file is the plumbing. The list logic (names, tags,
+ * the merge, the move from one address) is pure C in cal_list.c and cal_migrate.c, tested on the host.
  *
  * One task ("cal_sync", core 0, priority 2, stack in internal RAM because it writes NVS) runs one job at a time:
- *   check   a PUT's (or the setup page's) new address: fetch it once; only a good fetch replaces the saved address
- *   sync    the saved address: every CAL_SYNC_EVERY_S while online, sooner after a failure, and on Sync now
+ *   check   a new or changed address: fetch it once; only a good fetch saves it
+ *   sync    one calendar, in list order: every CAL_SYNC_EVERY_S while online, sooner after a failure (per calendar,
+ *           so one dead address doesn't slow the others), and on Sync now (every calendar, one after another)
  * Every other function only changes the shared state under s_mx and wakes the task, so none of them blocks on the
- * network (the HTTP server and the app task call them).
+ * network (the HTTP server and the app task call them). Calendars are read in sequence, so the fetch buffers (about
+ * 28 KB, mostly TLS in PSRAM) are the same as for one.
  *
  * The fetch: esp_http_client over TLS with the certificate bundle, redirects followed by hand (https only, at most
  * CAL_MAX_REDIRECTS), the body streamed in 2 KB reads into cal_feed_write() (nothing buffers the file), with a size
  * limit (CAL_FETCH_MAX_BYTES) and a time limit (CAL_FETCH_BUDGET_MS). A body that isn't iCal stops the fetch within
  * its first 4 KB.
  *
- * Privacy: the address is never logged. esp_http_client logs the URL in some of its messages, so its log tag is
- * silenced (cal_sync_init); this file logs results, sizes and error codes only.
+ * Flash: an address is written when it is added or changed, a calendar's saved copy only when its meetings change
+ * (a fingerprint without the sync time decides), at most 16 meetings each, and the names and tags only on an edit.
+ *
+ * Privacy: an address is never logged. esp_http_client logs the URL in some of its messages, so its log tag is
+ * silenced (cal_sync_init); this file logs results, sizes and error codes, and a calendar's tag, never its address.
  */
 #include <pthread.h>
 #include <stdlib.h>
@@ -34,6 +40,8 @@
 #include "nvs.h"
 
 #include "cal_ics.h"
+#include "cal_list.h"
+#include "cal_migrate.h"
 #include "cal_store.h"
 #include "cal_sync.h"
 #include "cal_today.h"
@@ -60,12 +68,30 @@ static const char *TAG = "cal";
 #define CAL_CLOCK_VALID_AFTER 1735689600            /* 2025-01-01: earlier means the clock was never set */
 
 #define NVS_SEC_PART  "nvs_sec"
-#define NVS_SEC_NS    "calsec"
-#define NVS_SEC_KEY   "url"
-#define NVS_NS        "cal"
-#define NVS_LIST_KEY  "list"
+#define NVS_SEC_NS    "calsec"        /* "url0".."url2"; "url" is firmware before 1.0.8's single address */
+#define NVS_NS        "cal"           /* "list0".."list2" saved copies, "meta" names and tags; "list" is the old copy */
+#define NVS_META_KEY  "meta"
 
 typedef enum { JOB_NONE = 0, JOB_CHECK, JOB_SYNC } job_kind_t;
+
+/* One calendar. The name and tag are in s.list (cal_list_t); the address is here and nowhere else. */
+typedef struct {
+    cal_url_info_t *saved;      /* the saved address and its masked form; NULL = no calendar in this slot */
+    tb_epoch_t last_sync;       /* 0 = never */
+    bool syncing;
+    bool sync_req;              /* Sync now asked: read it next */
+    bool failing;               /* its last sync failed: left out of the merge until one works */
+    const char *error;
+    char error_message[128];
+    tb_epoch_t error_at;
+    int failures;               /* background syncs failed in a row (back-off) */
+    int64_t next_sync_ms;       /* mono ms of the next background sync; 0 = as soon as possible */
+    uint32_t gen;               /* bumped by remove or a new address: a fetch started before it throws its result away */
+    tb_meeting_t *last;         /* CAL_COPY_MAX entries (4 KB, in PSRAM: allocated by init) */
+    int n_last;
+    bool have_last;             /* last was read or fetched (an empty calendar still counts) */
+    uint32_t saved_blob_hash;
+} cal_slot_t;
 
 static pthread_mutex_t s_mx = PTHREAD_MUTEX_INITIALIZER;
 static TaskHandle_t s_task;
@@ -74,26 +100,33 @@ static struct {
     bool inited;
     bool online;
     cal_tz_t tz;                /* the device zone (UTC until main sets it) */
-    cal_url_info_t *saved;      /* the saved address and its masked form; NULL = none */
-    /* requests */
-    char *check_url;            /* a PUT waiting to be checked (normalized), or NULL */
+    cal_list_t list;            /* names and tags by slot */
+    cal_slot_t sl[TB_CALS_MAX];
+    /* a check waiting or running: an address to try before it is saved */
+    char *check_url;            /* normalized, or NULL */
+    int check_slot;             /* -1 a new calendar, else the one whose address is being replaced */
+    char check_name[TB_CAL_NAME_BYTES], check_tag[TB_CAL_TAG_BYTES];   /* "" = default (add) or keep (edit) */
     bool check_from_setup;
-    bool sync_now;              /* Sync now asked (menu or API) */
+    /* Sync now */
     int64_t sync_now_at;        /* when (mono ms) */
-    bool report;                /* the running or next sync reports SYNCED / SYNC_FAILED */
-    int64_t next_sync_ms;       /* mono ms of the next background sync; 0 = as soon as possible */
-    int failures;               /* background syncs failed in a row (back-off) */
+    bool report;                /* the running or next syncs report SYNCED / SYNC_FAILED when the last one is done */
+    bool report_ok;
     job_kind_t running;         /* the job the task is doing now */
-    uint32_t gen;               /* bumped by remove: a fetch started before it throws its result away */
-    /* status */
-    cal_status_t st;
-    int64_t check_done_ms;      /* when the last check finished */
-    /* the list last handed to the app task, and the saved copy's fingerprint */
-    tb_meeting_t *last;         /* TB_MEETINGS_MAX entries (8 KB, in PSRAM: allocated by init) */
-    int n_last;
-    bool have_last;
-    uint32_t saved_blob_hash;
-} s;
+    int running_slot;
+    /* the last PUT or POST's result (api.md 11.1: kept 10 minutes) */
+    cal_check_state_t check;
+    int check_id;
+    const char *check_error;
+    char check_message[160];
+    int64_t check_done_ms;
+    /* what the app task was last told */
+    tb_meeting_t *mbuf;         /* CAL_MERGE_CAP entries (12 KB, PSRAM): the merge's workspace */
+    tb_meeting_t *pub;          /* TB_MEETINGS_MAX entries: the merged list last handed over */
+    int n_pub;
+    bool have_pub;
+    tb_cal_info_t pub_info[TB_CALS_MAX];
+    bool have_pub_info;
+} s = {.check_slot = -1};
 
 static int64_t mono_ms(void)
 {
@@ -125,6 +158,21 @@ static void unlock(void)
 static void wake(void)
 {
     if (s_task) xTaskNotifyGive(s_task);
+}
+
+/* The address is a secret: copies are zeroed before they're freed. */
+static void free_secret(char *p)
+{
+    if (!p) return;
+    memset(p, 0, strlen(p));
+    free(p);
+}
+
+static void free_info(cal_url_info_t *info)
+{
+    if (!info) return;
+    memset(info, 0, sizeof(*info));
+    free(info);
 }
 
 /* ---------- bus ---------- */
@@ -160,27 +208,110 @@ static void post_meetings(const tb_meeting_t *m, int n)
     }
 }
 
-/* A snapshot of what the app task should know, posted outside the lock. */
+static void post_list(const tb_cal_info_t info[TB_CALS_MAX])
+{
+    tb_cal_list_t *p = calloc(1, sizeof(*p));
+    if (!p) return;
+    memcpy(p->c, info, sizeof(p->c));
+    tb_event_t ev = {.kind = TB_EV_CAL_LIST};
+    ev.u.ptr = p;
+    if (!tb_bus_post(&ev)) {
+        ESP_LOGW(TAG, "bus full: calendar list dropped");
+        free(p);
+    }
+}
+
+/* ---------- the aggregate, the merge and what the app task is told (all with s_mx held) ---------- */
+
+static bool any_saved(void)
+{
+    for (int i = 0; i < TB_CALS_MAX; i++)
+        if (s.sl[i].saved) return true;
+    return false;
+}
+
+static bool any_syncing(void)
+{
+    if (s.check_url || s.check == CAL_CHECK_CHECKING) return true;
+    for (int i = 0; i < TB_CALS_MAX; i++)
+        if (s.sl[i].saved && (s.sl[i].syncing || s.sl[i].sync_req)) return true;
+    return false;
+}
+
+static tb_epoch_t latest_sync(void)
+{
+    tb_epoch_t t = 0;
+    for (int i = 0; i < TB_CALS_MAX; i++)
+        if (s.sl[i].saved && s.sl[i].last_sync > t) t = s.sl[i].last_sync;
+    return t;
+}
+
+/* The merged list into s.mbuf (count returned) and the calendars' info by slot. */
+static int merge_locked(tb_cal_info_t info[TB_CALS_MAX])
+{
+    cal_source_t src[TB_CALS_MAX];
+    int n_src = 0;
+    for (int i = 0; i < TB_CALS_MAX; i++) {
+        memset(&info[i], 0, sizeof info[i]);
+        if (!s.list.c[i].used || !s.sl[i].saved) continue;
+        info[i] = s.list.c[i];
+        info[i].failing = s.sl[i].failing;
+        src[n_src++] = (cal_source_t){i, s.sl[i].failing, s.sl[i].have_last ? s.sl[i].last : NULL, s.sl[i].n_last};
+    }
+    if (!s.mbuf) return 0;
+    return cal_merge(src, n_src, s.mbuf, TB_MEETINGS_MAX, wall_now());
+}
+
+/* Tell the app task what changed: the calendars' names, tags and who can't sync, and the merged meetings. force sends
+ * both whatever changed (a new address always hands its list over). */
+static void publish(bool force)
+{
+    tb_cal_info_t info[TB_CALS_MAX];
+    lock();
+    int n = merge_locked(info);
+    bool new_m = force || !s.have_pub || !s.pub || !cal_meetings_equal(s.pub, s.n_pub, s.mbuf, n);
+    bool new_i = force || !s.have_pub_info || memcmp(s.pub_info, info, sizeof info) != 0;
+    if (s.pub && s.mbuf) {
+        memcpy(s.pub, s.mbuf, (size_t)n * sizeof(s.pub[0]));
+        s.n_pub = n;
+        s.have_pub = true;
+    }
+    memcpy(s.pub_info, info, sizeof info);
+    s.have_pub_info = true;
+    if (new_i) post_list(info);
+    if (new_m && s.mbuf) post_meetings(s.mbuf, n);
+    unlock();
+}
+
 static void post_current_status(void)
 {
     lock();
-    bool saved = s.st.saved, syncing = s.st.syncing;
-    tb_epoch_t last = s.st.last_sync;
+    bool saved = any_saved(), syncing = any_syncing();
+    tb_epoch_t last = latest_sync();
     unlock();
     post_status(saved, syncing, last);
 }
 
 /* ---------- NVS ---------- */
 
-static char *load_url(void)
+static void key_name(char *out, size_t cap, const char *base, int slot)
 {
+    if (slot < 0) snprintf(out, cap, "%s", base);
+    else snprintf(out, cap, "%s%d", base, slot);
+}
+
+/* The address of one slot (or the old single one, slot -1): malloc'ed text, or NULL. The caller zeroes and frees it. */
+static char *load_url(int slot)
+{
+    char key[16];
+    key_name(key, sizeof key, "url", slot);
     nvs_handle_t h;
     if (nvs_open_from_partition(NVS_SEC_PART, NVS_SEC_NS, NVS_READONLY, &h) != ESP_OK) return NULL;
     size_t len = 0;
     char *url = NULL;
-    if (nvs_get_str(h, NVS_SEC_KEY, NULL, &len) == ESP_OK && len > 1 && len <= CAL_URL_MAX + 1) {
+    if (nvs_get_str(h, key, NULL, &len) == ESP_OK && len > 1 && len <= CAL_URL_MAX + 1) {
         url = calloc(1, len);
-        if (url && nvs_get_str(h, NVS_SEC_KEY, url, &len) != ESP_OK) {
+        if (url && nvs_get_str(h, key, url, &len) != ESP_OK) {
             memset(url, 0, len);
             free(url);
             url = NULL;
@@ -190,12 +321,14 @@ static char *load_url(void)
     return url;
 }
 
-static esp_err_t save_url(const char *url)
+static esp_err_t save_url(int slot, const char *url)
 {
+    char key[16];
+    key_name(key, sizeof key, "url", slot);
     nvs_handle_t h;
     esp_err_t err = nvs_open_from_partition(NVS_SEC_PART, NVS_SEC_NS, NVS_READWRITE, &h);
     if (err != ESP_OK) return err;
-    err = url ? nvs_set_str(h, NVS_SEC_KEY, url) : nvs_erase_key(h, NVS_SEC_KEY);
+    err = url ? nvs_set_str(h, key, url) : nvs_erase_key(h, key);
     if (err == ESP_ERR_NVS_NOT_FOUND) err = ESP_OK;
     if (err == ESP_OK) err = nvs_commit(h);
     nvs_close(h);
@@ -209,8 +342,8 @@ static uint32_t fnv(const uint8_t *p, size_t n)
     return h;
 }
 
-/* Save the list if it changed (called from the task only). */
-static void save_list(const tb_meeting_t *m, int n, tb_epoch_t last_sync)
+/* Save one calendar's meetings if they changed (called from the task only). */
+static void save_list(int slot, const tb_meeting_t *m, int n, tb_epoch_t last_sync)
 {
     uint8_t *buf = malloc(CAL_STORE_BYTES_MAX);
     if (!buf) return;
@@ -218,15 +351,17 @@ static void save_list(const tb_meeting_t *m, int n, tb_epoch_t last_sync)
     size_t len = cal_store_pack(m, n, 0, buf, CAL_STORE_BYTES_MAX);
     uint32_t h = fnv(buf, len);
     lock();
-    bool same = h == s.saved_blob_hash;
+    bool same = h == s.sl[slot].saved_blob_hash;
     unlock();
     if (len && !same) {
         len = cal_store_pack(m, n, last_sync, buf, CAL_STORE_BYTES_MAX);
+        char key[16];
+        key_name(key, sizeof key, "list", slot);
         nvs_handle_t nh;
         if (nvs_open(NVS_NS, NVS_READWRITE, &nh) == ESP_OK) {
-            if (nvs_set_blob(nh, NVS_LIST_KEY, buf, len) == ESP_OK && nvs_commit(nh) == ESP_OK) {
+            if (nvs_set_blob(nh, key, buf, len) == ESP_OK && nvs_commit(nh) == ESP_OK) {
                 lock();
-                s.saved_blob_hash = h;
+                s.sl[slot].saved_blob_hash = h;
                 unlock();
             } else {
                 ESP_LOGW(TAG, "couldn't save the meetings list");
@@ -237,24 +372,24 @@ static void save_list(const tb_meeting_t *m, int n, tb_epoch_t last_sync)
     free(buf);
 }
 
-static int load_list(tb_meeting_t *out, int max, tb_epoch_t *last_sync)
+static int load_list(int slot, tb_meeting_t *out, int max, tb_epoch_t *last_sync)
 {
+    char key[16];
+    key_name(key, sizeof key, "list", slot);
     nvs_handle_t h;
     if (nvs_open(NVS_NS, NVS_READONLY, &h) != ESP_OK) return -1;
     size_t len = 0;
     int n = -1;
-    if (nvs_get_blob(h, NVS_LIST_KEY, NULL, &len) == ESP_OK && len <= CAL_STORE_BYTES_MAX) {
+    if (nvs_get_blob(h, key, NULL, &len) == ESP_OK && len <= CAL_STORE_BYTES_MAX) {
         uint8_t *buf = malloc(len ? len : 1);
-        if (buf && nvs_get_blob(h, NVS_LIST_KEY, buf, &len) == ESP_OK) {
+        if (buf && nvs_get_blob(h, key, buf, &len) == ESP_OK) {
             n = cal_store_unpack(buf, len, out, max, last_sync);
             if (n >= 0) {
                 /* the fingerprint as save_list computes it (without last_sync), so an unchanged list isn't rewritten */
                 uint8_t *b2 = malloc(CAL_STORE_BYTES_MAX);
                 if (b2) {
                     size_t l2 = cal_store_pack(out, n, 0, b2, CAL_STORE_BYTES_MAX);
-                    lock();
-                    s.saved_blob_hash = fnv(b2, l2);
-                    unlock();
+                    s.sl[slot].saved_blob_hash = fnv(b2, l2);
                 }
                 free(b2);
             }
@@ -265,17 +400,91 @@ static int load_list(tb_meeting_t *out, int max, tb_epoch_t *last_sync)
     return n;
 }
 
-static void erase_list(void)
+static void erase_list(int slot)
 {
+    char key[16];
+    key_name(key, sizeof key, "list", slot);
     nvs_handle_t h;
     if (nvs_open(NVS_NS, NVS_READWRITE, &h) == ESP_OK) {
-        nvs_erase_key(h, NVS_LIST_KEY);
+        nvs_erase_key(h, key);
         nvs_commit(h);
         nvs_close(h);
     }
-    lock();
-    s.saved_blob_hash = 0;
-    unlock();
+    s.sl[slot].saved_blob_hash = 0;
+}
+
+/* The names and tags (not secret). Called with s_mx held, on an add, edit or remove only. */
+static void save_meta_locked(void)
+{
+    uint8_t buf[CAL_LIST_BLOB_MAX];
+    size_t n = cal_list_encode(&s.list, buf, sizeof buf);
+    nvs_handle_t h;
+    if (n && nvs_open(NVS_NS, NVS_READWRITE, &h) == ESP_OK) {
+        if (nvs_set_blob(h, NVS_META_KEY, buf, n) != ESP_OK || nvs_commit(h) != ESP_OK)
+            ESP_LOGW(TAG, "couldn't save the calendars' names");
+        nvs_close(h);
+    }
+}
+
+/* cal_migrate.h's store, over the two namespaces. */
+static int kv_get(void *ctx, cal_kv_kind_t kind, int slot, uint8_t *buf, size_t cap)
+{
+    (void)ctx;
+    char key[16];
+    nvs_handle_t h;
+    size_t len = 0;
+    int ret = -1;
+    if (kind == CAL_KV_URL) {
+        key_name(key, sizeof key, "url", slot);
+        if (nvs_open_from_partition(NVS_SEC_PART, NVS_SEC_NS, NVS_READONLY, &h) != ESP_OK) return -1;
+        if (nvs_get_str(h, key, NULL, &len) == ESP_OK && len >= 1) {
+            ret = (int)len - 1;
+            if (len <= cap && nvs_get_str(h, key, (char *)buf, &len) != ESP_OK) ret = -1;
+        }
+    } else {
+        key_name(key, sizeof key, "list", slot);
+        if (nvs_open(NVS_NS, NVS_READONLY, &h) != ESP_OK) return -1;
+        if (nvs_get_blob(h, key, NULL, &len) == ESP_OK) {
+            ret = (int)len;
+            if (len <= cap && nvs_get_blob(h, key, buf, &len) != ESP_OK) ret = -1;
+        }
+    }
+    nvs_close(h);
+    return ret;
+}
+
+static bool kv_put(void *ctx, cal_kv_kind_t kind, int slot, const uint8_t *buf, size_t len)
+{
+    (void)ctx;
+    if (kind == CAL_KV_URL) {
+        char *t = calloc(1, len + 1);
+        if (!t) return false;
+        memcpy(t, buf, len);
+        bool ok = save_url(slot, t) == ESP_OK;
+        free_secret(t);
+        return ok;
+    }
+    char key[16];
+    key_name(key, sizeof key, "list", slot);
+    nvs_handle_t h;
+    if (nvs_open(NVS_NS, NVS_READWRITE, &h) != ESP_OK) return false;
+    bool ok = nvs_set_blob(h, key, buf, len) == ESP_OK && nvs_commit(h) == ESP_OK;
+    nvs_close(h);
+    return ok;
+}
+
+static bool kv_erase(void *ctx, cal_kv_kind_t kind, int slot)
+{
+    (void)ctx;
+    if (kind == CAL_KV_URL) return save_url(slot, NULL) == ESP_OK;
+    char key[16];
+    key_name(key, sizeof key, "list", slot);
+    nvs_handle_t h;
+    if (nvs_open(NVS_NS, NVS_READWRITE, &h) != ESP_OK) return false;
+    esp_err_t e = nvs_erase_key(h, key);
+    bool ok = (e == ESP_OK || e == ESP_ERR_NVS_NOT_FOUND) && nvs_commit(h) == ESP_OK;
+    nvs_close(h);
+    return ok;
 }
 
 /* ---------- the fetch ---------- */
@@ -317,9 +526,11 @@ static void free_info(cal_url_info_t *info)
 typedef struct {
     tb_epoch_t ws, we, now;
     cal_tz_t tz;
+    char tag[TB_CAL_TAG_BYTES];     /* for the log: a calendar may be named by its tag, never by its address */
     char self_email[128];
     uint32_t gen;
-    bool cancelable;    /* syncs stop when the address is removed; a PUT's check goes on */
+    int slot;
+    bool cancelable;    /* syncs stop when the calendar is removed or its address replaced; a check goes on */
 } fetch_args_t;
 
 static bool is_redirect(int status)
@@ -331,13 +542,13 @@ static bool canceled(const fetch_args_t *a)
 {
     if (!a->cancelable) return false;
     lock();
-    bool c = s.gen != a->gen;
+    bool c = s.sl[a->slot].gen != a->gen;
     unlock();
     return c;
 }
 
 /*
- * Fetch url and read it into out (at most TB_MEETINGS_MAX, sorted). Returns CAL_SYNC_OK or why not. *gone is set when
+ * Fetch url and read it into out (at most CAL_COPY_MAX, sorted). Returns CAL_SYNC_OK or why not. *gone is set when
  * remove canceled the fetch (its result must be thrown away).
  */
 static cal_sync_err_t fetch(const char *url, const fetch_args_t *a, tb_meeting_t *out, int *n, bool *gone)
@@ -457,13 +668,13 @@ static cal_sync_err_t fetch(const char *url, const fetch_args_t *a, tb_meeting_t
     }
     const cal_stats_t *st = cal_feed_stats(feed);
     if (!st->ended) ESP_LOGW(TAG, "the feed has no END:VCALENDAR; using what it had");
-    k = cal_today_trim(all, k, TB_MEETINGS_MAX, a->now);
+    k = cal_today_trim(all, k, CAL_COPY_MAX, a->now);       /* a calendar's copy is capped at 16 meetings */
     memcpy(out, all, (size_t)k * sizeof(out[0]));
     *n = k;
     res = CAL_SYNC_OK;
-    ESP_LOGI(TAG, "read %llu bytes, %u events (%u recurring, %u overrides) in %d ms: %d meetings; skipped: "
+    ESP_LOGI(TAG, "%s: read %llu bytes, %u events (%u recurring, %u overrides) in %d ms: %d meetings; skipped: "
              "%u rrules, %u zones, %u cut lines, %u candidates; %u bytes of stack left",
-             (unsigned long long)st->bytes, (unsigned)st->events, (unsigned)st->recurring, (unsigned)st->overrides,
+             a->tag, (unsigned long long)st->bytes, (unsigned)st->events, (unsigned)st->recurring, (unsigned)st->overrides,
              (int)(mono_ms() - t0), k, (unsigned)st->unsupported_rrule, (unsigned)st->unknown_tzid,
              (unsigned)st->cut_lines, (unsigned)st->dropped_candidates, (unsigned)uxTaskGetStackHighWaterMark(NULL));
 
@@ -482,52 +693,65 @@ done:
 
 /* ---------- jobs ---------- */
 
-static void fill_args(fetch_args_t *a, const char *self_email, bool cancelable)
+static void fill_args(fetch_args_t *a, const char *self_email, const char *tag, int slot, bool cancelable)
 {
     a->cancelable = cancelable;
+    a->slot = slot < 0 ? 0 : slot;
     lock();
     a->tz = s.tz;
-    a->gen = s.gen;
+    a->gen = s.sl[a->slot].gen;
     unlock();
     a->now = wall_now();
     cal_today_window(&a->tz, a->now, &a->ws, &a->we);
+    tb_strlcpy(a->tag, tag ? tag : "", sizeof a->tag);
     strncpy(a->self_email, self_email ? self_email : "", sizeof(a->self_email) - 1);
     a->self_email[sizeof(a->self_email) - 1] = '\0';
 }
 
-static void set_error(cal_sync_err_t e, bool google)
+static void set_error(cal_slot_t *c, cal_sync_err_t e, bool google)
 {
-    s.st.error = cal_sync_err_code(e);
-    strncpy(s.st.error_message, e ? cal_sync_err_message(e, google, false) : "", sizeof(s.st.error_message) - 1);
-    s.st.error_at = e && clock_ok() ? wall_now() : 0;
+    c->error = cal_sync_err_code(e);
+    strncpy(c->error_message, e ? cal_sync_err_message(e, google, false) : "", sizeof(c->error_message) - 1);
+    c->error_message[sizeof(c->error_message) - 1] = '\0';
+    c->error_at = e && clock_ok() ? wall_now() : 0;
 }
 
-/* Hand a new list to the app task when it changed (or always), and keep the saved copy current. */
-static void deliver(const tb_meeting_t *m, int n, bool always, tb_epoch_t last_sync, uint32_t gen)
+/* Keep a calendar's list (RAM and flash) and hand the merge to the app task. */
+static void deliver(int slot, const tb_meeting_t *m, int n, bool force, tb_epoch_t last_sync, uint32_t gen)
 {
     lock();
-    if (s.gen != gen || !s.saved) {     /* removed meanwhile */
+    cal_slot_t *c = &s.sl[slot];
+    if (c->gen != gen || !c->saved) {     /* removed or replaced meanwhile */
         unlock();
         return;
     }
-    bool changed = !s.last || !s.have_last || !cal_meetings_equal(s.last, s.n_last, m, n);
-    if (s.last) {
-        memcpy(s.last, m, (size_t)n * sizeof(m[0]));
-        s.n_last = n;
-        s.have_last = true;
+    if (n > CAL_COPY_MAX) n = CAL_COPY_MAX;
+    if (c->last) {
+        memcpy(c->last, m, (size_t)n * sizeof(m[0]));
+        c->n_last = n;
+        c->have_last = true;
     }
     unlock();
-    if (changed || always) post_meetings(m, n);
-    save_list(m, n, last_sync);
+    publish(force);
+    save_list(slot, m, n, last_sync);
 }
 
-static void run_check(char *url, bool from_setup)
+static void run_check(char *url, int slot, const char *name, const char *tag, bool from_setup)
 {
     cal_url_info_t *info = calloc(1, sizeof(*info));
     tb_meeting_t *m = malloc(sizeof(tb_meeting_t) * TB_MEETINGS_MAX);
     cal_sync_err_t res = CAL_SYNC_UNREACHABLE;
     int n = 0;
     bool gone = false;
+    const char *list_err = NULL;       /* set when the name or tag no longer fits by the time the address passed */
+    char tagbuf[TB_CAL_TAG_BYTES] = "";
+    if (slot >= 0) {
+        lock();
+        tb_strlcpy(tagbuf, s.list.c[slot].tag, sizeof tagbuf);
+        unlock();
+    } else {
+        tb_strlcpy(tagbuf, tag, sizeof tagbuf);
+    }
     if (info && m && cal_url_check(url, info) == CAL_URL_OK) {
         lock();
         bool online = s.online;
@@ -536,59 +760,86 @@ static void run_check(char *url, bool from_setup)
             res = CAL_SYNC_OFFLINE;
         } else {
             fetch_args_t a;
-            fill_args(&a, info->self_email, false);
+            fill_args(&a, info->self_email, tagbuf[0] ? tagbuf : "new", slot, false);
             res = fetch(info->url, &a, m, &n, &gone);
         }
     }
     bool valid_clock = clock_ok();
-    if (res == CAL_SYNC_OK && save_url(info->url) != ESP_OK) {
-        ESP_LOGE(TAG, "couldn't save the address");
-        res = CAL_SYNC_UNREACHABLE;
+    bool google = info && info->google;
+    bool fresh_slot = false;
+    uint32_t gen = 0;
+    if (res == CAL_SYNC_OK) {
+        /* Commit under the lock, so a remove or another add can't slip between choosing the slot and saving the address:
+         * the list, the address (nvs_sec) and the names (nvs) change together. */
+        lock();
+        int sl = slot;
+        if (sl >= 0 && !s.list.c[sl].used) {
+            res = CAL_SYNC_UNREACHABLE;     /* the calendar was removed while its new address was being checked */
+            gone = true;
+        } else if (sl >= 0) {
+            cal_list_edit(&s.list, sl, name, tag);
+        } else {
+            cal_list_err_t le = cal_list_add(&s.list, name, tag, &sl);
+            if (le != CAL_LIST_OK) {
+                list_err = cal_list_err_message(le);
+                res = CAL_SYNC_UNREACHABLE;
+            } else {
+                fresh_slot = true;
+            }
+        }
+        if (res == CAL_SYNC_OK && save_url(sl, info->url) != ESP_OK) {
+            ESP_LOGE(TAG, "couldn't save the address");
+            if (fresh_slot) cal_list_remove(&s.list, sl);
+            res = CAL_SYNC_UNREACHABLE;
+        }
+        if (res == CAL_SYNC_OK) {
+            cal_slot_t *c = &s.sl[sl];
+            free_info(c->saved);
+            c->saved = info;
+            info = NULL;
+            c->gen++;                       /* a sync of the address it replaces throws its result away */
+            gen = c->gen;
+            c->last_sync = valid_clock ? wall_now() : 0;
+            c->next_sync_ms = valid_clock ? mono_ms() + CAL_SYNC_EVERY_S * 1000LL : 0;  /* no clock: read it once it's known */
+            c->failing = false;
+            c->failures = 0;
+            c->sync_req = false;
+            c->n_last = 0;
+            c->have_last = false;
+            set_error(c, CAL_SYNC_OK, google);
+            save_meta_locked();
+            slot = sl;
+        }
+        unlock();
     }
 
     lock();
     bool superseded = s.check_url != NULL;     /* another PUT came in meanwhile: its check reports instead */
-    s.st.syncing = superseded || s.sync_now;
     s.check_done_ms = mono_ms();
-    bool google = info && info->google;
+    s.check_id = slot >= 0 && res == CAL_SYNC_OK ? slot + 1 : s.check_id;
     if (res == CAL_SYNC_OK) {
-        free_info(s.saved);
-        s.saved = info;
-        info = NULL;
-        s.st.saved = true;
-        strncpy(s.st.host, s.saved->host, sizeof(s.st.host) - 1);
-        strncpy(s.st.file, s.saved->file, sizeof(s.st.file) - 1);
-        strncpy(s.st.ending, s.saved->ending, sizeof(s.st.ending) - 1);
-        s.st.check = superseded ? CAL_CHECK_CHECKING : CAL_CHECK_SAVED;
-        s.st.check_error = NULL;
-        s.st.check_message[0] = '\0';
-        set_error(CAL_SYNC_OK, google);
-        s.failures = 0;
-        s.have_last = false;    /* a new address: always hand its list over */
-        if (valid_clock) {
-            s.st.last_sync = wall_now();
-            s.next_sync_ms = mono_ms() + CAL_SYNC_EVERY_S * 1000LL;
-        } else {
-            s.next_sync_ms = 0;     /* read it again once the clock is known */
-        }
+        s.check = superseded ? CAL_CHECK_CHECKING : CAL_CHECK_SAVED;
+        s.check_error = NULL;
+        s.check_message[0] = '\0';
     } else if (!gone) {
-        s.st.check = superseded ? CAL_CHECK_CHECKING : CAL_CHECK_FAILED;
-        s.st.check_error = cal_sync_err_code(res);
-        strncpy(s.st.check_message, cal_sync_err_message(res, google, true), sizeof(s.st.check_message) - 1);
+        s.check = superseded ? CAL_CHECK_CHECKING : CAL_CHECK_FAILED;
+        s.check_error = list_err ? "bad_value" : cal_sync_err_code(res);
+        strncpy(s.check_message, list_err ? list_err : cal_sync_err_message(res, google, true), sizeof(s.check_message) - 1);
+        s.check_message[sizeof(s.check_message) - 1] = '\0';
     }
-    bool saved = s.st.saved, syncing = s.st.syncing;
-    tb_epoch_t last = s.st.last_sync;
-    uint32_t gen = s.gen;
+    bool saved = any_saved(), syncing = any_syncing() || superseded;
+    tb_epoch_t last = latest_sync();
     unlock();
 
     if (res == CAL_SYNC_OK) {
-        /* ORDER (tb_app.h): the meetings, then SAVED (its toast counts them), then the status. */
-        if (valid_clock) deliver(m, n, true, last, gen);
+        /* ORDER (tb_app.h): the calendars and meetings, then SAVED (its toast counts them), then the status. */
+        if (valid_clock) deliver(slot, m, n, true, last, gen);
+        else publish(true);
         post_event(TB_CALEV_SAVED);
         ESP_LOGI(TAG, "address saved (%d meetings)", n);
     } else if (!gone) {
         if (from_setup) post_event(TB_CALEV_SETUP_FAILED);
-        ESP_LOGW(TAG, "address check failed: %s", cal_sync_err_code(res));
+        ESP_LOGW(TAG, "address check failed: %s", list_err ? "bad_value" : cal_sync_err_code(res));
     }
     post_status(saved, syncing, last);
     free_info(info);
@@ -596,20 +847,24 @@ static void run_check(char *url, bool from_setup)
     free_secret(url);
 }
 
-static void run_sync(bool *report_out)
+static void run_sync(int slot)
 {
     lock();
-    if (!s.saved) {
+    cal_slot_t *c = &s.sl[slot];
+    if (!c->saved) {
         unlock();
         return;
     }
-    char *url = strdup(s.saved->url);
+    char *url = strdup(c->saved->url);
     char email[128];
-    strncpy(email, s.saved->self_email, sizeof(email) - 1);
+    strncpy(email, c->saved->self_email, sizeof(email) - 1);
     email[sizeof(email) - 1] = '\0';
-    bool google = s.saved->google;
-    s.st.syncing = true;
-    uint32_t gen = s.gen;
+    char tag[TB_CAL_TAG_BYTES];
+    tb_strlcpy(tag, s.list.c[slot].tag, sizeof tag);
+    bool google = c->saved->google;
+    c->syncing = true;
+    c->sync_req = false;
+    uint32_t gen = c->gen;
     unlock();
 
     tb_meeting_t *m = malloc(sizeof(tb_meeting_t) * TB_MEETINGS_MAX);
@@ -618,43 +873,56 @@ static void run_sync(bool *report_out)
     bool gone = false;
     if (url && m) {
         fetch_args_t a;
-        fill_args(&a, email, true);
+        fill_args(&a, email, tag, slot, true);
         res = fetch(url, &a, m, &n, &gone);
     }
     free_secret(url);
 
     lock();
-    gone = gone || s.gen != gen;
-    s.st.syncing = s.check_url != NULL || s.sync_now;
-    bool report = s.report;
-    s.report = false;
-    if (gone) {
-        report = false;
-    } else if (res == CAL_SYNC_OK) {
-        s.st.last_sync = wall_now();
-        set_error(CAL_SYNC_OK, google);
-        s.failures = 0;
-        s.next_sync_ms = mono_ms() + CAL_SYNC_EVERY_S * 1000LL;
-    } else {
-        set_error(res, google);
-        /* Back off on failures the network may fix; a rejected or wrong address waits the full interval. */
-        int wait_s = CAL_SYNC_EVERY_S;
-        if (res == CAL_SYNC_UNREACHABLE) {
-            wait_s = CAL_RETRY_FIRST_S << (s.failures < 4 ? s.failures : 4);
-            if (wait_s > CAL_SYNC_EVERY_S) wait_s = CAL_SYNC_EVERY_S;
+    c = &s.sl[slot];
+    gone = gone || c->gen != gen || !c->saved;
+    bool fin = false, fin_ok = true;
+    if (!gone) {
+        c->syncing = false;
+        if (res == CAL_SYNC_OK) {
+            c->last_sync = wall_now();
+            set_error(c, CAL_SYNC_OK, google);
+            c->failing = false;
+            c->failures = 0;
+            c->next_sync_ms = mono_ms() + CAL_SYNC_EVERY_S * 1000LL;
+        } else {
+            set_error(c, res, google);
+            c->failing = true;      /* its meetings are left out of the bar until a sync works (no stale copy) */
+            /* Back off on failures the network may fix; a rejected or wrong address waits the full interval. */
+            int wait_s = CAL_SYNC_EVERY_S;
+            if (res == CAL_SYNC_UNREACHABLE) {
+                wait_s = CAL_RETRY_FIRST_S << (c->failures < 4 ? c->failures : 4);
+                if (wait_s > CAL_SYNC_EVERY_S) wait_s = CAL_SYNC_EVERY_S;
+            }
+            c->failures++;
+            c->next_sync_ms = mono_ms() + wait_s * 1000LL;
         }
-        s.failures++;
-        s.next_sync_ms = mono_ms() + wait_s * 1000LL;
+        if (s.report) {
+            s.report_ok = s.report_ok && res == CAL_SYNC_OK;
+            bool more = s.check_url != NULL;
+            for (int i = 0; i < TB_CALS_MAX; i++) more = more || s.sl[i].sync_req || s.sl[i].syncing;
+            if (!more) {
+                fin = true;
+                fin_ok = s.report_ok;
+                s.report = false;
+                s.report_ok = true;
+            }
+        }
     }
-    bool saved = s.st.saved, syncing = s.st.syncing;
-    tb_epoch_t last = s.st.last_sync;
+    bool saved = any_saved(), syncing = any_syncing();
+    tb_epoch_t last = latest_sync();
     unlock();
 
-    if (!gone && res == CAL_SYNC_OK) deliver(m, n, false, last, gen);
-    if (report) post_event(res == CAL_SYNC_OK ? TB_CALEV_SYNCED : TB_CALEV_SYNC_FAILED);
+    if (!gone && res == CAL_SYNC_OK) deliver(slot, m, n, false, last, gen);
+    else if (!gone) publish(false);     /* it can't sync now: the merge leaves it out */
+    if (fin) post_event(fin_ok ? TB_CALEV_SYNCED : TB_CALEV_SYNC_FAILED);
     if (!gone) post_status(saved, syncing, last);
     free(m);
-    *report_out = report;
 }
 
 static void task(void *arg)
@@ -663,40 +931,60 @@ static void task(void *arg)
     for (;;) {
         job_kind_t job = JOB_NONE;
         char *check_url = NULL;
+        char name[TB_CAL_NAME_BYTES] = "", tag[TB_CAL_TAG_BYTES] = "";
+        int slot = -1;
         bool from_setup = false, fail_now = false;
         TickType_t wait = portMAX_DELAY;
 
         lock();
         int64_t now = mono_ms();
+        bool want = false;      /* a Sync now is waiting */
+        for (int i = 0; i < TB_CALS_MAX; i++) want = want || (s.sl[i].saved && s.sl[i].sync_req);
         if (s.check_url) {
             job = JOB_CHECK;
             check_url = s.check_url;
+            slot = s.check_slot;
+            memcpy(name, s.check_name, sizeof name);
+            memcpy(tag, s.check_tag, sizeof tag);
             from_setup = s.check_from_setup;
             s.check_url = NULL;
-            s.st.syncing = true;
             s.running = JOB_CHECK;
-        } else if (s.saved && s.online) {
-            bool due = s.sync_now || now >= s.next_sync_ms;
-            if (due && clock_ok()) {
-                job = JOB_SYNC;
-                if (s.sync_now) s.report = true;
-                s.sync_now = false;
-                s.running = JOB_SYNC;
-            } else if (due) {
-                /* The window needs the date: wait for SNTP (or the Mac's hello). Sync now gives up after a while. */
-                if (s.sync_now && now - s.sync_now_at > CAL_CLOCK_WAIT_MS) {
-                    s.sync_now = false;
-                    fail_now = true;
+        } else if (any_saved() && s.online) {
+            /* The first calendar that is due, in list order. */
+            int64_t soonest = INT64_MAX;
+            bool clock_wait = false;
+            for (int i = 0; i < TB_CALS_MAX && job == JOB_NONE; i++) {
+                cal_slot_t *c = &s.sl[i];
+                if (!c->saved) continue;
+                bool due = c->sync_req || now >= c->next_sync_ms;
+                if (due && clock_ok()) {
+                    job = JOB_SYNC;
+                    slot = i;
+                    s.running = JOB_SYNC;
+                    s.running_slot = i;
+                } else if (due) {
+                    clock_wait = true;
+                } else if (c->next_sync_ms < soonest) {
+                    soonest = c->next_sync_ms;
                 }
-                wait = pdMS_TO_TICKS(1000);
-            } else {
-                wait = pdMS_TO_TICKS(s.next_sync_ms - now + 10);
             }
-        } else if (s.sync_now) {
-            s.sync_now = false;     /* removed or offline since it was asked */
-            fail_now = true;
+            if (job == JOB_NONE) {
+                if (clock_wait) {
+                    /* The window needs the date: wait for SNTP (or the Mac's hello). Sync now gives up after a while. */
+                    if (want && now - s.sync_now_at > CAL_CLOCK_WAIT_MS) fail_now = true;
+                    wait = pdMS_TO_TICKS(1000);
+                } else if (soonest != INT64_MAX) {
+                    wait = pdMS_TO_TICKS(soonest - now + 10);
+                }
+            }
+        } else if (want) {
+            fail_now = true;        /* removed or offline since it was asked */
         }
-        if (fail_now) s.st.syncing = false;
+        if (fail_now) {
+            for (int i = 0; i < TB_CALS_MAX; i++) s.sl[i].sync_req = false;
+            s.report = false;
+            s.report_ok = true;
+        }
         unlock();
 
         if (fail_now) {
@@ -704,13 +992,9 @@ static void task(void *arg)
             post_current_status();
             continue;
         }
-        if (job == JOB_CHECK || job == JOB_SYNC) {
-            if (job == JOB_CHECK) {
-                run_check(check_url, from_setup);
-            } else {
-                bool reported;
-                run_sync(&reported);
-            }
+        if (job == JOB_CHECK) run_check(check_url, slot, name, tag, from_setup);
+        else if (job == JOB_SYNC) run_sync(slot);
+        if (job != JOB_NONE) {
             lock();
             s.running = JOB_NONE;
             unlock();
@@ -722,65 +1006,97 @@ static void task(void *arg)
 
 /* ---------- public ---------- */
 
+static void alloc_buffers(void)
+{
+    for (int i = 0; i < TB_CALS_MAX; i++) {
+        size_t sz = sizeof(tb_meeting_t) * CAL_COPY_MAX;
+        s.sl[i].last = heap_caps_malloc(sz, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        if (!s.sl[i].last) s.sl[i].last = malloc(sz);
+    }
+    size_t mb = sizeof(tb_meeting_t) * CAL_MERGE_CAP, pb = sizeof(tb_meeting_t) * TB_MEETINGS_MAX;
+    s.mbuf = heap_caps_malloc(mb, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!s.mbuf) s.mbuf = malloc(mb);
+    s.pub = heap_caps_malloc(pb, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!s.pub) s.pub = malloc(pb);
+}
+
 esp_err_t cal_sync_init(void)
 {
     /* esp_http_client prints the URL in some of its messages; the address is a secret (api.md 15). */
     esp_log_level_set("HTTP_CLIENT", ESP_LOG_NONE);
 
-    char *url = load_url();
-    cal_url_info_t *info = NULL;
-    if (url) {
-        info = calloc(1, sizeof(*info));
-        if (info && cal_url_check(url, info) != CAL_URL_OK) {
-            ESP_LOGW(TAG, "the saved address no longer passes the format check; ignoring it");
-            free_info(info);
-            info = NULL;
-        }
-        free_secret(url);
-    }
-    tb_meeting_t *m = malloc(sizeof(tb_meeting_t) * TB_MEETINGS_MAX);
-    tb_epoch_t last_sync = 0;
-    int n = -1;
-    if (info && m) n = load_list(m, TB_MEETINGS_MAX, &last_sync);
-
     lock();
     if (s.inited) {
         unlock();
-        free_info(info);
-        free(m);
         return ESP_OK;
     }
     s.inited = true;
-    s.saved = info;
-    s.last = heap_caps_malloc(sizeof(tb_meeting_t) * TB_MEETINGS_MAX, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-    if (!s.last) s.last = malloc(sizeof(tb_meeting_t) * TB_MEETINGS_MAX);
-    if (info) {
-        s.st.saved = true;
-        strncpy(s.st.host, info->host, sizeof(s.st.host) - 1);
-        strncpy(s.st.file, info->file, sizeof(s.st.file) - 1);
-        strncpy(s.st.ending, info->ending, sizeof(s.st.ending) - 1);
-        s.st.last_sync = n >= 0 ? last_sync : 0;
-    }
-    if (n >= 0 && s.last) {
-        memcpy(s.last, m, (size_t)n * sizeof(m[0]));
-        s.n_last = n;
-        s.have_last = true;
-    }
-    s.next_sync_ms = 0;
-    bool saved = s.st.saved;
+    alloc_buffers();
     unlock();
 
-    /* The saved copy first, so a restart without Wi-Fi still follows today's meetings (decisions.md). */
-    if (n >= 0) post_meetings(m, n);
-    post_status(saved, false, saved ? last_sync : 0);
-    free(m);
+    /* Firmware before 1.0.8 kept one address: it becomes a calendar of its own, once (write, read back, then erase). */
+    cal_kv_ops_t kv = {NULL, kv_get, kv_put, kv_erase};
+    cal_mig_t mig = cal_migrate_legacy(&kv);
+    if (mig.res != CAL_MIG_NOTHING) ESP_LOGI(TAG, "address from the earlier firmware: result %d, slot %d", (int)mig.res, mig.slot);
+
+    unsigned mask = 0;
+    tb_epoch_t last_sync[TB_CALS_MAX] = {0};
+    int n_copy[TB_CALS_MAX];
+    tb_meeting_t *tmp = malloc(sizeof(tb_meeting_t) * TB_MEETINGS_MAX);
+    for (int i = 0; i < TB_CALS_MAX; i++) {
+        n_copy[i] = -1;
+        char *url = load_url(i);
+        cal_url_info_t *info = NULL;
+        if (url) {
+            info = calloc(1, sizeof(*info));
+            if (info && cal_url_check(url, info) != CAL_URL_OK) {
+                ESP_LOGW(TAG, "calendar %d: the saved address no longer passes the format check; ignoring it", i + 1);
+                free_info(info);
+                info = NULL;
+            }
+            free_secret(url);
+        }
+        if (!info) continue;
+        s.sl[i].saved = info;
+        mask |= 1u << i;
+        if (tmp && s.sl[i].last) {
+            n_copy[i] = load_list(i, tmp, CAL_COPY_MAX, &last_sync[i]);
+            if (n_copy[i] >= 0) {
+                memcpy(s.sl[i].last, tmp, (size_t)n_copy[i] * sizeof(tmp[0]));
+                s.sl[i].n_last = n_copy[i];
+                s.sl[i].have_last = true;
+                s.sl[i].last_sync = last_sync[i];
+            }
+        }
+        s.sl[i].next_sync_ms = 0;
+    }
+    free(tmp);
+
+    /* Names and tags: what was saved, made to agree with the addresses that are there. */
+    uint8_t meta[CAL_LIST_BLOB_MAX + 8];
+    size_t mlen = sizeof meta;
+    nvs_handle_t h;
+    cal_list_t loaded;
+    cal_list_init(&loaded);
+    if (nvs_open(NVS_NS, NVS_READONLY, &h) == ESP_OK) {
+        if (nvs_get_blob(h, NVS_META_KEY, meta, &mlen) == ESP_OK) cal_list_decode(&loaded, meta, mlen);
+        nvs_close(h);
+    }
+    lock();
+    s.list = loaded;
+    cal_list_reconcile(&s.list, mask);
+    if (memcmp(&s.list, &loaded, sizeof loaded) != 0) save_meta_locked();
+    unlock();
+
+    publish(true);      /* the saved copies first, so a restart without Wi-Fi still follows today's meetings */
+    post_current_status();
 
     BaseType_t ok = xTaskCreatePinnedToCore(task, "cal_sync", CAL_TASK_STACK, NULL, CAL_TASK_PRIO, &s_task, CAL_TASK_CORE);
     if (ok != pdPASS) {
         ESP_LOGE(TAG, "couldn't start the sync task");
         return ESP_ERR_NO_MEM;
     }
-    ESP_LOGI(TAG, "calendar %s; %d saved meetings", saved ? "saved" : "not set up", n < 0 ? 0 : n);
+    ESP_LOGI(TAG, "%d calendar(s) saved", cal_list_count(&s.list));
     return ESP_OK;
 }
 
@@ -790,11 +1106,14 @@ void cal_sync_set_online(bool online)
     bool was = s.online;
     s.online = online;
     if (online && !was) {
-        /* Coming up: sync now if the last good one is over the interval old (or there never was one). */
-        tb_epoch_t age = s.st.last_sync && clock_ok() ? wall_now() - s.st.last_sync : CAL_SYNC_EVERY_S;
-        if (age < 0 || age >= CAL_SYNC_EVERY_S) s.next_sync_ms = 0;
-        else s.next_sync_ms = mono_ms() + (CAL_SYNC_EVERY_S - age) * 1000LL;
-        s.failures = 0;
+        /* Coming up: sync each calendar now if its last good one is over the interval old (or there never was one). */
+        for (int i = 0; i < TB_CALS_MAX; i++) {
+            cal_slot_t *c = &s.sl[i];
+            tb_epoch_t age = c->last_sync && clock_ok() ? wall_now() - c->last_sync : CAL_SYNC_EVERY_S;
+            if (age < 0 || age >= CAL_SYNC_EVERY_S || c->failing) c->next_sync_ms = 0;
+            else c->next_sync_ms = mono_ms() + (CAL_SYNC_EVERY_S - age) * 1000LL;
+            c->failures = 0;
+        }
     }
     unlock();
     wake();
@@ -807,17 +1126,19 @@ void cal_sync_set_time_zone(const char *posix)
     lock();
     bool changed = memcmp(&tz, &s.tz, sizeof(tz)) != 0;
     s.tz = tz;
-    if (changed && s.inited) s.next_sync_ms = 0;    /* "today" moved: read the window again */
+    if (changed && s.inited)
+        for (int i = 0; i < TB_CALS_MAX; i++) s.sl[i].next_sync_ms = 0;    /* "today" moved: read the window again */
     unlock();
     if (changed) wake();
 }
 
-esp_err_t cal_sync_put(const char *url, bool from_setup, cal_url_err_t *fmt_err)
+/* Queue a check of url for a new calendar (slot -1) or to replace slot's address. Consumes nothing; copies. */
+static esp_err_t queue_check(const char *url, int slot, const char *name, const char *tag, bool from_setup, cal_res_t *res)
 {
     cal_url_info_t *info = calloc(1, sizeof(*info));
     if (!info) return ESP_ERR_NO_MEM;
     cal_url_err_t e = cal_url_check(url, info);
-    if (fmt_err) *fmt_err = e;
+    if (res) res->url_err = (int)e;
     if (e != CAL_URL_OK) {
         free_info(info);
         return ESP_ERR_INVALID_ARG;
@@ -826,77 +1147,193 @@ esp_err_t cal_sync_put(const char *url, bool from_setup, cal_url_err_t *fmt_err)
     free_info(info);
     if (!copy) return ESP_ERR_NO_MEM;
     lock();
+    /* The name and tag are checked now (on a copy of the list), so a mistake answers at once instead of after the fetch. */
+    cal_list_t trial = s.list;
+    cal_list_err_t le = slot < 0 ? cal_list_add(&trial, name, tag, NULL) : cal_list_edit(&trial, slot, name, tag);
+    if (le != CAL_LIST_OK) {
+        unlock();
+        free_secret(copy);
+        if (res) res->list_err = (int)le;
+        return le == CAL_LIST_NO_SUCH ? ESP_ERR_NOT_FOUND : ESP_ERR_INVALID_ARG;
+    }
     free_secret(s.check_url);  /* a newer address replaces one still waiting */
     s.check_url = copy;
+    s.check_slot = slot;
+    tb_strlcpy(s.check_name, name ? name : "", sizeof s.check_name);
+    tb_strlcpy(s.check_tag, tag ? tag : "", sizeof s.check_tag);
     s.check_from_setup = from_setup;
-    s.st.check = CAL_CHECK_CHECKING;
-    s.st.check_error = NULL;
-    s.st.check_message[0] = '\0';
-    s.st.syncing = true;
-    bool saved = s.st.saved;
-    tb_epoch_t last = s.st.last_sync;
+    s.check = CAL_CHECK_CHECKING;
+    s.check_id = slot < 0 ? 0 : slot + 1;
+    s.check_error = NULL;
+    s.check_message[0] = '\0';
+    bool saved = any_saved();
+    tb_epoch_t last = latest_sync();
     unlock();
     post_status(saved, true, last);
     wake();
     return ESP_OK;
 }
 
+esp_err_t cal_sync_add(const char *url, const char *name, const char *tag, bool from_setup, cal_res_t *res)
+{
+    cal_res_t local = {0, 0};
+    if (!res) res = &local;
+    memset(res, 0, sizeof *res);
+    lock();
+    bool full = cal_list_count(&s.list) >= TB_CALS_MAX;
+    unlock();
+    if (full) {
+        res->list_err = CAL_LIST_FULL;
+        if (from_setup) {
+            /* The setup page's address with three calendars already saved: leave them alone and say so. */
+            tb_bus_notify("3 calendars already \xC2\xB7 address not added");
+            return ESP_OK;
+        }
+        return ESP_ERR_INVALID_ARG;
+    }
+    return queue_check(url, -1, name, tag, from_setup, res);
+}
+
+esp_err_t cal_sync_edit(int id, const char *url, const char *name, const char *tag, cal_res_t *res)
+{
+    cal_res_t local = {0, 0};
+    if (!res) res = &local;
+    memset(res, 0, sizeof *res);
+    int slot = id - 1;
+    if (slot < 0 || slot >= TB_CALS_MAX) {
+        res->list_err = CAL_LIST_NO_SUCH;
+        return ESP_ERR_NOT_FOUND;
+    }
+    if (url && url[0]) return queue_check(url, slot, name, tag, false, res);
+    /* Only the name and/or tag: nothing to check, so it takes effect at once (and is saved: names are the one thing
+     * an edit writes to flash). */
+    lock();
+    cal_list_err_t le = cal_list_edit(&s.list, slot, name, tag);
+    if (le == CAL_LIST_OK && !s.sl[slot].saved) le = CAL_LIST_NO_SUCH;
+    if (le == CAL_LIST_OK) save_meta_locked();
+    unlock();
+    res->list_err = (int)le;
+    if (le != CAL_LIST_OK) return le == CAL_LIST_NO_SUCH ? ESP_ERR_NOT_FOUND : ESP_ERR_INVALID_ARG;
+    publish(false);     /* the new tag reaches the bar at once */
+    return ESP_OK;
+}
+
+esp_err_t cal_sync_put(const char *url, bool from_setup, cal_url_err_t *fmt_err)
+{
+    cal_res_t res = {0, 0};
+    esp_err_t err;
+    if (from_setup) {
+        err = cal_sync_add(url, NULL, NULL, true, &res);
+    } else {
+        lock();
+        int n = cal_list_count(&s.list), only = -1;
+        for (int i = 0; i < TB_CALS_MAX; i++)
+            if (s.list.c[i].used) only = i;
+        unlock();
+        if (n > 1) return ESP_ERR_INVALID_STATE;
+        err = n == 0 ? cal_sync_add(url, NULL, NULL, false, &res) : cal_sync_edit(only + 1, url, NULL, NULL, &res);
+    }
+    if (fmt_err) *fmt_err = (cal_url_err_t)res.url_err;
+    return err;
+}
+
+esp_err_t cal_sync_remove_id(int id)
+{
+    int slot = id - 1;
+    if (slot < 0 || slot >= TB_CALS_MAX) return ESP_ERR_NOT_FOUND;
+    tb_cal_removed_t *p = calloc(1, sizeof(*p));
+    lock();
+    cal_slot_t *c = &s.sl[slot];
+    if (!c->saved) {
+        unlock();
+        free(p);
+        return ESP_ERR_NOT_FOUND;
+    }
+    char name[TB_CAL_NAME_BYTES];
+    tb_strlcpy(name, s.list.c[slot].name, sizeof name);
+    free_info(c->saved);
+    c->saved = NULL;
+    c->gen++;                   /* a running sync of it throws its result away */
+    c->syncing = c->sync_req = c->failing = false;
+    c->failures = 0;
+    c->n_last = 0;
+    c->have_last = false;
+    c->last_sync = 0;
+    c->error = NULL;
+    c->error_message[0] = '\0';
+    cal_list_remove(&s.list, slot);
+    if (s.check_url && s.check_slot == slot) {      /* its new address was waiting for a check */
+        free_secret(s.check_url);
+        s.check_url = NULL;
+        s.check = CAL_CHECK_NONE;
+    }
+    if (save_url(slot, NULL) != ESP_OK) ESP_LOGW(TAG, "couldn't erase an address");
+    erase_list(slot);
+    save_meta_locked();
+
+    /* One piece for the app task: the list and the merge as they are without it, so the meeting that only it supplied
+     * ends at once and one another calendar also has carries on. */
+    tb_cal_info_t info[TB_CALS_MAX];
+    int n = merge_locked(info);
+    if (s.pub && s.mbuf) {
+        memcpy(s.pub, s.mbuf, (size_t)n * sizeof(s.pub[0]));
+        s.n_pub = n;
+        s.have_pub = true;
+    }
+    memcpy(s.pub_info, info, sizeof info);
+    s.have_pub_info = true;
+    if (p) {
+        tb_strlcpy(p->name, name, sizeof p->name);
+        memcpy(p->list.c, info, sizeof info);
+        p->meetings.n = (uint8_t)n;
+        if (s.mbuf) memcpy(p->meetings.m, s.mbuf, (size_t)n * sizeof(p->meetings.m[0]));
+    }
+    bool saved = any_saved(), syncing = any_syncing();
+    tb_epoch_t last = latest_sync();
+    unlock();
+
+    if (p) {
+        tb_event_t ev = {.kind = TB_EV_CAL_REMOVED};
+        ev.u.ptr = p;
+        if (!tb_bus_post(&ev)) {
+            ESP_LOGW(TAG, "bus full: removal dropped");
+            free(p);
+        }
+    } else {
+        ESP_LOGE(TAG, "no memory to announce a removal");
+    }
+    post_status(saved, syncing, last);
+    ESP_LOGI(TAG, "%s removed", name);
+    return ESP_OK;
+}
+
 esp_err_t cal_sync_remove(void)
 {
     lock();
-    if (!s.saved) {
-        unlock();
-        return ESP_ERR_NOT_FOUND;
-    }
-    free_info(s.saved);
-    s.saved = NULL;
-    s.gen++;                    /* a running sync throws its result away */
-    s.sync_now = false;
-    s.report = false;
-    s.failures = 0;
-    cal_check_state_t check = s.st.check;
-    const char *check_error = s.st.check_error;
-    char check_message[sizeof(s.st.check_message)];
-    memcpy(check_message, s.st.check_message, sizeof(check_message));
-    bool checking = s.check_url != NULL || check == CAL_CHECK_CHECKING;
-    memset(&s.st, 0, sizeof(s.st));
-    if (checking) {
-        /* A PUT still being checked goes on: if it passes, it becomes the new address. */
-        s.st.check = check;
-        s.st.check_error = check_error;
-        memcpy(s.st.check_message, check_message, sizeof(check_message));
-        s.st.syncing = true;
-    }
-    s.n_last = 0;
-    s.have_last = false;
+    int n = cal_list_count(&s.list), only = -1;
+    for (int i = 0; i < TB_CALS_MAX; i++)
+        if (s.list.c[i].used) only = i;
     unlock();
-
-    if (save_url(NULL) != ESP_OK) ESP_LOGW(TAG, "couldn't erase the address");
-    erase_list();
-    /* core forgets the meetings, turns Calendar meetings and Show meeting titles off, toasts "Calendar removed" */
-    post_event(TB_CALEV_REMOVED);
-    post_status(false, checking, 0);
-    ESP_LOGI(TAG, "address removed");
-    return ESP_OK;
+    if (n == 0) return ESP_ERR_NOT_FOUND;
+    if (n > 1) return ESP_ERR_INVALID_STATE;
+    return cal_sync_remove_id(only + 1);
 }
 
 esp_err_t cal_sync_now(void)
 {
     lock();
     esp_err_t err = ESP_OK;
-    if (!s.saved) err = ESP_ERR_NOT_FOUND;
+    if (!any_saved()) err = ESP_ERR_NOT_FOUND;
     else if (!s.online) err = ESP_ERR_INVALID_STATE;
     if (err == ESP_OK) {
-        if (s.running == JOB_SYNC) {
-            s.report = true;    /* a sync is running: it reports when it ends */
-        } else {
-            s.sync_now = true;  /* the next job (after a PUT's check, if one is running) */
-            s.sync_now_at = mono_ms();
-        }
-        s.st.syncing = true;
+        s.report = true;                    /* every calendar, one after another; the last one reports */
+        s.report_ok = true;
+        s.sync_now_at = mono_ms();
+        for (int i = 0; i < TB_CALS_MAX; i++)
+            if (s.sl[i].saved && !(s.running == JOB_SYNC && s.running_slot == i)) s.sl[i].sync_req = true;
     }
-    bool saved = s.st.saved, syncing = s.st.syncing;
-    tb_epoch_t last = s.st.last_sync;
+    bool saved = any_saved(), syncing = any_syncing();
+    tb_epoch_t last = latest_sync();
     unlock();
     /* Refused: still tell the app task, so a "Sync…" tile from the quick menu doesn't stay up. */
     post_status(saved, syncing, last);
@@ -906,13 +1343,53 @@ esp_err_t cal_sync_now(void)
 
 void cal_sync_get_status(cal_status_t *out)
 {
+    memset(out, 0, sizeof *out);
     lock();
-    *out = s.st;
-    if ((out->check == CAL_CHECK_SAVED || out->check == CAL_CHECK_FAILED) &&
-        mono_ms() - s.check_done_ms > CAL_CHECK_KEEP_MS) {
+    out->saved = any_saved();
+    out->last_sync = latest_sync();
+    out->syncing = any_syncing();
+    for (int i = 0; i < TB_CALS_MAX && !out->error; i++) {
+        if (s.sl[i].saved && s.sl[i].failing && s.sl[i].error) {
+            out->error = s.sl[i].error;
+            memcpy(out->error_message, s.sl[i].error_message, sizeof out->error_message);
+            out->error_at = s.sl[i].error_at;
+        }
+    }
+    out->check = s.check;
+    out->check_id = s.check_id;
+    out->check_error = s.check_error;
+    memcpy(out->check_message, s.check_message, sizeof out->check_message);
+    if ((out->check == CAL_CHECK_SAVED || out->check == CAL_CHECK_FAILED) && mono_ms() - s.check_done_ms > CAL_CHECK_KEEP_MS) {
         out->check = CAL_CHECK_NONE;
         out->check_error = NULL;
         out->check_message[0] = '\0';
+    }
+    unlock();
+}
+
+void cal_sync_get_items(cal_items_t *out)
+{
+    memset(out, 0, sizeof *out);
+    lock();
+    tb_epoch_t now = wall_now();
+    for (int i = 0; i < TB_CALS_MAX; i++) {
+        const cal_slot_t *c = &s.sl[i];
+        if (!s.list.c[i].used || !c->saved) continue;
+        cal_item_t *it = &out->c[i];
+        it->used = true;
+        it->id = i + 1;
+        memcpy(it->name, s.list.c[i].name, sizeof it->name);
+        memcpy(it->tag, s.list.c[i].tag, sizeof it->tag);
+        it->last_sync = c->last_sync;
+        it->syncing = c->syncing || c->sync_req;
+        it->failing = c->failing;
+        it->error = c->failing ? c->error : NULL;
+        if (it->error) {
+            memcpy(it->error_message, c->error_message, sizeof it->error_message);
+            it->error_at = c->error_at;
+        }
+        it->left_today = !c->failing && c->have_last && clock_ok() ? cal_today_left(c->last, c->n_last, now, &s.tz) : 0;
+        out->n++;
     }
     unlock();
 }

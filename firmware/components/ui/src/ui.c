@@ -43,6 +43,10 @@
 #define ICON_PX          16
 #define ICON_GAP         8
 #define ICON_Y           16
+#define TAG_GAP          8      /* the calendar tag after "NEXT UP": margin-left .7em */
+#define TAG_PAD_X        4      /* its padding at the sides (.4em) */
+#define TAG_H            15     /* 1 px outline around the 12 px label line */
+#define TAG_RADIUS       3
 #define SYS_GAP          8      /* the status row's flex gap */
 #define VALUE_AMPM_GAP   2      /* .v-ampm margin-left */
 #define CLOCK_AMPM_GAP   5      /* .ampm margin-left .15em at 112 px (5.4 px) */
@@ -103,7 +107,7 @@ static struct {
     lv_obj_t *marquee, *marquee_label;
     lv_obj_t *end_tomato;
     lv_obj_t *sys_time, *pill, *pill_label, *icons[UI_SYS_ICONS_MAX];
-    lv_obj_t *label, *value, *value_ampm, *foot;
+    lv_obj_t *label, *tag, *tag_label, *value, *value_ampm, *foot;
     lv_obj_t *tomatoes[TB_POMO_MAX_ROUNDS];
     lv_obj_t *qr_box, *qr, *step_num[2], *step1_pre, *step1_bold, *step1_post, *step2;
     lv_obj_t *splash_tomato;
@@ -437,6 +441,11 @@ void ui_init(lv_display_t *disp)
     U.pill_label = text(U.pill, UI_FONT_SYS_15, UI_COLOR_TEXT);
     for (int i = 0; i < UI_SYS_ICONS_MAX; i++) U.icons[i] = image(scr, &ui_icon_wifi);
     U.label = text(scr, UI_FONT_LABEL_12, UI_COLOR_MUTED);
+    U.tag = plain(scr);
+    lv_obj_set_style_radius(U.tag, TAG_RADIUS, 0);
+    lv_obj_set_style_border_width(U.tag, 1, 0);
+    lv_obj_set_style_border_color(U.tag, rgb(UI_COLOR_MUTED), 0);
+    U.tag_label = text(U.tag, UI_FONT_LABEL_12, UI_COLOR_MUTED);
     U.value = text(scr, UI_FONT_VALUE_46, UI_COLOR_TEXT);
     U.value_ampm = text(scr, UI_FONT_AMPM_17, UI_COLOR_TEXT);
     U.foot = text(scr, UI_FONT_FOOT_14, UI_COLOR_MUTED);
@@ -634,7 +643,16 @@ static void put_side(const ui_view_t *v)
     const int32_t x0 = UI_SIDE_X0 + UI_SIDE_INSET, w = UI_SIDE_TEXT_W;
     put_sys_row(v);
     show(U.label, true);
-    put_caps(U.label, v->label, x0, UI_BASE_LABEL, w);
+    /* The tag is never cut or shrunk: the label gives way first (it is short, so it never has to). */
+    int32_t tag_w = v->label_tag[0] ? 2 + 2 * TAG_PAD_X + text_w(ui_font(UI_FONT_LABEL_12), v->label_tag, 0) : 0;
+    put_caps(U.label, v->label, x0, UI_BASE_LABEL, w - (tag_w ? tag_w + TAG_GAP : 0));
+    show(U.tag, tag_w > 0);
+    if (tag_w) {
+        set_text(U.tag_label, v->label_tag);
+        set_pos(U.tag, x0 + text_w(font_of(U.label), lv_label_get_text(U.label), 0) + TAG_GAP, UI_BASE_LABEL - TAG_H + 3);
+        set_size(U.tag, tag_w, TAG_H);
+        at_base(U.tag_label, TAG_PAD_X, TAG_H - 4);
+    }
     show(U.foot, v->foot[0] != '\0');
     put_line(U.foot, v->foot, x0, UI_BASE_FOOT, w);
     show(U.value, !v->tomatoes);
@@ -670,6 +688,7 @@ static void hide_side(void)
     show(U.pill, false);
     for (int i = 0; i < UI_SYS_ICONS_MAX; i++) show(U.icons[i], false);
     show(U.label, false);
+    show(U.tag, false);
     show(U.value, false);
     show(U.value_ampm, false);
     show(U.foot, false);

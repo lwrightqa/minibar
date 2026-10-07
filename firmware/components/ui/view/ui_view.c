@@ -99,6 +99,17 @@ static void side(ui_view_t *v, const char *label, const char *value, const char 
     v->value_small = small;
 }
 
+/* Every saved calendar can't sync (so none of their meetings is on the bar). */
+static bool all_cals_failing(const tb_app_t *a)
+{
+    int n = 0, bad = 0;
+    for (int i = 0; i < TB_CALS_MAX; i++) {
+        n += a->cals[i].used;
+        bad += a->cals[i].used && a->cals[i].failing;
+    }
+    return n > 0 && bad == n;
+}
+
 /* sysRow(): the time, the Pomodoro pill off the Pomodoro screen, and the icons. The bar runs on USB (Bold Signal's
  * power 'usb'): no battery; a Mac icon while a Mac is connected. Next to the pill there's room for two icons: Wi-Fi
  * and the set-aside glyph, or else the Mac. */
@@ -325,6 +336,9 @@ static void own_view(ui_view_t *v, const tb_app_t *a, const tb_clock_t *now)
         if (a->wifi_mode == TB_WIFI_OFFLINE) side(v, "Calendar", "Off", NULL, "needs Wi-Fi", true);
         else if (!a->cal_saved) side(v, "Calendar", "Not set up", NULL, "add it on the Remote", true);
         else if (!a->set.automatic.calendar) side(v, "Calendar", "Off", NULL, "turned off on the Remote", true);
+        /* Several calendars: when none can sync nothing from them shows (a calendar that can't sync is left out), and
+         * the side says why (decisions.md, 2026-10-07). */
+        else if (all_cals_failing(a)) side(v, "Calendar", "Can't sync", NULL, "see the Remote", true);
         /* Next up reads like Free until and Posted: the start time is the side value with AM or PM after the digits,
          * then the title and place (titles on) or how soon it starts. */
         else if (nx) {
@@ -332,6 +346,8 @@ static void own_view(ui_view_t *v, const tb_app_t *a, const tb_clock_t *now)
             if (t[0]) snprintf(foot, sizeof foot, "%s%s%s", t, place[0] ? " " MID_DOT " " : "", place);
             else snprintf(foot, sizeof foot, "meeting in %s", hm(tb_mins_up((nx->start - now->wall) * 1000)).s);
             side(v, "Next up", fmt_short(nx->start).s, tb_fmt_ampm(nx->start), foot, false);
+            /* With 2 or more calendars saved, a small tag says which one it came from; with one nothing changes. */
+            if (a->n_cals >= 2 && nx->cal < TB_CALS_MAX && a->cals[nx->cal].used) PUT(v->label_tag, "%s", a->cals[nx->cal].tag);
         } else if (!now->valid) {
             side(v, "Next up", "Not known", NULL, "the clock isn't set yet", true);   /* Proposed */
         } else {

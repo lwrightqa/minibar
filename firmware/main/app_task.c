@@ -176,6 +176,22 @@ static void handle_event(const tb_event_t *ev)
     case TB_EV_CAL_EVENT:
         tb_app_calendar_event(&g_app, (tb_cal_event_t)ev->u.i32, &now);
         break;
+    case TB_EV_CAL_LIST: {
+        tb_cal_list_t *l = ev->u.ptr;
+        if (l) {
+            tb_app_set_cal_list(&g_app, l->c, &now);
+            free(l);
+        }
+        break;
+    }
+    case TB_EV_CAL_REMOVED: {
+        tb_cal_removed_t *r = ev->u.ptr;
+        if (r) {
+            tb_app_calendar_removed(&g_app, r->name, r->list.c, r->meetings.m, r->meetings.n, &now);
+            free(r);
+        }
+        break;
+    }
     case TB_EV_NOTIFY:
         tb_app_notify(&g_app, ev->u.text, &now);
         break;

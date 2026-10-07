@@ -75,7 +75,7 @@ bool cal_meetings_equal(const tb_meeting_t *a, int na, const tb_meeting_t *b, in
 {
     if (na != nb) return false;
     for (int i = 0; i < na; i++) {
-        if (a[i].id != b[i].id || a[i].start != b[i].start || a[i].end != b[i].end || a[i].priv != b[i].priv ||
+        if (a[i].id != b[i].id || a[i].start != b[i].start || a[i].end != b[i].end || a[i].priv != b[i].priv || a[i].cal != b[i].cal ||
             strcmp(a[i].title, b[i].title) || strcmp(a[i].location, b[i].location))
             return false;
     }

@@ -69,6 +69,7 @@ typedef struct {
     uint8_t n_icons;                /* right-aligned, in this order, 8 px apart */
     ui_icon_t icons[UI_SYS_ICONS_MAX];
     char label[40];                 /* drawn in capitals */
+    char label_tag[TB_CAL_TAG_BYTES]; /* a calendar's tag in an outline right after the label ("C2"), "" for none */
     char value[64];                 /* "45m", "2:30", "Rest of day" */
     char value_ampm[3];             /* "PM" at 17 px after the digits, or "" */
     bool value_small;               /* word values at 28 px */

@@ -1043,6 +1043,10 @@ static uint32_t visible_sig(const tb_app_t *a)
     h_i64(&s, a->call.since_ms);
     h_i64(&s, a->mac_link);
     h_i64(&s, a->n_meetings);
+    for (int i = 0; i < TB_CALS_MAX; i++) {         /* the tags and who can't sync show on the bar and in the tile */
+        h_i64(&s, a->cals[i].used | a->cals[i].failing << 1);
+        h_str(&s, a->cals[i].tag);
+    }
     h_i64(&s, a->cal_last_sync);
     h_i64(&s, a->aside_call);
     h_i64(&s, a->aside_meeting);
@@ -1756,6 +1760,7 @@ void tb_app_set_meetings(tb_app_t *a, const tb_meeting_t *m, int n, const tb_clo
     for (int i = 0; i < n; i++) {
         tb_meeting_t *e = &a->meetings[i];
         if (!e->id) e->id = 1;
+        if (e->cal >= TB_CALS_MAX) e->cal = 0;
         e->title[sizeof(e->title) - 1] = '\0';
         e->location[sizeof(e->location) - 1] = '\0';
     }
@@ -1773,6 +1778,61 @@ void tb_app_set_calendar(tb_app_t *a, bool saved, bool checking, tb_epoch_t last
     a->cal_last_sync = last_sync;
     tb_bump(a);
     sync_auto(a, NULL, now);
+    settle(a, now);
+}
+
+/* Copy the calendars' names and tags in (cut and cleaned: they came from the bar's own service, but never trust a
+ * length) and count the used ones. */
+static void take_cal_list(tb_app_t *a, const tb_cal_info_t c[TB_CALS_MAX])
+{
+    a->n_cals = 0;
+    for (int i = 0; i < TB_CALS_MAX; i++) {
+        memset(&a->cals[i], 0, sizeof a->cals[i]);
+        if (!c || !c[i].used) continue;
+        a->cals[i].used = true;
+        a->cals[i].failing = c[i].failing;
+        tb_strlcpy(a->cals[i].name, c[i].name, sizeof a->cals[i].name);
+        tb_strlcpy(a->cals[i].tag, c[i].tag, sizeof a->cals[i].tag);
+        a->n_cals++;
+    }
+    tb_bump(a);
+}
+
+void tb_app_set_cal_list(tb_app_t *a, const tb_cal_info_t c[TB_CALS_MAX], const tb_clock_t *now)
+{
+    if (a->powered_off) return;
+    take_cal_list(a, c);
+    settle(a, now);
+}
+
+void tb_app_calendar_removed(tb_app_t *a, const char *name, const tb_cal_info_t c[TB_CALS_MAX], const tb_meeting_t *m,
+                             int n, const tb_clock_t *now)
+{
+    if (a->powered_off) return;
+    char lead[TB_CAL_NAME_BYTES + 12];
+    snprintf(lead, sizeof lead, "%s removed", name && name[0] ? name : "Calendar");
+    take_cal_list(a, c);
+    if (n > TB_MEETINGS_MAX) n = TB_MEETINGS_MAX;
+    if (n < 0 || !m) n = 0;
+    if (n > 0) memcpy(a->meetings, m, (size_t)n * sizeof(*m));
+    a->n_meetings = (uint8_t)n;
+    a->rev++;
+    if (!a->n_cals) {
+        /* The last one: the address and the saved copy are gone; Calendar meetings and Show meeting titles turn off. */
+        a->cal_saved = false;
+        a->cal_checking = false;
+        a->cal_last_sync = 0;
+        a->n_meetings = 0;
+        a->aside_meeting = 0;
+        a->set.automatic.calendar = false;
+        a->set.automatic.meeting_titles = false;
+    } else if (a->aside_meeting) {
+        bool still = false;     /* a meeting set aside that no calendar has any more can't come back */
+        for (int i = 0; i < a->n_meetings; i++) still |= a->meetings[i].id == a->aside_meeting;
+        if (!still) a->aside_meeting = 0;
+    }
+    /* The meeting on screen ends here when only that calendar supplied it; one another calendar also has goes on. */
+    if (!sync_auto(a, lead, now)) toast(a, lead, now);
     settle(a, now);
 }
 
@@ -1795,6 +1855,7 @@ void tb_app_calendar_event(tb_app_t *a, tb_cal_event_t ev, const tb_clock_t *now
         break;
     case TB_CALEV_REMOVED:
         /* The address and the saved copy go; Calendar meetings and Show meeting titles turn off (api.md 11.3). */
+        take_cal_list(a, NULL);
         a->cal_saved = false;
         a->cal_checking = false;
         a->cal_last_sync = 0;

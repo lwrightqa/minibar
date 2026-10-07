@@ -198,6 +198,8 @@ typedef struct {
     tb_link_t mac_link;             /* mac.link: a Mac is connected (the Mac icon), NONE otherwise */
     tb_meeting_t meetings[TB_MEETINGS_MAX];
     uint8_t n_meetings;             /* cal.events: today's and tomorrow's that count, sorted by start */
+    tb_cal_info_t cals[TB_CALS_MAX];/* the calendars by slot (names, tags, which can't sync); cal_saved is true when any is used */
+    uint8_t n_cals;                 /* how many are used */
     bool cal_saved;                 /* cal.state === 'ok' */
     bool cal_checking;              /* a check or sync is running ("Sync…" tile) */
     tb_epoch_t cal_last_sync;       /* 0 = never */
@@ -320,6 +322,13 @@ void tb_app_set_meetings(tb_app_t *a, const tb_meeting_t *m, int n, const tb_clo
 /* Calendar status for the menus and screens. */
 void tb_app_set_calendar(tb_app_t *a, bool saved, bool checking, tb_epoch_t last_sync, const tb_clock_t *now);
 void tb_app_calendar_event(tb_app_t *a, tb_cal_event_t ev, const tb_clock_t *now);
+/* The calendars changed (added, renamed, a sync failed or worked again): names, tags and which can't sync, by slot. */
+void tb_app_set_cal_list(tb_app_t *a, const tb_cal_info_t c[TB_CALS_MAX], const tb_clock_t *now);
+/* One of several calendars (or the only one) was removed: c is the list and m the merged meetings as they are now, name
+ * the removed one's ("Calendar 2 removed"). The meeting on screen ends at once if only that calendar supplied it. With
+ * none left it is TB_CALEV_REMOVED's work: Calendar meetings and Show meeting titles go off. */
+void tb_app_calendar_removed(tb_app_t *a, const char *name, const tb_cal_info_t c[TB_CALS_MAX], const tb_meeting_t *m,
+                             int n, const tb_clock_t *now);
 
 /* ---------- Wi-Fi (net) ---------- */
 /* The setup page sent credentials: the Connecting screen. */

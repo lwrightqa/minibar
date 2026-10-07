@@ -72,6 +72,28 @@ static void cal_tile(tb_app_t *a, const tb_clock_t *now)
         return;
     }
     char foot[48], ago[32];
+    /* Several calendars (decisions.md, 2026-10-07): with some that can't sync the value is how many work ("2/3") and
+     * the foot names the first one that can't by its tag; with none that can it is Error. A calendar that can't sync
+     * is left out of the bar, so this is where the bar says so. With the link down nothing is syncing, so Offline wins. */
+    int n = a->n_cals ? a->n_cals : 1, bad = 0, first = -1;
+    for (int i = 0; i < TB_CALS_MAX; i++)
+        if (a->cals[i].used && a->cals[i].failing && ++bad == 1) first = i;
+    if (bad && !link_down(a)) {
+        if (bad >= n) {
+            add(m, TB_ACT_SYNC, TB_TILE_NORMAL, "Calendar", "Error", n > 1 ? "can't reach\nany" : "can't\nreach it");
+        } else {
+            char v[12];
+            snprintf(v, sizeof v, "%d/%d", n - bad, n);
+            snprintf(foot, sizeof foot, "%s can't\nsync", a->cals[first].tag);
+            add(m, TB_ACT_SYNC, TB_TILE_NORMAL, "Calendar", v, foot);
+        }
+        return;
+    }
+    if (n > 1 && !link_down(a)) {
+        snprintf(foot, sizeof foot, "%d calendars", n);
+        add(m, TB_ACT_SYNC, TB_TILE_NORMAL, "Calendar", "Sync", foot);
+        return;
+    }
     if (!a->cal_last_sync) snprintf(foot, sizeof foot, "not synced yet");          /* Firmware: no sync time saved */
     else if (!now->valid) snprintf(foot, sizeof foot, "tap to sync");              /* Firmware: clock unknown */
     else snprintf(foot, sizeof foot, "synced %s", tb_fmt_ago(ago, sizeof ago, a->cal_last_sync, now->wall, true));
