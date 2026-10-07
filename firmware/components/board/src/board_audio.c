@@ -8,7 +8,7 @@
  * microphones, which MiniBar never uses), and the amplifier (EXIO7, the NS4150B's CTRL, pulled low on the board) is
  * switched on only around sounds when CONFIG_TINYBAR_AUDIO_AMP_GATE is set.
  *
- * The sounds are synthesized once at start (brd_chime_render, brd_tick_render; about 130 KB of PSRAM) at the mock-up's
+ * The sounds are synthesized once at start (brd_chime_render, brd_tick_render; about 170 KB of PSRAM) at the mock-up's
  * digital levels; CONFIG_TINYBAR_AUDIO_VOLUME sets the loudness. A small task (core 1, priority 6) mixes them in
  * 10 ms chunks through brd_player and writes them to I2S; the channel runs all the time and sends silence between
  * sounds (auto_clear), so there's no click from starting and stopping it. Callers only post to a queue: nothing here
@@ -40,7 +40,7 @@ static const char *TAG = "board.audio";
 #define AUDIO_TASK_CORE   1
 #define AUDIO_QUEUE_LEN   8
 
-typedef enum { CMD_CHIME, CMD_TICKING, CMD_STOP } cmd_kind_t;
+typedef enum { CMD_CHIME, CMD_TICKING, CMD_STOP, CMD_MEETING } cmd_kind_t;
 typedef struct {
     cmd_kind_t kind;
     int arg;
@@ -73,6 +73,7 @@ static void apply(const cmd_t *c)
     case CMD_CHIME: brd_player_chime(&s_player, c->arg != 0); break;
     case CMD_TICKING: brd_player_set_ticking(&s_player, c->arg, now); break;
     case CMD_STOP: brd_player_stop(&s_player, now); break;
+    case CMD_MEETING: brd_player_meeting_chime(&s_player); break;
     }
 }
 
@@ -153,16 +154,20 @@ esp_err_t board_audio_init(void)
 {
     if (s_task) return ESP_OK;
     size_t chime_n = brd_chime_samples(BRD_AUDIO_RATE), tick_n = brd_tick_samples(BRD_AUDIO_RATE);
+    size_t meet_n = brd_meeting_chime_samples(BRD_AUDIO_RATE);
+    int16_t *meeting = heap_caps_malloc(meet_n * sizeof(int16_t), MALLOC_CAP_SPIRAM);     /* 40 KB */
     int16_t *chime_focus = heap_caps_malloc(chime_n * sizeof(int16_t), MALLOC_CAP_SPIRAM);
     int16_t *chime_break = heap_caps_malloc(chime_n * sizeof(int16_t), MALLOC_CAP_SPIRAM);
     int16_t *tick_a = heap_caps_malloc(tick_n * sizeof(int16_t), MALLOC_CAP_INTERNAL);
     int16_t *tick_b = heap_caps_malloc(tick_n * sizeof(int16_t), MALLOC_CAP_INTERNAL);
-    ESP_RETURN_ON_FALSE(chime_focus && chime_break && tick_a && tick_b, ESP_ERR_NO_MEM, TAG, "sound buffers");
+    ESP_RETURN_ON_FALSE(chime_focus && chime_break && meeting && tick_a && tick_b, ESP_ERR_NO_MEM, TAG, "sound buffers");
+    brd_meeting_chime_render(meeting, meet_n, BRD_AUDIO_RATE);
     brd_chime_render(chime_focus, chime_n, false, BRD_AUDIO_RATE);
     brd_chime_render(chime_break, chime_n, true, BRD_AUDIO_RATE);
     brd_tick_render(tick_a, tick_n, 2000, BRD_AUDIO_RATE);
     brd_tick_render(tick_b, tick_n, 1700, BRD_AUDIO_RATE);
     brd_player_init(&s_player, chime_focus, chime_break, chime_n, tick_a, tick_b, tick_n, board_now_ms());
+    brd_player_set_meeting_chime(&s_player, meeting, meet_n);
 
     esp_err_t err = codec_init();
     if (err != ESP_OK) {
@@ -191,6 +196,11 @@ static void send(cmd_kind_t kind, int arg)
 void board_audio_chime(bool to_break)
 {
     send(CMD_CHIME, to_break);
+}
+
+void board_audio_meeting_chime(void)
+{
+    send(CMD_MEETING, 0);
 }
 
 void board_audio_set_ticking(int level)

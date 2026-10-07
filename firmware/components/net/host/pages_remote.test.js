@@ -308,6 +308,23 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   const rows12 = await p.$$eval('#devList .dev', els => els.map(e => e.innerText.replace(/\s+/g, ' ').trim()));
   check(/Paired today, \d+:\d\d [AP]M \u00b7 used just now$/.test(rows12[0]), 'and its times are 12-hour again: ' + rows12[0]);
 
+  // Display: Meeting chime (decisions.md "Meeting-start sound (2026-10-07)"): on by default, a toast on the bar, no sound
+  check(await p.isChecked('#meetChime'), 'Meeting chime starts on');
+  check((await text('#chimeLine')).startsWith('A soft chime and one flash when a calendar meeting starts.'), 'its note: ' + await text('#chimeLine'));
+  await noScroll('with the Meeting chime switch');
+  await p.uncheck('#meetChime');
+  await sleep(700);
+  check(!(await p.isChecked('#meetChime')), 'unchecked');
+  s = await state();
+  check(s.toast === 'Meeting chime off', 'the bar toasts it: ' + s.toast);
+  check(((await usb('GET', '/api/v1/settings')).settings || {}).sound.meeting_chime === false, 'settings say false');
+  await p.check('#meetChime');
+  await sleep(700);
+  check(await p.isChecked('#meetChime'), 'checked again');
+  s = await state();
+  check(s.toast === 'Meeting chime on', 'and toasts that: ' + s.toast);
+  check(((await usb('GET', '/api/v1/settings')).settings || {}).sound.meeting_chime === true, 'settings say true');
+
   // Message: characters the bar can't draw are named as you type, and Show waits until they're gone
   s = await state();
   const idxBefore = s.idx;

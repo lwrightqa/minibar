@@ -263,6 +263,8 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
             </div>
           </div>
           <p class="note-small" id="timeLine">12-hour shows 3:30 PM. 24-hour shows 15:30, with no AM or PM. It applies to the clock, meeting times, Next up and Away, here and on the bar.</p>
+          <label class="check" for="meetChime"><input type="checkbox" id="meetChime" aria-describedby="chimeLine"> Meeting chime</label>
+          <p class="note-small" id="chimeLine" style="margin:0">A soft chime and one flash when a calendar meeting starts. It's quiet during calls and other meetings, and while you're Away, and then it only flashes. Off turns both off.</p>
         </div>
       </div>
       <div>
@@ -944,6 +946,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
       $('pTick').checked = set.pomodoro.ticking;
       pickSeg($('tickSeg'), set.pomodoro.tick_volume);
       if (set.display) pickSeg($('timeSeg'), set.display.time_format);
+      if (set.sound) $('meetChime').checked = set.sound.meeting_chime;
       // The volume choice is dimmed and disabled while ticking is off, so it never reads as "ticking at Soft".
       $('tickSeg').querySelectorAll('button').forEach(b => { b.disabled = !set.pomodoro.ticking; });
       $('tickSeg').setAttribute('aria-disabled', String(!set.pomodoro.ticking));
@@ -1057,6 +1060,11 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     const r = await patch({ display: { time_format: b.dataset.v } });
     if (r.status === 200) renderDevices();      // its times (Paired today, 3:05 PM) are written with the new format at once
     if (r.status === 200) phoneSay(`Time format: ${b.dataset.v === '24h' ? '24-hour' : '12-hour'}`);
+  });
+  // A change here never makes the bar play anything; only the tile on the bar plays the chime once as a sample.
+  $('meetChime').addEventListener('change', async e => {
+    const r = await patch({ sound: { meeting_chime: e.target.checked } });
+    if (r.status === 200) phoneSay(`Meeting chime ${e.target.checked ? 'on' : 'off'}`);
   });
   $('tickSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b && !b.disabled) patch({ pomodoro: { tick_volume: b.dataset.v } }); });
 

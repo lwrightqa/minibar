@@ -241,6 +241,7 @@ static void run_effects(void)
         tb_clock_t now = app_clock_now();
         switch (fx[i].kind) {
         case TB_FX_CHIME: board_audio_chime(fx[i].arg != 0); break;
+        case TB_FX_MEETING_CHIME: board_audio_meeting_chime(); break;
         case TB_FX_TICKING: board_audio_set_ticking(fx[i].arg); break;
         case TB_FX_BACKLIGHT: board_backlight_set((uint8_t)fx[i].arg); break;
         case TB_FX_ROTATE: board_display_set_flipped(fx[i].arg != 0); break;

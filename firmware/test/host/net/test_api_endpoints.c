@@ -543,6 +543,49 @@ TB_TEST(settings_time_format)
     TB_FALSE(nf_app.set.more.time_24h);
 }
 
+/* Meeting chime (decisions.md "Meeting-start sound (2026-10-07)"): sound.meeting_chime, on by default. */
+TB_TEST(settings_meeting_chime)
+{
+    setup_paired();
+    nf_resp_t r = nf_http("GET", "/api/v1/settings", NULL, T);
+    TB_TRUE(nf_true(r.j, "settings.sound.meeting_chime"));                  /* default on */
+    nf_free(&r);
+    r = nf_http("PATCH", "/api/v1/settings", "{\"sound\": {\"meeting_chime\": false}}", T);
+    TB_EQ_INT(r.status, 200);
+    TB_FALSE(nf_true(r.j, "settings.sound.meeting_chime"));
+    nf_free(&r);
+    TB_FALSE(nf_app.set.more.meeting_chime);
+    TB_TRUE(toast_has("Meeting chime off"));
+    r = nf_http("PATCH", "/api/v1/settings", "{\"sound\": {\"meeting_chime\": true}, \"display\": {\"time_format\": \"24h\"}}", T);
+    TB_EQ_INT(r.status, 200);
+    TB_TRUE(nf_true(r.j, "settings.sound.meeting_chime"));
+    TB_EQ_STR(nf_str(r.j, "settings.display.time_format"), "24h");
+    nf_free(&r);
+    TB_TRUE(nf_app.set.more.meeting_chime);
+    TB_TRUE(toast_has("Meeting chime on"));
+    /* a change through the API plays nothing (only the tile's sample does) */
+    tb_effect_t fx[TB_EFFECTS_MAX];
+    int n = tb_app_take_effects(&nf_app, fx, TB_EFFECTS_MAX);
+    for (int i = 0; i < n; i++) TB_TRUE(fx[i].kind != TB_FX_MEETING_CHIME);
+    /* anything but true or false is bad_value on that field, and nothing else in the request applies */
+    const char *bad[] = {"\"off\"", "\"true\"", "0", "1", "null", "[]", "{}"};
+    for (size_t i = 0; i < sizeof bad / sizeof bad[0]; i++) {
+        char body[160];
+        snprintf(body, sizeof body, "{\"display\": {\"brightness\": 100}, \"sound\": {\"meeting_chime\": %s}}", bad[i]);
+        r = nf_http("PATCH", "/api/v1/settings", body, T);
+        TB_EQ_INT(r.status, 400);
+        TB_EQ_STR(nf_err(&r), "bad_value");
+        TB_EQ_STR(nf_str(r.j, "field"), "sound.meeting_chime");
+        nf_free(&r);
+    }
+    TB_EQ_INT(nf_app.set.display.brightness, 70);
+    TB_TRUE(nf_app.set.more.meeting_chime);
+    r = nf_http("PATCH", "/api/v1/settings", "{\"sound\": 5}", T);
+    TB_EQ_INT(r.status, 400);
+    TB_EQ_STR(nf_str(r.j, "field"), "sound");
+    nf_free(&r);
+}
+
 TB_TEST(settings_patch_is_all_or_nothing)
 {
     setup_paired();

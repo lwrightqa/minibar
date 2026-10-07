@@ -337,15 +337,16 @@ TB_TEST(menu_display_time_tile)
     hold(b);
     tap_tile_named(b, TB_ACT_DISPLAY);
     TB_EQ_INT(b->a.menu.kind, TB_MENU_DISPLAY);
-    TB_EQ_INT(b->a.menu.n, 3);
+    TB_EQ_INT(b->a.menu.n, 4);
     const tb_tile_t *t = b->a.menu.tiles;
     TB_EQ_STR(t[0].label, "Light");
-    TB_EQ_STR(t[1].label, "Time");
-    TB_EQ_STR(t[1].value, "12-hr");
-    TB_EQ_STR(t[1].foot, "tap to switch");
-    TB_EQ_STR(t[2].label, "Display");
-    TB_EQ_STR(t[2].value, "Back");
-    TB_EQ_INT(t[2].style, TB_TILE_DONE);
+    TB_EQ_STR(t[1].label, "Chime");                     /* beside where Tap sound will sit (decisions.md) */
+    TB_EQ_STR(t[2].label, "Time");
+    TB_EQ_STR(t[2].value, "12-hr");
+    TB_EQ_STR(t[2].foot, "tap to switch");
+    TB_EQ_STR(t[3].label, "Display");
+    TB_EQ_STR(t[3].value, "Back");
+    TB_EQ_INT(t[3].style, TB_TILE_DONE);
     TB_FALSE(b->a.set.more.time_24h);
     /* a tap switches at once, the menu stays open, a toast says the full name, and it's saved */
     tap_tile_named(b, TB_ACT_TIME_FMT);

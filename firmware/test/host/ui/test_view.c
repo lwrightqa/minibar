@@ -480,6 +480,21 @@ TB_TEST(overlay_flash_dark_menu)
     TB_FALSE(O.dark);
 }
 
+TB_TEST(overlay_meeting_start_flash_is_one_pulse)
+{
+    scene("flash");                             /* the alarm's flash is running, 120 ms in */
+    A.flash_once = true;                        /* a meeting start's flash: one pulse */
+    ui_overlay_build(&A, &NOW, &O);
+    TB_TRUE(O.flash);
+    TB_EQ_INT(O.flash_opa, ui_flash_opa(120));
+    NOW.mono += TB_FLASH_ONCE_MS;               /* where the alarm's second pulse would start */
+    ui_overlay_build(&A, &NOW, &O);
+    TB_FALSE(O.flash);
+    A.flash_once = false;                       /* the alarm's three pulses */
+    ui_overlay_build(&A, &NOW, &O);
+    TB_TRUE(O.flash);
+}
+
 TB_TEST(flash_curve_is_three_ease_out_pulses)
 {
     TB_EQ_INT(ui_flash_opa(0), 179);        /* .7 */

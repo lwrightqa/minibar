@@ -223,6 +223,10 @@ int brd_orient_to_remember(const brd_orient_t *o, int stored, int64_t now_ms);
 
 size_t brd_chime_samples(uint32_t rate);
 void brd_chime_render(int16_t *out, size_t n, bool to_break, uint32_t rate);
+/* The meeting-start chime: two soft rising notes (880 and 1319 Hz, 0.14 s apart, peak 0.10), 0.84 s long. */
+#define BRD_MEETING_CHIME_SECONDS 0.84f
+size_t brd_meeting_chime_samples(uint32_t rate);
+void brd_meeting_chime_render(int16_t *out, size_t n, uint32_t rate);
 size_t brd_tick_samples(uint32_t rate);
 void brd_tick_render(int16_t *out, size_t n, float center_hz, uint32_t rate);
 /* Peak of a buffer in dBFS (full scale 32767); -200 for silence. */
@@ -254,6 +258,8 @@ typedef struct {
     size_t chime_len;
     const int16_t *tick[2];     /* [0] 2000 Hz, [1] 1700 Hz, at BRD_TICK_REF_PEAK */
     size_t tick_len;
+    const int16_t *meeting;     /* the meeting-start chime (set with brd_player_set_meeting_chime) */
+    size_t meeting_len;
     brd_voice_t chime_v, tick_v;
     int tick_level;             /* 0 off, 1 Soft, 2 Medium */
     int64_t next_tick_ms;
@@ -264,6 +270,8 @@ typedef struct {
 void brd_player_init(brd_player_t *p, const int16_t *chime_focus, const int16_t *chime_break, size_t chime_len,
                      const int16_t *tick_2000, const int16_t *tick_1700, size_t tick_len, int64_t now_ms);
 void brd_player_chime(brd_player_t *p, bool to_break);
+void brd_player_set_meeting_chime(brd_player_t *p, const int16_t *pcm, size_t len);
+void brd_player_meeting_chime(brd_player_t *p);     /* plays it on the chime voice, replacing a chime in progress */
 void brd_player_set_ticking(brd_player_t *p, int level, int64_t now_ms);
 void brd_player_stop(brd_player_t *p, int64_t now_ms);
 /* Fill up to max mono samples starting now (starting a tick if one is due). Returns how many were written: 0 when

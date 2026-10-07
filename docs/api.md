@@ -890,6 +890,7 @@ Scope `full`.
   "settings": {
     "pomodoro": {"focus_min": 25, "short_min": 5, "long_min": 15, "long_every": 4, "auto_start": false, "chime": true, "ticking": false, "tick_volume": "soft"},
     "display": {"brightness": 70, "time_format": "12h"},
+    "sound": {"meeting_chime": true},
     "automatic": {"calendar": true, "mac": true, "meeting_titles": false},
     "device": {"name": "MiniBar 2A1C", "time_zone": "America/Los_Angeles"}
   }
@@ -909,6 +910,7 @@ Scope `full`.
 | `display.brightness` | 10 to 100 (percent) | 70 | The bar's Light tile steps through 40, 70 and 100; from any other value its next tap goes to the next of those above it (from 100, to 40). |
 | `display.time_format` | `"12h"` or `"24h"` | `"12h"` | **Accepted, firmware 1.0.9, see 10.5.** 12-hour (3:30 PM) or 24-hour (15:30) for every time the bar and the Remote show. |
 | `display.theme` | `"bold_signal"` or `"low_glare_pixel"` (*open*) | `"bold_signal"` | **Proposed (2026-10-05), see 10.3.** The bar's look: Bold Signal, or Low Glare Pixel (the Low Glare layout set in Handjet). Not in the example above until it's approved. |
+| `sound.meeting_chime` | boolean | `true` | **Accepted, firmware 1.0.9, see 10.6.** Meeting chime: a soft chime and one flash when a calendar meeting starts. Off turns both off. |
 | `sound.tap_sound` | boolean | `true` (**Proposed**) | **Proposed (2026-10-05), see 10.4.** Tap sound: a short, quiet click when the bar acts on a tap, swipe or hold on its screen. It's always silent during a call or meeting. Not in the example above until it's approved. |
 | `automatic.calendar` | boolean | `true` once an address is saved, `false` before | Calendar meetings. Can't be `true` with no address saved. |
 | `automatic.mac` | boolean | `true` | Calls from your Mac. |
@@ -1047,6 +1049,39 @@ bar → mac  @tb {"id": 9, "http_status": 200, "ok": true, "settings": {"pomodor
 - **The Mac app follows it:** it reads `time_format` from `info` each time it connects (and again whenever it repeats `hello`), so "Paused until 15:15" matches the bar's own clock; with no `time_format` (older firmware) or a value it doesn't know, it keeps the Mac's own format. A change made while the Mac stays connected shows in its menu from its next `info`, not at once.
 - **Version:** a new field, an addition under 2.1 (API 1.1). Clients that speak 1.0 ignore it.
 - **The setup network (section 13) doesn't offer it.** A bar in Wi-Fi setup writes its times in the saved format.
+
+### 10.6 `sound.meeting_chime`, the chime at a meeting's start
+
+**Accepted (the user, 2026-10-07), in firmware 1.0.9** (`decisions.md`, Meeting-start sound). The bar plays a soft chime, and flashes once, at the start of a calendar meeting.
+
+| | |
+|---|---|
+| Name | `sound.meeting_chime`, in the `sound` group (beside `sound.tap_sound`, 10.4, when that is built) |
+| Values | `true` (the default) or `false` |
+| Default | `true`, on a new bar and on a bar updated from firmware 1.0.8 or earlier. |
+| Read | `GET /api/v1/settings` (10.1): `settings.sound.meeting_chime`, always present. |
+| Change | `PATCH /api/v1/settings` (10.2), scope `full`; on the bar, the Chime tile in the Display menu; on the Remote, the Meeting chime switch in its Display section. |
+
+```json
+{"sound": {"meeting_chime": false}}
+```
+
+- **Checks:** `true` or `false` only. Anything else (`"off"`, `0`, `null`) is `400 bad_value` with `"field": "sound.meeting_chime"`, and nothing else in the request applies (10.2). A `sound` that isn't an object is `400 bad_value` with `"field": "sound"`.
+
+  ```json
+  {"ok": false, "error": "bad_value", "message": "sound.meeting_chime must be true or false.", "field": "sound.meeting_chime"}
+  ```
+
+- **What changes on the bar:** the toast "Meeting chime on" or "Meeting chime off". **Off turns off the whole cue, the chime and the flash.** A change through the API or the Remote never plays anything; only a tap on the Chime tile that turns it on plays the chime once as a sample (and not during a call or meeting). The value it already has changes nothing and shows no toast.
+- **When the cue happens** is decided on the bar, not here, and nothing in `status` reports it:
+  - It fires once, within 20 seconds of a timed meeting's start, for a meeting the bar knew about before it began. A meeting added after it began (a sync that brings it in late, a calendar coming back from a failed sync, Calendar meetings switched on, the bar waking from power-off) is silent.
+  - It runs on the merged list of all calendars, so the same event in two calendars sounds once. All-day events, events marked Free and declined events never reach it.
+  - **Chime and flash:** Available, Busy, In a meeting (by hand), Pomodoro, Message and Clock. **Flash only:** while a call is on, while another meeting is in progress (even one you set aside), and while your own status is Away. **Nothing:** a pairing code on the screen, the bar powered off or starting up, the setting off.
+  - A dark screen wakes for the flash and stays on, as the Pomodoro alarm's does. A ringing Pomodoro alarm **yields**: the chime plays, then the meeting takes the alarm over as it always has (it stops, and rings once after the meeting).
+- **Kept** with the other settings, across Restart and power off and on; Wi-Fi setup and Forget all leave it alone. It is stored with `display.time_format`, so a bar updated from 1.0.8 keeps every other setting.
+- **`rev`:** a change bumps `rev` in `GET /api/v1/status` (7.3).
+- **Version:** a new group and field, an addition under 2.1 (API 1.1). **The Mac app needs nothing.**
+- **The setup network (section 13) doesn't offer it.**
 
 ---
 

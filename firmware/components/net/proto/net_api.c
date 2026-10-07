@@ -685,6 +685,8 @@ static void add_settings(rt_t *r)
     cJSON *d = cJSON_AddObjectToObject(so, "display");
     cJSON_AddNumberToObject(d, "brightness", s->display.brightness);
     cJSON_AddStringToObject(d, "time_format", s->more.time_24h ? "24h" : "12h");
+    cJSON *snd = cJSON_AddObjectToObject(so, "sound");
+    cJSON_AddBoolToObject(snd, "meeting_chime", s->more.meeting_chime);
     cJSON *au = cJSON_AddObjectToObject(so, "automatic");
     cJSON_AddBoolToObject(au, "calendar", s->automatic.calendar);
     cJSON_AddBoolToObject(au, "mac", s->automatic.mac);
@@ -1074,9 +1076,9 @@ static void h_settings_patch(rt_t *r, cJSON *b)
     tb_settings_patch_t p;
     memset(&p, 0, sizeof p);
     p.v = s_app->set;
-    const cJSON *po, *di, *au, *de;
+    const cJSON *po, *di, *au, *de, *sn;
     if (!section(r, b, "pomodoro", &po) || !section(r, b, "display", &di) || !section(r, b, "automatic", &au) ||
-        !section(r, b, "device", &de))
+        !section(r, b, "device", &de) || !section(r, b, "sound", &sn))
         return;
     if (!set_int(r, po, "focus_min", "pomodoro.focus_min", 1, 120, &p.has_focus_min, &p.v.pomodoro.focus_min) ||
         !set_int(r, po, "short_min", "pomodoro.short_min", 1, 60, &p.has_short_min, &p.v.pomodoro.short_min) ||
@@ -1086,6 +1088,7 @@ static void h_settings_patch(rt_t *r, cJSON *b)
         !set_bool(r, po, "chime", "pomodoro.chime", &p.has_chime, &p.v.pomodoro.chime) ||
         !set_bool(r, po, "ticking", "pomodoro.ticking", &p.has_ticking, &p.v.pomodoro.ticking) ||
         !set_int(r, di, "brightness", "display.brightness", 10, 100, &p.has_brightness, &p.v.display.brightness) ||
+        !set_bool(r, sn, "meeting_chime", "sound.meeting_chime", &p.has_meeting_chime, &p.v.more.meeting_chime) ||
         !set_bool(r, au, "calendar", "automatic.calendar", &p.has_calendar, &p.v.automatic.calendar) ||
         !set_bool(r, au, "mac", "automatic.mac", &p.has_mac, &p.v.automatic.mac) ||
         !set_bool(r, au, "meeting_titles", "automatic.meeting_titles", &p.has_meeting_titles, &p.v.automatic.meeting_titles))

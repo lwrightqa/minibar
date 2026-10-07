@@ -496,6 +496,81 @@ static void release_held_alarm(tb_app_t *a, const tb_clock_t *now)
 }
 
 /*
+ * Meeting-start cue (decisions.md "Meeting-start sound (2026-10-07)"; mock-up meetingCues()): at the start of a timed
+ * calendar meeting the bar plays a soft chime and flashes once. Only a meeting the bar knew BEFORE its start counts,
+ * and only within TB_CUE_WINDOW_S of it, so one added late, one a calendar brings back after a failed sync, one that
+ * appears when Calendar meetings is switched on, and everything after a wake from power-off are silent. The list is the
+ * merged one, so the same event in two calendars (one id) cues once, and a failing calendar's meetings, which aren't in
+ * it, never sound. All-day, free and declined events never reach it.
+ *   - Meeting chime off: nothing, not even the flash (decisions.md: off turns off the whole cue).
+ *   - A pairing code on the screen: nothing, as for the alarm. Powered off or starting up: nothing.
+ *   - A call is on, another meeting is in progress (even one set aside: the mic may be live), or your own status is Away:
+ *     the flash only. Busy (the nearest thing to Do not disturb) and the rest chime.
+ *   - A dark screen wakes for the flash and stays on, as the alarm's does.
+ *   - A ringing Pomodoro alarm YIELDS (user, 2026-10-07): the chime plays, and the meeting then takes the alarm over
+ *     in sync_auto() as it always has (it stops, and rings once after the meeting).
+ */
+static bool cue_known(const tb_app_t *a, uint32_t id, int *at)
+{
+    for (int i = 0; i < a->n_cue; i++)
+        if (a->cue[i].id == id) {
+            if (at) *at = i;
+            return true;
+        }
+    return false;
+}
+
+static void cue_meeting(tb_app_t *a, const tb_meeting_t *m, const tb_clock_t *now)
+{
+    if (!a->set.more.meeting_chime || tb_app_pairing_shown(a)) return;
+    bool other = false;
+    for (int i = 0; i < a->n_meetings; i++) {
+        const tb_meeting_t *x = &a->meetings[i];
+        if (x->id != m->id && x->start <= now->wall && now->wall < x->end) other = true;
+    }
+    bool quiet = tb_app_call_now(a) || other || a->idx == TB_ST_AWAY;
+    wake(a);
+    a->flash_at = stamp(now);
+    a->flash_once = true;
+    tb_bump(a);
+    if (!quiet) tb_fx(a, TB_FX_MEETING_CHIME, 0);
+}
+
+static void meeting_cues(tb_app_t *a, const tb_clock_t *now)
+{
+    if (a->powered_off || a->booting || a->powering_off) return;
+    if (!now->valid || !tb_app_cal_data(a)) {
+        a->n_cue = 0;           /* nothing is known while the clock or the calendar isn't: what comes back counts as late */
+        return;
+    }
+    /* Forget what left the merged list. */
+    int keep = 0;
+    for (int i = 0; i < a->n_cue; i++) {
+        bool still = false;
+        for (int j = 0; j < a->n_meetings && !still; j++) still = a->meetings[j].id == a->cue[i].id;
+        if (still) a->cue[keep++] = a->cue[i];
+    }
+    a->n_cue = (uint8_t)keep;
+    /* Learn the meetings that haven't started: these are the ones that may cue. */
+    for (int j = 0; j < a->n_meetings && a->n_cue < TB_MEETINGS_MAX; j++) {
+        const tb_meeting_t *m = &a->meetings[j];
+        if (now->wall < m->start && !cue_known(a, m->id, NULL)) {
+            a->cue[a->n_cue].id = m->id;
+            a->cue[a->n_cue].cued = false;
+            a->n_cue++;
+        }
+    }
+    for (int j = 0; j < a->n_meetings; j++) {
+        const tb_meeting_t *m = &a->meetings[j];
+        int at;
+        if (m->start > now->wall || now->wall - m->start >= TB_CUE_WINDOW_S || !cue_known(a, m->id, &at) || a->cue[at].cued)
+            continue;
+        a->cue[at].cued = true;
+        cue_meeting(a, m, now);
+    }
+}
+
+/*
  * syncAuto(lead): compare what should show with what is showing, and announce the change once. lead names what
  * happened ("Call ended", "Calendar removed"...) when the caller knows. Returns true when the screen changed.
  */
@@ -817,6 +892,14 @@ static void menu_action(tb_app_t *a, tb_action_t act, const tb_clock_t *now)
         a->set.display.brightness = next_brightness(a->set.display.brightness);
         open_submenu(a, TB_MENU_DISPLAY, now);
         return;
+    case TB_ACT_MEET_CHIME:
+        a->set.more.meeting_chime = !a->set.more.meeting_chime;
+        open_submenu(a, TB_MENU_DISPLAY, now);
+        toastf(a, now, "Meeting chime %s", a->set.more.meeting_chime ? "on" : "off");
+        /* The tap that turns it on plays the chime once as a sample (not during a call or meeting); turning it off, or a
+         * change from the Remote, plays nothing. */
+        if (a->set.more.meeting_chime && !tb_app_quiet(a, now)) tb_fx(a, TB_FX_MEETING_CHIME, 1);
+        return;
     case TB_ACT_TIME_FMT:
         a->set.more.time_24h = !a->set.more.time_24h;
         open_submenu(a, TB_MENU_DISPLAY, now);
@@ -1038,7 +1121,7 @@ static uint32_t visible_sig(const tb_app_t *a)
                   a->pairing.active << 9 | a->alarm_held_by_pairing << 10 | (a->pairing.shown_at != 0) << 11 |
                   a->pairing.kind << 12);
     h_i64(&s, a->hold);
-    h_i64(&s, a->flash_at);
+    h_i64(&s, a->flash_at | (int64_t)a->flash_once << 62);
     h_i64(&s, a->wifi_mode);
     h_str(&s, a->wifi_ssid);
     h_str(&s, a->wifi_ip);
@@ -1261,6 +1344,7 @@ void tb_app_tick(tb_app_t *a, const tb_clock_t *now)
     /* Firmware: "since" was picked before the clock was known; fill it in now. */
     if (now->valid && !a->since) a->since = now->wall - (now->mono - a->since_ms) / 1000;
 
+    meeting_cues(a, now);       /* before sync_auto: the cue sees the alarm still ringing, the meeting then takes over */
     sync_auto(a, NULL, now);
     release_held_alarm(a, now);
     bool ended = false;
@@ -1690,6 +1774,11 @@ tb_err_t tb_app_remote_settings(tb_app_t *a, const tb_settings_patch_t *p, const
         a->set.more.time_24h = want.more.time_24h;
         tb_bump(a);
         toastf(a, now, "Time format \xC2\xB7 %s", a->set.more.time_24h ? "24-hour" : "12-hour");
+    }
+    if (p->has_meeting_chime && want.more.meeting_chime != a->set.more.meeting_chime) {
+        a->set.more.meeting_chime = want.more.meeting_chime;
+        tb_bump(a);
+        toastf(a, now, "Meeting chime %s", a->set.more.meeting_chime ? "on" : "off");
     }
     if (p->has_name) tb_strlcpy(a->set.device.name, want.device.name, sizeof(a->set.device.name));
     if (p->has_time_zone) tb_strlcpy(a->set.device.time_zone, want.device.time_zone, sizeof(a->set.device.time_zone));

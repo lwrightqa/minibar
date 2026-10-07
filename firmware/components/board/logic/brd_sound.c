@@ -65,6 +65,49 @@ void brd_chime_render(int16_t *out, size_t n, bool to_break, uint32_t rate)
     }
 }
 
+/* ---------- Meeting-start chime (decisions.md "Meeting-start sound (2026-10-07)"; mock-up meetChimeNotes()) ----------
+ * Two soft rising notes, A5 (880 Hz) then E6 (1319 Hz) 0.14 s apart, each a 20 ms linear attack to 0.10, an exponential
+ * decay to 0.0001 at 0.65 s, stopped at 0.7 s: lighter and shorter than the Pomodoro chime's three (peak 0.18), so it
+ * reads as "a meeting is starting", not "the timer is done". */
+
+static const uint16_t MEETING_NOTES[2] = {880, 1319};
+#define MEETING_GAP_S      0.14f
+#define MEETING_STOP_S     0.70f
+#define MEETING_DECAY_END  0.65f
+#define MEETING_PEAK       0.10f
+#define MEETING_LN_DECAY   (-6.9077553f)   /* ln(0.0001 / 0.10) = -ln 1000 */
+
+size_t brd_meeting_chime_samples(uint32_t rate)
+{
+    return (size_t)lroundf(BRD_MEETING_CHIME_SECONDS * (float)rate);
+}
+
+static float meeting_gain(float t)
+{
+    if (t < 0.0f || t >= MEETING_STOP_S) return 0.0f;
+    if (t < ATTACK_S) return MEETING_PEAK * t / ATTACK_S;
+    if (t < MEETING_DECAY_END) return MEETING_PEAK * expf(MEETING_LN_DECAY * (t - ATTACK_S) / (MEETING_DECAY_END - ATTACK_S));
+    return FLOOR_GAIN;
+}
+
+void brd_meeting_chime_render(int16_t *out, size_t n, uint32_t rate)
+{
+    uint32_t start[2];
+    for (int k = 0; k < 2; k++) start[k] = (uint32_t)lroundf((float)k * MEETING_GAP_S * (float)rate);
+    for (size_t i = 0; i < n; i++) {
+        float acc = 0.0f;
+        for (int k = 0; k < 2; k++) {
+            if (i < start[k]) continue;
+            uint32_t j = (uint32_t)i - start[k];
+            float g = meeting_gain((float)j / (float)rate);
+            if (g == 0.0f) continue;
+            float cycles = (float)(((uint64_t)j * MEETING_NOTES[k]) % rate) / (float)rate;
+            acc += g * sinf(TWO_PI * cycles);
+        }
+        out[i] = to_pcm(acc);
+    }
+}
+
 /* ---------- Tick ---------- */
 
 size_t brd_tick_samples(uint32_t rate)
@@ -160,6 +203,18 @@ void brd_player_init(brd_player_t *p, const int16_t *chime_focus, const int16_t 
 void brd_player_chime(brd_player_t *p, bool to_break)
 {
     voice_start(&p->chime_v, p->chime[to_break ? 1 : 0], p->chime_len, 32768);
+}
+
+void brd_player_set_meeting_chime(brd_player_t *p, const int16_t *pcm, size_t len)
+{
+    p->meeting = pcm;
+    p->meeting_len = len;
+}
+
+/* On the chime's voice: the chime that was playing (a Pomodoro alarm's) gives way to it. */
+void brd_player_meeting_chime(brd_player_t *p)
+{
+    voice_start(&p->chime_v, p->meeting, p->meeting_len, 32768);
 }
 
 void brd_player_set_ticking(brd_player_t *p, int level, int64_t now_ms)

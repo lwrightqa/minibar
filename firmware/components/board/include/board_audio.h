@@ -32,6 +32,9 @@ extern "C" {
 esp_err_t board_audio_init(void);
 /* Play the chime once (to_break picks the rising or falling notes). Never blocks. */
 void board_audio_chime(bool to_break);
+/* Play the meeting-start chime once (two soft rising notes, 880 and 1319 Hz, about 0.8 s; it takes over the chime's
+ * voice, so a Pomodoro alarm chime in progress gives way). core decides when (TB_FX_MEETING_CHIME). Never blocks. */
+void board_audio_meeting_chime(void);
 /* Ticking: level 0 off, 1 Soft, 2 Medium. Never blocks. */
 void board_audio_set_ticking(int level);
 /* Stop every sound and turn ticking off (before power off and restart). Never blocks. */

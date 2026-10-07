@@ -118,7 +118,7 @@ static void quick_menu(tb_app_t *a, const tb_clock_t *now)
     done_tile(m);
 }
 
-/* The Display menu: Light steps 40, 70 and 100% (the tile the quick menu had), Chime and Time switch at once and the
+/* The Display menu: Light steps 40, 70 and 100% (the tile the quick menu had), Chime (the meeting chime) and Time switch at once and the
  * menu stays open, so you see the new value; Back returns to the quick menu. The Time tile reads "12-hr" or "24-hr"
  * (its label can't be "Time format": 85 px in a tile 92 px wide), the toast says the full name. */
 static void display_menu(tb_app_t *a)
@@ -127,6 +127,7 @@ static void display_menu(tb_app_t *a)
     char v[24];
     snprintf(v, sizeof v, "%d%%", a->set.display.brightness);
     add(m, TB_ACT_BRIGHT, TB_TILE_NORMAL, "Light", v, "tap to change");
+    add(m, TB_ACT_MEET_CHIME, TB_TILE_NORMAL, "Chime", a->set.more.meeting_chime ? "On" : "Off", "at meeting start");
     add(m, TB_ACT_TIME_FMT, TB_TILE_NORMAL, "Time", a->set.more.time_24h ? "24-hr" : "12-hr", "tap to switch");
     add(m, TB_ACT_QUICK_MENU, TB_TILE_DONE, "Display", "Back", "to the quick menu");
 }

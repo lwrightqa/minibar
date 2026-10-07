@@ -746,3 +746,60 @@ TB_TEST(touch_matches_waveshare_landscape_mapping)
         }
     }
 }
+
+/* ---------- Meeting-start chime (decisions.md "Meeting-start sound (2026-10-07)") ---------- */
+
+TB_TEST(meeting_chime_is_two_soft_rising_notes_lighter_than_the_alarm)
+{
+    size_t n = brd_meeting_chime_samples(BRD_AUDIO_RATE);
+    TB_EQ_INT(n, 20160);                                         /* 0.84 s at 24 kHz */
+    int16_t *m = malloc(n * sizeof *m);
+    brd_meeting_chime_render(m, n, BRD_AUDIO_RATE);
+    /* Each note peaks at 0.10 (-20 dBFS); the second starts while the first still rings, so the sum peaks near -18.4,
+     * against the Pomodoro chime's -13.1: quieter, so it isn't mistaken for it. */
+    float peak = brd_peak_dbfs(m, n);
+    TB_NEAR(peak, -18.4, 0.6);
+    size_t cn = brd_chime_samples(BRD_AUDIO_RATE);
+    int16_t *c = malloc(cn * sizeof *c);
+    brd_chime_render(c, cn, true, BRD_AUDIO_RATE);
+    TB_TRUE(peak < brd_peak_dbfs(c, cn) - 4.5f);
+    TB_TRUE(n < cn);                                             /* and shorter: about 0.8 s against 1.4 s */
+    /* Starts from silence, ends without a click. */
+    TB_EQ_INT(abs(m[0]), 0);
+    TB_TRUE(abs(m[n - 1]) < 10);
+    /* A5 (880 Hz) first, then E6 (1319 Hz): rising. */
+    TB_NEAR(crossings_hz(m, 1000, 2000, BRD_AUDIO_RATE), 880.0, 40.0);
+    TB_NEAR(crossings_hz(m, 9600, 4800, BRD_AUDIO_RATE), 1319.0, 60.0);
+    free(m);
+    free(c);
+}
+
+TB_TEST(meeting_chime_plays_on_the_chime_voice_and_replaces_a_playing_alarm_chime)
+{
+    sounds_t s;
+    sounds_init(&s);
+    size_t mn = brd_meeting_chime_samples(BRD_AUDIO_RATE);
+    int16_t *meeting = malloc(mn * sizeof *meeting);
+    brd_meeting_chime_render(meeting, mn, BRD_AUDIO_RATE);
+    brd_player_t p;
+    brd_player_init(&p, s.chime_down, s.chime_up, s.chime_len, s.tick_a, s.tick_b, s.tick_len, 0);
+    brd_player_set_meeting_chime(&p, meeting, mn);
+    /* an alarm chime is under way when the meeting starts: it gives way */
+    brd_player_chime(&p, true);
+    size_t n = 2 * BRD_AUDIO_RATE;
+    int16_t *out = calloc(n, sizeof *out);
+    run_player(&p, 0, out, 4800);
+    brd_player_meeting_chime(&p);
+    run_player(&p, 200, out, n);
+    TB_TRUE(memcmp(out, meeting, mn * sizeof(int16_t)) == 0);     /* exactly the meeting chime from its start */
+    TB_TRUE(brd_peak_dbfs(out + mn, n - mn) < -100);              /* then silence, nothing of the alarm's tail */
+    TB_EQ_INT(brd_player_wait_ms(&p, 5000), -1);
+    /* with no chime set it does nothing */
+    brd_player_t q;
+    brd_player_init(&q, s.chime_down, s.chime_up, s.chime_len, s.tick_a, s.tick_b, s.tick_len, 0);
+    brd_player_meeting_chime(&q);
+    TB_EQ_INT(brd_player_wait_ms(&q, 0), -1);
+    free(out);
+    free(meeting);
+    sounds_free(&s);
+}

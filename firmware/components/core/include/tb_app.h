@@ -72,6 +72,7 @@ extern "C" {
 #define TB_CAL_SYNC_EVERY_S    600     /* about every 10 minutes (calendar's task runs it) */
 #define TB_ADD_MIN             5       /* the timer menu's +5 */
 #define TB_TITLE_TOAST_CHARS   24      /* withTitle(): a meeting title in a toast is cut to 24 characters */
+#define TB_CUE_WINDOW_S        20      /* a meeting cues within this many seconds of its start, never later */
 #define TB_PAIR_MS             120000  /* a pairing code lasts 2 minutes from when it appears on the screen */
 #define TB_MESSAGE_FALLBACK    "Hello" /* view(): s.message || 'Hello' */
 
@@ -105,6 +106,9 @@ typedef enum {
     TB_FX_PAIRING_RESET,    /* Power off or Restart (PWR held 3 s included): net ends any code without counting a failed
                              * pairing and clears the back-off (api.md 4.9: it lives in RAM, so the device's reboot or
                              * deep sleep clears it anyway; this says so for the 1.2 s of "Powering off" and the host) */
+    TB_FX_MEETING_CHIME,    /* arg 0: a meeting started; 1: the sample the Chime tile plays when it is turned on. Two soft
+                             * rising notes (880, 1319 Hz). Only queued when core decided it may sound (the setting is
+                             * on, no call or other meeting, not Away, no pairing code): see meeting_cues() in tb_app.c. */
 } tb_effect_kind_t;
 
 typedef struct {
@@ -248,6 +252,15 @@ typedef struct {
     tb_effect_t fx[TB_EFFECTS_MAX];
     uint8_t n_fx;
     uint16_t fx_dropped;            /* effects lost to a full queue (should stay 0: the app task drains every loop) */
+
+    /* meeting-start cue (core only): the meetings the bar knew BEFORE they began, each cued once. A meeting that isn't in
+     * this list when its start comes (added late, a calendar back from a failed sync, Calendar meetings switched on, a
+     * wake from power-off) is silent. Entries leave when the meeting leaves the merged list. */
+    struct {
+        uint32_t id;
+        bool cued;
+    } cue[TB_MEETINGS_MAX];
+    uint8_t n_cue;
 
     /* bookkeeping (core only) */
     tb_ms_t last_mono;              /* the previous tick, for the timer's dt */
