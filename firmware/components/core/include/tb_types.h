@@ -45,6 +45,9 @@ typedef struct {
 #define TB_TITLE_BYTES       128    /* meeting title kept on the bar (cut on a character boundary) */
 #define TB_LOCATION_BYTES    96
 #define TB_MEETINGS_MAX      32     /* today's and tomorrow's meetings that count */
+#define TB_CALS_MAX          3      /* calendars (decisions.md, Multiple calendars) */
+#define TB_CAL_NAME_BYTES    25     /* a calendar's name: up to 24 characters (ASCII and what the fonts draw) */
+#define TB_CAL_TAG_BYTES     5      /* its bar tag: up to 4 capitals or digits */
 #define TB_TOAST_BYTES       128
 
 /* ---------- Your own status: the tap and swipe cycle, in the mock-up's STATES order ---------- */
@@ -117,7 +120,16 @@ typedef struct {
     char title[TB_TITLE_BYTES];     /* "" when the event has no title */
     char location[TB_LOCATION_BYTES];
     bool priv;                      /* CLASS:PRIVATE or CONFIDENTIAL: never show the title or location */
+    uint8_t cal;                    /* the calendar slot (0 to TB_CALS_MAX - 1) the merged list took it from (its tag) */
 } tb_meeting_t;
+
+/* One calendar as the screens see it, by slot. The address never gets here. */
+typedef struct {
+    bool used;
+    bool failing;                   /* its last sync failed: its meetings are left out until it works */
+    char name[TB_CAL_NAME_BYTES];
+    char tag[TB_CAL_TAG_BYTES];
+} tb_cal_info_t;
 
 /* Result codes for core operations; net maps them to api.md Appendix B error codes. */
 typedef enum {
