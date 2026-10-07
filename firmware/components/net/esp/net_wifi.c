@@ -1215,8 +1215,9 @@ void net_wifi_start(void)
         s_mode = M_STA;
         UNLOCK();
         sta_apply(&s_creds);
-        wifi_run(WIFI_MODE_STA);    /* STA_START connects */
-        ESP_LOGI(TAG, "joining the saved network (%d saved, most recent first)", s_nets.count);
+        wifi_run(WIFI_MODE_STA);
+        esp_err_t cerr = esp_wifi_connect();
+        ESP_LOGI(TAG, "joining the saved network (%d saved, most recent first): %s", s_nets.count, esp_err_to_name(cerr));
     } else {
         net_wifi_setup_begin();
     }
