@@ -288,6 +288,67 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   await sleep(300);
   check((await text('#pRead')) === 'Focus 1 of 4 · ready', 'stopped: ready');
 
+  // Jira issue count (decisions.md "Jira issue count (2026-10-07)"): set up, test, save, states, remove; the token never comes back
+  check(await vis('#jiraSec') && (await text('#jiraBadge')) === 'Not set up', 'the Jira section shows, not set up');
+  check(!(await vis('#jiraRemove')), 'no Remove before it is set up');
+  await noScroll('with the Jira section');
+  const JTOK = 'abcDEF123_token-xyz';
+  await p.click('#jiraSave');
+  await sleep(300);
+  check((await text('#jiraMsg')).startsWith('Use your site address, like https://yourteam.atlassian.net.'), 'an empty Save names the site: ' + await text('#jiraMsg'));
+  check(await p.getAttribute('#jiraSite', 'aria-invalid') === 'true', 'and marks the field');
+  await p.fill('#jiraSite', 'https://example.atlassian.net/');
+  await p.fill('#jiraEmail', 'you@example.com');
+  await p.fill('#jiraTok', JTOK);
+  await p.fill('#jiraFilter', 'https://example.atlassian.net/issues/?filter=10042');
+  await p.click('#jiraTest');
+  await sleep(200);
+  check((await text('#jiraMsg')) === 'Asking Jira…', 'Test says it is asking: ' + await text('#jiraMsg'));
+  await sleep(1800);
+  check((await text('#jiraMsg')) === 'It works. "Open bugs" has 12 issues right now.', 'Test result: ' + await text('#jiraMsg'));
+  check((await text('#jiraBadge')) === 'Not set up', 'the test saved nothing');
+  for (const [mode, words] of [['token', "Jira didn't accept that email and token. Check them, or create a new token."],
+    ['nofilter', "Jira has no filter with that ID, or this account can't see it."],
+    ['down', "Couldn't reach Jira. Check the site address, and that this MiniBar is online."]]) {
+    await sim('/_sim/jira', mode);
+    await p.click('#jiraTest');
+    await sleep(1800);
+    check((await text('#jiraMsg')) === words, `Test (${mode}): ` + await text('#jiraMsg'));
+  }
+  await sim('/_sim/jira', 'ok 12');
+  await p.fill('#jiraLimit', '10');
+  await p.click('#jiraSave');
+  await sleep(300);
+  check((await text('#jiraMsg')).startsWith('Saved. The Jira screen is now in the swipe order. Token saved.'), 'Save: ' + await text('#jiraMsg'));
+  s = await state();
+  check(s.toast === 'Jira added \u00b7 Open bugs' || s.pending === 'Jira added \u00b7 Open bugs', 'the bar toasts it: ' + s.toast);
+  check((await p.inputValue('#jiraTok')) === '' && (await p.getAttribute('#jiraTok', 'placeholder')) === 'Token saved (paste to replace)', 'the token field is empty and says it is saved');
+  // the Remote reads the bar again within its 2 s poll
+  const badge = async want => { try { await p.waitForFunction(w => document.getElementById('jiraBadge').textContent === w, want, { timeout: 7000 }); } catch (e) { /* the check below says what it was */ } return text('#jiraBadge'); };
+  check((await badge('Showing 12')) === 'Showing 12', 'the badge shows the count: ' + await text('#jiraBadge'));
+  check((await text('#jiraLine')) === 'example.atlassian.net · filter 10042 (Open bugs) · y\u2022\u2022\u2022@example.com · token saved · alert above 10', 'the line: ' + await text('#jiraLine'));
+  check(await vis('#jiraRemove') && (await text('#jiraSave')) === 'Save changes', 'Remove and Save changes appear');
+  check(!(await p.evaluate(t => document.documentElement.outerHTML.includes(t) || document.body.innerText.includes(t) || JSON.stringify(Array.from(document.querySelectorAll('input')).map(i => i.value)).includes(t), JTOK)), 'the token is nowhere on the page');
+  check(!JSON.stringify(await usb('GET', '/api/v1/jira')).includes(JTOK), 'and the API never returns it');
+  // the screen is in the swipe order now: taps reach it (from Away, where a tap goes on to the next screen)
+  await usb('POST', '/api/v1/status', { status: 'away' });
+  let reached = false;
+  for (let i = 0; i < 9 && !reached; i++) { await sim('/_sim/tap', ''); reached = (await state()).idx === 7; }
+  check(reached, 'a tap on the bar reaches the Jira screen');
+  await sim('/_sim/jira', 'token');
+  check((await badge('Token rejected')) === 'Token rejected', 'badge when the token is rejected: ' + await text('#jiraBadge'));
+  await sim('/_sim/jira', 'down');
+  check((await badge("Can't reach Jira")) === "Can't reach Jira", 'badge when it cannot be reached: ' + await text('#jiraBadge'));
+  await p.click('#jiraRemove');
+  check((await text('#jiraRemove')) === 'Tap again to remove', 'Remove asks first');
+  await p.click('#jiraRemove');
+  await sleep(500);
+  check((await text('#jiraBadge')) === 'Not set up' && !(await vis('#jiraRemove')), 'Remove puts it back to not set up');
+  check((await text('#jiraMsg')).startsWith('Removed.'), 'Remove says so: ' + await text('#jiraMsg'));
+  check((await usb('GET', '/api/v1/jira')).jira.configured === false, 'nothing is saved on the bar');
+  check((await state()).idx !== 7, 'the bar left the Jira screen');
+  await noScroll('after Jira');
+
   // Display: Time format (decisions.md "Time format (2026-10-07)"): the page's own times follow the bar's setting
   check(await vis('#timeSeg') && (await text('#lDisplay')) === 'Display', 'the Display section has the Time format choice');
   check(await p.getAttribute('#timeSeg button[data-v="12h"]', 'aria-pressed') === 'true', 'Time format starts at 12-hour');

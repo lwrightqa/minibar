@@ -95,6 +95,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 .auto-head b { font-size: 15px; }
 .badge { font-size: 11px; font-weight: 600; letter-spacing: .04em; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
 .badge.ok { border-color: var(--s-available); color: var(--ink); }
+.badge.bad { border-color: var(--s-busy); color: var(--ink); }
 .auto-card .auto-line { margin: 0; font-size: 13px; color: var(--muted); }
 /* Calendars list (decisions.md, Multiple calendars): one row per saved calendar, up to 3. */
 .cal-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
@@ -110,7 +111,9 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 .cal-fields { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr) 96px; }
 .cal-fields input { width: 100%; box-sizing: border-box; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; font-size: 16px; }
 .cal-fields input:focus-visible { outline: 2px solid var(--state); outline-offset: 1px; }
-.cal-fields input[aria-invalid="true"] { border-color: var(--s-busy); }
+.jira-form input { width: 100%; box-sizing: border-box; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; font-size: 16px; }
+.jira-form input:focus-visible { outline: 2px solid var(--state); outline-offset: 1px; }
+.jira-form input[aria-invalid="true"], .cal-fields input[aria-invalid="true"] { border-color: var(--s-busy); }
 details.help summary { cursor: pointer; font-size: 13px; font-weight: 600; }
 details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: var(--muted); display: grid; gap: 3px; }
 .auto-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; margin-bottom: 8px; border-radius: 12px; border: 1px solid var(--c); }
@@ -353,6 +356,41 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
           </div>
         </div>
       </div>
+      <div id="jiraSec">
+        <span class="field-label" id="jiraHead">Jira</span>
+        <div class="auto-card" id="jiraCard">
+          <div class="auto-head"><b>Issue count</b><span class="badge" id="jiraBadge">Not set up</span></div>
+          <p class="note-small" id="jiraIntro">MiniBar asks your Jira site how many issues are in one filter, every 5 minutes, and shows the number as its own screen you can swipe to. It only reads. Until you save this, the screen stays out of the swipe order.</p>
+          <p class="auto-line" id="jiraLine" hidden></p>
+          <div class="setup jira-form" id="jiraForm">
+            <label class="field" for="jiraSite"><span class="field-label">Site address</span>
+              <input id="jiraSite" type="url" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="https://yourteam.atlassian.net"></label>
+            <label class="field" for="jiraEmail"><span class="field-label">Account email</span>
+              <input id="jiraEmail" type="email" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="you@example.com" aria-describedby="jiraEmailNote"></label>
+            <p class="note-small" id="jiraEmailNote" style="margin:0">Only sent to your own Jira site, to sign in. MiniBar never sends it anywhere else.</p>
+            <label class="field" for="jiraTok"><span class="field-label">API token</span>
+              <input id="jiraTok" type="password" autocomplete="new-password" spellcheck="false" autocapitalize="off" placeholder="Paste the token" aria-describedby="jiraTokNote"></label>
+            <p class="note-small" id="jiraTokNote" style="margin:0">Write-only: once saved, MiniBar never shows it again. Create one in your Atlassian account (Security, API tokens, Create API token). A token can do anything your account can, so keep it private; Remove here erases it from MiniBar.</p>
+            <label class="field" for="jiraFilter"><span class="field-label">Filter ID</span>
+              <input id="jiraFilter" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" placeholder="10042" aria-describedby="jiraFilterNote"></label>
+            <p class="note-small" id="jiraFilterNote" style="margin:0">The number after filter= in the filter's address. You can paste the whole address.</p>
+            <div class="cal-fields">
+              <label class="field" for="jiraLabel"><span class="field-label">Screen label</span>
+                <input id="jiraLabel" type="text" maxlength="18" autocomplete="off" placeholder="The filter's name"></label>
+              <label class="field" for="jiraLimit"><span class="field-label">Alert above (optional)</span>
+                <input id="jiraLimit" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="None" aria-describedby="jiraLimitNote"></label>
+            </div>
+            <p class="note-small" id="jiraLimitNote" style="margin:0">The label shows on the bar, so everyone near your desk can read it. Above the alert number the screen turns orange and says so.</p>
+            <div class="row">
+              <button class="btn" id="jiraSave" type="button">Save</button>
+              <button class="btn ghost" id="jiraTest" type="button">Test</button>
+              <button class="btn ghost" id="jiraRemove" type="button" hidden>Remove</button>
+            </div>
+          </div>
+          <div class="setup-msg" id="jiraMsg" hidden role="status"></div>
+          <p class="note-small">Counts are approximate by design. The bar asks over HTTPS and checks Jira's certificate; it never follows a redirect with your sign-in.</p>
+        </div>
+      </div>
       <div id="devSec" hidden>
         <span class="field-label" id="devLabel" tabindex="-1">Paired devices</span>
         <div class="auto-card">
@@ -434,7 +472,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     wasPaired = true;
     if (j.time) skew = parse(j.time) - Date.now();
     // rev moves when the paired devices change too (a pairing, a removal), so the list is read again with the settings
-    if (j.rev !== lastRev) { lastRev = j.rev; loadSettings(); loadDevices(); }
+    if (j.rev !== lastRev) { lastRev = j.rev; loadSettings(); loadDevices(); loadJira(); }
     const ck = JSON.stringify(j.calendar);
     if (ck !== lastCalKey) { lastCalKey = ck; loadCalendar(); }
     render();
@@ -444,6 +482,8 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     const r = await api('GET', '/status', null, etag ? { 'If-None-Match': etag } : null);
     if (r.status === 200 && r.j) { gotStatus(r.j, r.etag); showMain(); }
     else if (r.status === 304) render();
+    // The count isn't part of the status object (rev doesn't move with it), so a set-up Jira section reads its own state.
+    if ((r.status === 200 || r.status === 304) && jira && jira.configured && !jiraBusy) loadJira();
   }
   async function loadInfo() {
     const r = await api('GET', '/info');
@@ -453,6 +493,116 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     const r = await api('GET', '/settings');
     if (r.status === 200) { set = r.j.settings; render(); }
   }
+  // ---------- Jira issue count (decisions.md "Jira issue count (2026-10-07)", api.md section 19) ----------
+  // The bar asks Jira itself, every 5 minutes. This section only sets it up: site, email, token (write-only: it goes to the
+  // bar and is never shown, filled in or returned again), filter, label and alert. Test asks Jira once and saves nothing.
+  let jira = null, jiraRmAt = 0, jiraBusy = false;
+  const JIRA_BADGE = { loading: 'Checking', unreachable: "Can't reach Jira", token_rejected: 'Token rejected', filter_not_found: 'Filter not found' };
+  const jiraShow = c => c >= 10000 ? '10k+' : String(c);
+  function jiraMsg(text, err) { const el = $('jiraMsg'); el.textContent = text; el.hidden = !text; el.classList.toggle('err', !!err); }
+  async function loadJira() {
+    const r = await api('GET', '/jira');
+    if (r.status === 200 && r.j && r.j.jira) { jira = r.j.jira; renderJira(); }
+  }
+  function renderJira() {
+    if (!jira) return;
+    const on = jira.configured;
+    $('jiraBadge').textContent = !on ? 'Not set up' : jira.state === 'ok' ? `Showing ${jiraShow(jira.count)}` : JIRA_BADGE[jira.state] || 'Checking';
+    $('jiraBadge').classList.toggle('bad', on && ['unreachable', 'token_rejected', 'filter_not_found'].includes(jira.state));
+    $('jiraLine').hidden = !on;
+    $('jiraLine').textContent = on ? `${jira.site.replace(/^https:\/\//, '')} · filter ${jira.filter_id}${jira.filter_name ? ` (${jira.filter_name})` : ''} · ${jira.email_hint || ''} · token ${jira.token_saved ? 'saved' : 'not saved'}${jira.alert_above != null ? ` · alert above ${jira.alert_above}` : ''}` : '';
+    $('jiraRemove').hidden = !on;
+    $('jiraSave').textContent = on ? 'Save changes' : 'Save';
+    $('jiraTok').placeholder = jira.token_saved ? 'Token saved (paste to replace)' : 'Paste the token';
+    $('jiraEmail').placeholder = on ? `${jira.email_hint} (saved)` : 'you@example.com';
+    $('jiraSite').placeholder = on ? jira.site : 'https://yourteam.atlassian.net';
+    $('jiraFilter').placeholder = on ? jira.filter_id : '10042';
+    $('jiraLabel').placeholder = on ? jira.label : (jira.test && jira.test.filter_name) || "The filter's name";
+    $('jiraLimit').placeholder = on && jira.alert_above != null ? String(jira.alert_above) : 'None';
+  }
+  // What the form sends: only what was typed (a blank keeps what is saved); the alert is sent when touched, empty clears it.
+  function jiraBody() {
+    const b = {}, v = id => $(id).value.trim();
+    if (v('jiraSite')) b.site = v('jiraSite');
+    if (v('jiraEmail')) b.email = v('jiraEmail');
+    if ($('jiraTok').value) b.token = $('jiraTok').value;
+    if (v('jiraFilter')) b.filter_id = v('jiraFilter');
+    if (v('jiraLabel')) b.label = v('jiraLabel');
+    if ($('jiraLimit').dataset.touched) b.alert_above = v('jiraLimit') ? v('jiraLimit') : null;
+    return b;
+  }
+  function jiraFieldError(r) {
+    const f = r.j && r.j.field, ids = { site: 'jiraSite', email: 'jiraEmail', token: 'jiraTok', filter_id: 'jiraFilter', label: 'jiraLabel', alert_above: 'jiraLimit' };
+    ['jiraSite', 'jiraEmail', 'jiraTok', 'jiraFilter', 'jiraLabel', 'jiraLimit'].forEach(i => $(i).setAttribute('aria-invalid', String(ids[f] === i)));
+    if (ids[f]) $(ids[f]).focus();
+    jiraMsg(errText(r), true);
+  }
+  function jiraClearInvalid() { ['jiraSite', 'jiraEmail', 'jiraTok', 'jiraFilter', 'jiraLabel', 'jiraLimit'].forEach(i => $(i).setAttribute('aria-invalid', 'false')); }
+  function jiraClearForm() {
+    ['jiraSite', 'jiraEmail', 'jiraTok', 'jiraFilter', 'jiraLabel', 'jiraLimit'].forEach(i => { $(i).value = ''; delete $(i).dataset.touched; });
+  }
+  ['jiraLimit'].forEach(i => $(i).addEventListener('input', () => { $(i).dataset.touched = '1'; }));
+  $('jiraSave').addEventListener('click', async () => {
+    if (jiraBusy) return;
+    jiraClearInvalid();
+    const was = jira && jira.configured;
+    jiraBusy = true;
+    const r = await api('PUT', '/jira', jiraBody());
+    jiraBusy = false;
+    if (r.status !== 200) { if (r.status) jiraFieldError(r); return; }
+    jira = r.j.jira;
+    jiraClearForm();
+    renderJira();
+    jiraMsg(`${was ? 'Saved.' : 'Saved. The Jira screen is now in the swipe order.'} Token saved.`);
+    phoneSay(was ? 'Jira saved' : 'Jira added');
+    poll();
+  });
+  $('jiraTest').addEventListener('click', async () => {
+    if (jiraBusy) return;
+    jiraClearInvalid();
+    jiraBusy = true;
+    const r = await api('POST', '/jira/test', jiraBody());
+    if (r.status !== 202 && r.status !== 200) { jiraBusy = false; if (r.status) jiraFieldError(r); return; }
+    jiraMsg('Asking Jira…');
+    let t = r.j.jira.test;
+    for (let i = 0; i < 40 && t.state === 'asking'; i++) {       // about 20 s at most; the bar gives up sooner
+      await new Promise(res => setTimeout(res, 500));
+      const g = await api('GET', '/jira');
+      if (g.status !== 200) break;
+      jira = g.j.jira;
+      t = jira.test;
+    }
+    jiraBusy = false;
+    if (t.state === 'ok') {
+      jiraMsg(`It works. "${t.filter_name}" has ${t.count} ${t.count === 1 ? 'issue' : 'issues'} right now.`);
+      if (!$('jiraLabel').value.trim()) $('jiraLabel').placeholder = t.filter_name;
+    } else if (t.state === 'error') {
+      jiraMsg(t.message || "Couldn't reach Jira.", true);
+    } else {
+      jiraMsg("Jira didn't answer in time. Try again in a moment.", true);
+    }
+    phoneSay(t.state === 'ok' ? 'Jira test worked' : 'Jira test failed');
+  });
+  $('jiraRemove').addEventListener('click', async () => {
+    if (Date.now() - jiraRmAt > 4000) {
+      jiraRmAt = Date.now();
+      $('jiraRemove').textContent = 'Tap again to remove';
+      setTimeout(() => { if (jira && jira.configured) $('jiraRemove').textContent = 'Remove'; }, 4000);
+      return;
+    }
+    jiraRmAt = 0;
+    const r = await api('DELETE', '/jira');
+    if (r.status !== 200) { if (r.status) jiraMsg(errText(r), true); return; }
+    jira = r.j.jira;
+    jiraClearForm();
+    jiraClearInvalid();
+    $('jiraRemove').textContent = 'Remove';
+    renderJira();
+    jiraMsg('Removed. The token and everything else about Jira are gone from MiniBar, and the screen is out of the swipe order.');
+    phoneSay('Jira removed');
+    poll();
+  });
+
   async function loadCalendar() {
     const [a, b] = await Promise.all([api('GET', '/calendar'), api('GET', '/calendars')]);
     if (a.status === 200) cal = a.j.calendar;
@@ -491,7 +641,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     render();
   }
   // The bar's message for an error reply, or a plain fallback.
-  const errText = r => r.status === 0 ? "Can't reach MiniBar." : (r.j && r.j.message) || `Something went wrong (${r.status)).`;
+  const errText = r => r.status === 0 ? "Can't reach MiniBar." : (r.j && r.j.message) || `Something went wrong (${r.status}).`;
   const barName = () => (info && info.name) || 'MiniBar';
   const setText = (el, t) => { if (el.textContent !== t) el.textContent = t; };
   const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
