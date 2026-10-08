@@ -22,7 +22,7 @@
   --bg: #eceef1; --surface: #ffffff; --ink: #15181c; --muted: #5a636e; --line: #d4d9df;
   /* Bold Signal status colors (decisions.md "Spec: Bold Signal") */
   --s-available: #0F7F3C; --s-busy: #D01B3A; --s-meeting: #8B3AE5; --s-focus: #B0590D; --s-short: #0B7A70;
-  --s-long: #12708F; --s-away: #545C65; --s-message: #C0198C; --s-call: #1450B4; --s-clock: #3a4049;
+  --s-long: #12708F; --s-away: #545C65; --s-message: #C0198C; --s-call: #1450B4; --s-clock: #3a4049; --s-jira: #0052CC;
   --state: var(--s-clock);
   --f-screen: "Avenir Next Condensed", "Arial Narrow", "Roboto Condensed", "Helvetica Neue", sans-serif;
   --f-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -390,6 +390,17 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
                 <input id="jiraLimit" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="None" aria-describedby="jiraLimitNote"></label>
             </div>
             <p class="note-small" id="jiraLimitNote" style="margin:0">The label shows on the bar, so everyone near your desk can read it. Above the alert number the screen turns orange and says so.</p>
+            <div class="cal-fields">
+              <label class="field" for="jiraGoalType"><span class="field-label">Goal (optional)</span>
+                <select id="jiraGoalType" autocomplete="off" aria-describedby="jiraGoalNote">
+                  <option value="">None</option>
+                  <option value="target">Target count</option>
+                  <option value="reduce">Reduce by</option>
+                </select></label>
+              <label class="field" for="jiraGoalValue"><span class="field-label">Goal value</span>
+                <input id="jiraGoalValue" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="0"></label>
+            </div>
+            <p class="note-small" id="jiraGoalNote" style="margin:0">Set a goal to track progress: reach a target count, or reduce by a number. Shows on the Jira screen.</p>
             <div class="row">
               <button class="btn" id="jiraSave" type="button">Save</button>
               <button class="btn ghost" id="jiraTest" type="button">Test</button>
@@ -417,7 +428,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
   const API = '/api/v1';
   const STATES = [
     { id: 'available', name: 'Available' }, { id: 'busy', name: 'Busy' }, { id: 'meeting', name: 'In a meeting' },
-    { id: 'pomodoro', name: 'Pomodoro' }, { id: 'away', name: 'Away' }, { id: 'message', name: 'Message' }, { id: 'clock', name: 'Clock' },
+    { id: 'pomodoro', name: 'Pomodoro' }, { id: 'away', name: 'Away' }, { id: 'message', name: 'Message' }, { id: 'clock', name: 'Clock' }, { id: 'jira', name: 'Jira' },
   ];
   const PHASE_NAME = { focus: 'Focus', short: 'Short break', long: 'Long break' };
   const css = getComputedStyle(document.documentElement);
@@ -528,6 +539,8 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     $('jiraFilter').placeholder = on ? jira.filter_id : '10042';
     $('jiraLabel').placeholder = on ? jira.label : (jira.test && jira.test.filter_name) || "The filter's name";
     $('jiraLimit').placeholder = on && jira.alert_above != null ? String(jira.alert_above) : 'None';
+    if (on && jira.goal_type) $('jiraGoalType').value = jira.goal_type;
+    if (on && jira.goal_value != null) $('jiraGoalValue').placeholder = String(jira.goal_value);
   }
   // What the form sends: only what was typed (a blank keeps what is saved); the alert is sent when touched, empty clears it.
   function jiraBody() {
@@ -538,19 +551,21 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     if (v('jiraFilter')) b.filter_id = v('jiraFilter');
     if (v('jiraLabel')) b.label = v('jiraLabel');
     if ($('jiraLimit').dataset.touched) b.alert_above = v('jiraLimit') ? v('jiraLimit') : null;
+    if ($('jiraGoalType').dataset.touched) b.goal_type = v('jiraGoalType') ? v('jiraGoalType') : null;
+    if ($('jiraGoalValue').dataset.touched) b.goal_value = v('jiraGoalValue') ? v('jiraGoalValue') : null;
     return b;
   }
   function jiraFieldError(r) {
-    const f = r.j && r.j.field, ids = { site: 'jiraSite', email: 'jiraEmail', token: 'jiraTok', filter_id: 'jiraFilter', label: 'jiraLabel', alert_above: 'jiraLimit' };
-    ['jiraSite', 'jiraEmail', 'jiraTok', 'jiraFilter', 'jiraLabel', 'jiraLimit'].forEach(i => $(i).setAttribute('aria-invalid', String(ids[f] === i)));
+    const f = r.j && r.j.field, ids = { site: 'jiraSite', email: 'jiraEmail', token: 'jiraTok', filter_id: 'jiraFilter', label: 'jiraLabel', alert_above: 'jiraLimit', goal_type: 'jiraGoalType', goal_value: 'jiraGoalValue' };
+    ['jiraSite', 'jiraEmail', 'jiraTok', 'jiraFilter', 'jiraLabel', 'jiraLimit', 'jiraGoalType', 'jiraGoalValue'].forEach(i => $(i).setAttribute('aria-invalid', String(ids[f] === i)));
     if (ids[f]) $(ids[f]).focus();
     jiraMsg(errText(r), true);
   }
-  function jiraClearInvalid() { ['jiraSite', 'jiraEmail', 'jiraTok', 'jiraFilter', 'jiraLabel', 'jiraLimit'].forEach(i => $(i).setAttribute('aria-invalid', 'false')); }
+  function jiraClearInvalid() { ['jiraSite', 'jiraEmail', 'jiraTok', 'jiraFilter', 'jiraLabel', 'jiraLimit', 'jiraGoalType', 'jiraGoalValue'].forEach(i => $(i).setAttribute('aria-invalid', 'false')); }
   function jiraClearForm() {
-    ['jiraSite', 'jiraEmail', 'jiraTok', 'jiraFilter', 'jiraLabel', 'jiraLimit'].forEach(i => { $(i).value = ''; delete $(i).dataset.touched; });
+    ['jiraSite', 'jiraEmail', 'jiraTok', 'jiraFilter', 'jiraLabel', 'jiraLimit', 'jiraGoalType', 'jiraGoalValue'].forEach(i => { $(i).value = ''; delete $(i).dataset.touched; });
   }
-  ['jiraLimit'].forEach(i => $(i).addEventListener('input', () => { $(i).dataset.touched = '1'; }));
+  ['jiraLimit', 'jiraGoalType', 'jiraGoalValue'].forEach(i => $(i).addEventListener('input', () => { $(i).dataset.touched = '1'; }));
   $('jiraSave').addEventListener('click', async () => {
     if (jiraBusy) return;
     jiraClearInvalid();
