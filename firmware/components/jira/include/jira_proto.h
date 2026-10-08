@@ -90,14 +90,18 @@ typedef struct {
     char label[TB_JIRA_LABEL_BYTES];    /* the screen's label */
     bool label_auto;                    /* the label is the filter's name (or "Filter <id>" until it is known): follows it */
     int32_t alert_above;                /* -1: none */
+    int32_t goal_type;                  /* 0: none, 1: target count, 2: reduce by */
+    int32_t goal_value;                 /* target count or reduce-by amount */
 } jira_cfg_t;
 
 /* What a Save or a Test sends: NULL (or a blank string) leaves a field as it is saved. alert: has_alert with NULL or a blank
- * string clears it, a number string sets it; without has_alert it stays. */
+ * string clears it, a number string sets it; without has_alert it stays. goal_type/goal_value: 0 when not provided. */
 typedef struct {
     const char *site, *email, *token, *filter, *label;
     bool has_alert;
     const char *alert;
+    int32_t goal_type;
+    int32_t goal_value;
 } jira_input_t;
 
 /* Merge the input over what is saved (saved may be NULL for a first save) and check every field. A field that is neither

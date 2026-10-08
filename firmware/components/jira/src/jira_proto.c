@@ -288,6 +288,16 @@ jira_err_t jira_resolve(const jira_cfg_t *saved, const jira_input_t *in, jira_cf
     } else {
         out->alert_above = saved ? saved->alert_above : -1;
     }
+    if (in->goal_type > 0) {
+        out->goal_type = in->goal_type;
+        out->goal_value = in->goal_value;
+    } else if (saved) {
+        out->goal_type = saved->goal_type;
+        out->goal_value = saved->goal_value;
+    } else {
+        out->goal_type = 0;
+        out->goal_value = 0;
+    }
     return JIRA_OK;
 }
 

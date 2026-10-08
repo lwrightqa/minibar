@@ -289,7 +289,16 @@ static void jira_view(ui_view_t *v, const tb_app_t *a, const tb_clock_t *now)
             if (j->ok_at) side(v, "Last update", fmt_short(j->ok_at).s, ampm_of(j->ok_at), "can't reach Jira", false);
         } else {
             if (tb_jira_over(j, now->wall, now->valid)) PUT(v->sub, "Over your limit of %d", (int)j->alert_above);
-            else if (c == 0) PUT(v->sub, "No issues right now");
+            else if (j->goal_type == 1) {
+                int32_t pct = j->goal_value > 0 ? (c * 100) / j->goal_value : 0;
+                if (pct > 100) pct = 100;
+                PUT(v->sub, "Goal: %d of %d " MID_DOT " %d%%", (int)c, (int)j->goal_value, (int)pct);
+            } else if (j->goal_type == 2) {
+                int32_t reduced = j->goal_value > c ? j->goal_value - c : 0;
+                int32_t pct = j->goal_value > 0 ? (reduced * 100) / j->goal_value : 0;
+                if (pct > 100) pct = 100;
+                PUT(v->sub, "Reduce by %d " MID_DOT " %d%% done", (int)j->goal_value, (int)pct);
+            } else if (c == 0) PUT(v->sub, "No issues right now");
             else PUT(v->sub, "%s " MID_DOT " updated %s", c == 1 ? "issue" : "issues", fmt(j->ok_at).s);
             side(v, "Updated", fmt_short(j->ok_at).s, ampm_of(j->ok_at), "every 5 minutes", false);
         }

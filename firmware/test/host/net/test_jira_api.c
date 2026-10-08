@@ -327,7 +327,7 @@ TB_TEST(jira_status_is_never_a_post_status_and_shows_in_own_status)
     /* once set up and swiped to, GET /status says "jira" and what Stop returns to is unchanged */
     tb_jira_t j;
     tb_jira_init(&j);
-    tb_jira_configure(&j, "Open bugs", -1);
+    tb_jira_configure(&j, "Open bugs", -1, 0, 0);
     tb_app_set_jira(&nf_app, &j, &fake_now);
     nf_app.idx = TB_ST_JIRA;
     r = nf_http("GET", "/api/v1/status", NULL, T);

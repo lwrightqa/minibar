@@ -42,6 +42,8 @@ typedef struct {
     char filter_name[TB_JIRA_LABEL_BYTES];  /* what Jira calls the filter, cut to a label's length; "" until known */
     char label[TB_JIRA_LABEL_BYTES];
     int32_t alert_above;                    /* -1: none */
+    int32_t goal_type;                      /* 0: none, 1: target count, 2: reduce by */
+    int32_t goal_value;                     /* target count or reduce-by amount */
     tb_jira_state_t state;
     int32_t count;                          /* -1: none */
     tb_epoch_t updated_at;                  /* the last good answer; 0 when never */

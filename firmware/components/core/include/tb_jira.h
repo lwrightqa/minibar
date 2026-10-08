@@ -37,6 +37,8 @@ typedef struct {
     tb_epoch_t ok_at;               /* when it came (UTC); 0 when never */
     int32_t alert_above;            /* -1: no alert */
     char label[TB_JIRA_LABEL_BYTES];    /* the screen's label, "Jira · <label>" on the bar; drawable characters only */
+    int32_t goal_type;              /* 0: none, 1: target count, 2: reduce by */
+    int32_t goal_value;             /* target count or reduce-by amount */
 } tb_jira_t;
 
 /* What a check came back with. */
@@ -45,7 +47,7 @@ typedef enum { TB_JIRA_RES_OK = 0, TB_JIRA_RES_UNREACHABLE, TB_JIRA_RES_TOKEN, T
 /* Not configured, nothing known (alert off). */
 void tb_jira_init(tb_jira_t *j);
 /* Settings were saved (or changed): a new check starts, and what was known is dropped. */
-void tb_jira_configure(tb_jira_t *j, const char *label, int32_t alert_above);
+void tb_jira_configure(tb_jira_t *j, const char *label, int32_t alert_above, int32_t goal_type, int32_t goal_value);
 /* Everything about Jira was removed. */
 void tb_jira_clear(tb_jira_t *j);
 /* A check came back at wall time now (0 when the clock is unknown). OK keeps the count; UNREACHABLE keeps the last count

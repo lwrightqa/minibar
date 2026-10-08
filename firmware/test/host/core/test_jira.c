@@ -11,7 +11,7 @@ static tb_jira_t cfg(const char *label, int alert)
 {
     tb_jira_t j;
     tb_jira_init(&j);
-    tb_jira_configure(&j, label, alert);
+    tb_jira_configure(&j, label, alert, 0, 0);
     return j;
 }
 
@@ -51,11 +51,11 @@ TB_TEST(jira_states_and_transitions)
     tb_jira_apply(&j, TB_JIRA_RES_OK, -4, 2800);            /* a negative count (it can't be) shows as zero */
     TB_EQ_INT(j.count, 0);
     /* saving again starts over: loading, nothing known, the new label and limit */
-    tb_jira_configure(&j, "Needs review", -1);
+    tb_jira_configure(&j, "Needs review", -1, 0, 0);
     TB_EQ_INT(j.state, TB_JIRA_LOADING);
     TB_EQ_INT(j.count, -1);
     TB_EQ_INT(j.alert_above, -1);
-    tb_jira_configure(&j, "x", 10000);                      /* out of range: no alert */
+    tb_jira_configure(&j, "x", 10000, 0, 0);                      /* out of range: no alert */
     TB_EQ_INT(j.alert_above, -1);
     tb_jira_clear(&j);
     TB_FALSE(j.configured);

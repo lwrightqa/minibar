@@ -1813,6 +1813,8 @@ static void add_jira(rt_t *r, int status)
     add_str0(o, "label", j.label);
     if (j.alert_above >= 0) cJSON_AddNumberToObject(o, "alert_above", j.alert_above);
     else cJSON_AddNullToObject(o, "alert_above");
+    cJSON_AddNumberToObject(o, "goal_type", j.goal_type);
+    cJSON_AddNumberToObject(o, "goal_value", j.goal_value);
     add_str(o, "state", j.configured ? state[j.state <= TB_JIRA_NOFILTER ? j.state : 0] : NULL);
     if (j.configured && j.count >= 0) cJSON_AddNumberToObject(o, "count", j.count);
     else cJSON_AddNullToObject(o, "count");
@@ -1827,7 +1829,7 @@ static void add_jira(rt_t *r, int status)
 }
 
 /* The body of PUT and test: strings (site, email, token, filter_id, label) and alert_above (a whole number, a string of
- * digits, or null to clear). A field of another type is bad_value on that field; the value is never echoed. */
+ * digits, or null to clear), goal_type (0-2) and goal_value (whole number). A field of another type is bad_value on that field; the value is never echoed. */
 static bool jira_input(rt_t *r, const cJSON *b, jira_input_t *in)
 {
     static const char *const names[] = {"site", "email", "token", "filter_id", "label"};
@@ -1863,6 +1865,26 @@ static bool jira_input(rt_t *r, const cJSON *b, jira_input_t *in)
             in->alert = al->valuestring;
         } else {
             bad_value(r, "alert_above", "alert_above must be a whole number from 0 to 9999, or null.");
+            return false;
+        }
+    }
+    const cJSON *gt = item(b, "goal_type");
+    if (gt) {
+        if (cJSON_IsNumber(gt) && gt->valuedouble >= 0 && gt->valuedouble <= 2 &&
+            (double)(int)gt->valuedouble == gt->valuedouble) {
+            in->goal_type = (int32_t)gt->valuedouble;
+        } else {
+            bad_value(r, "goal_type", "goal_type must be 0 (none), 1 (target count), or 2 (reduce by).");
+            return false;
+        }
+    }
+    const cJSON *gv = item(b, "goal_value");
+    if (gv) {
+        if (cJSON_IsNumber(gv) && gv->valuedouble >= 0 && gv->valuedouble <= 99999 &&
+            (double)(int)gv->valuedouble == gv->valuedouble) {
+            in->goal_value = (int32_t)gv->valuedouble;
+        } else {
+            bad_value(r, "goal_value", "goal_value must be a whole number from 0 to 99999.");
             return false;
         }
     }

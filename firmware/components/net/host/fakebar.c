@@ -423,7 +423,7 @@ jira_err_t jira_save(const jira_input_t *in)
     snprintf(s_jira.filter_name, sizeof s_jira.filter_name, "%s", nm);
     s_jira.saved = true;
     s_jira.cfg = c;
-    tb_jira_configure(&s_jira.j, c.label, c.alert_above);
+    tb_jira_configure(&s_jira.j, c.label, c.alert_above, c.goal_type, c.goal_value);
     s_jira.check_at = now.mono + 600;
     jira_push(&now);
     return JIRA_OK;

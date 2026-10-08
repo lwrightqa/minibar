@@ -349,7 +349,7 @@ static void jira_scene(tb_app_t *a, tb_clock_t *n, tb_jira_state_t st, int32_t c
     base(a, n, TB_ST_JIRA);
     tb_jira_t j;
     tb_jira_init(&j);
-    tb_jira_configure(&j, "Open bugs", alert);
+    tb_jira_configure(&j, "Open bugs", alert, 0, 0);
     if (st != TB_JIRA_LOADING) tb_jira_apply(&j, TB_JIRA_RES_OK, count < 0 ? 0 : count, REF - ok_ago_s);
     if (st == TB_JIRA_UNREACHABLE) tb_jira_apply(&j, TB_JIRA_RES_UNREACHABLE, 0, REF);
     if (st == TB_JIRA_TOKEN) tb_jira_apply(&j, TB_JIRA_RES_TOKEN, 0, REF);

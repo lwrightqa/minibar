@@ -331,7 +331,7 @@ static void load_config(void)
     read_nvs();
 
     if (s_cfg.site[0]) {
-        tb_jira_configure(&s.view, s_cfg.label, s_cfg.alert_above);
+        tb_jira_configure(&s.view, s_cfg.label, s_cfg.alert_above, s_cfg.goal_type, s_cfg.goal_value);
         s.name_due = s_cfg.label_auto;      /* an automatic label follows the filter's name, read at start-up */
     }
     BaseType_t ok = xTaskCreatePinnedToCore(task, "jira_sync", JIRA_TASK_STACK, NULL, JIRA_TASK_PRIO, &s.task,
@@ -347,6 +347,8 @@ void jira_get_info(jira_info_t *out)
     memset(out, 0, sizeof(*out));
     out->configured = s_cfg.site[0] != '\0';
     out->alert_above = s_cfg.alert_above;
+    out->goal_type = s_cfg.goal_type;
+    out->goal_value = s_cfg.goal_value;
 
     strncpy(out->site, s_cfg.site, sizeof(out->site) - 1);
     strncpy(out->filter_id, s_cfg.filter, sizeof(out->filter_id) - 1);
@@ -395,7 +397,7 @@ jira_err_t jira_save(const jira_input_t *in)
         s.name_due = true;
         s.fails = 0;
         s.next_ms = 0;
-        tb_jira_configure(&s.view, s_cfg.label, s_cfg.alert_above);
+        tb_jira_configure(&s.view, s_cfg.label, s_cfg.alert_above, s_cfg.goal_type, s_cfg.goal_value);
         unlock();
         post_view();
         wake();

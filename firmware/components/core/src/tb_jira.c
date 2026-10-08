@@ -14,13 +14,15 @@ void tb_jira_init(tb_jira_t *j)
     j->alert_above = -1;
 }
 
-void tb_jira_configure(tb_jira_t *j, const char *label, int32_t alert_above)
+void tb_jira_configure(tb_jira_t *j, const char *label, int32_t alert_above, int32_t goal_type, int32_t goal_value)
 {
     tb_jira_init(j);
     j->configured = true;
     j->state = TB_JIRA_LOADING;
     tb_strlcpy(j->label, label ? label : "", sizeof j->label);
     j->alert_above = alert_above >= 0 && alert_above <= TB_JIRA_ALERT_MAX ? alert_above : -1;
+    j->goal_type = goal_type;
+    j->goal_value = goal_value;
 }
 
 void tb_jira_clear(tb_jira_t *j)
