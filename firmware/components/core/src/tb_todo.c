@@ -1,6 +1,8 @@
 /*
  * tb_todo.c: todo list management. Owner: core builder.
  * Pure C: no ESP-IDF, no allocation after initialization.
+ * NVS integration: the static buffer is loaded at startup by tb_todo_load_from_nvs() (in firmware only, main/app_task.c).
+ * Save/clear operations mark dirty; the app task polls and flushes to NVS as debounced writes.
  */
 #include <stdio.h>
 #include <string.h>
@@ -9,12 +11,11 @@
 
 #include "tb_todo.h"
 
-/* Static buffer for the todo list. NVS integration is in main/app_task.c via effects. */
+/* Static buffer for the todo list. NVS integration in main/app_task.c via effects. */
 static char s_todo_buffer[TB_TODO_MAX_BYTES];
 static bool s_todo_dirty = false;
 
-/* Stub implementations: the real NVS load/save/clear are in the firmware (main/app_task.c).
- * These work with the static buffer. */
+/* Core functions: these work with the static buffer. NVS load/save/clear are deferred to firmware. */
 
 const char *tb_todo_load(void)
 {
