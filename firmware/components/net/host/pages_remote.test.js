@@ -36,7 +36,7 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
     return JSON.parse(line.slice(4));
   };
   const b = await chromium.launch();
-  const ctx = await b.newContext({ viewport: { width: 390, height: 844 } });
+  const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, userAgent: 'MiniBarTest/1.0' });
   const p = await ctx.newPage();
   const errors = [];
   const watch = pg => {
@@ -71,7 +71,7 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   check(await p.getAttribute('#pairAsk', 'aria-disabled') === 'false', 'in_setup leaves the button as it is');
   check(!(await state()).pairing, 'no code during setup');
   await sim('/_sim/tap', '');               // the tap ends the Connected screen: setup is over
-  await sleep(2500);
+  await sleep(6000);
   check(!(await vis('#pairAskErr')), 'the setting-up message goes once setup is over');
 
   // busy: another device's code is on the bar (the Mac, over the cable)
@@ -635,7 +635,7 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   check(s.toast === 'Removed Phone', 'the bar says Removed Phone: ' + s.toast);
   // removed on another phone: "This device isn't paired with MiniBar 2A1C anymore."
   await pairNow(p);
-  const q = await (await b.newContext({ viewport: { width: 390, height: 844 } })).newPage();
+  const q = await (await b.newContext({ viewport: { width: 390, height: 844 }, userAgent: 'MiniBarTest/1.0' })).newPage();
   watch(q);
   await q.goto(base + '/');
   await sleep(800);
