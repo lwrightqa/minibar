@@ -1140,7 +1140,7 @@ a.btn { display: inline-block; text-decoration: none; }
 .mac-get details.help p.note-small { margin: 6px 0 0; }
 
 /* ---------- Pairing on the Remote ----------
-   The prompt that replaces the Remote's controls until this phone is paired, and the Paired devices list. */
+   The prompt that replaces the Remote's controls until this device is paired, and the Paired devices list. */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 :is(#pairView, #remoteMain) .field-err { font-size: 13px; color: var(--ink); }
 .pair-step { display: grid; gap: 10px; min-width: 0; }
@@ -1515,14 +1515,14 @@ a.btn { display: inline-block; text-decoration: none; }
       <div class="setup-msg" id="helpNote" role="status" hidden></div>
       <span class="sr-only" id="phoneSay" aria-live="polite"></span>
 
-      <!-- Until this phone is paired, this prompt replaces the Remote's controls (the bar answers 401). -->
+      <!-- Until this device is paired, this prompt replaces the Remote's controls (the bar answers 401). -->
       <div class="setup" id="pairView" hidden>
         <div class="setup-msg" id="pairNote" role="status" hidden></div>
         <div class="auto-card">
-          <div class="auto-head"><b id="pairTitle">Pair this phone</b></div>
+          <div class="auto-head"><b id="pairTitle">Pair this device</b></div>
           <div class="pair-step" id="pairStart">
-            <p id="pairIntro">MiniBar 2A1C shows a 6-digit code on its screen. Type it here, and this phone becomes its Remote.</p>
-            <div><button class="btn" id="pairAsk" type="button" aria-describedby="pairAskErr">Pair this phone</button></div>
+            <p id="pairIntro">MiniBar 2A1C shows a 6-digit code on its screen. Type it here, and this device becomes its Remote.</p>
+            <div><button class="btn" id="pairAsk" type="button" aria-describedby="pairAskErr">Pair this device</button></div>
             <p class="field-err" id="pairAskErr" hidden></p>
             <p class="note-small">Only someone who can see the bar can pair, so nobody else on the office Wi-Fi can change your status. <button class="link-btn" id="pairHelp" type="button" style="padding:0;border:0;background:none;cursor:pointer">How pairing works</button></p>
           </div>
@@ -1628,7 +1628,7 @@ a.btn { display: inline-block; text-decoration: none; }
       </div>
 
       <div id="remoteMain" class="setup">
-      <div class="setup-msg ok" id="pairedMsg" role="status" hidden>Paired. This phone is MiniBar 2A1C's Remote now.</div>
+      <div class="setup-msg ok" id="pairedMsg" role="status" hidden>Paired. This device is MiniBar 2A1C's Remote now.</div>
       <div>
         <span class="field-label">Status</span>
         <div class="setup-msg tour-note" id="tourNote" role="status" hidden></div>
@@ -1834,6 +1834,17 @@ a.btn { display: inline-block; text-decoration: none; }
                 <input id="jiraLimit" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="None" aria-describedby="jiraLimitNote"></label>
             </div>
             <p class="note-small" id="jiraLimitNote" style="margin:0">The label shows on the bar, so everyone near your desk can read it. Above the alert number the screen turns orange and says so.</p>
+            <div class="cal-fields">
+              <label class="field" for="jiraGoalType"><span class="field-label">Goal (optional)</span>
+                <select id="jiraGoalType" autocomplete="off" aria-describedby="jiraGoalNote">
+                  <option value="">None</option>
+                  <option value="target">Target count</option>
+                  <option value="reduce">Reduce by</option>
+                </select></label>
+              <label class="field" for="jiraGoalValue"><span class="field-label">Goal value</span>
+                <input id="jiraGoalValue" type="text" inputmode="numeric" maxlength="5" autocomplete="off" placeholder="0"></label>
+            </div>
+            <p class="note-small" id="jiraGoalNote" style="margin:0">Set a goal to track progress: reach a target count, or reduce by a number. Shows on the Jira screen.</p>
             <div class="row">
               <button class="btn" id="jiraSave" type="button">Save</button>
               <button class="btn ghost" id="jiraTest" type="button">Test</button>
@@ -2040,7 +2051,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
   // 5 minutes, shown as its own screen in the swipe order once set up. state is 'loading' (first check), 'ok', 'unreach'
   // (the last count is kept, labeled "as of"), 'token' or 'nofilter'. The API token is never kept here: it lives in
   // jiraToken (the Jira section's closure), standing in for the bar's protected storage, and nothing reads it back.
-  const jira = { on: false, site: '', email: '', filter: '', name: '', label: '', limit: null, tokenSaved: false,
+  const jira = { on: false, site: '', email: '', filter: '', name: '', label: '', limit: null, goalType: 0, goalValue: 0, tokenSaved: false,
     state: 'loading', count: null, okAt: null, tryAt: null };
   const jiraSim = { mode: 'ok', count: 12 };
   const jiraShown = () => jira.on;
@@ -2328,13 +2339,13 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
   const pair = { code: null, id: null, who: null, left: 0, shown: false, shownAt: 0, tries: 0, fails: 0, lockMs: 0 };
   // The bar's paired tokens (api.md 12.1): only a hash of each token is kept, with these details. client keeps one
   // token per device: pairing again replaces it. used is when it was last used over Wi-Fi (USB needs no token).
-  // Sample data: the Mac paired over the cable this morning, this phone, and a script from last week.
+  // Sample data: the Mac paired over the cable this morning, this device, and a script from last week.
   const tokens = [
     { id: '74d8a526', name: 'Mac', kind: 'mac', scope: 'call', client: 'mac', at: addMin(t0, -312), via: 'usb', used: null },
     { id: '27110499', name: 'iPhone', kind: 'remote', scope: 'full', client: 'phone', at: addMin(t0, -294), via: 'wifi', used: t0 },
     { id: '5c0e91b7', name: 'Desk script', kind: 'automation', scope: 'full', client: 'script', at: addMin(t0, -8840), via: 'wifi', used: addMin(t0, -2955) },
   ];
-  // The Remote on this phone: token is the cookie it holds (null: not paired, so the pairing prompt shows). step is
+  // The Remote on this device: token is the cookie it holds (null: not paired, so the pairing prompt shows). step is
   // the prompt's page ('start' or 'code'); pid the pairing_id of the code it asked for; askErr and err the replies
   // shown under the button and the field; note the line above the prompt; confirm the device whose Remove is open.
   const phone = { token: '27110499', step: 'start', pid: null, askErr: null, err: null, note: '', lostNote: '', confirm: null, okUntil: 0, view: 'remote' };
@@ -2904,7 +2915,12 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     if (jira.state === 'nofilter') return { main: kick + msgWord('Filter not found') + '<div class="sub">Check the filter on the Remote</div>', side: side('Jira', 'Filter', 'not found or not shared', 'small') };
     if (c == null) return { main: kick + word('—') + "<div class=\"sub\">Can't reach Jira · trying again</div>", side: side('Jira', 'Offline', jira.okAt ? 'last answer ' + jiraAgo(n - jira.okAt) + ' ago' : 'no answer yet', 'small') };
     if (jira.state === 'unreach') return { main: kick + word(jiraShow(c)) + `<div class="sub">Can't reach Jira · as of ${jiraAgo(n - jira.okAt)} ago</div>`, side: side('Last update', fmtShort(jira.okAt) + vAP(jira.okAt), "can't reach Jira") };
-    const sub = jiraWarn() ? `Over your limit of ${jira.limit}` : c === 0 ? 'No issues right now' : `${c === 1 ? 'issue' : 'issues'} · updated ${fmt(jira.okAt)}`;
+    // The same order as the bar's screen (ui_view.c): the alert first, then the goal, then the plain count.
+    const goalPct = (num, den) => Math.min(100, den > 0 ? Math.floor(num * 100 / den) : 0);
+    const sub = jiraWarn() ? `Over your limit of ${jira.limit}`
+      : jira.goalType === 1 ? `Goal: ${c} of ${jira.goalValue} · ${goalPct(c, jira.goalValue)}%`
+      : jira.goalType === 2 ? `Reduce by ${jira.goalValue} · ${goalPct(Math.max(0, jira.goalValue - c), jira.goalValue)}% done`
+      : c === 0 ? 'No issues right now' : `${c === 1 ? 'issue' : 'issues'} · updated ${fmt(jira.okAt)}`;
     return { main: kick + word(jiraShow(c)) + `<div class="sub">${sub}</div>`, side: upd };
   }
 
@@ -3704,7 +3720,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     pickSeg($('themeSeg'), $('themeSeg').querySelector(`[data-v="${s.theme}"]`));
     pickSeg($('timeSeg'), $('timeSeg').querySelector(`[data-v="${s.timeFormat}"]`));
     const setupMode = s.powered && ['setup', 'connecting', 'failed'].includes(s.wifi.mode);
-    // Until this phone is paired, the pairing prompt takes the place of every control (the bar answers
+    // Until this device is paired, the pairing prompt takes the place of every control (the bar answers
     // 401 to anything else). The header names the bar in every state, so you can tell which one a phone talks to.
     // The help page (phone.view 'help') takes the panel while it's open; on the setup network there's none.
     const help = phone.view === 'help' && !setupMode;
@@ -4320,7 +4336,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     const n = tokens.length;
     hideMenu();
     tokens.length = 0;
-    if (phone.token) phone.lostNote = 'MiniBar forgot this phone. Pair it again to use the Remote.';
+    if (phone.token) phone.lostNote = 'MiniBar forgot this device. Pair it again to use the Remote.';
     const ended = dropMacWifi();
     bump();
     const lead = `Forgot ${n} device${n === 1 ? '' : 's'}`;
@@ -4348,7 +4364,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     switch (e.error) {
       case 'pairing_busy': return `Another device is pairing with this MiniBar. Try again in ${waitText(busyLeft())}.`;
       case 'rate_limited': return `Too many tries. You can try again in ${waitText(pair.lockMs)}.`;
-      case 'token_limit': return `${BAR.name} already has 10 paired devices. Remove one on a paired phone, or forget them all on MiniBar: hold its screen, then Wi-Fi, then Devices.`;
+      case 'token_limit': return `${BAR.name} already has 10 paired devices. Remove one on a paired device, or forget them all on MiniBar: hold its screen, then Wi-Fi, then Devices.`;
       case 'in_setup': return 'MiniBar is setting up Wi-Fi. Finish setup on the bar, then try again.';
       default: return `${BAR.name} didn't answer. Make sure it's on, then try again.`;
     }
@@ -4369,7 +4385,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     pairing_busy: () => busyLeft() <= 0, rate_limited: () => pair.lockMs <= 0, in_setup: () => !onWifiScreen(),
     token_limit: () => hasRoom('phone'), no_answer: () => reachable(),
   };
-  // While the bar is busy or waiting, Pair this phone is dimmed but keeps its place in the tab order (aria-disabled),
+  // While the bar is busy or waiting, Pair this device is dimmed but keeps its place in the tab order (aria-disabled),
   // so a keyboard or screen reader user isn't thrown back to the top of the page; pressing it says the wait again.
   const askBlocked = () => !!phone.askErr && ['pairing_busy', 'rate_limited'].includes(phone.askErr.error);
   function updatePhonePair() {
@@ -4395,7 +4411,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     $('pairNew').hidden = !dead;
     $('pairGo').disabled = d.length < 6;
   }
-  // Pair this phone (and Show a new code): asks the bar for a code. Pressed again while this phone's own code is
+  // Pair this device (and Show a new code): asks the bar for a code. Pressed again while this device's own code is
   // still on the bar, it goes back to that code instead of calling it busy.
   function phoneAsk() {
     if (phone.pid && pair.code && pair.id === phone.pid) {
@@ -4429,7 +4445,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
       Object.assign(phone, { token: r.token_id, step: 'start', pid: null, askErr: null, err: null, note: '', lostNote: '', okUntil: Date.now() + 6000 });
       $('pairInput').value = '';
       updateRemote();
-      phoneSay(`Paired. This phone is ${BAR.name}'s Remote now.`);
+      phoneSay(`Paired. This device is ${BAR.name}'s Remote now.`);
       return;
     }
     phone.err = r.error === 'wrong_code' ? (r.attempts_left > 0 ? { kind: 'wrong', left: r.attempts_left } : { kind: 'out' })
@@ -4441,14 +4457,14 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     if (r.error === 'not_pairing') say('remote: that code is gone from the bar');
     else if (r.error === 'no_answer') say("remote: MiniBar didn't answer");
   }
-  // The Remote polls every 2 seconds. A 401 means this phone was forgotten on the bar (or removed on another phone);
+  // The Remote polls every 2 seconds. A 401 means this device was forgotten on the bar (or removed on another phone);
   // a code it's waiting on that's no longer on the bar ran out or was canceled there.
   function remotePoll() {
     if (!reachable()) return;
     const tok = phoneTok();
     if (phone.token && !tok) {
       Object.assign(phone, { token: null, step: 'start', pid: null, askErr: null, err: null, confirm: null, okUntil: 0,
-        note: phone.lostNote || `This phone isn't paired with ${BAR.name} anymore. Pair it again to use the Remote.` });
+        note: phone.lostNote || `This device isn't paired with ${BAR.name} anymore. Pair it again to use the Remote.` });
       phone.lostNote = '';
       updateRemote();
       phoneSay(phone.note);
@@ -4473,7 +4489,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     }
   }
 
-  // Paired devices (GET /api/v1/clients): this phone first, then the rest by when they were last used. Times are
+  // Paired devices (GET /api/v1/clients): this device first, then the rest by when they were last used. Times are
   // worked out against the bar's clock. The list is redrawn only when its text changes, so focus stays put.
   const KIND_NAME = { mac: 'Mac app', remote: 'Remote', automation: 'Automation' };
   const SCOPE_NAME = { call: 'Calls only', full: 'Full control' };
@@ -4495,11 +4511,11 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     if (phone.confirm && !tokens.some(t => t.id === phone.confirm)) phone.confirm = null;
     const list = [...tokens].sort((a, b) => (b === self) - (a === self) || (b.used || 0) - (a.used || 0) || b.at - a.at);
     const html = list.map(t => {
-      const me = t === self, open = phone.confirm === t.id, who = me ? 'this phone' : esc(t.name);
-      const q = me ? "Remove this phone? The Remote signs out here, and you'll need a code from MiniBar to use it again."
+      const me = t === self, open = phone.confirm === t.id, who = me ? 'this device' : esc(t.name);
+      const q = me ? "Remove this device? The Remote signs out here, and you'll need a code from MiniBar to use it again."
         : t.kind === 'mac' ? `Remove ${esc(t.name)}? It stops working over Wi-Fi until it pairs again. USB still works.`
         : `Remove ${esc(t.name)}? It can't change your status until it pairs again with a new code from the bar.`;
-      return `<li class="dev" data-id="${t.id}"><div class="dev-name"><span>${esc(t.name)}</span>${me ? '<span class="badge ok">This phone</span>' : ''}</div>`
+      return `<li class="dev" data-id="${t.id}"><div class="dev-name"><span>${esc(t.name)}</span>${me ? '<span class="badge ok">This device</span>' : ''}</div>`
         + (open ? '<span></span>' : `<button class="btn ghost sm" type="button" data-remove="${t.id}" aria-label="Remove ${who}">Remove</button>`)
         + `<div class="meta">${KIND_NAME[t.kind] || 'Device'} · ${SCOPE_NAME[t.scope] || t.scope}</div>`
         + `<div class="meta"><span>${pairedWhen(t)}</span> · <span>${usedWhen(t)}</span></div>`
@@ -4509,7 +4525,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     if (html !== devHtml) { devHtml = html; $('devList').innerHTML = html; }
     setText($('devFoot'), `${tokens.length} of ${MAX_TOKENS}. To forget them all at once, hold the bar's screen, then tap Wi-Fi › Devices. Over USB, your Mac needs no pairing.`);
   }
-  // Remove (DELETE /api/v1/clients/{token_id}, or /self for this phone): revoked at once, with a toast on the bar.
+  // Remove (DELETE /api/v1/clients/{token_id}, or /self for this device): revoked at once, with a toast on the bar.
   function removeDevice(id) {
     const i = tokens.findIndex(t => t.id === id);
     if (i < 0) return;
@@ -4519,12 +4535,12 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     phone.confirm = null;
     bump();
     if (me) {
-      Object.assign(phone, { token: null, step: 'start', pid: null, askErr: null, err: null, okUntil: 0, note: 'This phone is signed out. Pair it again to use the Remote.' });
+      Object.assign(phone, { token: null, step: 'start', pid: null, askErr: null, err: null, okUntil: 0, note: 'This device is signed out. Pair it again to use the Remote.' });
       toast(withTitle(n => `Removed ${n}`, t.name));
       updateRemote();
       $('pairAsk').focus();
       phoneSay(phone.note);
-      say(`remote: removed this phone (${t.name}), the Remote is signed out`);
+      say(`remote: removed this device (${t.name}), the Remote is signed out`);
       return;
     }
     const ended = t.client === 'mac' && dropMacWifi();
@@ -4744,7 +4760,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
   // The pairing prompt. The field takes typing or pasting, keeps only digits (spaces and dashes are
   // ignored), shows them as "482 913", and pairs as soon as the sixth digit is in, as the Mac app does.
   $('pairAsk').addEventListener('click', () => {
-    if (askBlocked()) { phoneSay(askErrText(phone.askErr)); say('remote: Pair this phone waits until MiniBar can show a code'); return; }
+    if (askBlocked()) { phoneSay(askErrText(phone.askErr)); say('remote: Pair this device waits until MiniBar can show a code'); return; }
     phoneAsk();
   });
   $('pairNew').addEventListener('click', phoneAsk);
@@ -4756,7 +4772,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
   });
   $('pairInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); phoneTry(); } });
   $('pairGo').addEventListener('click', phoneTry);
-  // Cancel goes back to the start and takes this phone's code off the bar (pair/cancel), so it doesn't
+  // Cancel goes back to the start and takes this device's code off the bar (pair/cancel), so it doesn't
   // block anyone else; the bar says "Pairing canceled". If the code is already gone, there's nothing to tell the bar.
   $('pairCancel').addEventListener('click', () => {
     const r = phone.pid ? pairCancelApi(phone.pid) : { ok: false };
@@ -5941,7 +5957,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
   });
   $('simPairJump').addEventListener('click', () => {
     if (!pair.code) {
-      simNote('No code on the bar to run down. Press Mac app asks to pair first, or Pair this phone on the Remote.');
+      simNote('No code on the bar to run down. Press Mac app asks to pair first, or Pair this device on the Remote.');
       say('simulate: no code on the bar to run down');
       return;
     }
@@ -5958,17 +5974,17 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     const b = e.target.closest('button');
     if (!b) return;
     if (b.dataset.v === 'unpaired') {
-      if (!phone.token) { say('simulate: this phone already isn\'t paired'); return; }
+      if (!phone.token) { say('simulate: this device already isn\'t paired'); return; }
       const i = tokens.findIndex(t => t.id === phone.token);
       if (i >= 0) tokens.splice(i, 1);
       Object.assign(phone, { token: null, step: 'start', pid: null, askErr: null, err: null, note: '', lostNote: '', confirm: null, okUntil: 0 });
-      say('simulate: this phone is not paired now; the Remote shows its pairing prompt');
+      say('simulate: this device is not paired now; the Remote shows its pairing prompt');
     } else {
-      if (phone.token) { say('simulate: this phone is already paired'); return; }
+      if (phone.token) { say('simulate: this device is already paired'); return; }
       // The shortcut keeps the bar's limit too: with no room it changes nothing and says so in the box.
       if (!hasRoom('phone')) {
         simNote(noRoomNote());
-        say('simulate: no room for this phone, MiniBar keeps 10 paired devices');
+        say('simulate: no room for this device, MiniBar keeps 10 paired devices');
         updateRemote();
         return;
       }
@@ -5977,7 +5993,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
       const t = own && own.ok ? tokens.find(x => x.id === own.token_id) : addToken({ name: 'iPhone', kind: 'remote', scope: 'full', client: 'phone', via: 'wifi' });
       Object.assign(phone, { token: t.id, step: 'start', pid: null, askErr: null, err: null, note: '', confirm: null });
       $('pairInput').value = '';
-      say(`simulate: this phone is paired now${own && own.ok ? ', with the code on the bar' : ''}`);
+      say(`simulate: this device is paired now${own && own.ok ? ', with the code on the bar' : ''}`);
     }
     bump();
     updateRemote();
@@ -6133,8 +6149,13 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     if (!filter) { $('jiraFilter').focus(); return { err: "Enter the filter's ID: the number after filter= in its address." }; }
     const lim = $('jiraLimit').value.trim();
     if (lim && !/^\d{1,4}$/.test(lim)) { $('jiraLimit').focus(); return { err: 'Alert above is a whole number, or leave it empty.' }; }
+    const gv = $('jiraGoalValue').value.trim();
+    if ($('jiraGoalValue').dataset.touched && gv && !/^\d{1,5}$/.test(gv)) { $('jiraGoalValue').focus(); return { err: 'The goal value is a whole number, up to 99999.' }; }
+    // The goal follows the form only when it was touched: a blank field keeps what's saved (as the bar does).
+    const goalType = $('jiraGoalType').dataset.touched ? ({ target: 1, reduce: 2 })[$('jiraGoalType').value] || 0 : jira.goalType;
+    const goalValue = $('jiraGoalValue').dataset.touched ? (gv ? +gv : 0) : jira.goalValue;
     return { site: site.replace(/\/$/, '').toLowerCase(), email, filter, token: $('jiraTok').value || null,
-      limit: lim ? +lim : ($('jiraLimit').dataset.touched ? null : jira.limit) };
+      limit: lim ? +lim : ($('jiraLimit').dataset.touched ? null : jira.limit), goalType, goalValue };
   }
   function jiraAnswer(filter) {   // what Jira would say to the Test button, from the Simulate panel
     if (!wifiUp()) return { err: "MiniBar can't reach the internet right now, so it can't ask Jira. Check its Wi-Fi." };
@@ -6165,11 +6186,12 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     else if (!jiraToken) jiraToken = 'saved';
     $('jiraTok').value = '';
     const name = jiraName && jiraNameOf(v.filter) === jiraName ? jiraName : jiraNameOf(v.filter);
-    Object.assign(jira, { on: true, site: v.site, email: v.email, filter: v.filter, name, limit: v.limit, tokenSaved: true });
+    Object.assign(jira, { on: true, site: v.site, email: v.email, filter: v.filter, name, limit: v.limit, goalType: v.goalType, goalValue: v.goalValue, tokenSaved: true });
     jira.label = $('jiraLabel').value.trim() || (was && !$('jiraLabel').dataset.touched ? jira.label : '') || name;
     if (changed) Object.assign(jira, { state: 'loading', count: null, okAt: null });
-    $('jiraSite').value = ''; $('jiraEmail').value = ''; $('jiraFilter').value = ''; $('jiraLabel').value = ''; $('jiraLimit').value = '';
-    ['jiraLabel', 'jiraLimit'].forEach(i => delete $(i).dataset.touched);
+    $('jiraSite').value = ''; $('jiraEmail').value = ''; $('jiraFilter').value = ''; $('jiraLabel').value = ''; $('jiraLimit').value = ''; $('jiraGoalValue').value = '';
+    $('jiraGoalType').value = '';
+    ['jiraLabel', 'jiraLimit', 'jiraGoalType', 'jiraGoalValue'].forEach(i => delete $(i).dataset.touched);
     $('jiraSite').placeholder = jira.site; $('jiraFilter').placeholder = jira.filter; $('jiraLabel').placeholder = jira.label; $('jiraLimit').placeholder = jira.limit == null ? 'None' : String(jira.limit);
     jiraMsg(`${was ? 'Saved.' : 'Saved. The Jira screen is now in the swipe order.'} Token saved.`);
     bump();
@@ -6179,14 +6201,15 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     render();
     updateJiraRemote();
   });
-  ['jiraLabel', 'jiraLimit'].forEach(i => $(i).addEventListener('input', () => { $(i).dataset.touched = '1'; }));
+  ['jiraLabel', 'jiraLimit', 'jiraGoalType', 'jiraGoalValue'].forEach(i => $(i).addEventListener('input', () => { $(i).dataset.touched = '1'; }));
   $('jiraRemove').addEventListener('click', () => {
     if (Date.now() - jiraRmAt > 4000) { jiraRmAt = Date.now(); $('jiraRemove').textContent = 'Tap again to remove'; setTimeout(() => { if (jira.on) $('jiraRemove').textContent = 'Remove'; }, 4000); return; }
     jiraRmAt = 0; clearTimeout(jiraTimer); jiraToken = '';
     const onIt = STATES[s.idx].id === 'jira';
-    Object.assign(jira, { on: false, site: '', email: '', filter: '', name: '', label: '', limit: null, tokenSaved: false, state: 'loading', count: null, okAt: null, tryAt: null });
+    Object.assign(jira, { on: false, site: '', email: '', filter: '', name: '', label: '', limit: null, goalType: 0, goalValue: 0, tokenSaved: false, state: 'loading', count: null, okAt: null, tryAt: null });
     if (onIt) s.idx = s.lastStatus;
-    ['jiraSite', 'jiraEmail', 'jiraFilter', 'jiraLabel', 'jiraLimit'].forEach(i => { $(i).value = ''; });
+    ['jiraSite', 'jiraEmail', 'jiraFilter', 'jiraLabel', 'jiraLimit', 'jiraGoalValue'].forEach(i => { $(i).value = ''; });
+    $('jiraGoalType').value = '';
     $('jiraSite').placeholder = 'https://yourteam.atlassian.net'; $('jiraFilter').placeholder = '10042'; $('jiraLabel').placeholder = "The filter's name"; $('jiraLimit').placeholder = 'None';
     $('jiraRemove').textContent = 'Remove';
     jiraMsg('Removed. The token and everything else about Jira are gone from MiniBar, and the screen is out of the swipe order.');

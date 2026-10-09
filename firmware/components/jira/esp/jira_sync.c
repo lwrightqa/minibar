@@ -15,6 +15,7 @@
  *
  * RAM only, never NVS: the filter's name, the screen's state and the back-off. The saved blob (jira_cfg_t) is unchanged.
  */
+#include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
@@ -126,18 +127,76 @@ static void post_view(void)
 
 /* ---------- NVS (the saved settings) ---------- */
 
+/* The blob saved before the goal fields: the same struct without goal_type and goal_value at its end. */
+#define JIRA_CFG_V1_BYTES  offsetof(jira_cfg_t, goal_type)
+
+/* The secrets (the token and the email) live in nvs_sec, namespace jirasec, under their own keys. */
+static bool sec_get(const char *key, char *out, size_t cap)
+{
+    nvs_handle_t h;
+    if (nvs_open_from_partition(NVS_SEC_PART, NVS_SEC_NS, NVS_READONLY, &h) != ESP_OK) return false;
+    size_t len = cap;
+    bool ok = nvs_get_str(h, key, out, &len) == ESP_OK;
+    nvs_close(h);
+    return ok;
+}
+
+/* An empty value erases the key. */
+static bool sec_set(const char *key, const char *value)
+{
+    nvs_handle_t h;
+    if (nvs_open_from_partition(NVS_SEC_PART, NVS_SEC_NS, NVS_READWRITE, &h) != ESP_OK) return false;
+    esp_err_t e = value[0] ? nvs_set_str(h, key, value) : nvs_erase_key(h, key);
+    if (e == ESP_ERR_NVS_NOT_FOUND) e = ESP_OK;
+    if (e == ESP_OK) e = nvs_commit(h);
+    nvs_close(h);
+    return e == ESP_OK;
+}
+
+/* The plain blob, with the secrets cleared first: they never go to the plain namespace. */
+static bool save_blob(const jira_cfg_t *cfg)
+{
+    jira_cfg_t plain = *cfg;
+    jira_wipe(plain.token, sizeof plain.token);
+    jira_wipe(plain.email, sizeof plain.email);
+    nvs_handle_t h;
+    if (nvs_open(NVS_NS, NVS_READWRITE, &h) != ESP_OK) return false;
+    bool ok = nvs_set_blob(h, NVS_CFG_KEY, &plain, sizeof plain) == ESP_OK && nvs_commit(h) == ESP_OK;
+    nvs_close(h);
+    jira_wipe(&plain, sizeof plain);
+    return ok;
+}
+
+/* True when the plain blob still held a token or email (saved before they moved to nvs_sec): migrate_secrets moves them. */
+static bool s_blob_had_secrets = false;
+
 static void read_nvs(void)
 {
     nvs_handle_t h;
     if (nvs_open(NVS_NS, NVS_READONLY, &h) != ESP_OK) return;
 
     size_t len = sizeof(s_cfg);
-    if (nvs_get_blob(h, NVS_CFG_KEY, &s_cfg, &len) != ESP_OK || len != sizeof(s_cfg)) {
+    memset(&s_cfg, 0, sizeof(s_cfg));
+    esp_err_t e = nvs_get_blob(h, NVS_CFG_KEY, &s_cfg, &len);
+    nvs_close(h);
+    if (e != ESP_OK || (len != sizeof(s_cfg) && len != JIRA_CFG_V1_BYTES)) {
         memset(&s_cfg, 0, sizeof(s_cfg));
         s_cfg.alert_above = -1;
+        return;
     }
+    /* The older blob ends before goal_type: the memset above leaves the goal at 0 (none). */
 
-    nvs_close(h);
+    s_blob_had_secrets = s_cfg.token[0] != '\0' || s_cfg.email[0] != '\0';
+    sec_get("token", s_cfg.token, sizeof s_cfg.token);     /* nvs_sec wins when it has a value */
+    sec_get("email", s_cfg.email, sizeof s_cfg.email);
+}
+
+/* A device saved before the token moved has it in the plain blob: copy it to nvs_sec, then rewrite the blob without it. */
+static void migrate_secrets(void)
+{
+    if (!s_blob_had_secrets) return;
+    if (sec_set("token", s_cfg.token) && sec_set("email", s_cfg.email)) save_blob(&s_cfg);
+    else ESP_LOGE(TAG, "could not move the saved token to nvs_sec");
 }
 
 /* ---------- the requests (task only) ---------- */
@@ -329,6 +388,7 @@ static void load_config(void)
     tb_jira_init(&s.view);
     s.test_count = -1;
     read_nvs();
+    migrate_secrets();
 
     if (s_cfg.site[0]) {
         tb_jira_configure(&s.view, s_cfg.label, s_cfg.alert_above, s_cfg.goal_type, s_cfg.goal_value);
@@ -379,15 +439,8 @@ jira_err_t jira_save(const jira_input_t *in)
     jira_err_t err = jira_resolve(&s_cfg, in, &new_cfg);
     if (err != JIRA_OK) return err;
 
-    nvs_handle_t h;
-    esp_err_t esp_err = nvs_open(NVS_NS, NVS_READWRITE, &h);
-    if (esp_err != ESP_OK) {
-        ESP_LOGE(TAG, "nvs open failed: %s", esp_err_to_name(esp_err));
-        return JIRA_OK;  /* pretend success to avoid blocking */
-    }
-
-    if (nvs_set_blob(h, NVS_CFG_KEY, &new_cfg, sizeof(new_cfg)) == ESP_OK &&
-        nvs_commit(h) == ESP_OK) {
+    /* The secrets go to nvs_sec first; the plain blob follows without them. */
+    if (sec_set("token", new_cfg.token) && sec_set("email", new_cfg.email) && save_blob(&new_cfg)) {
         ESP_LOGI(TAG, "config saved");
         /* The new settings are live: the screen follows them and a check (with the name) runs at once. */
         lock();
@@ -405,7 +458,6 @@ jira_err_t jira_save(const jira_input_t *in)
         ESP_LOGE(TAG, "save failed");
     }
 
-    nvs_close(h);
     return JIRA_OK;
 }
 
@@ -455,6 +507,8 @@ bool jira_remove(void)
     nvs_erase_key(h, NVS_CFG_KEY);
     nvs_commit(h);
     nvs_close(h);
+    sec_set("token", "");
+    sec_set("email", "");
 
     /* Gone: the screen leaves the swipe order (the app task takes it out), and any check in flight is thrown away. */
     lock();

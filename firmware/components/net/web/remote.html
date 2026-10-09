@@ -13,7 +13,7 @@
   Pairing (api.md 4; the mock-up's pairing round and its fix round): a 401 shows the pairing prompt in place of every
   control; the bar sets an HttpOnly cookie, so the page never sees the token. Every refusal on the prompt follows the
   bar (GET /api/v1/info every 2 s: pairing, pairing_seq, paired, wifi), Cancel takes the code off the bar (pair/cancel),
-  and the code this phone asked for survives a reload (sessionStorage) while it's still on the bar.
+  and the code this device asked for survives a reload (sessionStorage) while it's still on the bar.
   Times are shown in the bar's own time zone, and "ago" is worked out against the bar's clock.
   Mock-up-only parts left out: Demo speed, Simulate, "Fill in a sample", the mock-up notes.
 -->
@@ -126,7 +126,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
 .auto-banner b::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--c); flex: none; }
 .auto-banner small { font-size: 12px; color: var(--muted); }
 .auto-banner .btn { flex: none; }
-/* ---------- Pairing (the mock-up's pairing round): the prompt that replaces the controls until this phone is paired,
+/* ---------- Pairing (the mock-up's pairing round): the prompt that replaces the controls until this device is paired,
    and the Paired devices list. ---------- */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .pair-step { display: grid; gap: 10px; min-width: 0; }
@@ -163,6 +163,15 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
 .todo-item:hover { background: var(--line); }
 .todo-item input { margin: 0; width: 16px; height: 16px; accent-color: var(--state); cursor: pointer; }
 [hidden] { display: none !important; }
+/* Wide screens: the Remote's sections flow into two columns, and the pairing prompt stays narrow and centred.
+   Phones and narrow windows keep the single column above. */
+@media (min-width: 900px) {
+  .wrap { max-width: 1040px; }
+  #pairView { max-width: 520px; margin: 0 auto; }
+  #remoteMain { display: block; column-count: 2; column-gap: 28px; }
+  #remoteMain > * { break-inside: avoid; margin: 0 0 16px; }
+  #remoteMain > #pairedMsg { column-span: all; }
+}
 </style>
 </head>
 <body>
@@ -175,14 +184,14 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     <div class="offnote" id="offNote" role="status" hidden></div>
     <span class="sr-only" id="phoneSay" aria-live="polite"></span>
 
-    <!-- Until this phone is paired, this prompt replaces the Remote's controls (the bar answers 401). -->
+    <!-- Until this device is paired, this prompt replaces the Remote's controls (the bar answers 401). -->
     <div class="setup" id="pairView" hidden>
       <div class="setup-msg" id="pairNote" role="status" hidden></div>
       <div class="auto-card">
-        <div class="auto-head"><b id="pairTitle">Pair this phone</b></div>
+        <div class="auto-head"><b id="pairTitle">Pair this device</b></div>
         <div class="pair-step" id="pairStart">
-          <p id="pairIntro">MiniBar shows a 6-digit code on its screen. Type it here, and this phone becomes its Remote.</p>
-          <div><button class="btn" id="pairAsk" type="button" aria-describedby="pairAskErr">Pair this phone</button></div>
+          <p id="pairIntro">MiniBar shows a 6-digit code on its screen. Type it here, and this device becomes its Remote.</p>
+          <div><button class="btn" id="pairAsk" type="button" aria-describedby="pairAskErr">Pair this device</button></div>
           <p class="field-err" id="pairAskErr" hidden></p>
           <p class="note-small">Only someone who can see the bar can pair, so nobody else on the office Wi-Fi can change your status.</p>
         </div>
@@ -201,7 +210,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     </div>
 
     <div id="remoteMain" class="setup" hidden>
-      <div class="setup-msg ok" id="pairedMsg" role="status" hidden>Paired. This phone is MiniBar's Remote now.</div>
+      <div class="setup-msg ok" id="pairedMsg" role="status" hidden>Paired. This device is MiniBar's Remote now.</div>
       <div>
         <span class="field-label">Status</span>
         <div class="auto-banner" id="autoBanner" hidden>
@@ -438,7 +447,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
   let st = null, etag = '', fetchedAt = 0, skew = 0;   // status, its ETag, when it came (performance.now()), bar clock - ours
   let info = null, set = null, cal = null, cals = null; // GET info, settings, calendar (all as one), calendars (by id)
   let lastCalKey = '', lastRev = -1;
-  // paired: this phone's cookie works (GET /status answered 200); wasPaired: it did at some point on this page, so a
+  // paired: this device's cookie works (GET /status answered 200); wasPaired: it did at some point on this page, so a
   // later 401 means it was forgotten or removed, not that it never paired.
   let paired = false, wasPaired = false;
   const CAL_MAX = 3;
@@ -539,7 +548,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     $('jiraFilter').placeholder = on ? jira.filter_id : '10042';
     $('jiraLabel').placeholder = on ? jira.label : (jira.test && jira.test.filter_name) || "The filter's name";
     $('jiraLimit').placeholder = on && jira.alert_above != null ? String(jira.alert_above) : 'None';
-    if (on && jira.goal_type) $('jiraGoalType').value = jira.goal_type;
+    if (on && jira.goal_type) $('jiraGoalType').value = jira.goal_type === 1 ? 'target' : jira.goal_type === 2 ? 'reduce' : '';
     if (on && jira.goal_value != null) $('jiraGoalValue').placeholder = String(jira.goal_value);
   }
   // What the form sends: only what was typed (a blank keeps what is saved); the alert is sent when touched, empty clears it.
@@ -551,8 +560,8 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     if (v('jiraFilter')) b.filter_id = v('jiraFilter');
     if (v('jiraLabel')) b.label = v('jiraLabel');
     if ($('jiraLimit').dataset.touched) b.alert_above = v('jiraLimit') ? v('jiraLimit') : null;
-    if ($('jiraGoalType').dataset.touched) b.goal_type = v('jiraGoalType') ? v('jiraGoalType') : null;
-    if ($('jiraGoalValue').dataset.touched) b.goal_value = v('jiraGoalValue') ? v('jiraGoalValue') : null;
+    if ($('jiraGoalType').dataset.touched) b.goal_type = ({ target: 1, reduce: 2 })[v('jiraGoalType')] || 0;
+    if ($('jiraGoalValue').dataset.touched) b.goal_value = v('jiraGoalValue') ? Number(v('jiraGoalValue')) : 0;
     return b;
   }
   function jiraFieldError(r) {
@@ -683,7 +692,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
   }
 
   // ---------- Paired devices (GET /api/v1/clients) ----------
-  // This phone first, then the rest by when they were last used. Times are the bar's own, and "today" is its day. The
+  // This device first, then the rest by when they were last used. Times are the bar's own, and "today" is its day. The
   // list is redrawn only when its text changes, so focus stays put; Remove asks first, in place.
   const KIND_NAME = { mac: 'Mac app', remote: 'Remote', automation: 'Automation' };
   const SCOPE_NAME = { call: 'Calls only', full: 'Full control' };
@@ -725,11 +734,11 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     if (confirmId && !clients.some(c => c.token_id === confirmId)) confirmId = null;
     const list = [...clients].sort((a, b) => (b.self - a.self) || (usedAt(b) - usedAt(a)) || ((parse(b.paired_at) || 0) - (parse(a.paired_at) || 0)));
     const html = list.map(c => {
-      const open = confirmId === c.token_id, who = c.self ? 'this phone' : esc(c.name);
-      const q = c.self ? "Remove this phone? The Remote signs out here, and you'll need a code from MiniBar to use it again."
+      const open = confirmId === c.token_id, who = c.self ? 'this device' : esc(c.name);
+      const q = c.self ? "Remove this device? The Remote signs out here, and you'll need a code from MiniBar to use it again."
         : c.kind === 'mac' ? `Remove ${esc(c.name)}? It stops working over Wi-Fi until it pairs again. USB still works.`
         : `Remove ${esc(c.name)}? It can't change your status until it pairs again with a new code from the bar.`;
-      return `<li class="dev" data-id="${esc(c.token_id)}"><div class="dev-name"><span>${esc(c.name)}</span>${c.self ? '<span class="badge ok">This phone</span>' : ''}</div>`
+      return `<li class="dev" data-id="${esc(c.token_id)}"><div class="dev-name"><span>${esc(c.name)}</span>${c.self ? '<span class="badge ok">This device</span>' : ''}</div>`
         + (open ? '<span></span>' : `<button class="btn ghost sm" type="button" data-remove="${esc(c.token_id)}" aria-label="Remove ${who}">Remove</button>`)
         + `<div class="meta">${KIND_NAME[c.kind] || 'Device'} · ${SCOPE_NAME[c.scope] || esc(c.scope)}</div>`
         + `<div class="meta"><span>${pairedWhen(c)}</span> · <span>${usedWhen(c)}</span></div>`
@@ -739,7 +748,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     if (html !== devHtml) { devHtml = html; $('devList').innerHTML = html; }
     setText($('devFoot'), `${clients.length} of ${maxClients}. To forget them all at once, hold the bar's screen, then tap Wi-Fi › Devices. Over USB, your Mac needs no pairing.`);
   }
-  // Remove (DELETE /api/v1/clients/{token_id}, or /self for this phone): revoked at once, and the bar says "Removed Mac".
+  // Remove (DELETE /api/v1/clients/{token_id}, or /self for this device): revoked at once, and the bar says "Removed Mac".
   async function removeDevice(id) {
     const c = clients.find(x => x.token_id === id);
     if (!c) return;
@@ -747,7 +756,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     const r = await api('DELETE', c.self ? '/clients/self' : `/clients/${encodeURIComponent(id)}`);
     confirmId = null;
     if (c.self && (r.status === 200 || r.status === 401)) {
-      showPairing('This phone is signed out. Pair it again to use the Remote.');
+      showPairing('This device is signed out. Pair it again to use the Remote.');
       $('pairAsk').focus();
       phoneSay(phone.note);
       return;
@@ -779,16 +788,16 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
   });
 
   // ---------- pairing (api.md 4.6 to 4.9; the mock-up's prompt) ----------
-  // step: 'start' or 'code'; pid: the pairing_id of the code this phone asked for, while it may still be on the bar;
+  // step: 'start' or 'code'; pid: the pairing_id of the code this device asked for, while it may still be on the bar;
   // seq: that code's number (pairing_seq, api.md 4.6), which info carries while the code shows; codeUntil: when that
-  // code runs out (performance.now()); askErr: the refusal under Pair this phone ({error, until}); err: the reply
+  // code runs out (performance.now()); askErr: the refusal under Pair this device ({error, until}); err: the reply
   // about the code ({kind, left}); note: the line above the prompt; okUntil: "Paired." shows.
   const phone = { step: 'start', pid: null, seq: null, codeUntil: 0, askErr: null, err: null, note: '', okUntil: 0, trying: false };
-  // The code this phone asked for outlives a reload (or a phone's browser discarding the tab) in sessionStorage, so
+  // The code this device asked for outlives a reload (or a phone's browser discarding the tab) in sessionStorage, so
   // the prompt comes back to its field while that code is still on the bar, and Cancel can still take it off
-  // (decisions.md, Pairing: pressing Pair this phone again while its own code is up returns to the field). A per-tab
+  // (decisions.md, Pairing: pressing Pair this device again while its own code is up returns to the field). A per-tab
   // convenience only, wrapped in try/catch; the record names the bar (device_id) and the code (pairing_seq), so
-  // another bar's or another device's code is never taken for this phone's.
+  // another bar's or another device's code is never taken for this device's.
   const PAIR_KEY = 'tb_pair';
   function keepPair() {
     try {
@@ -803,20 +812,24 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     const left = k ? k.until - Date.now() : 0;
     const mine = k && info && k.device_id === info.device_id && info.pairing === 'showing' && left > 1000
       && (info.pairing_seq == null || info.pairing_seq === k.seq);
-    if (!mine) { keepPair(); return; }      // nothing of this phone's on the bar: a stale record goes
+    if (!mine) { keepPair(); return; }      // nothing of this device's on the bar: a stale record goes
     Object.assign(phone, { step: 'code', pid: k.pid, seq: k.seq, codeUntil: performance.now() + left, askErr: null, err: null, note: '' });
     $('pairInput').value = '';
     updatePhonePair();
   }
   // Screen readers hear each change of the prompt once, from this polite region.
   function phoneSay(text) { const el = $('phoneSay'); el.textContent = ''; setTimeout(() => { el.textContent = text; }, 30); }
-  // The Remote names itself after the kind of phone, when the browser says; otherwise it sends no name and the bar
-  // says "Phone" (decisions.md, Pairing).
+  // The Remote names itself after the device, when the browser says; otherwise it sends no name and the bar
+  // says "Device" (decisions.md, Pairing).
   function phoneName() {
     const ua = navigator.userAgent || '';
     if (/iPhone/.test(ua)) return 'iPhone';
     if (/iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'iPad';
-    if (/Android/.test(ua) && /Mobile/.test(ua)) return 'Android phone';
+    if (/Android/.test(ua)) return /Mobile/.test(ua) ? 'Android phone' : 'Android tablet';
+    if (/Macintosh/.test(ua)) return 'Mac';
+    if (/Windows/.test(ua)) return 'Windows PC';
+    if (/CrOS/.test(ua)) return 'Chromebook';
+    if (/Linux/.test(ua)) return 'Linux PC';
     return null;
   }
   const digitsOf = v => v.replace(/\D/g, '').slice(0, 6);
@@ -831,7 +844,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     switch (e.error) {
       case 'pairing_busy': return `Another device is pairing with this MiniBar. Try again in ${waitText(leftOf(e))}.`;
       case 'rate_limited': return `Too many tries. You can try again in ${waitText(leftOf(e))}.`;
-      case 'token_limit': return `${barName()} already has 10 paired devices. Remove one on a paired phone, or forget them all on MiniBar: hold its screen, then Wi-Fi, then Devices.`;
+      case 'token_limit': return `${barName()} already has 10 paired devices. Remove one on a paired device, or forget them all on MiniBar: hold its screen, then Wi-Fi, then Devices.`;
       case 'in_setup': return 'MiniBar is setting up Wi-Fi. Finish setup on the bar, then try again.';
       default: return `${barName()} didn't answer. Make sure it's on, then try again.`;
     }
@@ -852,14 +865,14 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     pairing_busy: i => i.pairing !== 'showing', rate_limited: i => i.pairing !== 'locked', in_setup: i => i.wifi !== 'setup',
     token_limit: i => (i.paired || 0) + (i.pairing === 'showing' ? 1 : 0) < 10, no_answer: () => true,
   };
-  // While the bar is busy or waiting, Pair this phone is dimmed but keeps its place in the tab order (aria-disabled),
+  // While the bar is busy or waiting, Pair this device is dimmed but keeps its place in the tab order (aria-disabled),
   // so a keyboard or screen reader user isn't thrown back to the top of the page; pressing it says the wait again.
   const askBlocked = () => !!phone.askErr && ['pairing_busy', 'rate_limited'].includes(phone.askErr.error);
   // Redraws the prompt from the state, in place, so typing in the field is never disturbed.
   function updatePhonePair() {
     $('pairedMsg').hidden = !(paired && phone.okUntil > Date.now());
-    setText($('pairedMsg'), `Paired. This phone is ${barName()}'s Remote now.`);
-    setText($('pairIntro'), `${barName()} shows a 6-digit code on its screen. Type it here, and this phone becomes its Remote.`);
+    setText($('pairedMsg'), `Paired. This device is ${barName()}'s Remote now.`);
+    setText($('pairIntro'), `${barName()} shows a 6-digit code on its screen. Type it here, and this device becomes its Remote.`);
     setText($('pairNote'), phone.note);
     $('pairNote').hidden = !phone.note;
     $('pairStart').hidden = phone.step !== 'start';
@@ -893,7 +906,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     $('pairView').hidden = false;
     updatePhonePair();
   }
-  // A 401: before pairing, the prompt; after it, this phone was forgotten on the bar (Forget all leaves none paired)
+  // A 401: before pairing, the prompt; after it, this device was forgotten on the bar (Forget all leaves none paired)
   // or removed on another phone.
   let losing = false;
   async function lost() {
@@ -905,12 +918,12 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     const r = await api('GET', '/info');
     losing = false;
     if (r.status === 200 && r.j) { info = r.j; head(); }
-    phone.note = r.j && r.j.paired === 0 ? 'MiniBar forgot this phone. Pair it again to use the Remote.'
-      : `This phone isn't paired with ${barName()} anymore. Pair it again to use the Remote.`;
+    phone.note = r.j && r.j.paired === 0 ? 'MiniBar forgot this device. Pair it again to use the Remote.'
+      : `This device isn't paired with ${barName()} anymore. Pair it again to use the Remote.`;
     updatePhonePair();
     phoneSay(phone.note);
   }
-  // Pair this phone (and Show a new code): asks the bar for a code. Pressed again while this phone's own code may still
+  // Pair this device (and Show a new code): asks the bar for a code. Pressed again while this device's own code may still
   // be on the bar, it goes back to that code instead of calling it busy.
   async function phoneAsk() {
     if (phone.pid && phone.codeUntil > performance.now() && !deadErr()) {
@@ -957,7 +970,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
       await poll();
       loadDevices();
       setTimeout(updatePhonePair, 6100);
-      phoneSay(`Paired. This phone is ${barName()}'s Remote now.`);
+      phoneSay(`Paired. This device is ${barName()}'s Remote now.`);
       return;
     }
     const j = r.j || {};
@@ -969,7 +982,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     if (phone.err.kind === 'wrong' || phone.err.kind === 'noanswer') $('pairInput').focus(); else $('pairNew').focus();
     phoneSay(PAIR_ERR[phone.err.kind](phone.err));
   }
-  // Every 2 s while the prompt shows: the refusals and the code follow the bar. A code this phone is waiting on that's
+  // Every 2 s while the prompt shows: the refusals and the code follow the bar. A code this device is waiting on that's
   // gone from the bar (run out, or canceled there) replaces whatever the prompt said about it, even when the next
   // device's code took its place within the poll (pairing_seq tells them apart, as the mock-up's remotePoll() compares
   // pair.id === phone.pid); once the bar answers again with the code still up, "didn't answer" goes.
@@ -1010,7 +1023,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
   });
   $('pairInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); phoneTry(); } });
   $('pairGo').addEventListener('click', phoneTry);
-  // Cancel goes back to the start and takes this phone's code off the bar (pair/cancel), so it doesn't block anyone
+  // Cancel goes back to the start and takes this device's code off the bar (pair/cancel), so it doesn't block anyone
   // else; the bar says "Pairing canceled". If the code is already gone, there's nothing to tell the bar.
   $('pairCancel').addEventListener('click', async () => {
     const pid = phone.pid;
@@ -1631,7 +1644,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     await loadInfo();
     const r = await api('GET', '/status');     // a 401 shows the pairing prompt (lost())
     if (r.status === 200 && r.j) { gotStatus(r.j, r.etag); showMain(); loadDevices(); loadTodo(); }
-    else if (!paired && !$('pairView').hidden) restorePair();   // back to this phone's own code, if it's still on the bar
+    else if (!paired && !$('pairView').hidden) restorePair();   // back to this device's own code, if it's still on the bar
   }
   start();
 })();
