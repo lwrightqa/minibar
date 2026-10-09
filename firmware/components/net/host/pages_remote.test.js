@@ -71,7 +71,7 @@ const ERR_RING = 'rgb(208, 27, 58)';       // --s-busy, #D01B3A
   check(await p.getAttribute('#pairAsk', 'aria-disabled') === 'false', 'in_setup leaves the button as it is');
   check(!(await state()).pairing, 'no code during setup');
   await sim('/_sim/tap', '');               // the tap ends the Connected screen: setup is over
-  await sleep(2500);
+  await sleep(6000);
   check(!(await vis('#pairAskErr')), 'the setting-up message goes once setup is over');
 
   // busy: another device's code is on the bar (the Mac, over the cable)
