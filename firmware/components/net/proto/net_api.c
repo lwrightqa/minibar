@@ -688,6 +688,7 @@ static void add_settings(rt_t *r)
     cJSON_AddNumberToObject(d, "brightness", s->display.brightness);
     cJSON_AddStringToObject(d, "time_format", s->more.time_24h ? "24h" : "12h");
     cJSON_AddStringToObject(d, "clock_color", STATUS_IDS[s->clock_color < TB_ST_COUNT ? s->clock_color : TB_ST_CLOCK]);
+    cJSON_AddStringToObject(d, "theme", s->theme == TB_THEME_PIXEL ? "pixel" : "bold");
     cJSON *snd = cJSON_AddObjectToObject(so, "sound");
     cJSON_AddBoolToObject(snd, "meeting_chime", s->more.meeting_chime);
     cJSON *au = cJSON_AddObjectToObject(so, "automatic");
@@ -1152,6 +1153,14 @@ static void h_settings_patch(rt_t *r, cJSON *b)
         }
         p.v.clock_color = (uint8_t)id;
         p.has_clock_color = true;
+    }
+    const cJSON *th = item(di, "theme");
+    if (th) {
+        /* "bold" (Bold Signal, the default) or "pixel" (Low Glare Pixel). */
+        if (cJSON_IsString(th) && !strcmp(th->valuestring, "bold")) p.v.theme = TB_THEME_BOLD;
+        else if (cJSON_IsString(th) && !strcmp(th->valuestring, "pixel")) p.v.theme = TB_THEME_PIXEL;
+        else { bad_value(r, "display.theme", "display.theme must be \"bold\" or \"pixel\"."); return; }
+        p.has_theme = true;
     }
     const cJSON *nm = item(de, "name");
     if (nm) {

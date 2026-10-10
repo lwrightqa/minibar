@@ -42,6 +42,7 @@ void tb_settings_defaults(tb_settings_t *s, const char *device_id)
     s->more.time_24h = false;           /* 12-hour, today's behavior */
     s->more.meeting_chime = true;
     s->clock_color = TB_ST_CLOCK;       /* the Clock screen's own dark surface */
+    s->theme = TB_THEME_BOLD;
 }
 
 bool tb_settings_migrate_name(tb_settings_t *s, const char *device_id)
@@ -71,7 +72,9 @@ bool tb_settings_unpack(tb_settings_t *out, const void *blob, size_t n)
     if (version != TB_SETTINGS_VERSION) return false;
     size_t full = TB_SETTINGS_BLOB_HEADER + sizeof(tb_settings_t);
     size_t prev = TB_SETTINGS_BLOB_HEADER + offsetof(tb_settings_t, clock_color);   /* 1.0.9 to 1.0.11 */
-    if (n == full || n == prev) {
+    /* 1.0.12: the struct as it ended before theme, rounded up to the struct's 4-byte alignment (144 bytes). */
+    size_t prev_theme = TB_SETTINGS_BLOB_HEADER + ((offsetof(tb_settings_t, clock_color) + 1 + 3) & ~(size_t)3);
+    if (n == full || n == prev || n == prev_theme) {
         /* Copy what the blob has; a shorter one keeps the defaults for the rest (clock_color). */
         unsigned char t24 = b[TB_SETTINGS_BLOB_HEADER + offsetof(tb_settings_t, more.time_24h)];
         unsigned char chime = b[TB_SETTINGS_BLOB_HEADER + offsetof(tb_settings_t, more.meeting_chime)];
@@ -115,6 +118,7 @@ tb_err_t tb_settings_check(const tb_settings_patch_t *p, bool calendar_saved, co
         if (n < 1 || n > TB_TZ_NAME_BYTES - 1) BAD("device.time_zone");
     }
     if (p->has_clock_color && p->v.clock_color >= TB_ST_JIRA) BAD("display.clock_color");
+    if (p->has_theme && p->v.theme >= TB_THEME_COUNT) BAD("display.theme");
     if (p->has_calendar && p->v.automatic.calendar && !calendar_saved) {
         f = "automatic.calendar";
         err = TB_E_NO_CALENDAR;
@@ -150,6 +154,7 @@ void tb_settings_apply(tb_settings_t *s, const tb_settings_patch_t *p)
     if (p->has_time_24h) s->more.time_24h = p->v.more.time_24h;
     if (p->has_meeting_chime) s->more.meeting_chime = p->v.more.meeting_chime;
     if (p->has_clock_color) s->clock_color = p->v.clock_color;
+    if (p->has_theme) s->theme = p->v.theme;
 }
 
 static bool clamp_u8(uint8_t *v, int lo, int hi, int def)
@@ -177,6 +182,10 @@ bool tb_settings_sanitize(tb_settings_t *s)
         s->clock_color = TB_ST_CLOCK;
         changed = true;
     }
+    if (s->theme >= TB_THEME_COUNT) {
+        s->theme = TB_THEME_BOLD;
+        changed = true;
+    }
     s->device.name[sizeof(s->device.name) - 1] = '\0';
     s->device.time_zone[sizeof(s->device.time_zone) - 1] = '\0';
     return changed;
@@ -192,5 +201,5 @@ bool tb_settings_equal(const tb_settings_t *a, const tb_settings_t *b)
            a->automatic.mac == b->automatic.mac && a->automatic.meeting_titles == b->automatic.meeting_titles &&
            !strcmp(a->device.name, b->device.name) && !strcmp(a->device.time_zone, b->device.time_zone) &&
            a->more.time_24h == b->more.time_24h && a->more.meeting_chime == b->more.meeting_chime &&
-           a->clock_color == b->clock_color;
+           a->clock_color == b->clock_color && a->theme == b->theme;
 }

@@ -309,6 +309,13 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
             <div class="swatches" id="clockSwatches" role="group" aria-labelledby="lDisplay lClockColor" aria-describedby="clockLine"></div>
           </div>
           <p class="note-small" id="clockLine">The Clock screen takes this color on the bar. Pomodoro shows as its focus orange. The other statuses keep their own colors.</p>
+          <div class="setting">
+            <span id="lTheme">Theme</span>
+            <div class="seg" id="themeSeg" role="group" aria-labelledby="lDisplay lTheme" aria-describedby="themeLine">
+              <button type="button" data-v="bold" aria-pressed="true">Bold Signal</button><button type="button" data-v="pixel" aria-pressed="false">Low Glare Pixel</button>
+            </div>
+          </div>
+          <p class="note-small" id="themeLine">Bold Signal fills the screen with the status color. Low Glare Pixel is dark, with the color in the words and a thin edge, so it gives off less light.</p>
           <label class="check" for="meetChime"><input type="checkbox" id="meetChime" aria-describedby="chimeLine"> Meeting chime</label>
           <p class="note-small" id="chimeLine" style="margin:0">A soft chime and one flash when a calendar meeting starts. It's quiet during calls and other meetings, and while you're Away, and then it only flashes. Off turns both off.</p>
         </div>
@@ -1188,7 +1195,7 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
       $('pSound').checked = set.pomodoro.chime;
       $('pTick').checked = set.pomodoro.ticking;
       pickSeg($('tickSeg'), set.pomodoro.tick_volume);
-      if (set.display) { pickSeg($('timeSeg'), set.display.time_format); pickSeg($('clockSwatches'), set.display.clock_color); }
+      if (set.display) { pickSeg($('timeSeg'), set.display.time_format); pickSeg($('clockSwatches'), set.display.clock_color); pickSeg($('themeSeg'), set.display.theme); }
       if (set.sound) $('meetChime').checked = set.sound.meeting_chime;
       // The volume choice is dimmed and disabled while ticking is off, so it never reads as "ticking at Soft".
       $('tickSeg').querySelectorAll('button').forEach(b => { b.disabled = !set.pomodoro.ticking; });
@@ -1313,6 +1320,13 @@ details.help ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: v
     b.setAttribute('aria-label', s.name);
     b.style.background = `var(--s-${s.id === 'pomodoro' ? 'focus' : s.id})`;
     $('clockSwatches').appendChild(b);
+  });
+  // Theme (display.theme): the bar's look. The Remote keeps its own look either way.
+  $('themeSeg').addEventListener('click', async e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    const r = await patch({ display: { theme: b.dataset.v } });
+    if (r.status === 200) phoneSay(`Theme · ${b.textContent}`);
   });
   $('clockSwatches').addEventListener('click', async e => {
     const b = e.target.closest('button');

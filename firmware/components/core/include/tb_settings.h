@@ -49,7 +49,15 @@ typedef struct {
     } more;
     /* Added after 1.0.11, after `more`: a 1.0.9 to 1.0.11 blob is a prefix of this struct and keeps the default. */
     uint8_t clock_color;        /* display.clock_color: a tb_status_t, TB_ST_AVAILABLE to TB_ST_CLOCK; default TB_ST_CLOCK */
+    /* Added after clock_color (the Low Glare Pixel theme). _Alignas(4) puts it past the 144 bytes a 1.0.12 blob holds, so
+     * this firmware's blob is larger and the byte is never read out of a 1.0.12 blob's padding (see tb_settings_unpack). */
+    _Alignas(4) uint8_t theme;  /* display.theme: TB_THEME_BOLD or TB_THEME_PIXEL; default TB_THEME_BOLD */
 } tb_settings_t;
+
+/* The look of the bar (decisions.md "Look"): Bold Signal, or Low Glare Pixel (Handjet). */
+#define TB_THEME_BOLD   0
+#define TB_THEME_PIXEL  1
+#define TB_THEME_COUNT  2
 
 /* A PATCH: only the fields with has_* set change (api.md 10.2). net fills it from the JSON body. */
 typedef struct {
@@ -58,7 +66,7 @@ typedef struct {
     bool has_brightness;
     bool has_calendar, has_mac, has_meeting_titles;
     bool has_name, has_time_zone;
-    bool has_time_24h, has_meeting_chime, has_clock_color;
+    bool has_time_24h, has_meeting_chime, has_clock_color, has_theme;
     tb_settings_t v;    /* the new values, read only where has_* is set */
 } tb_settings_patch_t;
 
