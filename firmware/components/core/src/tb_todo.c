@@ -75,6 +75,68 @@ static bool parse_line(const char *line, bool *done)
     return true;
 }
 
+/* Copy s (at most n bytes, cut on a UTF-8 character boundary) into out. */
+static void copy_chars(char *out, size_t cap, const char *s, size_t n)
+{
+    if (cap == 0) return;
+    if (n > cap - 1) n = cap - 1;
+    while (n > 0 && ((unsigned char)s[n] & 0xC0) == 0x80) n--;   /* don't split a character (n <= strlen(s)) */
+    memcpy(out, s, n);
+    out[n] = '\0';
+}
+
+/* The number of UTF-8 characters in s[0..n). */
+static size_t chars_in(const char *s, size_t n)
+{
+    size_t c = 0;
+    for (size_t i = 0; i < n; i++) if (((unsigned char)s[i] & 0xC0) != 0x80) c++;
+    return c;
+}
+
+bool tb_todo_split_line(const char *line, char *short_name, size_t short_cap, char *task, size_t task_cap)
+{
+    if (!line || !parse_line(line, NULL)) return false;
+    const char *text = line + 4;                         /* after "[ ] " */
+    const char *bar = strchr(text, '|');
+    if (bar) {
+        /* The short name: the text before the "|", trimmed, cut to TB_TODO_SHORT_CHARS characters. */
+        const char *name_end = bar;
+        const char *name = text;
+        while (name < name_end && *name == ' ') name++;
+        while (name_end > name && name_end[-1] == ' ') name_end--;
+        size_t n = (size_t)(name_end - name);
+        if (n > 0) {                                             /* an empty name falls back to the words below */
+            while (chars_in(name, n) > TB_TODO_SHORT_CHARS) {    /* cut by characters, not bytes */
+                n--;
+                while (n > 0 && ((unsigned char)name[n] & 0xC0) == 0x80) n--;
+            }
+            copy_chars(short_name, short_cap, name, n);
+            const char *rest = bar + 1;
+            while (*rest == ' ') rest++;
+            copy_chars(task, task_cap, rest, strlen(rest));
+            return true;
+        }
+    }
+    /* No name before a "|": the first two words of the task, cut as above. */
+    const char *p = bar ? bar + 1 : text;
+    while (*p == ' ') p++;
+    const char *w = p;
+    int words = 0;
+    while (*w && words < 2) {
+        while (*w && *w != ' ') w++;
+        words++;
+        if (*w == ' ' && words < 2) w++;
+    }
+    size_t n = (size_t)(w - p);
+    while (chars_in(p, n) > TB_TODO_SHORT_CHARS) {
+        n--;
+        while (n > 0 && ((unsigned char)p[n] & 0xC0) == 0x80) n--;
+    }
+    copy_chars(short_name, short_cap, p, n);
+    copy_chars(task, task_cap, text, strlen(text));
+    return true;
+}
+
 int tb_todo_next_incomplete(const char *list)
 {
     if (!list || *list == '\0') return -1;

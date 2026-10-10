@@ -177,3 +177,70 @@ TB_TEST(validate_with_comments)
     int result = tb_todo_validate(list);
     TB_EQ_INT(result, 0);
 }
+
+/* ======================================================================================================== */
+/* tb_todo_split_line: "[ ] Name | Task" gives the short name and the task; no "|" takes the first two words */
+/* ======================================================================================================== */
+
+TB_TEST(split_with_bar)
+{
+    char name[64], task[256];
+    TB_TRUE(tb_todo_split_line("[ ] Budget | Send the budget draft to Priya", name, sizeof name, task, sizeof task));
+    TB_EQ_STR(name, "Budget");
+    TB_EQ_STR(task, "Send the budget draft to Priya");
+}
+
+TB_TEST(split_trims_spaces_around_bar)
+{
+    char name[64], task[256];
+    TB_TRUE(tb_todo_split_line("[x]   Jira   |   Review the notes  ", name, sizeof name, task, sizeof task));
+    TB_EQ_STR(name, "Jira");
+    TB_EQ_STR(task, "Review the notes  ");
+}
+
+TB_TEST(split_no_bar_takes_two_words)
+{
+    char name[64], task[256];
+    TB_TRUE(tb_todo_split_line("[ ] Send the budget draft", name, sizeof name, task, sizeof task));
+    TB_EQ_STR(name, "Send the");
+    TB_EQ_STR(task, "Send the budget draft");
+}
+
+TB_TEST(split_single_word)
+{
+    char name[64], task[256];
+    TB_TRUE(tb_todo_split_line("[ ] Sleep", name, sizeof name, task, sizeof task));
+    TB_EQ_STR(name, "Sleep");
+    TB_EQ_STR(task, "Sleep");
+}
+
+TB_TEST(split_empty_name_falls_back_to_words)
+{
+    char name[64], task[256];
+    TB_TRUE(tb_todo_split_line("[ ] | Book the room", name, sizeof name, task, sizeof task));
+    TB_EQ_STR(name, "Book the");
+}
+
+TB_TEST(split_cuts_name_to_18_characters)
+{
+    char name[64], task[256];
+    TB_TRUE(tb_todo_split_line("[ ] Reviewing the quarterly budget forecast | x", name, sizeof name, task, sizeof task));
+    TB_TRUE(strlen(name) <= 18);
+    TB_EQ_STR(name, "Reviewing the quar");
+}
+
+TB_TEST(split_cuts_by_characters_not_bytes)
+{
+    char line[256] = "[ ] ", name[64], task[256];
+    for (int i = 0; i < 25; i++) strcat(line, "é");   /* 25 "é" (2 bytes each) */
+    strcat(line, " | x");
+    TB_TRUE(tb_todo_split_line(line, name, sizeof name, task, sizeof task));
+    TB_EQ_INT((int)strlen(name), 36);   /* 18 characters, 2 bytes each: never cut in the middle of a character */
+}
+
+TB_TEST(split_rejects_non_task_lines)
+{
+    char name[64], task[256];
+    TB_TRUE(!tb_todo_split_line("Not a task | x", name, sizeof name, task, sizeof task));
+    TB_TRUE(!tb_todo_split_line("", name, sizeof name, task, sizeof task));
+}

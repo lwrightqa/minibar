@@ -54,6 +54,13 @@ int tb_todo_save(const char *list);
  */
 int tb_todo_validate(const char *list);
 
+/* The short name and the full task of one line ("[ ] Budget | Send the draft"). A short name is the text before a "|",
+ * trimmed and cut to TB_TODO_SHORT_CHARS characters; a line with no "|" uses its first two words. The task is the text
+ * after the "|" (or after the brackets when there's none). Both are NUL-terminated and cut to fit their buffers.
+ * Returns false when the line isn't a task line. */
+#define TB_TODO_SHORT_CHARS 18
+bool tb_todo_split_line(const char *line, char *short_name, size_t short_cap, char *task, size_t task_cap);
+
 /* Clear the todo list from NVS. */
 void tb_todo_clear(void);
 
