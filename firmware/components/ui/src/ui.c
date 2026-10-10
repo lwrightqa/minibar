@@ -736,7 +736,8 @@ static void put_view(const ui_view_t *v, tb_ms_t now)
 {
     bool has_side = v->layout == UI_LAYOUT_STATUS || v->layout == UI_LAYOUT_ALARM || v->layout == UI_LAYOUT_MESSAGE;
     lv_color_t sc = status_color(v->key);
-    set_bg(U.field, sc);
+    /* Bold Signal fills the field with the status color; Low Glare Pixel keeps it dark (its status color is the words). */
+    set_bg(U.field, ui_pal->field_is_status ? sc : rgb(UI_COLOR_DARK));
     set_size(U.field, has_side ? UI_MAIN_X1 : UI_W, UI_H);
     s_n_need = 0;
     if (has_side) {
@@ -1083,8 +1084,53 @@ void ui_refresh(void)
     U.have_key = false;
 }
 
+/* The colors set once at start-up (ui_init) take the palette in use again after a theme switch; the view then redraws
+ * everything else. */
+static void lv_lbl_color(lv_obj_t *label, uint32_t color)
+{
+    lv_obj_set_style_text_color(label, rgb(color), 0);
+}
+
+static void apply_palette(void)
+{
+    lv_obj_set_style_bg_color(U.scr, rgb(UI_COLOR_DARK), 0);
+    lv_obj_set_style_bg_color(U.field, rgb(UI_COLOR_DARK), 0);
+    lv_obj_set_style_bg_color(U.side, rgb(UI_COLOR_DARK), 0);
+    lv_obj_set_style_bg_color(U.bar, rgb(UI_COLOR_DARK), 0);
+    lv_obj_set_style_bg_color(U.menu, rgb(UI_COLOR_DARK), 0);
+    lv_obj_set_style_bg_color(U.hold, rgb(UI_COLOR_DARK), 0);
+    lv_obj_set_style_bg_color(U.dark, rgb(UI_COLOR_DARK), 0);
+    lv_obj_set_style_border_color(U.tag, rgb(UI_COLOR_MUTED), 0);
+    lv_lbl_color(U.chip_label, UI_COLOR_TEXT);
+    lv_lbl_color(U.kicker, UI_COLOR_TEXT);
+    lv_lbl_color(U.head, UI_COLOR_TEXT);
+    lv_lbl_color(U.head_ampm, UI_COLOR_TEXT);
+    lv_lbl_color(U.sub, UI_COLOR_TEXT);
+    lv_lbl_color(U.marquee_label, UI_COLOR_TEXT);
+    lv_lbl_color(U.sys_time, UI_COLOR_TEXT);
+    lv_lbl_color(U.pill_label, UI_COLOR_TEXT);
+    lv_lbl_color(U.label, UI_COLOR_MUTED);
+    lv_lbl_color(U.tag_label, UI_COLOR_MUTED);
+    lv_lbl_color(U.value, UI_COLOR_TEXT);
+    lv_lbl_color(U.value_ampm, UI_COLOR_TEXT);
+    lv_lbl_color(U.foot, UI_COLOR_MUTED);
+    for (int i = 0; i < 2; i++) lv_lbl_color(U.step_num[i], UI_COLOR_TEXT);
+    lv_lbl_color(U.step1_pre, UI_COLOR_TEXT);
+    lv_lbl_color(U.step1_bold, UI_COLOR_TEXT);
+    lv_lbl_color(U.step1_post, UI_COLOR_TEXT);
+    lv_lbl_color(U.step2, UI_COLOR_TEXT);
+    lv_lbl_color(U.toast_label, UI_COLOR_TEXT);
+}
+
 void ui_update(const tb_app_t *a, const tb_clock_t *now)
 {
+    /* The saved theme picks the palette at draw time; a change repaints every screen. */
+    const ui_palette_t *pal = a->set.theme == TB_THEME_PIXEL ? &UI_PALETTE_PIXEL : &UI_PALETTE_BOLD;
+    if (pal != ui_pal) {
+        ui_pal = pal;
+        apply_palette();
+        U.have_key = false;
+    }
     uint64_t key = ui_view_key(a, now);
     ui_overlay_t ov;
     ui_overlay_build(a, now, &ov);

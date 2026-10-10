@@ -16,19 +16,35 @@ extern "C" {
 #endif
 
 /* ---------- Colors (0xRRGGBB) ---------- */
-/* Status fields, by tb_color_key_t. White text on each is 4.91:1 or better. */
-extern const uint32_t UI_STATUS_COLOR[TB_KEY_COUNT];
-/* Info column tints: the status color about 24% toward black (lv_color_darken(status, 61)). The clock's column is a
- * raised panel, lighter than its field. Setup has no column. */
-extern const uint32_t UI_TINT_COLOR[TB_KEY_COUNT];
-#define UI_COLOR_TEXT        0xFFFFFF   /* all text on a status field, at full opacity */
-#define UI_COLOR_MUTED       0xDFE5EA   /* only on the tint and on dark surfaces */
-#define UI_COLOR_DARK        0x0E1013   /* Clock field, menus, hold screen */
-#define UI_COLOR_TILE        0x1C1F24
-#define UI_COLOR_TILE_DONE   0xE8EBEE
-#define UI_COLOR_TILE_DONE_TEXT 0x4A525C
-#define UI_COLOR_TOAST       0x1C1F24
-#define UI_COLOR_TOAST_EDGE  0x4A515C   /* 1 px inset edge, so a toast shows on the clock's near-black */
+/* One look's colors. The screens read the palette in use (ui_pal) at draw time, so a theme switch changes every
+ * screen without a reboot. Bold Signal and Low Glare Pixel are defined in ui_theme.c. */
+typedef struct {
+    uint32_t status[TB_KEY_COUNT];  /* the status color, by tb_color_key_t */
+    uint32_t tint[TB_KEY_COUNT];    /* the info column's color, by tb_color_key_t */
+    uint32_t text;                  /* text on the status field, at full opacity */
+    uint32_t muted;                 /* small text on the tint and on dark surfaces */
+    uint32_t dark;                  /* the clock's field, menus, hold screen */
+    uint32_t tile;
+    uint32_t tile_done;
+    uint32_t tile_done_text;
+    uint32_t toast;
+    uint32_t toast_edge;            /* 1 px inset edge, so a toast shows on dark surfaces */
+    bool field_is_status;           /* Bold Signal: the status color fills the field. Low Glare Pixel: the field is dark */
+} ui_palette_t;
+extern const ui_palette_t UI_PALETTE_BOLD;
+extern const ui_palette_t UI_PALETTE_PIXEL;
+extern const ui_palette_t *ui_pal;   /* the palette in use: set by ui_update from the saved theme */
+
+#define UI_STATUS_COLOR      (ui_pal->status)
+#define UI_TINT_COLOR        (ui_pal->tint)
+#define UI_COLOR_TEXT        (ui_pal->text)
+#define UI_COLOR_MUTED       (ui_pal->muted)
+#define UI_COLOR_DARK        (ui_pal->dark)
+#define UI_COLOR_TILE        (ui_pal->tile)
+#define UI_COLOR_TILE_DONE   (ui_pal->tile_done)
+#define UI_COLOR_TILE_DONE_TEXT (ui_pal->tile_done_text)
+#define UI_COLOR_TOAST       (ui_pal->toast)
+#define UI_COLOR_TOAST_EDGE  (ui_pal->toast_edge)
 #define UI_PROGRESS_DARKEN   90         /* track = lv_color_darken(status, 90); fill white */
 #define UI_TINT_DARKEN       61
 
