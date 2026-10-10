@@ -307,3 +307,18 @@ TB_TEST(chime_from_the_remote_toasts_and_never_sounds)
     TB_EQ_INT(tb_app_remote_settings(&b->a, &p, NULL, &b->now), TB_OK);
     TB_EQ_STR(b->a.toast, "");                           /* the value it already has: no toast */
 }
+
+TB_TEST(theme_from_the_remote_changes_the_setting_and_toasts)
+{
+    bench_t *b = bench_new();
+    TB_EQ_INT(b->a.set.theme, TB_THEME_BOLD);
+    tb_settings_patch_t p = {0};
+    p.has_theme = true;
+    p.v.theme = TB_THEME_PIXEL;
+    TB_EQ_INT(tb_app_remote_settings(&b->a, &p, NULL, &b->now), TB_OK);
+    TB_EQ_INT(b->a.set.theme, TB_THEME_PIXEL);
+    TB_EQ_STR(b->a.toast, "Theme Â· Low Glare Pixel");
+    p.v.theme = TB_THEME_BOLD;
+    TB_EQ_INT(tb_app_remote_settings(&b->a, &p, NULL, &b->now), TB_OK);
+    TB_EQ_INT(b->a.set.theme, TB_THEME_BOLD);
+}

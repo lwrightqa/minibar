@@ -1838,6 +1838,11 @@ tb_err_t tb_app_remote_settings(tb_app_t *a, const tb_settings_patch_t *p, const
         tb_bump(a);
         toastf(a, now, "Clock color \xC2\xB7 %s", tb_status_name(a->set.clock_color));
     }
+    if (p->has_theme && want.theme != a->set.theme) {
+        a->set.theme = want.theme;                  /* the palette changes on the next ui_update */
+        tb_bump(a);
+        toastf(a, now, "Theme Â· %s", a->set.theme == TB_THEME_PIXEL ? "Low Glare Pixel" : "Bold Signal");
+    }
     if (p->has_name) tb_strlcpy(a->set.device.name, want.device.name, sizeof(a->set.device.name));
     if (p->has_time_zone) tb_strlcpy(a->set.device.time_zone, want.device.time_zone, sizeof(a->set.device.time_zone));
     if (p->has_meeting_titles) {
