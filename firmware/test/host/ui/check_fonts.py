@@ -29,6 +29,8 @@ EXPECT = {
     'ui_font_value_46': ('set', set(range(0x30, 0x3B)) | {0x20} | set(range(0x41, 0x5B)) | {ord('h'), ord('m')}),
     'ui_font_ampm_36': ('set', {ord(c) for c in 'AMP'}), 'ui_font_ampm_17': ('set', {ord(c) for c in 'AMP'}),
     'ui_font_step_16': ('set', set(range(0x20, 0x7F))), 'ui_font_step_16b': ('set', {ord(c) for c in 'MiniBar-Setup'}),
+    # Low Glare Pixel's 17 px Handjet (Snap17): the same drawable set as the Bold Signal fonts, one copy for the pixel theme.
+    'ui_font_pixel_snap_17': ('full', None),
 }
 PROPORTIONAL = {'ui_font_head_100', 'ui_font_head_78', 'ui_font_head_62'}
 
