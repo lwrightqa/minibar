@@ -19,6 +19,7 @@
 ## Someday
 
 - [ ] **Calendar host test** - `merge_trims_to_keep_over_ones_first` fails on `main`
+- [ ] **Jira progress line chart** - show a line chart next to the Jira tickets with the ups and downs of progress
 - [ ] **Cold icon** - no cold-weather icon yet
 - [ ] **Encrypt nvs_sec** - needs an eFuse key (see ARCHITECTURE.md "Secrets")
 - [ ] **Delete old branches** - `low-glare-pixel-theme`, `jira-secrets-and-remote-copy`, `backup/wip-before-split` once merged
