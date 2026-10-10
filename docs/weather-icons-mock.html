@@ -1,0 +1,152 @@
+<!doctype html><html><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
+<title>Weather icon indicators</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Handjet:wght@400..800&display=swap">
+<style>
+body{margin:0;background:#eceef1;color:#15181c;font:15px/1.5 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;padding:24px}
+h1{font-size:20px;margin:0 0 4px} h2{font-size:15px;margin:22px 0 8px} p{margin:0 0 12px;color:#5a636e;font-size:14px;max-width:70ch}
+.picks{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 4px}
+.picks button{font:inherit;font-size:13px;padding:6px 10px;border-radius:8px;border:1px solid #d4d9df;background:transparent;color:inherit;cursor:pointer}
+.picks button[aria-pressed="true"]{background:#15181c;color:#eceef1}
+.screen{position:relative;width:640px;height:172px;overflow:hidden;border-radius:8px;background:#111110;color:#e2ddd3;max-width:100%;font-family:Handjet,monospace}
+.abs{position:absolute}
+.kick{font-size:17px;line-height:1.1;color:#9a948a;letter-spacing:.06em;text-transform:uppercase}
+.temp{font-size:110px;line-height:1}
+.hl{font-size:24px;line-height:1.1;color:#9a948a}
+.ico{image-rendering:pixelated}
+.tint{background:#1c1b19}
+.lab{font-size:17px;color:#9a948a;text-transform:uppercase;letter-spacing:.06em}
+
+/* Icon motion: stepped, so it reads as pixel animation. One motion per state. */
+.a-nice{animation:a-pulse 2s steps(2) infinite}
+.a-rain{animation:a-bob 1s steps(2) infinite}
+.a-night{animation:a-float 3s steps(4) infinite}
+.a-hot{animation:a-shimmer .6s steps(2) infinite}
+.a-snow{animation:a-sway 2.5s steps(4) infinite}
+.a-storm{animation:a-flash 1.2s steps(1) infinite}
+.a-meh{animation:a-drift 4s steps(4) infinite}
+@keyframes a-pulse{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
+@keyframes a-bob{0%{transform:translateY(0)}50%{transform:translateY(3px)}100%{transform:translateY(0)}}
+@keyframes a-float{0%{transform:translateY(0)}50%{transform:translateY(-4px)}100%{transform:translateY(0)}}
+@keyframes a-shimmer{0%{transform:translateY(0)}50%{transform:translateY(-2px)}100%{transform:translateY(0)}}
+@keyframes a-sway{0%{transform:translateX(0)}25%{transform:translateX(3px)}50%{transform:translateX(0)}75%{transform:translateX(-3px)}100%{transform:translateX(0)}}
+@keyframes a-flash{0%{filter:brightness(1)}80%{filter:brightness(1)}90%{filter:brightness(1.9)}100%{filter:brightness(1)}}
+@keyframes a-drift{0%{transform:translateX(0)}50%{transform:translateX(4px)}100%{transform:translateX(0)}}
+
+/* Low Glare Pixel: the state's status color is the edge bar and the words; the info column takes its tint. */
+.screen{--acc:#9a948a;--tint:#1c1b19}
+.screen::after{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--acc);z-index:3}
+.tint{background:var(--tint)!important}
+.lab{color:var(--acc)!important}
+</style></head><body>
+<h1>Weather icon indicators</h1>
+<p>Three ways to show the state with an icon instead of a scene. Low Glare Pixel colours, Handjet type, 640 × 172. Icons are PixelLab art at 32 × 32, shown at 2×. Sample values: Newton, 18°, high 22°, low 12°.</p>
+<h2>Units</h2>
+<div class="picks" id="units"></div>
+<div class="picks" id="picks"></div>
+<h2>1 · Icon beside the temperature</h2>
+<div class="screen" id="V1"></div>
+<h2>2 · Large icon in the top-right corner</h2>
+<div class="screen" id="V2"></div>
+<h2>3 · Icon in the info column, on the left</h2>
+<div class="screen" id="V3"></div>
+<h2>4 · Icon as a full-height column, text stacked on the right</h2>
+<div class="screen" id="V4"></div>
+<h2>5 · Small icon top-left, big temperature bottom-left, highs and lows right-aligned top-right</h2>
+<div class="screen" id="V5"></div>
+<h2>6 · Everything centred on one vertical axis</h2>
+<div class="screen" id="V6"></div>
+<h2>7 · Right-aligned text block, small icon at mid-left, highs and lows on one line</h2>
+<div class="screen" id="V7"></div>
+<h2>8 · Oversized icon bleeding off the right edge, temperature large top-left</h2>
+<div class="screen" id="V8"></div>
+<script>
+const SCENES = [{"key": "nice", "title": "Sunny", "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAACb0lEQVR4nO1WMUgbYRT+TuJwGVKRBjJJhxA731ichAyFwA1dxGxChjuHDBeOklaKqKHIOVgwKQgurdLFQRAUXEtbEEppljTcFLAGzrRVIQdRfB2SSy+XS/4/ZuiSb7q7//3v+9537/13wAgjDAElmSAlmaD/Qq5rKtmns2SfzlJKlu4tYmwYEYHpBTRqjWFSsAXomtqzOrrY77uXx5kAi3x5rgSgKWJ9Iy+wEjr7AOBF/DsAibYPvvbcx0yYkiV683ICALD0PgJjc09wu3JdrbRjC7uHgiO6UWsgU6ijHznAcMBB9UMFk/EIlp5WAMzT6uK5a3UcdtlqXSdoea6EwPQCfubXAIjM3FyWpmSJDCWIlaMp5NK2b4wj4vm7CeiREnJmiFk9twAAyKTnySEXHj7zbUBHBI/1DrjGUNdUJrkb2egV1wQAPXrAO3p3t3/a5P0gxsKwyxYm4xHArPuK8DrTJUDXVFp79QQAcPtjB0Cz+x2wqnfDUIId95lCvSvG14H6p7e+CQch50WXgN/mF2TMzmcPHvEl+zeOTXgr9mvMLgF+QZn0Y7LLFsRYmEl+8a2GMesGAN8Yck2BsbknrBxNwS5bbSJ3tW5yANxnALcAJZmgXNpuW+oW4SV//VmEoQS5x5CpUtdUWl087zhkstEr3IXHOyuxbpAzQzCUIMRYGGdbRS4nuL4FZ1tFAC5rZYlgeqPEFplE2WiRJy0buqbS5fEMpWSp668nJUt0eTzTXveuOeusV9HXgfWNvHBdTdD2wUfubwbgnqT+/wIARxMWdg8HIvcX0htcPdALv06qravQMGnuD7/eGGGEQfEXHngxSKQ3r7UAAAAASUVORK5CYII="}, {"key": "rain", "title": "Rain", "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABUElEQVR4nGNgGAWjYIABI7kaFZ1y/yPz7++bTJZZLORoUvUq+W9f2YEitpeB4T85jmAiVYOiU+5/+8oOhkmWqFqdG/sxQoUYQJKLFZ1y/zs39mOVO3PxHgMDAwPD122zGG5v6yHaXJJDgIGBAcP3lACCaQA5WFk42BkYGBgY8o7/g8vDfA4Df378RNFDKF3glcQV5OiW4gMf103G6wicYUkNyxkYGBj4g3LxJk6CkYkc36RazsDAwMDx6DheeYIOyDv+j+HMxXs4LTfRVyLbcgYGAomQGB+jqyHGUmSANxGqepX8F9bRJclAdPD2ymW85QLBAoOc0g0GWDjYSSqUhj6gJLTIsgCZr+iU+z8+8TPJDiC6UFd0yv1vJ98G56t6laDwGRgYGA49rCLVfuKBolPuf1WvEtoG8ZAD1Eh0ZFfs1ErxFLUs0BPhKBgFQxIAAG5qdmb5mPCJAAAAAElFTkSuQmCC"}, {"key": "night", "title": "Clear night", "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABuElEQVR4nO2WMU/CQBTH/8eV4khICCRt0wHiqomTgytfARKiBgcXYxz8AEa/AgPIoMFEEzfjgnFl0oRENjFqQhAjIYorlXIOTRG0LW0FFvht1/b6fu9d7t0BM2ZMO8TNpIgUZgDQVhQAAOUoOA/FU+3N8f8cTZCFIAOAUi4JQikW1o8BAC+ND1eJOEIWgkztZpjazbDXix2my0yE/uDvV7tMDAVGFpyzE/y5dgAAaBUqUL5Gm7jH6mVECveCAwChFCvb5yNdc0uBTlcdGDNV/fNsrAKTwFSgf+11CKVQO9NSAaNM/bEoyvlUrxOOVQDQtp0RxXQcTnqBlbCpAOUoAODz+nHguT8WhW+Ow+3hqq1KiKEA088MRwLVepMsbZ6aSvBegptsAmIoYNiWZSHIIlKYlfOpXjJGWDaUiBRmxXQcvJeAUAp/LGr67by8PzB+qO6hVahgcePEsnEN7WhiKMDujtZAqJaFlUQ/jct78F7yfwFAq8RNNqFNsCGinxnLW2eo1puWMWz3dFkIslIuOSDxG6b+bN1hmTsWALRKtBUF5XzKMrCP523fjlydamaXEbfXshkzpptv7nCuZEXy8WEAAAAASUVORK5CYII="}, {"key": "hot", "title": "Hot", "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA20lEQVR4nO2WQQqDMBAAYw1tvxWCh4BfEdrP6EcKfqD0Ejz1L2I1cXtKUQ+FbLamggM5hWSH3U1YxnZ2AsikgEwKiBbcWgPWmvUlcqU+wd3KlUJJHKikXn2HOkcmgCVYYBCSwdCvK4BNN5mAI7lc4wpQsE2B0/EcV4CSbb6CvyhByOdDIkCFt0AmBbgeaKqSPR/32R6d2hcB07WgeQpjUYDmKWieguna388FuVKz4FMBJ+E7F0TvAY492FQliUD0DHgzbcJl/VcbTp3EdGGDJ1iJZbff6hp9105U3sc3lsKDpElfAAAAAElFTkSuQmCC"}, {"key": "snow", "title": "Snow", "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAADaUlEQVR4nO1WPUgcQRT+dl2W8yeQQkFTWIQtlsshc3oIJo0gaJEiaYPFEnTFcBKwsbMQbKxMgiJRJFwRbFIY0CIWIYIkKuodonKBQ9EgCYigouiN470U62zOeKveXZEifnAwe/Pmfd+b9+bNALe4RR4wAhYZAYv+CbnJbJrbFjS3LchkuYtQcyN3CHUfQfcRAB0ms3MSkbUAk1kUmRx1v/mJAgCITA6B1bRlLeJGAlhNG/2JUHcJJdLHl+1zhCwwmevpxD6xmjbinJMRsGhrL+nWwNZekoyARZxzMplF04l9mk7sk8lsMpmVvRiTOc7mtgUZAYv6JuLUNxE/J7CJc07+UJjmtgVFd0/JHwpfmJP20kYKy8SleYmI7qgIlqXweWYY5UUK+qfW8W3r2J1PCY4v0cT5+BC6ritGwCJp09l4H411r/DgTgrRHRUydTcSEI9FlOdPSiglOCKTQ/h55DiM7qhQNR1VtWGomo7K0kIAgKqVuKfAV1js2gJAVUMrVK0E8diIkonLswjXFgYVX4HiRikdvvv4GgDQPdCFe6V38cgsR/dAF1RNd4tR2jprdawtDGYkBwDPCX8oTLGv/c642gYAaGkkwbLUBXtJ2tzUAk3TIQTH2tIIAKC2rgOxxeGMXJ4CpAh+cggASKxEFNl2peO/UVvXgcNkEmtLI/BX29A0J+9e2w/csA9IR9fh5CwJLa2qhOBQr1nrqcxkFi3PO5Gyh52QO/H+k9MFvVJgPX7h/rc8PwgAqKq1EY9FrtxtDxE29U3E3YYjf/5QmMZmN2k6sU/fN37Q2Owmmcy6ZNc3Eb+2CXmmQDaO+qBxIeLmphakBEdPey/KCw4AAD3tvRDCmUu3lWuvui0zCjCZRW8/vHG3sKL4DP1T6+58PDaiCMExvnqE8dUjAE6Rylrpn1pHRfEZdB9heX4QkclReL0bPHegrrIQ0R0VzU0tGJvZuBCZRH3QcKPknJMQHMGyFCpLCzE2s4FnDa1uR9U8e64H/KEw+UNhMpnt5lv2fFbTRlt7SYrunl66jNLrQ/rwh8L53Yzp12umYpO3pbQxAlb+pFeJkSch/UmWLiAbZJsZxBaHleamJMmC030EIYCWpy+RWMn+rOf0JkysRBQhOE6Oj1B08AuapudEnjecF0+eT69b/Pf4DVN5LJ9FGENZAAAAAElFTkSuQmCC"}, {"key": "storm", "title": "Storm", "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABqElEQVR4nO2WQWcDQRzFX7o9xK5hhVJ6Kj0khBD6DVKtUK0el5567KWfoN8il16XHEOF2JBbL6UsJSSk7KkspUp0hRjTQ8xKtjOT3UlJD/s7/c3uzHvzZvdvgJycLVPQnUjMIuO1YRj4mn5rraU1ySYWazSdlbFBr61lYucvxAGg0XRgE4sJpihJ7ZgvLhJfpt91MY1mqddN9aJs18sMR2MAQLVSxqDXBoBUR6J8wSYWo5Ti9Px6rTCnWinHdRoj0geqXSdFZQaA9UcifCASV4mqTAxHY4SBL01hVzRIKU0tJiJpdv+wDgQ+E5kQGjAMQ7kgJwz8uOamD46OM5lVJqCK/f3tBZ+vVytje/XHTOKApBFNo1mh33WVE5Mpea1I6+ikXyfv9aJIw8DHh3+xMlaqdaTxZ/4IAcS/Thj4a9vrs7tIJAx8UEp/paPVB2TYxGLJ3XO8VgTnwcvUiqUJqPBaUVyf3Zra4oBmArx2b05iA6VaJ7P4RhCzyOYTh80nDlu+nGQl833gX2ATi80nDnu632z32hCzyLp3l9sRBxYJ6Fy/cnL+JT+rJr1JvKFHhgAAAABJRU5ErkJggg=="}, {"key": "meh", "title": "Meh", "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA/0lEQVR4nO2TsUrEQBCGP8V9BUvB6ppASFiS8tLcq2iRlDZ5JrknsElKJSjCNVcJlr7CFGt1IchlNxvtnK8a2Nn5/52ZBUVRlP/OxW8ul4V1p1hEeH17j653tUZQRDDGcHf/MJ7t94/k4GJNLE7Os9TVTevN6buBw+EpqhOXS5LKwrq6aem7wSsOkCQ78ix1s4k/WDQCEQmKbys7xkmyA3BAsBvBVp1eUzctnx9f3NxeL/E8mgmNxGugLKybLloM0475TMyOIM/SVeK+UZ3Du4R9N5wtGCuy2sAc28r+mbHgDmw2VXTRKcdjx/PLsG4Jgag/PcUYA+AVVxRFUQC+AdUEaEDjDxihAAAAAElFTkSuQmCC"}];
+const ACC = {nice:'#f2d04f', rain:'#6cbcfa', night:'#a588ff', hot:'#ff9945', snow:'#6cbcfa', storm:'#ff5f57', meh:'#b4ab9e', fog:'#b4ab9e', wind:'#5ccf72'};
+const TINT = {nice:'#232015', rain:'#181f23', night:'#1d1b23', hot:'#241c14', snow:'#1c1b19', storm:'#241716', meh:'#1e1d1b', fog:'#1e1d1b', wind:'#172018'};
+const WX = { city: 'Newton', time: '2:41 PM', now: 18, feels: 16, high: 22, low: 12, hours: [{t:'3 PM', c:19}, {t:'4 PM', c:20}, {t:'5 PM', c:20}] };
+function render(s) {
+  CUR = s;
+  document.getElementById('V1').innerHTML = `
+    <div class="abs" style="left:20px;top:14px" class="kick">${WX.city} · now</div>
+    <div class="abs" style="left:18px;top:36px;display:flex;align-items:center;gap:18px">
+      <img class="ico" src="${s.png}" width="64" height="64" alt="">
+      <div class="temp">${T(WX.now)}</div>
+    </div>
+    <div class="abs hl" style="left:20px;top:138px">High ${T(WX.high)} · Low ${T(WX.low)}</div>`;
+  document.getElementById('V2').innerHTML = `
+    <div class="abs kick" style="left:20px;top:14px">${WX.city} · now</div>
+    <div class="abs temp" style="left:18px;top:34px">${T(WX.now)}</div>
+    <div class="abs hl" style="left:20px;top:138px">High ${T(WX.high)} · Low ${T(WX.low)}</div>
+    <img class="abs ico" style="right:24px;top:20px" src="${s.png}" width="112" height="112" alt="">`;
+  document.getElementById('V3').innerHTML = `
+    <div class="abs tint" style="left:0;top:0;width:192px;height:172px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
+      <img class="ico" src="${s.png}" width="120" height="120" alt="">
+      <div class="lab" style="white-space:nowrap;text-align:center">${WX.city} · ${WX.time}</div>
+    </div>
+    <div class="abs" style="left:192px;top:0;width:448px;height:172px">
+      <div class="abs" style="left:20px;top:0;width:210px;height:172px;display:flex;flex-direction:column;justify-content:center">
+        <div class="temp" style="font-size:88px">${T(WX.now)}</div>
+        <div class="hl">Feels like ${T(WX.feels)}</div>
+        <div class="hl">High ${T(WX.high)} · Low ${T(WX.low)}</div>
+      </div>
+      <div class="abs" style="left:250px;top:0;width:190px;height:172px;display:flex;flex-direction:column;justify-content:center;gap:12px">
+        ${WX.hours.map(x => `<div style="display:flex;align-items:center;gap:10px"><span class="hl" style="width:56px">${x.t}</span><img class="ico" src="${s.png}" width="24" height="24" alt=""><span class="hl">${T(x.c)}</span></div>`).join('')}
+      </div>
+    </div>`;
+  document.getElementById('V4').innerHTML = `
+    <div class="abs" style="left:0;top:0;width:200px;height:172px;display:flex;align-items:center;justify-content:center">
+      <img class="ico" src="${s.png}" width="128" height="128" alt="">
+    </div>
+    <div class="abs" style="left:210px;top:0;width:410px;height:172px;display:flex;flex-direction:column;justify-content:center;gap:2px">
+      <div class="kick">${WX.city} · now</div>
+      <div class="temp" style="font-size:84px">${T(WX.now)}</div>
+      <div class="hl">High ${T(WX.high)} · Low ${T(WX.low)}</div>
+    </div>`;
+  document.getElementById('V5').innerHTML = `
+    <img class="abs ico" style="left:20px;top:14px" src="${s.png}" width="40" height="40" alt="">
+    <div class="abs temp" style="left:18px;top:56px;font-size:104px">${T(WX.now)}</div>
+    <div class="abs" style="right:20px;top:14px;text-align:right">
+      <div class="kick">${WX.city}</div>
+      <div class="hl">High ${T(WX.high)}</div>
+      <div class="hl">Low ${T(WX.low)}</div>
+    </div>`;
+  document.getElementById('V6').innerHTML = `
+    <div class="abs" style="left:0;top:0;width:640px;height:172px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+      <div class="kick">${WX.city} · now</div>
+      <img class="ico" src="${s.png}" width="40" height="40" alt="">
+      <div class="temp" style="font-size:64px">${T(WX.now)}</div>
+      <div class="hl">High ${T(WX.high)} · Low ${T(WX.low)}</div>
+    </div>`;
+  document.getElementById('V7').innerHTML = `
+    <div class="abs" style="right:24px;top:18px;text-align:right">
+      <div class="kick">${WX.city} · now</div>
+      <div class="temp" style="font-size:96px">${T(WX.now)}</div>
+    </div>
+    <img class="abs ico" style="left:24px;top:62px" src="${s.png}" width="48" height="48" alt="">
+    <div class="abs hl" style="left:24px;bottom:16px">High ${T(WX.high)} &nbsp; Low ${T(WX.low)}</div>`;
+  document.getElementById('V8').innerHTML = `
+    <div class="abs kick" style="left:20px;top:14px">${WX.city} · now</div>
+    <div class="abs temp" style="left:18px;top:34px">${T(WX.now)}</div>
+    <div class="abs hl" style="left:20px;top:138px">High ${T(WX.high)} · Low ${T(WX.low)}</div>
+    <img class="abs ico" style="right:-30px;bottom:-30px" src="${s.png}" width="180" height="180" alt="">`;
+  document.querySelectorAll('.screen').forEach(el => { el.style.setProperty('--acc', ACC[s.key]); el.style.setProperty('--tint', TINT[s.key]); });
+  document.querySelectorAll('.screen img.ico').forEach(i => i.classList.add('a-' + s.key));
+}
+let UNITS = 'C', CUR = null;
+const T = c => UNITS === 'F' ? Math.round(c * 9 / 5 + 32) + '°F' : c + '°C';
+const unitBox = document.getElementById('units');
+['C', 'F'].forEach(u => {
+  const b = document.createElement('button'); b.type = 'button'; b.textContent = u === 'C' ? '°C' : '°F';
+  b.setAttribute('aria-pressed', u === 'C' ? 'true' : 'false');
+  b.onclick = () => { UNITS = u; [...unitBox.children].forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); render(CUR); };
+  unitBox.appendChild(b);
+});
+const picks = document.getElementById('picks');
+SCENES.forEach((s, i) => {
+  const b = document.createElement('button'); b.type = 'button'; b.textContent = s.title;
+  b.setAttribute('aria-pressed', i === 0 ? 'true' : 'false');
+  b.onclick = () => { [...picks.children].forEach(x => x.setAttribute('aria-pressed', 'false')); b.setAttribute('aria-pressed', 'true'); render(s); };
+  picks.appendChild(b);
+});
+render(SCENES[0]);
+</script></body></html>

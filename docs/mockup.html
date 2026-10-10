@@ -1293,6 +1293,7 @@ a.btn { display: inline-block; text-decoration: none; }
   .scr[data-mode] .lcd.alert::after { animation: none; opacity: 1; background: transparent; box-shadow: inset 0 0 0 .9375cqw #fff; }
   .scr[data-mode="dark"] .lcd.alert::after, .scr[data-mode="light"] .lcd.alert::after { box-shadow: inset 0 0 0 .9375cqw var(--sc); }
 }
+
 </style>
 
 <div class="wrap">
@@ -2063,6 +2064,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
     { id: 'away',      name: 'Away' },
     { id: 'message',   name: 'Message' },
     { id: 'jira',      get name() { return jira.on && jira.label ? jira.label : 'Jira'; } },
+    { id: 'weather',   name: 'Weather' },
     { id: 'clock',     name: 'Clock' },
   ];
   // The next screen in a direction, skipping the Jira screen while it isn't set up (it is hidden from the swipe order).
@@ -2874,6 +2876,8 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
       }
       case 'jira':
         return jiraView();
+      case 'weather':
+        return weatherView();
       case 'clock': {
         let sd;
         if (s.wifi.mode === 'offline') sd = side('Calendar', 'Off', 'needs Wi-Fi', 'small');
@@ -2903,6 +2907,47 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
   const jiraShow = c => c >= 10000 ? '10k+' : String(c);
   const jiraCount = () => jira.count != null && (jira.state === 'ok' || (jira.state === 'unreach' && jira.okAt && now() - jira.okAt < JIRA_STALE)) ? jira.count : null;
   const jiraWarn = () => { const c = jiraCount(); return c != null && jira.limit != null && c > jira.limit; };
+  // The weather screen (Low Glare Pixel, layout 3): the info column on the left with the icon and the town and time,
+  // the temperature block on the right, and a three-hour strip. Sample values, as in docs/weather-icons-mock.html.
+  const WX_ICON = {"nice": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAACP0lEQVR4nO1WO0hjQRS9LzyLWKjICqlkC9GtUy5WgoUQsLAR7RYsjEWKhLD4QcQPi2ih4AcEGz/YbCEsKNiKCsKy7DbukkrQDcS/kICKI+fFieNj8ubGV9jkwCOTd2fuOffOvTOPqIwyfKC3OyLw0HsgGY+K3GGL8/S0h98sIuBHhN30he7O7/y4oAAn0mI2cfbdcy0nM7aJfKTziIjyIian5y2TQ7kOvwOtv4koLJY2fxZdZ5mcIYrZwRpnPLQaoqmZdUvNym36uDB3Ye2HJUVjaxILWfIiBzwzIJHeOKba1hANtYGsS4z1/VesFZT7l3keRxxy1Mbp/DgRBY2+LY4AZGGqt5JGt+ppIpbTzpEivq7UUDJ0RBOpKmP0bAFAItYlJLn1oUNbgFIEJ/UltWEyHjWSq+hvuGF1AGBzWu/x4apA7oVgY52TBdQLpbJaEe7M2Dry8eHPzvjh73Kh+iVM0atA3ajA1rAykN1b1DoshZwL2/3iMnVAidTrd9Ufec5e2lEfsa4wbfcL3aRE7JOAc+yxifzs1zkFMvdExGvDADGA0w9nAEgkkRqtSg5wzwC2ANz5aEOZUlWEm/zbftApPm4bWqYJ6Aocveohgz5/rKt4HUnm3okc5Niqk7k/rEzYHJVwBhQcIjpXoeLcz5OFRX9Dfr5vJONRcb3d7HzxuFOK/7BJu9sm7aatsL2MuP9v0xGxtLnLvjOAl7R7fwsAxiLEHV8KuV6Izxoohoud9POoit4FPZraKKMMKhFPHngxSKRt2M4AAAAASUVORK5CYII=", "rain": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABIklEQVR4nGNgGAUDDBjJ0aTolPsfXez+vslkmcVCqgZVr5L/9pUdGOJ7GRj+k+MIJlJ9DrJ8kiWmNufGfqwhQwgwkmI5yBJc4MzFe2D667ZZDLe39TDSJARoAZhI1YAt+CkBLLgk0OOThYMdTOcd/4cR7Mjgz4+fGHrxJU5GUuMbm6WEwMd1k3E6gonWloMAf1AuzhzCRGxck2s5CHA8Ok56Gsg7/o+gpSb6SgQdh89ynA4g1rfY1BGyEB0w4ipuhXV0GagF3l65jLNwYmIYYMCIS4Kcch0bAJUfpBTNQxsoUinUiDIcGz8+8TPJDmAiRhHIcDv5NpRcgsyHgUMPqxhoAhSdcv+DLKWN6aNggFM800BaTrYDQABbLhgFo4CBDAAA/it2bOqqkggAAAAASUVORK5CYII=", "night": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABsUlEQVR4nGNgGAUjHTCSqkFZVuI/jP3z1y8wzczCzMDCxAxm3338giQzGYlVKC8tCrb47KxoiEZmZgb9+Plg9pOX70j2CAywEGv5vcdNYPbLTTfAtGXaIooshgEmhsEO5KVF///9Nx2M3+4o/i8jLgTG1DKfBZ/FIBoW9O+332T49Ztq9uJ3gLKsxP9bD+tRxECJzjZjKVXinWAa+PPvL4bY/79/sYrTxAH0BEyDzgHySHkePQ38/TMSouAvDl8KuKkwXFyYCM4hyPUB1R0Ay/O4wOHJ4WBMTmGEzeFM6AKgmg0EPuy6A8boocDOwQLGp2bGYjUQFwA5GFZ74nUAvQEjNkFQTjg3Nw7F57iiySBpETjUHj59zYjNHFg74dTsaAaj5EUY6hixOQAUtKB4BgE2VkZwFsTmCGSgJt+IIQYqzpEdiq0YZ8RlICyRXZgXB3YACBByBDoAtR1AHiDLAcihcXJGBJgNcwgxjoHVnpbZy8B8bFEENpOBCACKS+SmGD4AqrRgAJevB38uwBUVoHwMKg3x+Rrmc3Y2NqJayIwMJAJYSwkXAGU7Upvmo2BkAwDTNrO2eF7FfAAAAABJRU5ErkJggg==", "hot": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA/UlEQVR4nGNgGMrA1dnxPwgPmOV///4BY0ocwUiqBh9PT7BlG7dsRhH39/EF01u2byfJTCaGAQYs1DLo568fZOljYhhgwESpAb8dnRn+//5Fvyj4SWZQ0yQEGAsKB9YB1ABMDCPdASykamBn4xjhIfBzMGXDkZ0G/lNQ/FLFAdQCTKQoBrV8QIkQlhDPTp/GcPnYEQw1VHMdOgAZ/ufHNzA+zcL8/19uLpgGYZg4qQ5gYhgqwMfTE+5zmO+RQwA5JGDtxuHdJjw7fRpVHMDEMJSAK1ouQI/7IZkLGEnVAPPh9q1bUcQ9vb3B9O69+xlp6gAGKEDPaqR2yQYNAACiZJRHpEH18gAAAABJRU5ErkJggg==", "snow": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAADI0lEQVR4nO1WTUhUURQ+7/l4+Be0MLAWLsLFMMXw/GHAahEJumhRiyDChYSOFROFm3YugjbRwgwtVCRmERK0qMhFLaJAsqRykBIDSTLCIIKSGZx5jd747uNcn9Nzxvcy2vjB4b177zn3fPeec8+9RNv4z9CCGtbubxf8P/cuEXieQAhZMfHqS05JyFoj4xe6f+eOM7NUKCEyJal/TiBktYvE2Ihq2xlNCpAYu0VWQ5fYcgJWQ5dYW52pnLmR315vUxhGoQQzDJMGH96kzHKaLp7UxOREP4XrO+jp+BAtpkuU/u6KFTpyqItm3g5TJJoVfXevyf4zJ0gQ2ZL4bHJY2/Q227YtkwtErj6alYI+rArfcGNcjk99/yUFbfc427CeM+adqIZX59Q3nep2rcqVVpdr1PvkI00sLKvx1ZxNz6bmXO0UmaapgTDrdbfspZam67Rvx6qcj8NXlMBsMqGdPlYp4ASxXUw7k2ES3TApEo3Lb01VmbLRjUp1CkrLKpQ+EGnulOMbhUD36px5PaCVlmhqlTzZ7Qd98tvTf4n2VO2kg6FqKWiDFCcj6zv2ppzPVyUMN8ZF8kWv818fc7bK5QDhyQc7bWvtkLq5nC2TEog2nafkmyFPX9pGzGRiZVKq1PLJ4Em9AEepbFbqgDiIAIVOgE5FwJNsBpmVLBmurMIuIDRbWoq3GppXJ87s9KSz1daBbuJQ3Hk8UjQH2o+eU33TkwPyG4nG5OnyxSxkxWQxcd96EOTG6MtP4vncT/Fh/rMUtEE6Xxf2xUqyvtEO4Hu4rnbdipHhqA+Xz16h6pIlpY92LueMu/XZvtB1rXs5H7x3Q20f6jwqIQMZjeS6/z6thE8KJyz0YYerGvPgBnU/YIruQFNNmYwpVjQ6Pr9uVQysjgVAvQcx6KFKwu5Uc6cq6+7TURThxriMNeLH8eYLB1ftwo+svIQ41mhjhXxRuW1YKCgs193ulWgscMh6IPNXTguR4ZOQ/yZ0E/ADw48y6nlba1ZwsjnvQVQ8oo7jFwK9jnW/BnCCZMMrqXzpqxQQCvo01ygg3Nu96efWNrZBf+I3WegyjgWhyY8AAAAASUVORK5CYII=", "storm": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABgklEQVR4nGNgGAUjHTCSq5GXi+M/jM3MzMzw4fNXssxiJEeTAC/3fxevKBSxPduWkeUIJmpYDgIgMZAcqeYxEmspskX4wM7Nixk+f/tBdEgwEmM5IUtB4Mr1G2BaR1MDHB0wQChaGPFZ/PfvXwZ331iiLIYBkAOQAcwxuBzCxDDAgJGcYEf3Nb4QIJQuGImxHJ+FxDgCpP/F/XNYo4EFXQAU75QCbA6WUDRiYLh/7j+6I1jQFYJKNUKGwQDIV+gOl1YxJcmxLOgCMIMIBfvTO6cZ3l0MQhETNdrIQCpgQhcAJRZQoiEE0ENqx9RvZEUfI76KBldwgoL+9Tl/FDEh/XV4g5/oRAgCsCzz4v45osr2E4shIQKyBBQK6KGDryBiZCARgLIpuu+RoyFq1g6S6gIWUh0AswgGPLK5yLYcBMgKARh7cbIr3AGgNECq5SAw4HUB2QCUU37fjgJj5ObZyAgBAV5usM8P11Hme7IByNLNBQEDYzksBMhpgI6CUcCABQAAsO69TdfYPO0AAAAASUVORK5CYII=", "meh": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABB0lEQVR4nGNgGAWjYBQMMGAkV6O5mcl/dLHfv3+D6XPnLxJtLgspFsEsYGVlZUhLL8FQu3btajBtxMDwn1hHMDEMMGDEJ2lkqP8/O6eSZEMPHjjDcOXKbjCbUEgwMQwwYMQX96B4BvkGBOwdTAgaBlOLDEAhgS8UWHBJgBIcNgPxWY7sSJheHR1XEAVPyOiOYcQW7zA2KP4f3X8FZsspihHtGHyORA8RJoYBBozo+R1b/qYUoEclcg5hgQU7tS0mNv0wMQwwYMHlYmzZjpQsSSxgIkUxyGIQJhS8pGRfJobBlgvU1R1oauHNmwcYTp46MwjLAWwlIbUAqP0AA8i+HwWjYBQMCgAAswdrYTwJeyUAAAAASUVORK5CYII=", "fog": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABGUlEQVR4nGNgGAWjYBQMMGAkV6MAP+9/dLEPHz+TbB4juRbeu/8QQ42SojzJjmFiGGDASKzP9+27BBdTUOTHq6epdRHDgjm1RIUEE8MAAxZCvk9IaSbasOVrjsDZMH0L5tTC0w620GDBZznRNjMwMDy4/5HB0lgXzIbRIFBXHQdnKynK/0d3CAuhVA6KT2IAoXSBbCayQ5gYBhgwwnyPLV9TG4CiCQScnPQYYCHAQmvL0MGiZRtR+EwMAwxYYAxYYouL8seZqJB9RUgen6+RASN6LoDlX1j2wWYoyEDk7IWuDpeF2EpHJobBEgUfoK5CLrlg0YHNZ7CaD1tJCfMpOsBWEjIxDDBgJLcohvmGWg2TUTAKRgHDQAEA2LN6zuZ7OHoAAAAASUVORK5CYII=", "wind": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAACK0lEQVR4nGNgGMpAVFTov5Ag739KzGAkR5OElBDY0ohJFmD+irwTYPrFs3ckm8fEQAGwNtBmgDkEhMkJDSaGAQaM5AQ/LOhB4PKtZ3C2rpoUODpIiQoWUh3w6/tveNAfvXCV4d9PRgZ9XUkGcgETqb6feTqDYdriPWAMAhcn3QE7CIQvXn5OclpgYhhgwERKnp98KBkc7LgALCrUU+XBoUBMSLAQYzGIjp5uAbccZtHSzBMM9tWQ9ECzEPj75zcYI6d4UFyDMEhcXkEIrhYmz8HJysDMAsEUhYCEFCTYQWDGqt3gbAayGBnAcgQIgORhwKZcDUwf6bz1//Vr3NmSBZ8D/v6GWIxs+PXZDxk0U+VR1C3bcBhMI4cGjH1ksOcCFkIKYD4HxS+IDcrnoMSHDNDTgb4uIipg6YdsB6ADUJw/LH8HZh/pvIUiB7IcVDIiA0IJkQWvLFLKhoUEKCt++PwTxXewhAjxPWnFMgs+SWZWBgwfgSobWCKE+Q5WPiDnAvTcMmgTISMhBbDiFFS8mpvJgYM73XQGWA5UMYF8f/LUIzAfJA/zOaiSAoF37z/jtYOR1HYAzDIQuDP/GbiIfvgAkihhaePKtIcM+AofshyAXC8gA1iJBwIHW68S5WuqAQkpof/ZC73AtR65rWMmhgEGLJRoBtUVIEBMrUcTB4AAKzfh4pbqDhCFJsawHguiCxyqOgAZgPI7JameiWGAASM5mpDLA2ILnEELAN6g42y9+tVTAAAAAElFTkSuQmCC"};
+  const WX_STATE_KEY = {"nice": "call", "rain": "long", "night": "meeting", "hot": "focus", "snow": "setup", "storm": "busy", "meh": "away", "fog": "away", "wind": "available"};
+  let WX_CUR = 'nice';
+  // Bold Signal fills the field with the state's color: warm for sun, cool for rain and night, and so on, from its palette.
+  const WX_BOLD_KEY = {nice: 'focus', rain: 'long', night: 'setup', hot: 'busy', snow: 'away', storm: 'meeting', meh: 'away', fog: 'away', wind: 'short'};
+  const WX_SAMPLE = { state: 'nice', city: 'Newton', time: '2:41 PM', now: 18, feels: 16, high: 22, low: 12, hours: [[ '3 PM', 19, 'nice' ], [ '4 PM', 20, 'nice' ], [ '5 PM', 20, 'meh' ]] };
+  const WX_TINT = '#1c1b19', WX_ACC = '#ffd366';
+  function weatherView() {
+    rendering = 'weather';
+    WX_CUR = WX_SAMPLE.state;
+    const dark = !!(style && style.mode === 'dark');          // Low Glare Pixel; Bold Signal otherwise
+    const word = (w, fs = 17) => `<div class="word" style="--fs:${fs}">${w}</div>`;
+    const sub = `<div class="sub" style="white-space:nowrap;text-align:left">Feels like ${WX_SAMPLE.feels}° · High ${WX_SAMPLE.high}° · Low ${WX_SAMPLE.low}°</div>`;
+    const icon = WX_ICON[WX_SAMPLE.state];
+    // Positions are in cqw (1% of the screen width), taken from the clock screen in each look: its date line, its time,
+    // and the sub-line of the other screens.
+    const P = dark
+      ? { kx: 3.88, ky: 2.23, wx: 4.11, wy: 6.58, sx: 3.88, sy: 22.33, iy: 5.88 }
+      : { kx: 3.76, ky: 2.35, wx: 3.76, wy: 2.12, sx: 3.76, sy: 20.8, iy: 5.05 };
+    const main = `<div style="position:absolute;left:0;top:0;bottom:0;right:${dark ? 30 : 0}cqw">
+      <div class="kicker" style="position:absolute;left:${P.kx}cqw;top:${P.ky}cqw;margin:0;white-space:nowrap">${WX_SAMPLE.city} · ${WX_SAMPLE.time}</div>
+      <div style="position:absolute;left:${P.wx}cqw;top:${P.wy}cqw"><div class="word" data-fit="time" style="--fs:17">${WX_SAMPLE.now}°</div></div>
+      <img src="${icon}" width="128" height="128" alt="" style="position:absolute;right:3.75cqw;top:${P.iy}cqw;image-rendering:pixelated;display:block">
+      <div style="position:absolute;left:${P.sx}cqw;top:${P.sy}cqw;white-space:nowrap">${sub}</div>
+    </div>`;
+    const lines = x => `<img src="${WX_ICON[x[2]]}" width="20" height="20" alt="" style="vertical-align:middle;image-rendering:pixelated">&ensp;${x[0]}&ensp;·&ensp;${x[1]}°`;
+    let side_;
+    if (dark) {
+      side_ = side('Next 3 hours', '', WX_SAMPLE.hours.map(lines).join('<br>')).replace('class="ctx-label"', 'class="ctx-label" style="position:relative;top:1px"');
+    } else {
+      // Bold Signal: the label sits where the other screens' labels sit (106 px of 229), with the three hours below it.
+      side_ = `<aside class="side">${sysRow()}
+        <div><div class="ctx-label">Next 3 hours</div></div>
+        <div style="position:absolute;left:2.47cqw;right:1cqw;top:15.5cqw">
+          ${WX_SAMPLE.hours.map(x => `<div style="position:static;font-size:2.66cqw;line-height:3.05cqw;white-space:nowrap;opacity:.9">${lines(x)}</div>`).join('')}
+        </div></aside>`;
+    }
+    return { main, side: side_ };
+  }
   function jiraView() {
     rendering = 'jira';
     const n = now(), c = jiraCount(), lab = esc(jira.label || 'Jira');
@@ -3396,9 +3441,10 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
   // direction's own main and side tints when it defines them.
   function paint(el, key) {
     el.dataset.k = key;
-    el.style.setProperty('--sc', `var(--s-${key})`);
-    el.style.setProperty('--tc', `var(--t-${key})`);
-    el.style.setProperty('--tsc', `var(--ts-${key})`);
+    const ck = key === 'weather' ? ((style && style.mode === 'dark' ? WX_STATE_KEY : WX_BOLD_KEY)[WX_CUR]) : key;
+    el.style.setProperty('--sc', `var(--s-${ck})`);
+    el.style.setProperty('--tc', `var(--t-${ck})`);
+    el.style.setProperty('--tsc', `var(--ts-${ck})`);
   }
 
   let lcdHtml = '', lcdBar = null;
@@ -6759,7 +6805,7 @@ GET http://minibar.local/mac/app.zip           (and HEAD: the same headers, no b
   };
   const contrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
   function sbtnColor(b, key) {
-    const c = b.dataset.id === 'clock' ? '#3a4049' : colorOf(key);
+    const c = b.dataset.id === 'clock' ? '#3a4049' : b.dataset.id === 'weather' ? '#2a2d33' : colorOf(key);
     b.style.setProperty('--c', c);
     b.style.setProperty('--cfg', contrast('#ffffff', c) >= 4.5 ? '#fff' : '#111316');
   }
